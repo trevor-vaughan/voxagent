@@ -1,0 +1,21 @@
+docs/superpowers/specs/2026-09-18-property-attribution-design.md
+  s_9d001ee5597c16::t_762117859b8eae 314-329
+  s_9d001ee5597c16::t_edd9617bd1db6a 1-112,139-313,330-347
+  s_9d001ee5597c16::t_210ed6ba611d82 113-138
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "6377787684f683a03dcfbbe40500134a18a8c73a",
+  "prompts": {},
+  "sessions": {
+    "s_9d001ee5597c16": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "81aeed6a-976f-4c29-83cb-a45ad978046a",
+        "model": "claude-opus-5"
+      },
+      "human_author": "peiriannydd <peiriannydd@gmail.com>"
+    }
+  }
+}
