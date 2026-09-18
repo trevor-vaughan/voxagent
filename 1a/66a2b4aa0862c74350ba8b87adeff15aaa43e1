@@ -1,0 +1,26 @@
+internal/transaction/transaction_test.go
+  s_9d001ee5597c16::t_7c84c20c70f38c 1159,1161-1178,1182-1183,1192-1194,1196,1198-1203
+  s_9d001ee5597c16::t_65b34afc9b91f3 1095-1158,1160,1179-1181,1184-1191,1195,1197,1204-1205
+internal/transaction/transaction.go
+  s_9d001ee5597c16::t_73502a392b227d 307-308
+  s_9d001ee5597c16::t_e56ce5a24b3031 229-234,247
+  s_9d001ee5597c16::t_30e94b779a4c83 235-246
+  s_9d001ee5597c16::t_7c411e229b8c2c 253-271
+  s_9d001ee5597c16::t_8b2a2d7fb86dbc 364-400
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "1a66a2b4aa0862c74350ba8b87adeff15aaa43e1",
+  "prompts": {},
+  "sessions": {
+    "s_9d001ee5597c16": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "81aeed6a-976f-4c29-83cb-a45ad978046a",
+        "model": "claude-opus-5"
+      },
+      "human_author": "peiriannydd <peiriannydd@gmail.com>"
+    }
+  }
+}
