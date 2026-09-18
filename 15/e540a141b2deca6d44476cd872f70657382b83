@@ -1,0 +1,27 @@
+docs/superpowers/plans/2026-09-18-property-attribution.md
+  s_9d001ee5597c16::t_436275f68eb1d8 15-146
+  s_9d001ee5597c16::t_f8534c9c06b436 1630-1742
+docs/superpowers/specs/2026-09-18-property-attribution-design.md
+  s_9d001ee5597c16::t_a87f135531aa70 395-419,421-434
+  s_9d001ee5597c16::t_bd4a1831945393 453-476
+  s_9d001ee5597c16::t_07509039769f7e 307-326
+  s_9d001ee5597c16::t_b7505a8a9faaaf 259-292,294-298
+  s_9d001ee5597c16::t_a135a8616f9820 117-130
+  s_9d001ee5597c16::t_dfb60cad9799e5 329-345
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "15e540a141b2deca6d44476cd872f70657382b83",
+  "prompts": {},
+  "sessions": {
+    "s_9d001ee5597c16": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "81aeed6a-976f-4c29-83cb-a45ad978046a",
+        "model": "claude-opus-5"
+      },
+      "human_author": "peiriannydd <peiriannydd@gmail.com>"
+    }
+  }
+}
