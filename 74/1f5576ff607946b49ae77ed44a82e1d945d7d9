@@ -1,0 +1,38 @@
+internal/ral/file.go
+  s_9d001ee5597c16::t_8811fa0339d5a9 773-802
+  s_9d001ee5597c16::t_2f9ba46a962268 170-186
+  s_9d001ee5597c16::t_412ff1ae0cc5fa 255-256
+  s_9d001ee5597c16::t_f2028c34b064d1 228-231,244,247,250-254,257-260,263-264
+  s_9d001ee5597c16::t_31cdd878330c0e 196-206
+  s_9d001ee5597c16::t_e03f64eef5b274 383-403,407-457
+  s_9d001ee5597c16::t_91ce7b0acbeb68 404-406
+  s_9d001ee5597c16::t_08a60bcd5c06d3 323,332-333,335-357,360-361,366
+  s_9d001ee5597c16::t_4e0c6625e94e8c 311
+  s_9d001ee5597c16::t_929bce28118cf2 284,295-307
+  s_9d001ee5597c16::t_64986b1c9b78bc 803-804
+internal/ral/file_test.go
+  s_9d001ee5597c16::t_e1c59d18e4ba0d 881-886,888-896,905,907-910,913,915-923,933-935,938,944-945,982-1038,1040-1059
+  s_9d001ee5597c16::t_6d8fc54e353ad3 220-230,237-274,276-365
+  s_9d001ee5597c16::t_aca006abb61076 898,902-904,906,912,924,926-931,939,941-942
+  s_9d001ee5597c16::t_9b6a518c931c83 946-953,955-981
+  s_9d001ee5597c16::t_8de9086f79a6d7 275
+  s_9d001ee5597c16::t_6853ce96355883 899-901
+  s_9d001ee5597c16::t_79a54bb7c01db8 231-232
+  s_9d001ee5597c16::t_59f8269db792e6 475-514
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "741f5576ff607946b49ae77ed44a82e1d945d7d9",
+  "prompts": {},
+  "sessions": {
+    "s_9d001ee5597c16": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "81aeed6a-976f-4c29-83cb-a45ad978046a",
+        "model": "claude-opus-5"
+      },
+      "human_author": "peiriannydd <peiriannydd@gmail.com>"
+    }
+  }
+}
