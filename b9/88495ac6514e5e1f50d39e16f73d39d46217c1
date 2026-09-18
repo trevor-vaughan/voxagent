@@ -1,0 +1,23 @@
+internal/transaction/transaction.go
+  s_9d001ee5597c16::t_f67af2d98df154 230
+  s_9d001ee5597c16::t_75c0ad96714afd 212-214,217-225,227-228,231-241
+  s_9d001ee5597c16::t_e365a04622d9c6 146
+internal/transaction/transaction_test.go
+  s_9d001ee5597c16::t_b71909750ff95d 874-920
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "b988495ac6514e5e1f50d39e16f73d39d46217c1",
+  "prompts": {},
+  "sessions": {
+    "s_9d001ee5597c16": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "81aeed6a-976f-4c29-83cb-a45ad978046a",
+        "model": "claude-opus-5"
+      },
+      "human_author": "peiriannydd <peiriannydd@gmail.com>"
+    }
+  }
+}
