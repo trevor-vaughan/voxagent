@@ -1,0 +1,32 @@
+docs/maintainers/apply-spine.md
+  s_9d001ee5597c16::t_2c9c41a394f067 272-288
+  s_9d001ee5597c16::t_cdf1e7f17eb3ac 243-245
+  s_9d001ee5597c16::t_d07ca2ecf03451 11-13,16-19
+  s_9d001ee5597c16::t_2f8f08bcd7b18b 74
+  s_9d001ee5597c16::t_72dfc6d2e6dc89 21-63
+  s_9d001ee5597c16::t_00976ec8574796 208-211,220-228
+  s_9d001ee5597c16::t_cdc0dcae5f574a 367-402
+  s_9d001ee5597c16::t_e3d34a77844e1c 72-73,75-77
+  s_9d001ee5597c16::t_7fb77f5f074f33 108-118
+  s_9d001ee5597c16::t_f87fe7b57b8d68 205-207,212-219,229-230,233-242,246-247
+  s_9d001ee5597c16::t_9115ac16b2ca74 79-92
+  s_9d001ee5597c16::t_35a6d135cc3667 231-232
+  s_9d001ee5597c16::t_bebb6af227107d 20
+  s_9d001ee5597c16::t_6f1bd5475c6395 78
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "506e2210dd09f62b5890e5e22e8eabbcb565af11",
+  "prompts": {},
+  "sessions": {
+    "s_9d001ee5597c16": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "81aeed6a-976f-4c29-83cb-a45ad978046a",
+        "model": "claude-opus-5"
+      },
+      "human_author": "peiriannydd <peiriannydd@gmail.com>"
+    }
+  }
+}
