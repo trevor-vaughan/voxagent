@@ -1,0 +1,22 @@
+docs/maintainers/apply-spine.md
+  s_3eeb95dc4ec100::t_17bad94db62215 447-450
+  s_3eeb95dc4ec100::t_471cb3cb5b6c81 457
+  s_3eeb95dc4ec100::t_4ebfc95d8002a2 458
+  s_3eeb95dc4ec100::t_a928d04a1741e6 459-464
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "eef522d04540cacb2515af08ece751e0931f92e6",
+  "prompts": {},
+  "sessions": {
+    "s_3eeb95dc4ec100": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b7001e1c-df0a-4906-a2d5-b5fcab1a25fd",
+        "model": "claude-opus-5"
+      },
+      "human_author": "peiriannydd <peiriannydd@gmail.com>"
+    }
+  }
+}
