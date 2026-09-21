@@ -1,0 +1,36 @@
+internal/ral/testdata/rpm-qa.txt
+  s_3eeb95dc4ec100::t_32d187b3c77015 1-40
+docs/superpowers/plans/2026-09-21-tier1-package.md
+  s_3eeb95dc4ec100::t_7c7aa52ce53b07 162-163
+  s_3eeb95dc4ec100::t_4d7a774f937749 131-161,164-172
+  s_3eeb95dc4ec100::t_d5b2935511feea 5-11
+internal/ral/testdata/dnf-check-update-updates.txt
+  s_3eeb95dc4ec100::t_625ee8523a2e81 1-9
+internal/ral/dnf.go
+  s_3eeb95dc4ec100::t_396dc5c8d929c5 112
+  s_3eeb95dc4ec100::t_35fd4925765839 95
+  s_3eeb95dc4ec100::t_11b39d6ae98d60 94,97
+  s_3eeb95dc4ec100::t_fa643ba63f110b 1-93,96,98-111,113-115
+internal/ral/testdata/dnf-check-update.txt
+  s_3eeb95dc4ec100::t_724a3485b6aad3 1
+internal/ral/dnf_test.go
+  s_3eeb95dc4ec100::t_3ef41abe7db5fc 58-68,70
+  s_3eeb95dc4ec100::t_0c9b6a8bca296e 1-57,71-116
+  s_3eeb95dc4ec100::t_1d146f12177502 69
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "46abad9cb24be6f5a7af31b34a21f6b4714b008f",
+  "prompts": {},
+  "sessions": {
+    "s_3eeb95dc4ec100": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b7001e1c-df0a-4906-a2d5-b5fcab1a25fd",
+        "model": "claude-opus-5"
+      },
+      "human_author": "peiriannydd <peiriannydd@gmail.com>"
+    }
+  }
+}
