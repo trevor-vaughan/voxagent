@@ -1,0 +1,22 @@
+docs/superpowers/plans/2026-09-21-tier1-package.md
+  s_3eeb95dc4ec100::t_165891f8960327 546-591
+  s_3eeb95dc4ec100::t_c8722809eb4007 32-34
+  s_3eeb95dc4ec100::t_5da02e041bb109 5
+  s_3eeb95dc4ec100::t_5b5ca1d0b6a8a5 592
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "edb02d3ac16bb0a36eea5d60b8021aa6712972ae",
+  "prompts": {},
+  "sessions": {
+    "s_3eeb95dc4ec100": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b7001e1c-df0a-4906-a2d5-b5fcab1a25fd",
+        "model": "claude-opus-5"
+      },
+      "human_author": "peiriannydd <peiriannydd@gmail.com>"
+    }
+  }
+}
