@@ -1,0 +1,27 @@
+internal/ral/testdata/rpm-evr.tsv
+  s_3eeb95dc4ec100::t_2eda28f22f36b4 1-85
+internal/ral/rpmvercmp_test.go
+  s_3eeb95dc4ec100::t_36dc58a4893f10 191,195-204,207
+  s_3eeb95dc4ec100::t_0816fedf45da89 1-190,192-194,205-206,208-281
+internal/ral/rpmvercmp.go
+  s_3eeb95dc4ec100::t_6fca1c9a65f052 1-357
+internal/ral/testdata/rpm-parse-evr.tsv
+  s_3eeb95dc4ec100::t_7dfc49a567b1d2 68-78
+  s_3eeb95dc4ec100::t_39dd6dcf242349 1-67
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "7042f593589a14c043c176cb68da5e42d2ad8d33",
+  "prompts": {},
+  "sessions": {
+    "s_3eeb95dc4ec100": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b7001e1c-df0a-4906-a2d5-b5fcab1a25fd",
+        "model": "claude-opus-5"
+      },
+      "human_author": "peiriannydd <peiriannydd@gmail.com>"
+    }
+  }
+}
