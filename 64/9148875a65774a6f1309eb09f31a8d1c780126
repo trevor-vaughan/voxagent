@@ -1,0 +1,38 @@
+docs/maintainers/apply-spine.md
+  s_07e26943556792::t_e311532556292f 65-88
+internal/ral/package_test.go
+  s_07e26943556792::t_8cb6ca4dc3801d 476-478
+  s_07e26943556792::t_d11d70f2b84a4b 52-78
+  s_07e26943556792::t_26042979a14c1f 321-323
+  s_07e26943556792::t_0b4150f0ba671d 405-407
+  s_07e26943556792::t_656081aecf2b51 425-426,428
+  s_07e26943556792::t_ed3e64aee19eae 393-394,396
+  s_07e26943556792::t_5a533ce5009fc3 505-513
+  s_07e26943556792::t_8a44a11f2c726a 536-711
+  s_07e26943556792::t_d1fc7197d63209 356-358
+  s_07e26943556792::t_03a08e03305d3d 370-372
+internal/ral/package.go
+  s_07e26943556792::t_a977e8c0c566ec 538-551,553-555,562-572,576-603
+  s_07e26943556792::t_a848f9e43ac3a7 390
+  s_07e26943556792::t_676e2755a86d6f 573-575
+  s_07e26943556792::t_2ec16e5d9d01f0 408
+  s_07e26943556792::t_9eed790b17d9dd 344
+  s_07e26943556792::t_c964dad87a8b20 455-467,604
+  s_07e26943556792::t_0570d0f0917a32 605
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "649148875a65774a6f1309eb09f31a8d1c780126",
+  "prompts": {},
+  "sessions": {
+    "s_07e26943556792": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4e6db51b-3f64-4d96-8a58-53b7acc54630",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "peiriannydd <peiriannydd@gmail.com>"
+    }
+  }
+}
