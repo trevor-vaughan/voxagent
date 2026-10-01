@@ -1,0 +1,29 @@
+internal/ral/package.go
+  s_07e26943556792::t_4b5888db6be369 596-599
+  s_07e26943556792::t_1a88611126096a 19-23
+  s_07e26943556792::t_6913be18c61c60 573-580
+internal/ral/dnf.go
+  s_07e26943556792::t_0fb1117e57dbe9 74-76
+internal/ral/package_test.go
+  s_07e26943556792::t_ce22af2b92ad99 572-574
+docs/maintainers/apply-spine.md
+  s_07e26943556792::t_5786923f1fbfde 154
+  s_07e26943556792::t_bfe69ca3ba3788 78
+  s_07e26943556792::t_cfe7bbccdac4fd 84-87
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "91fb63c209f498c34d92e28c2486a2cdefc3c59b",
+  "prompts": {},
+  "sessions": {
+    "s_07e26943556792": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4e6db51b-3f64-4d96-8a58-53b7acc54630",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "peiriannydd <peiriannydd@gmail.com>"
+    }
+  }
+}
