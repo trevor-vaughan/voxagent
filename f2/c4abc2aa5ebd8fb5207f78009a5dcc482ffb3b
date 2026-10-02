@@ -1,0 +1,35 @@
+internal/ral/package_test.go
+  s_07e26943556792::t_60462eacc6ba17 322,371,406,477,544,578,600,661,683,727,987
+  s_07e26943556792::t_6cc1d8c4a0690b 1641-1652
+internal/ral/package.go
+  s_07e26943556792::t_fc3a8be5bd8fed 14-16,18-23
+  s_07e26943556792::t_40982629d516c8 578
+internal/ral/dnf.go
+  s_07e26943556792::t_4d31f07a40304e 71-72,74-78
+  s_07e26943556792::t_54444b962dd305 102-106,109-112
+  s_07e26943556792::t_bf9f9596321cab 66-70
+internal/ral/dnf_test.go
+  s_07e26943556792::t_95c430124f86b7 53-54,78,97,108
+  s_07e26943556792::t_5b4c6a5989d28e 38-39
+  s_07e26943556792::t_dcba939b7b395c 117-151
+docs/maintainers/apply-spine.md
+  s_07e26943556792::t_ec81a778966dc3 147-158
+internal/ral/testdata/rpm-qa.txt
+  s_07e26943556792::t_32f8edd09b46bb 1-40
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f2c4abc2aa5ebd8fb5207f78009a5dcc482ffb3b",
+  "prompts": {},
+  "sessions": {
+    "s_07e26943556792": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4e6db51b-3f64-4d96-8a58-53b7acc54630",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "peiriannydd <peiriannydd@gmail.com>"
+    }
+  }
+}
