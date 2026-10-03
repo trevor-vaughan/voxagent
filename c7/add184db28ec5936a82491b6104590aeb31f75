@@ -1,0 +1,24 @@
+cmd/gatekit/main.go
+  s_cfb27be87796ed::t_486633d2582b65 1-96,98-119
+  s_cfb27be87796ed::t_0f6638b9ae7088 97
+cmd/gatekit/main_test.go
+  s_cfb27be87796ed::t_f235d27b79e178 1-66
+.taskfiles/dev.yml
+  s_cfb27be87796ed::t_d37dc749daf235 21,26
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c7add184db28ec5936a82491b6104590aeb31f75",
+  "prompts": {},
+  "sessions": {
+    "s_cfb27be87796ed": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ff4fb4ed-63f0-4e76-b2c4-6248f690bf83",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "peiriannydd <peiriannydd@gmail.com>"
+    }
+  }
+}
