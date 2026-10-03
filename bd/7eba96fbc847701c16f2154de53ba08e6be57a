@@ -1,0 +1,28 @@
+docs/superpowers/specs/2026-10-03-retire-python-design.md
+  s_cfb27be87796ed::t_8c401f67cbf1af 215-224
+  s_cfb27be87796ed::t_c80826dd66c700 92-109
+  s_cfb27be87796ed::t_4fc2453dd55bb6 163-164
+  s_cfb27be87796ed::t_a1b8060e1bd7d1 21
+  s_cfb27be87796ed::t_aa6c0ac25077d3 196,198
+  s_cfb27be87796ed::t_c04fccc1706e0e 3-5
+  s_cfb27be87796ed::t_a4b10cb462e8b2 200
+  s_cfb27be87796ed::t_9b0872a4572e12 19-20,22-24
+  s_cfb27be87796ed::t_9492706cba5184 127-145
+  s_cfb27be87796ed::t_08a963680b7972 78
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "bd7eba96fbc847701c16f2154de53ba08e6be57a",
+  "prompts": {},
+  "sessions": {
+    "s_cfb27be87796ed": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ff4fb4ed-63f0-4e76-b2c4-6248f690bf83",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "peiriannydd <peiriannydd@gmail.com>"
+    }
+  }
+}
