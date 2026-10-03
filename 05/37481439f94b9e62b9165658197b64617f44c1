@@ -1,0 +1,22 @@
+internal/gatekit/fleet/testdata/golden.json
+  s_cfb27be87796ed::t_7675597f6fa094 335-336,347-360
+  s_cfb27be87796ed::t_7168b4a54f913a 361
+internal/gatekit/fleet/testdata/catalogs/axes-corrupt-byte-in-compared-message.txt
+  s_cfb27be87796ed::t_fd724a7f4e66e4 1-2
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0537481439f94b9e62b9165658197b64617f44c1",
+  "prompts": {},
+  "sessions": {
+    "s_cfb27be87796ed": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ff4fb4ed-63f0-4e76-b2c4-6248f690bf83",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "peiriannydd <peiriannydd@gmail.com>"
+    }
+  }
+}
