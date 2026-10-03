@@ -1,0 +1,43 @@
+internal/gatekit/drift/drift.go
+  s_cfb27be87796ed::t_a68af368d11768 338
+  s_cfb27be87796ed::t_438337a870a7c8 287
+  s_cfb27be87796ed::t_b6c321c5737d67 270
+  s_cfb27be87796ed::t_ec4e0dea04eb3c 138
+  s_cfb27be87796ed::t_2ec0253625a417 1-137,139-269,271-286,288-337,339-344
+cmd/gatekit/main_test.go
+  s_cfb27be87796ed::t_770ca1712c64ba 4-5
+  s_cfb27be87796ed::t_600628981eedd2 26
+  s_cfb27be87796ed::t_c6887b0308b97e 70-79
+internal/gatekit/drift/drift_test.go
+  s_cfb27be87796ed::t_6ebe86b15561ff 1-185
+.taskfiles/dev.yml
+  s_cfb27be87796ed::t_d3646cac7e3f21 152-153
+internal/gatekit/drift/fence.go
+  s_cfb27be87796ed::t_2a0c046d5d1e4e 48
+  s_cfb27be87796ed::t_271b51c0fede2e 1-47,49-87
+cmd/gatekit/main.go
+  s_cfb27be87796ed::t_88020ff42a284f 124-135
+  s_cfb27be87796ed::t_78661dd17376bb 6,21
+  s_cfb27be87796ed::t_878a715475e52a 52
+  s_cfb27be87796ed::t_37135ea1f3bf45 36
+tests/differential/drift.sh
+  s_cfb27be87796ed::t_4f08e54a3196d3 1-97
+internal/gatekit/drift/testdata/fences.json
+  s_cfb27be87796ed::t_7f7443c9f7063d 1-23
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c2855eb1432d53f623b39fe18387e3de2a2bb5f7",
+  "prompts": {},
+  "sessions": {
+    "s_cfb27be87796ed": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ff4fb4ed-63f0-4e76-b2c4-6248f690bf83",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "peiriannydd <peiriannydd@gmail.com>"
+    }
+  }
+}
