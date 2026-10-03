@@ -1,0 +1,95 @@
+internal/gatekit/g5ref/testdata/catalog.json
+  s_cfb27be87796ed::t_e4230796f5d9e6 1-394
+internal/gatekit/g5ref/testdata/crash-resources-null.report.json
+  s_cfb27be87796ed::t_e4230796f5d9e6 1-560
+internal/gatekit/g5ref/testdata/install-null.report.json
+  s_cfb27be87796ed::t_e4230796f5d9e6 1-515
+cmd/gatekit/main.go
+  s_cfb27be87796ed::t_28642f9fa05189 7-8,24,40,57,141-156,158
+  s_cfb27be87796ed::t_ee66d68c17f968 157,159-160
+tests/spine/report-diff-container.sh
+  s_cfb27be87796ed::t_8f050a328b31fd 414-420
+internal/gatekit/g5ref/testdata/crash-status-string.report.json
+  s_cfb27be87796ed::t_e4230796f5d9e6 1-515
+internal/gatekit/g5ref/testdata/missing-absent.report.json
+  s_cfb27be87796ed::t_e4230796f5d9e6 1-514
+internal/gatekit/g5ref/testdata/missing-not-failed.report.json
+  s_cfb27be87796ed::t_e4230796f5d9e6 1-560
+internal/gatekit/g5ref/g5ref.go
+  s_cfb27be87796ed::t_3a144bbb94b163 1-277
+internal/gatekit/g5ref/testdata/exec-ok-unnamed.report.json
+  s_cfb27be87796ed::t_e4230796f5d9e6 1-559
+internal/gatekit/g5ref/testdata/exec-returns-null.report.json
+  s_cfb27be87796ed::t_e4230796f5d9e6 1-557
+internal/gatekit/g5ref/testdata/crash-statuses-list.report.json
+  s_cfb27be87796ed::t_e4230796f5d9e6 1-3
+internal/gatekit/g5ref/testdata/crash-events-object.report.json
+  s_cfb27be87796ed::t_e4230796f5d9e6 1-546
+internal/gatekit/g5ref/testdata/exec-ok-absent.report.json
+  s_cfb27be87796ed::t_e4230796f5d9e6 1-512
+internal/gatekit/g5ref/testdata/crash-report-list.report.json
+  s_cfb27be87796ed::t_e4230796f5d9e6 1-562
+internal/gatekit/g5ref/testdata/install-absent.report.json
+  s_cfb27be87796ed::t_e4230796f5d9e6 1-514
+internal/gatekit/g5ref/testdata/crash-resources-null.catalog.json
+  s_cfb27be87796ed::t_e4230796f5d9e6 1-88
+internal/gatekit/g5ref/testdata/exec-returns-failed.report.json
+  s_cfb27be87796ed::t_e4230796f5d9e6 1-560
+internal/gatekit/g5ref/testdata/exec-returns-one-entry.report.json
+  s_cfb27be87796ed::t_e4230796f5d9e6 1-559
+internal/gatekit/g5ref/testdata/refresh-with-property.report.json
+  s_cfb27be87796ed::t_e4230796f5d9e6 1-560
+internal/gatekit/g5ref/testdata/remove-unchanged.report.json
+  s_cfb27be87796ed::t_e4230796f5d9e6 1-560
+internal/gatekit/g5ref/testdata/clean.report.json
+  s_cfb27be87796ed::t_e4230796f5d9e6 1-560
+cmd/gatekit/main_test.go
+  s_cfb27be87796ed::t_28642f9fa05189 12,28,74-75,78,83-101
+  s_cfb27be87796ed::t_c72d0dec5f3aab 102-103
+internal/gatekit/g5ref/testdata/exec-returns-two-char-string.report.json
+  s_cfb27be87796ed::t_e4230796f5d9e6 1-557
+internal/gatekit/g5ref/testdata/latest-no-events.report.json
+  s_cfb27be87796ed::t_e4230796f5d9e6 1-546
+internal/gatekit/g5ref/g5ref_test.go
+  s_cfb27be87796ed::t_3a144bbb94b163 1-62
+internal/gatekit/g5ref/testdata/guarded-undeclared.catalog.json
+  s_cfb27be87796ed::t_e4230796f5d9e6 1-375
+internal/gatekit/g5ref/testdata/crash-desired-number.report.json
+  s_cfb27be87796ed::t_e4230796f5d9e6 1-557
+internal/gatekit/g5ref/testdata/guarded-undeclared.report.json
+  s_cfb27be87796ed::t_e4230796f5d9e6 1-560
+docs/maintainers/apply-spine.md
+  s_cfb27be87796ed::t_d51c8b463845a9 471-476
+internal/gatekit/g5ref/testdata/catalog-resources-empty-object.catalog.json
+  s_cfb27be87796ed::t_e4230796f5d9e6 1-88
+internal/gatekit/g5ref/testdata/guarded-present.report.json
+  s_cfb27be87796ed::t_e4230796f5d9e6 1-569
+internal/gatekit/g5ref/testdata/exec-fail-succeeded.report.json
+  s_cfb27be87796ed::t_e4230796f5d9e6 1-560
+internal/gatekit/g5ref/testdata/golden.json
+  s_cfb27be87796ed::t_e4230796f5d9e6 1-281
+internal/gatekit/g5ref/testdata/exec-fail-command.report.json
+  s_cfb27be87796ed::t_e4230796f5d9e6 1-560
+internal/gatekit/g5ref/testdata/catalog-resources-empty-object.report.json
+  s_cfb27be87796ed::t_e4230796f5d9e6 1-560
+internal/gatekit/g5ref/testdata/refresh-no-events.report.json
+  s_cfb27be87796ed::t_e4230796f5d9e6 1-546
+internal/gatekit/g5ref/testdata/exec-ok-two-events.report.json
+  s_cfb27be87796ed::t_e4230796f5d9e6 1-575
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "62a8a317c0443dd2595124262fbd7b586a1bcd27",
+  "prompts": {},
+  "sessions": {
+    "s_cfb27be87796ed": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ff4fb4ed-63f0-4e76-b2c4-6248f690bf83",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "peiriannydd <peiriannydd@gmail.com>"
+    }
+  }
+}
