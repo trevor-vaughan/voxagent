@@ -1,0 +1,20 @@
+docs/superpowers/plans/2026-10-03-retire-python-part1.md
+  s_cfb27be87796ed::t_8ed22e5407db96 1-164,166-727,729-1005,1007-1097,1099-4959
+  s_cfb27be87796ed::t_07c6a7e7edd36f 165,728,1006,1098
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "68cac0055fe981075937447adb759b5fe5d2e357",
+  "prompts": {},
+  "sessions": {
+    "s_cfb27be87796ed": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ff4fb4ed-63f0-4e76-b2c4-6248f690bf83",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "peiriannydd <peiriannydd@gmail.com>"
+    }
+  }
+}
