@@ -1,0 +1,221 @@
+internal/gatekit/reportcmp/testdata/edge/top-level-list.ruby.json
+  s_cfb27be87796ed::t_8a7739588e8256 1
+internal/gatekit/reportcmp/testdata/edge/empty-key-path.ruby.json
+  s_cfb27be87796ed::t_8a7739588e8256 1
+internal/gatekit/reportcmp/testdata/edge/run-clean.second.json
+  s_cfb27be87796ed::t_8a7739588e8256 1
+internal/gatekit/reportcmp/testdata/corpus/unmeasured-V3-ruby.json
+  s_cfb27be87796ed::t_716e2206da7228 1
+internal/gatekit/reportcmp/testdata/edge/big-integers-differ.voxagent.json
+  s_cfb27be87796ed::t_8a7739588e8256 1
+internal/gatekit/reportcmp/testdata/edge/path-collision.voxagent.json
+  s_cfb27be87796ed::t_8a7739588e8256 1
+internal/gatekit/reportcmp/testdata/edge/run-repeated-pattern.first.json
+  s_cfb27be87796ed::t_8a7739588e8256 1
+internal/gatekit/reportcmp/testdata/edge/logs-empty-object.voxagent.json
+  s_cfb27be87796ed::t_8a7739588e8256 1
+internal/gatekit/reportcmp/testdata/edge/run-no-patterns.allowlist.json
+  s_cfb27be87796ed::t_8a7739588e8256 1
+internal/gatekit/reportcmp/testdata/edge/allowlist.json
+  s_cfb27be87796ed::t_8a7739588e8256 1
+internal/gatekit/reportcmp/testdata/corpus/unmeasured-V3-go.json
+  s_cfb27be87796ed::t_716e2206da7228 1-191
+internal/gatekit/reportcmp/testdata/edge/log-entry-not-object.voxagent.json
+  s_cfb27be87796ed::t_8a7739588e8256 1
+internal/gatekit/reportcmp/testdata/edge/run-clean.allowlist.json
+  s_cfb27be87796ed::t_8a7739588e8256 1
+internal/gatekit/reportcmp/testdata/edge/success-message-untouched.voxagent.json
+  s_cfb27be87796ed::t_8a7739588e8256 1
+internal/gatekit/reportcmp/testdata/edge/metrics-malformed-passthrough.ruby.json
+  s_cfb27be87796ed::t_8a7739588e8256 1
+internal/gatekit/reportcmp/testdata/edge/nan-literal.ruby.json
+  s_cfb27be87796ed::t_8a7739588e8256 1
+internal/gatekit/reportcmp/testdata/edge/applied-catalog-trailing-newline.voxagent.json
+  s_cfb27be87796ed::t_8a7739588e8256 1
+internal/gatekit/reportcmp/testdata/edge/wrapped-exception-ruby-only.ruby.json
+  s_cfb27be87796ed::t_8a7739588e8256 1
+internal/gatekit/reportcmp/testdata/allowlist.json
+  s_cfb27be87796ed::t_716e2206da7228 1-76
+internal/gatekit/reportcmp/testdata/corpus/d14-control-ruby.json
+  s_cfb27be87796ed::t_716e2206da7228 1
+internal/gatekit/reportcmp/testdata/edge/run-no-patterns.second.json
+  s_cfb27be87796ed::t_8a7739588e8256 1
+internal/gatekit/reportcmp/golden_test.go
+  s_cfb27be87796ed::t_6b09a2d51a7b73 1-139
+internal/gatekit/reportcmp/testdata/edge/nan-literal.voxagent.json
+  s_cfb27be87796ed::t_8a7739588e8256 1
+internal/gatekit/reportcmp/testdata/edge/absent-equals-absent-string.ruby.json
+  s_cfb27be87796ed::t_8a7739588e8256 1
+internal/gatekit/reportcmp/testdata/edge/bool-equals-one.voxagent.json
+  s_cfb27be87796ed::t_8a7739588e8256 1
+internal/gatekit/reportcmp/testdata/edge/log-only-one-side.ruby.json
+  s_cfb27be87796ed::t_8a7739588e8256 1
+internal/gatekit/reportcmp/testdata/edge/metrics-rekeyed-by-name.voxagent.json
+  s_cfb27be87796ed::t_8a7739588e8256 1
+internal/gatekit/reportcmp/testdata/edge/failure-detail-masked.voxagent.json
+  s_cfb27be87796ed::t_8a7739588e8256 1
+internal/gatekit/reportcmp/testdata/edge/bool-equals-one.ruby.json
+  s_cfb27be87796ed::t_8a7739588e8256 1
+internal/gatekit/reportcmp/testdata/edge/log-missing-fields.voxagent.json
+  s_cfb27be87796ed::t_8a7739588e8256 1
+internal/gatekit/reportcmp/testdata/edge/null-is-not-absent.voxagent.json
+  s_cfb27be87796ed::t_8a7739588e8256 1
+internal/gatekit/reportcmp/testdata/edge/not-utf8.voxagent.json
+  s_cfb27be87796ed::t_8a7739588e8256 1
+internal/gatekit/reportcmp/testdata/corpus/unmeasured-V2-go.json
+  s_cfb27be87796ed::t_716e2206da7228 1-197
+internal/gatekit/reportcmp/testdata/edge/run-clean.first.json
+  s_cfb27be87796ed::t_8a7739588e8256 1
+internal/gatekit/reportcmp/testdata/edge/log-count-ignored.voxagent.json
+  s_cfb27be87796ed::t_8a7739588e8256 1
+internal/gatekit/reportcmp/testdata/corpus/unmeasured-W3-ruby.json
+  s_cfb27be87796ed::t_716e2206da7228 1
+internal/gatekit/reportcmp/testdata/edge/wrapped-exception-ruby-only.voxagent.json
+  s_cfb27be87796ed::t_8a7739588e8256 1
+internal/gatekit/reportcmp/testdata/edge/run-incomplete.first.json
+  s_cfb27be87796ed::t_8a7739588e8256 1
+internal/gatekit/reportcmp/testdata/edge/logs-empty-object.ruby.json
+  s_cfb27be87796ed::t_8a7739588e8256 1
+internal/gatekit/reportcmp/testdata/corpus/spine-layer-ruby.json
+  s_cfb27be87796ed::t_716e2206da7228 1-131
+internal/gatekit/reportcmp/testdata/corpus/d14-control-go.json
+  s_cfb27be87796ed::t_716e2206da7228 1-191
+internal/gatekit/reportcmp/testdata/edge/empty-key-path.voxagent.json
+  s_cfb27be87796ed::t_8a7739588e8256 1
+internal/gatekit/reportcmp/testdata/edge/applied-catalog-trailing-newline.ruby.json
+  s_cfb27be87796ed::t_8a7739588e8256 1
+internal/gatekit/reportcmp/testdata/edge/log-count-ignored.ruby.json
+  s_cfb27be87796ed::t_8a7739588e8256 1
+internal/gatekit/reportcmp/testdata/edge/run-truncated.second.json
+  s_cfb27be87796ed::t_8a7739588e8256 1
+internal/gatekit/reportcmp/testdata/edge/wrapped-exception-voxagent-only.voxagent.json
+  s_cfb27be87796ed::t_8a7739588e8256 1
+internal/gatekit/reportcmp/testdata/corpus/d14-rerun-go.json
+  s_cfb27be87796ed::t_716e2206da7228 1-197
+internal/gatekit/reportcmp/testdata/edge/run-repeated-pattern.second.json
+  s_cfb27be87796ed::t_8a7739588e8256 1
+internal/gatekit/reportcmp/testdata/edge/top-level-list.voxagent.json
+  s_cfb27be87796ed::t_8a7739588e8256 1
+internal/gatekit/reportcmp/testdata/edge/logs-empty-string.ruby.json
+  s_cfb27be87796ed::t_8a7739588e8256 1
+internal/gatekit/reportcmp/testdata/edge/failure-location-compared.voxagent.json
+  s_cfb27be87796ed::t_8a7739588e8256 1
+internal/gatekit/reportcmp/testdata/edge/log-order-ignored.ruby.json
+  s_cfb27be87796ed::t_8a7739588e8256 1
+internal/gatekit/reportcmp/testdata/edge/log-only-one-side.voxagent.json
+  s_cfb27be87796ed::t_8a7739588e8256 1
+internal/gatekit/reportcmp/testdata/edge/err-log-masked.ruby.json
+  s_cfb27be87796ed::t_8a7739588e8256 1
+internal/gatekit/reportcmp/testdata/edge/success-message-untouched.ruby.json
+  s_cfb27be87796ed::t_8a7739588e8256 1
+internal/gatekit/reportcmp/testdata/edge/log-missing-fields.ruby.json
+  s_cfb27be87796ed::t_8a7739588e8256 1
+internal/gatekit/reportcmp/imports_test.go
+  s_cfb27be87796ed::t_3ed1c4420c6db5 1-73
+internal/gatekit/reportcmp/testdata/edge/wrapped-exception-voxagent-only.ruby.json
+  s_cfb27be87796ed::t_8a7739588e8256 1
+internal/gatekit/reportcmp/testdata/corpus/unmeasured-W3-go.json
+  s_cfb27be87796ed::t_716e2206da7228 1-197
+internal/gatekit/reportcmp/testdata/corpus/unmeasured-W2-go.json
+  s_cfb27be87796ed::t_716e2206da7228 1-197
+internal/gatekit/reportcmp/testdata/corpus/unmeasured-W1-go.json
+  s_cfb27be87796ed::t_716e2206da7228 1-197
+internal/gatekit/reportcmp/testdata/corpus/unmeasured-V2-ruby.json
+  s_cfb27be87796ed::t_716e2206da7228 1
+internal/gatekit/reportcmp/compare.go
+  s_cfb27be87796ed::t_bcd5442e621dc5 1-411
+internal/gatekit/reportcmp/testdata/edge/run-truncated.first.json
+  s_cfb27be87796ed::t_8a7739588e8256 1
+internal/gatekit/reportcmp/testdata/corpus/spine-layer-voxagent.json
+  s_cfb27be87796ed::t_716e2206da7228 1-95
+internal/gatekit/reportcmp/testdata/corpus/unmeasured-W2-ruby.json
+  s_cfb27be87796ed::t_716e2206da7228 1
+internal/gatekit/reportcmp/testdata/edge/metrics-rekeyed-by-name.ruby.json
+  s_cfb27be87796ed::t_8a7739588e8256 1
+internal/gatekit/reportcmp/testdata/edge/run-incomplete.second.json
+  s_cfb27be87796ed::t_8a7739588e8256 1
+internal/gatekit/reportcmp/testdata/corpus/spine-voxagent.json
+  s_cfb27be87796ed::t_716e2206da7228 1-364
+internal/gatekit/reportcmp/testdata/edge/absent-equals-absent-string.voxagent.json
+  s_cfb27be87796ed::t_8a7739588e8256 1
+internal/gatekit/reportcmp/runtorun.go
+  s_cfb27be87796ed::t_8b6fd408f65681 1-144
+internal/gatekit/reportcmp/testdata/edge/logs-empty-string.voxagent.json
+  s_cfb27be87796ed::t_8a7739588e8256 1
+internal/gatekit/reportcmp/testdata/edge/err-log-masked.voxagent.json
+  s_cfb27be87796ed::t_8a7739588e8256 1
+internal/gatekit/reportcmp/testdata/edge/metrics-malformed-passthrough.voxagent.json
+  s_cfb27be87796ed::t_8a7739588e8256 1
+internal/gatekit/reportcmp/testdata/edge/metric-name-not-string.voxagent.json
+  s_cfb27be87796ed::t_8a7739588e8256 1
+internal/gatekit/reportcmp/testdata/edge/run-incomplete.allowlist.json
+  s_cfb27be87796ed::t_8a7739588e8256 1
+internal/gatekit/reportcmp/testdata/corpus/d14-upgrade-ruby.json
+  s_cfb27be87796ed::t_716e2206da7228 1
+internal/gatekit/reportcmp/testdata/corpus/d14-rerun-ruby.json
+  s_cfb27be87796ed::t_716e2206da7228 1
+internal/gatekit/reportcmp/testdata/corpus/unmeasured-V1-ruby.json
+  s_cfb27be87796ed::t_716e2206da7228 1
+internal/gatekit/reportcmp/testdata/golden.json
+  s_cfb27be87796ed::t_8a7739588e8256 1-3870
+internal/gatekit/reportcmp/testdata/edge/unicode-digit-segment.ruby.json
+  s_cfb27be87796ed::t_8a7739588e8256 1
+internal/gatekit/reportcmp/testdata/corpus/unmeasured-V1-go.json
+  s_cfb27be87796ed::t_716e2206da7228 1-141
+internal/gatekit/reportcmp/testdata/edge/run-truncated.allowlist.json
+  s_cfb27be87796ed::t_8a7739588e8256 1
+internal/gatekit/reportcmp/testdata/corpus/spine-container-ruby.json
+  s_cfb27be87796ed::t_716e2206da7228 1
+internal/gatekit/reportcmp/testdata/edge/int-equals-float.voxagent.json
+  s_cfb27be87796ed::t_8a7739588e8256 1
+internal/gatekit/reportcmp/testdata/edge/path-collision.ruby.json
+  s_cfb27be87796ed::t_8a7739588e8256 1
+internal/gatekit/reportcmp/testdata/edge/run-repeated-pattern.allowlist.json
+  s_cfb27be87796ed::t_8a7739588e8256 1
+internal/gatekit/reportcmp/testdata/corpus/d14-upgrade-go.json
+  s_cfb27be87796ed::t_716e2206da7228 1-197
+internal/gatekit/reportcmp/testdata/edge/metric-name-not-string.ruby.json
+  s_cfb27be87796ed::t_8a7739588e8256 1
+internal/gatekit/reportcmp/testdata/corpus/spine-ruby.json
+  s_cfb27be87796ed::t_716e2206da7228 1
+internal/gatekit/reportcmp/testdata/edge/unicode-digit-segment.voxagent.json
+  s_cfb27be87796ed::t_8a7739588e8256 1
+internal/gatekit/reportcmp/testdata/edge/failure-detail-masked.ruby.json
+  s_cfb27be87796ed::t_8a7739588e8256 1
+internal/gatekit/reportcmp/testdata/edge/big-integers-differ.ruby.json
+  s_cfb27be87796ed::t_8a7739588e8256 1
+internal/gatekit/reportcmp/testdata/corpus/unmeasured-W1-ruby.json
+  s_cfb27be87796ed::t_716e2206da7228 1
+internal/gatekit/reportcmp/testdata/corpus/spine-container-voxagent.json
+  s_cfb27be87796ed::t_716e2206da7228 1-809
+internal/gatekit/reportcmp/testdata/edge/log-entry-not-object.ruby.json
+  s_cfb27be87796ed::t_8a7739588e8256 1
+internal/gatekit/reportcmp/testdata/edge/run-no-patterns.first.json
+  s_cfb27be87796ed::t_8a7739588e8256 1
+internal/gatekit/reportcmp/testdata/edge/int-equals-float.ruby.json
+  s_cfb27be87796ed::t_8a7739588e8256 1
+internal/gatekit/reportcmp/testdata/edge/null-is-not-absent.ruby.json
+  s_cfb27be87796ed::t_8a7739588e8256 1
+internal/gatekit/reportcmp/testdata/edge/failure-location-compared.ruby.json
+  s_cfb27be87796ed::t_8a7739588e8256 1
+internal/gatekit/reportcmp/testdata/edge/log-order-ignored.voxagent.json
+  s_cfb27be87796ed::t_8a7739588e8256 1
+internal/gatekit/reportcmp/testdata/edge/not-utf8.ruby.json
+  s_cfb27be87796ed::t_20d8c533990ed4 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "864e9c853fffdf08c88b94b48b8a8fb5a1cf9d46",
+  "prompts": {},
+  "sessions": {
+    "s_cfb27be87796ed": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ff4fb4ed-63f0-4e76-b2c4-6248f690bf83",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "peiriannydd <peiriannydd@gmail.com>"
+    }
+  }
+}
