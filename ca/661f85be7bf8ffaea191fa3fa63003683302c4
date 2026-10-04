@@ -1,0 +1,19 @@
+docs/superpowers/specs/2026-10-04-comparator-defects-design.md
+  s_cfb27be87796ed::t_7129ecd615ede6 1-130
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ca661f85be7bf8ffaea191fa3fa63003683302c4",
+  "prompts": {},
+  "sessions": {
+    "s_cfb27be87796ed": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ff4fb4ed-63f0-4e76-b2c4-6248f690bf83",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "peiriannydd <peiriannydd@gmail.com>"
+    }
+  }
+}
