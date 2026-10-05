@@ -1,0 +1,21 @@
+internal/transaction/transaction_test.go
+  s_74faea8fa5075a::t_a9807d8b4bb861 2636-2658
+internal/transaction/transaction.go
+  s_74faea8fa5075a::t_832e8dde4eedab 40,46-49,131,676-680
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0dfeaf5237b4e690f50b02069c45df8a7f6cf6dc",
+  "prompts": {},
+  "sessions": {
+    "s_74faea8fa5075a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4fedc2b7-9b6f-416e-a20f-447cc2ee0729",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "peiriannydd <peiriannydd@gmail.com>"
+    }
+  }
+}
