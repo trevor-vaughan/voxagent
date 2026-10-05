@@ -1,0 +1,25 @@
+docs/maintainers/apply-spine.md
+  s_74faea8fa5075a::t_4bf190f88fe2ed 191-201,210,362-372,928-930,942-946,999-1053
+  s_74faea8fa5075a::t_899d0eb777ca07 1054
+README.md
+  s_74faea8fa5075a::t_c8e0adad0c8f4b 20-22,35-40
+docs/superpowers/specs/2026-10-05-validity-profiling-service-file-source-design.md
+  s_74faea8fa5075a::t_110e524013be12 390-402,406-413,416-469
+  s_74faea8fa5075a::t_facc792154ea83 403-405,414-415
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b17695062e1ae88899eac2b6a99b710417159fef",
+  "prompts": {},
+  "sessions": {
+    "s_74faea8fa5075a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4fedc2b7-9b6f-416e-a20f-447cc2ee0729",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "peiriannydd <peiriannydd@gmail.com>"
+    }
+  }
+}
