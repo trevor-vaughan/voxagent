@@ -1,0 +1,25 @@
+cmd/voxagent/main_test.go
+  s_74faea8fa5075a::t_af40fe25c2b2bb 566-639
+README.md
+  s_74faea8fa5075a::t_736f7f05854fb8 26-28
+cmd/voxagent/main.go
+  s_74faea8fa5075a::t_736f7f05854fb8 91-102
+docs/maintainers/apply-spine.md
+  s_74faea8fa5075a::t_736f7f05854fb8 807-817
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "db979bdbbcb94c3c0c4904d16d1fd7c715bf5ebf",
+  "prompts": {},
+  "sessions": {
+    "s_74faea8fa5075a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4fedc2b7-9b6f-416e-a20f-447cc2ee0729",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "peiriannydd <peiriannydd@gmail.com>"
+    }
+  }
+}
