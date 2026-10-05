@@ -1,0 +1,20 @@
+tests/spine/allowlist.json
+  s_74faea8fa5075a::t_f29dd7c666caf6 31-37,72-73
+  s_74faea8fa5075a::t_d9f25dccc3d9a0 12
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b66150bf36ef7db63195943e183a264d20ddb448",
+  "prompts": {},
+  "sessions": {
+    "s_74faea8fa5075a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4fedc2b7-9b6f-416e-a20f-447cc2ee0729",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "peiriannydd <peiriannydd@gmail.com>"
+    }
+  }
+}
