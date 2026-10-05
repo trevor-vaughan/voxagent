@@ -1,0 +1,26 @@
+docs/maintainers/performance.md
+  s_74faea8fa5075a::t_3c675f04049608 142,144-145
+  s_74faea8fa5075a::t_18c2e9f9a4aeca 24-26,35-36,91-107,143
+  s_74faea8fa5075a::t_04e82b284c2b5a 109-110,146-148
+README.md
+  s_74faea8fa5075a::t_dfd78a39bd37d3 26-29
+docs/maintainers/apply-spine.md
+  s_74faea8fa5075a::t_7704781a7b3ca9 836-838
+  s_74faea8fa5075a::t_0de867b494a3de 807,810-835
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9820b64a9f556e88fe75f206ba4d8c15e6315049",
+  "prompts": {},
+  "sessions": {
+    "s_74faea8fa5075a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4fedc2b7-9b6f-416e-a20f-447cc2ee0729",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "peiriannydd <peiriannydd@gmail.com>"
+    }
+  }
+}
