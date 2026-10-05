@@ -1,0 +1,19 @@
+docs/superpowers/plans/2026-10-05-defined-types-and-service.md
+  s_74faea8fa5075a::t_dd03453b9e505e 1-1452
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f3937508732745df26bfa2a9a66a8a33040d0b9f",
+  "prompts": {},
+  "sessions": {
+    "s_74faea8fa5075a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4fedc2b7-9b6f-416e-a20f-447cc2ee0729",
+        "model": "unknown"
+      },
+      "human_author": "peiriannydd <peiriannydd@gmail.com>"
+    }
+  }
+}
