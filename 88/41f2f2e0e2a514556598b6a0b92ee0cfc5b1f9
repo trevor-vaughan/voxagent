@@ -1,0 +1,233 @@
+docs/superpowers/plans/2026-09-21-tier1-package.md
+  s_3eeb95dc4ec100::t_a45700cab12b93 1142-1146,1172-1178,1207-1209,1214,1229,1698-1718,1779,1781-1805,1865
+  s_3eeb95dc4ec100::t_008ed2d7ccc704 1346-1697,1719-1778,1780,1806-1864,1866-2030,2033-2664
+  s_3eeb95dc4ec100::t_54632071ed8f52 2032
+  s_3eeb95dc4ec100::t_00c0f16dee14fa 1-2,711-1141,1147-1154,1156-1171,1179-1206,1210-1213,1215-1228,1230-1345
+  s_3eeb95dc4ec100::t_3929dff75c9974 1155,2031
+  s_3eeb95dc4ec100::t_8b9453265b77fa 3-4,44-99,113,700-710
+  s_3eeb95dc4ec100::t_158430f0760d9a 100-112
+  s_3eeb95dc4ec100::t_aadfd2e078fb0b 114-161
+  s_3eeb95dc4ec100::t_89e5841b6debd7 162
+  s_3eeb95dc4ec100::t_7c7aa52ce53b07 194-195
+  s_3eeb95dc4ec100::t_4d7a774f937749 163-193,196-204
+  s_3eeb95dc4ec100::t_cfbbb161d25dc8 249-250
+  s_3eeb95dc4ec100::t_6e68acea1ed84f 245-248
+  s_3eeb95dc4ec100::t_513eb9abadc44f 205-244,251-262
+  s_3eeb95dc4ec100::t_c376c923eb95c8 263-312
+  s_3eeb95dc4ec100::t_889f4f2cf2bfb4 6-17,40-43
+  s_3eeb95dc4ec100::t_5392904ea0d268 18-21
+  s_3eeb95dc4ec100::t_203f5f0629c6f5 313-373
+  s_3eeb95dc4ec100::t_f06ca4259a70b4 374-496
+  s_3eeb95dc4ec100::t_9e17ecd0833764 22-26
+  s_3eeb95dc4ec100::t_442295dafae403 497-549
+  s_3eeb95dc4ec100::t_5300f822325735 27-31
+  s_3eeb95dc4ec100::t_f1f06c66a8a761 550
+  s_3eeb95dc4ec100::t_165891f8960327 551-596
+  s_3eeb95dc4ec100::t_c8722809eb4007 32-34
+  s_3eeb95dc4ec100::t_5b5ca1d0b6a8a5 597
+  s_3eeb95dc4ec100::t_83d49674c39c88 5
+  s_3eeb95dc4ec100::t_44798af9fea61a 35-39
+  s_3eeb95dc4ec100::t_63796821e9a2aa 598-699
+docs/superpowers/specs/2026-09-21-tier1-package-design.md
+  s_3eeb95dc4ec100::t_98bbe1d042e77a 413-419,489-497
+  s_3eeb95dc4ec100::t_4c5e903d964619 420-447,487-488
+  s_3eeb95dc4ec100::t_037622e40dbb94 448-486
+  s_3eeb95dc4ec100::t_d6f60a5c4f914c 270-293
+internal/ral/file_test.go
+  s_3eeb95dc4ec100::t_566667cdd97287 1242,1757,2165-2166
+  s_3eeb95dc4ec100::t_3f6ac624bf59e6 1199-1210
+internal/ral/file.go
+  s_3eeb95dc4ec100::t_98f4ae5ec855a6 78,211,332,430,495,648,663
+  s_3eeb95dc4ec100::t_f755da37b1e83c 723
+  s_3eeb95dc4ec100::t_7218ba71c31745 724-731
+  s_3eeb95dc4ec100::t_6826796e0fce1f 109-111
+internal/ral/ral_test.go
+  s_3eeb95dc4ec100::t_566667cdd97287 22
+  s_3eeb95dc4ec100::t_62870d16c12859 28
+  s_3eeb95dc4ec100::t_bddcbcb54848d2 163-185
+internal/ral/ral.go
+  s_3eeb95dc4ec100::t_701163b06a5b2b 104-125
+  s_3eeb95dc4ec100::t_494ffa3812f3b5 187-195
+  s_3eeb95dc4ec100::t_1b1ae9f118804d 197-217
+internal/ral/notify.go
+  s_3eeb95dc4ec100::t_98f4ae5ec855a6 49
+  s_3eeb95dc4ec100::t_21bda48604fac1 72-74
+internal/ral/exec.go
+  s_3eeb95dc4ec100::t_98f4ae5ec855a6 97
+  s_3eeb95dc4ec100::t_e65ff99083f616 135
+  s_3eeb95dc4ec100::t_d10de4ed44a15b 134,136
+internal/transaction/transaction.go
+  s_3eeb95dc4ec100::t_37538db848b024 202
+  s_3eeb95dc4ec100::t_da0b0893781d88 194
+  s_3eeb95dc4ec100::t_92d38bc4c74986 58-61
+  s_3eeb95dc4ec100::t_3d9b381370faca 195-199,201,203-206,208
+  s_3eeb95dc4ec100::t_a526ff28e91ef8 91-129,134-141,143-144
+  s_3eeb95dc4ec100::t_ae693b6d1d65d2 130-133
+  s_3eeb95dc4ec100::t_150983773a9d1b 142
+  s_3eeb95dc4ec100::t_284a1849ddd64d 162-171
+  s_3eeb95dc4ec100::t_49d93ed54480a9 50-55
+  s_3eeb95dc4ec100::t_28a54fede03a44 6
+  s_3eeb95dc4ec100::t_6af42be91b0590 518-613
+internal/transaction/transaction_test.go
+  s_3eeb95dc4ec100::t_0ca2152de7fae4 1488-1583
+  s_3eeb95dc4ec100::t_24bffead78c015 1405
+  s_3eeb95dc4ec100::t_2a309db72d0008 48,114
+  s_3eeb95dc4ec100::t_d9f6eebc2e52b8 216-227
+  s_3eeb95dc4ec100::t_1d27292c044c5d 232
+  s_3eeb95dc4ec100::t_75dc70802fec43 1441
+  s_3eeb95dc4ec100::t_6517c9e6358413 1463-1466,1469-1472
+  s_3eeb95dc4ec100::t_27e1da88557c77 191-193
+  s_3eeb95dc4ec100::t_a869c1f6cd2a48 50-80
+  s_3eeb95dc4ec100::t_255cc396a9ca88 117-119
+  s_3eeb95dc4ec100::t_9d60d3f6c3fc0a 7
+  s_3eeb95dc4ec100::t_51160ecfd126ac 240-271
+  s_3eeb95dc4ec100::t_8171bf2452b2f6 178-190
+  s_3eeb95dc4ec100::t_688228728b2fb9 1847,1852,1858
+  s_3eeb95dc4ec100::t_ce69671af679d8 101-108
+  s_3eeb95dc4ec100::t_34143ae6d3d3b9 1584-1791,1793,1795-1813,1816,1823-1827,1831-1833,1835-1836,1839-1840,1853,1861,1870,1875,1887-1979,1981-1984
+  s_3eeb95dc4ec100::t_0d2b97fbeb2286 1814-1815,1817-1822,1828-1830,1834,1837-1838,1841-1842,1848-1851,1854-1856,1860,1862-1869,1871-1874,1876-1886
+  s_3eeb95dc4ec100::t_032f50bc5f2314 1843-1846,1857,1859
+  s_3eeb95dc4ec100::t_a14a3fcecf6573 1792,1794,1980
+internal/ral/preflight_test.go
+  s_3eeb95dc4ec100::t_408f46d2232e3e 22-33,45-51,59-103,106,108-117,119-136
+  s_3eeb95dc4ec100::t_78b6c422b1868e 52-58
+  s_3eeb95dc4ec100::t_a3c35bb1d1ce3f 104-105,107,118
+  s_3eeb95dc4ec100::t_1c85aeefbcce05 34-44
+  s_3eeb95dc4ec100::t_71c036f74798f1 4
+  s_3eeb95dc4ec100::t_37b2354db64c60 263-285
+internal/ral/preflight.go
+  s_3eeb95dc4ec100::t_1855ce75db4c1d 83-86
+  s_3eeb95dc4ec100::t_95d05b198e7138 96-116,119
+  s_3eeb95dc4ec100::t_7bfd9baae8584e 10-28,31-35,40,44-45,47-50
+internal/ral/testdata/rpm-qa.txt
+  s_3eeb95dc4ec100::t_32d187b3c77015 1-40
+internal/ral/testdata/dnf-check-update-updates.txt
+  s_3eeb95dc4ec100::t_625ee8523a2e81 1-9
+internal/ral/dnf.go
+  s_3eeb95dc4ec100::t_396dc5c8d929c5 121
+  s_3eeb95dc4ec100::t_35fd4925765839 104
+  s_3eeb95dc4ec100::t_11b39d6ae98d60 103,106
+  s_3eeb95dc4ec100::t_fa643ba63f110b 1-7,9-81,96-102,105,107-120,122-124
+  s_3eeb95dc4ec100::t_8a0a66e53fcc3b 82-95
+  s_3eeb95dc4ec100::t_f343c0aa0c43fa 125
+  s_3eeb95dc4ec100::t_05908c97437527 8
+  s_3eeb95dc4ec100::t_7f87707b084821 126-213
+internal/ral/testdata/dnf-check-update.txt
+  s_3eeb95dc4ec100::t_724a3485b6aad3 1
+internal/ral/dnf_test.go
+  s_3eeb95dc4ec100::t_3ef41abe7db5fc 58-68,70
+  s_3eeb95dc4ec100::t_0c9b6a8bca296e 1-57,71-116
+  s_3eeb95dc4ec100::t_1d146f12177502 69
+internal/ral/package_test.go
+  s_3eeb95dc4ec100::t_e60a909cabc62f 809
+  s_3eeb95dc4ec100::t_d54dbe0199fc78 1-6,9-287,558-611,620,622-659,673-674,680-808,810-814
+  s_3eeb95dc4ec100::t_bed92e6aaabed4 7
+  s_3eeb95dc4ec100::t_f7b691c7c25a63 288-495,502-503,506-557
+  s_3eeb95dc4ec100::t_b205238019c8fc 660-666,669-672,675-679
+  s_3eeb95dc4ec100::t_6f8c2d8c449f9e 612-619
+  s_3eeb95dc4ec100::t_d7fe6e02110c2f 836-840
+  s_3eeb95dc4ec100::t_0553d3750c35f4 815-835,841-852
+  s_3eeb95dc4ec100::t_14529fef556cff 668
+  s_3eeb95dc4ec100::t_c66bade3aa3269 968-981,984,986-988
+  s_3eeb95dc4ec100::t_05d3c2af43f9a4 1277-1282,1290-1295,1301-1302
+  s_3eeb95dc4ec100::t_05908c97437527 1237-1239
+  s_3eeb95dc4ec100::t_fe6299d93a1b4f 621
+  s_3eeb95dc4ec100::t_c6b2c7d500dbd8 667
+  s_3eeb95dc4ec100::t_f4a34062816929 853-967,982-983,985,989-1236,1240-1276,1283-1289,1296-1300,1303-1323
+  s_3eeb95dc4ec100::t_1a0de895eb2f04 8
+  s_3eeb95dc4ec100::t_e3a891b1a3023e 496-501,504-505
+  s_3eeb95dc4ec100::t_eea161755afa5a 1324-1376
+internal/ral/package.go
+  s_3eeb95dc4ec100::t_d962e8d9042717 262-269
+  s_3eeb95dc4ec100::t_691a40866ef605 1-62,80-89,112-125,185-191,196-204,206,207,213-247,251-261,270-276,284-295,305-315,318-332,334,430,498-520,605-627
+  s_3eeb95dc4ec100::t_7e65e7fbb9cac8 296-304,316-317,333,392,397-407,409-497
+  s_3eeb95dc4ec100::t_20a3295fe80af2 126-150,183-184,212
+  s_3eeb95dc4ec100::t_2719c717be2bb4 151-163,175,181-182
+  s_3eeb95dc4ec100::t_82323d452005da 164-174,176-180
+  s_3eeb95dc4ec100::t_bc2c2ac714a7cd 209-211
+  s_3eeb95dc4ec100::t_1206119c21c781 248-250
+  s_3eeb95dc4ec100::t_28542130beb6df 335-343,345-367,376-389,393-396
+  s_3eeb95dc4ec100::t_46adf30abddb7e 523-524,527,531,538-604
+  s_3eeb95dc4ec100::t_eb953cf6f962b9 192-195
+  s_3eeb95dc4ec100::t_fd04d261422379 368-375
+  s_3eeb95dc4ec100::t_7c5f15269434c2 63-79
+  s_3eeb95dc4ec100::t_389d896d340946 277-283
+  s_3eeb95dc4ec100::t_091bbfb7b8fb1d 205,208
+  s_3eeb95dc4ec100::t_f7ff023793d0c0 90-111
+  s_3eeb95dc4ec100::t_f54ca4337159aa 344,390,408
+  s_3eeb95dc4ec100::t_9d16af6e743609 521-522,525-526,528-530,532-537
+docs/maintainers/apply-spine.md
+  s_3eeb95dc4ec100::t_f6f96ad82d7734 402-409
+  s_3eeb95dc4ec100::t_b3f5feb31a84d5 392-401,410-427
+  s_3eeb95dc4ec100::t_936f333896bbb9 504-520
+  s_3eeb95dc4ec100::t_9de15f451a1d22 245-255,259-268
+  s_3eeb95dc4ec100::t_b9cd6375f50de3 327
+  s_3eeb95dc4ec100::t_4c893790470073 548-560
+  s_3eeb95dc4ec100::t_e7520a62199e62 256-258
+  s_3eeb95dc4ec100::t_12e4f5f67dc172 725
+  s_3eeb95dc4ec100::t_b2251180ccfcd6 78-80,82
+  s_3eeb95dc4ec100::t_221135db46858e 719-724,726-728
+  s_3eeb95dc4ec100::t_000e2286ad0eb9 311-313
+  s_3eeb95dc4ec100::t_bb33ca1e949f7d 288,290,293,296
+  s_3eeb95dc4ec100::t_3f7de3e984bb0d 537-542
+  s_3eeb95dc4ec100::t_edd9ec49509a90 314-326,328-330
+  s_3eeb95dc4ec100::t_899b2691c1398c 353-362
+  s_3eeb95dc4ec100::t_5fb3d457eaf38f 294-295
+  s_3eeb95dc4ec100::t_f0819839f5ba9c 566-583
+  s_3eeb95dc4ec100::t_23db7dfbe2bcb0 521-536,543-547,561
+  s_3eeb95dc4ec100::t_d6380a94e94622 81
+internal/ral/testdata/rpm-evr.tsv
+  s_3eeb95dc4ec100::t_2eda28f22f36b4 1-85
+internal/ral/rpmvercmp_test.go
+  s_3eeb95dc4ec100::t_36dc58a4893f10 191,195-204,207
+  s_3eeb95dc4ec100::t_0816fedf45da89 1-190,192-194,205-206,208-281
+internal/ral/rpmvercmp.go
+  s_3eeb95dc4ec100::t_6fca1c9a65f052 1-357
+internal/ral/testdata/rpm-parse-evr.tsv
+  s_3eeb95dc4ec100::t_7dfc49a567b1d2 68-78
+  s_3eeb95dc4ec100::t_39dd6dcf242349 1-67
+cmd/voxagent/main.go
+  s_3eeb95dc4ec100::t_7f1065a7866bde 75
+tests/spine/state-diff.sh
+  s_3eeb95dc4ec100::t_e60080d20fa4aa 50-72
+  s_3eeb95dc4ec100::t_25d68b15c415ba 227-240
+  s_3eeb95dc4ec100::t_d67f1ca5243818 96-111
+  s_3eeb95dc4ec100::t_6a8c5146acd22c 338-354,356-375,382,385-386,392
+  s_3eeb95dc4ec100::t_0fbdd576141d75 355
+  s_3eeb95dc4ec100::t_a6ce3a018c0980 300-303
+  s_3eeb95dc4ec100::t_13c02987fc9af0 160-169
+.taskfiles/dev.yml
+  s_3eeb95dc4ec100::t_4f2a2d9717b97d 119-135
+README.md
+  s_3eeb95dc4ec100::t_5f04138505c53f 41,44-51
+tests/spine/report-diff-container.sh
+  s_3eeb95dc4ec100::t_257cb24f56aa3d 310
+  s_3eeb95dc4ec100::t_14898923e1b890 338
+  s_3eeb95dc4ec100::t_b25b4fa5ddfbb3 133-145,147-153,155
+  s_3eeb95dc4ec100::t_e125299260c762 314
+  s_3eeb95dc4ec100::t_bb8e6a44ca1682 224-233,236-237
+  s_3eeb95dc4ec100::t_27b1fd96cca77f 1-132,146,154,156-223,234-235,238-309,311-313,315-337,339-363
+tests/spine/compare-reports.py
+  s_3eeb95dc4ec100::t_384fc0209cec81 162-170,176
+  s_3eeb95dc4ec100::t_170178f0e5e07f 124-133
+tests/spine/allowlist.json
+  s_3eeb95dc4ec100::t_d754fc91eef78f 12,16-25
+  s_3eeb95dc4ec100::t_b488ae438b8ef2 59-60
+  s_3eeb95dc4ec100::t_f5cd91a606e6ee 26
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.4",
+  "base_commit_sha": "8841f2f2e0e2a514556598b6a0b92ee0cfc5b1f9",
+  "prompts": {},
+  "sessions": {
+    "s_3eeb95dc4ec100": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b7001e1c-df0a-4906-a2d5-b5fcab1a25fd",
+        "model": "claude-opus-5"
+      },
+      "human_author": "peiriannydd <peiriannydd@gmail.com>"
+    }
+  }
+}

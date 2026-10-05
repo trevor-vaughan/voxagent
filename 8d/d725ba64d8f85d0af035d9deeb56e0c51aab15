@@ -1,0 +1,51 @@
+internal/gatekit/fleet/certs_test.go
+  s_cfb27be87796ed::t_205d07d592b013 1-122,126-148
+  s_cfb27be87796ed::t_478151d6728593 123-125
+  s_cfb27be87796ed::t_1496177d34eaae 149-178,180-191,193-200
+  s_cfb27be87796ed::t_2ab862368808ab 179,192,201-223
+cmd/gatekit/fleet_test.go
+  s_cfb27be87796ed::t_7dd122ec69a06a 96-104
+docs/superpowers/plans/2026-09-01-fleet-harness-stage1.md
+  s_cfb27be87796ed::t_aa113275c0b610 1349-1362,1367-1370,1372-1375,3864-3866,5173,5338,5340-5363,5365-5371,5373-5374
+  s_cfb27be87796ed::t_2ab9a1ad3b2e52 1363-1366,1371,5364
+fleet/bin/gate-common.sh
+  s_cfb27be87796ed::t_64e48baa7de872 121-134,139-142,144-147
+  s_cfb27be87796ed::t_e03c9ac0820f2e 135-138,143
+cmd/gatekit/main.go
+  s_cfb27be87796ed::t_a3bf183910f878 14,52,75
+fleet/bin/gate-exports.sh
+  s_cfb27be87796ed::t_0d080ab905ed97 75-76
+  s_cfb27be87796ed::t_64e48baa7de872 77
+docs/maintainers/fleet.md
+  s_cfb27be87796ed::t_40f14908149a32 147,312-337,339-348
+  s_cfb27be87796ed::t_6891260c97909e 338
+internal/gatekit/fleet/certs.go
+  s_cfb27be87796ed::t_f4694418082222 1-7,10-45,49-59,67-78,80-110,155
+  s_cfb27be87796ed::t_4ead8b758e30e4 9,79,125-129,151
+  s_cfb27be87796ed::t_44f627d3bac18f 8,111-124,130-141,143-147,152-154
+  s_cfb27be87796ed::t_1496177d34eaae 46-48
+  s_cfb27be87796ed::t_e03c9ac0820f2e 60-66,142,148-150
+.taskfiles/fleet.yml
+  s_cfb27be87796ed::t_64e48baa7de872 40-42
+cmd/gatekit/fleet.go
+  s_cfb27be87796ed::t_a3bf183910f878 7,87-98
+  s_cfb27be87796ed::t_09987edad476fd 99-100
+docs/maintainers/apply-spine.md
+  s_cfb27be87796ed::t_40f14908149a32 351
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8dd725ba64d8f85d0af035d9deeb56e0c51aab15",
+  "prompts": {},
+  "sessions": {
+    "s_cfb27be87796ed": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ff4fb4ed-63f0-4e76-b2c4-6248f690bf83",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "peiriannydd <peiriannydd@gmail.com>"
+    }
+  }
+}

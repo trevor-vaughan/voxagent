@@ -1,0 +1,300 @@
+internal/gatekit/g5ref/testdata/catalog.json
+  s_cfb27be87796ed::t_e4230796f5d9e6 1-394
+internal/gatekit/g5ref/testdata/crash-resources-null.report.json
+  s_cfb27be87796ed::t_e4230796f5d9e6 1-560
+internal/gatekit/g5ref/testdata/install-null.report.json
+  s_cfb27be87796ed::t_e4230796f5d9e6 1-515
+cmd/gatekit/main.go
+  s_cfb27be87796ed::t_28642f9fa05189 7-8,29,45,156-171,173
+  s_cfb27be87796ed::t_ee66d68c17f968 172,174-175
+  s_cfb27be87796ed::t_5f4ca49d0678bd 9-13,46-50,64-72
+tests/spine/report-diff-container.sh
+  s_cfb27be87796ed::t_8f050a328b31fd 414-420
+internal/gatekit/g5ref/testdata/crash-status-string.report.json
+  s_cfb27be87796ed::t_e4230796f5d9e6 1-515
+internal/gatekit/g5ref/testdata/missing-absent.report.json
+  s_cfb27be87796ed::t_e4230796f5d9e6 1-514
+internal/gatekit/g5ref/testdata/missing-not-failed.report.json
+  s_cfb27be87796ed::t_e4230796f5d9e6 1-560
+internal/gatekit/g5ref/g5ref.go
+  s_cfb27be87796ed::t_3a144bbb94b163 1-49,51-72,74-78,80-101,103-106,108-248,250-262,264-267,269-277
+  s_cfb27be87796ed::t_dc5566e7083f95 50,73,79,102,107,249,263,268
+internal/gatekit/g5ref/testdata/exec-ok-unnamed.report.json
+  s_cfb27be87796ed::t_e4230796f5d9e6 1-559
+internal/gatekit/g5ref/testdata/exec-returns-null.report.json
+  s_cfb27be87796ed::t_e4230796f5d9e6 1-557
+internal/gatekit/g5ref/testdata/crash-statuses-list.report.json
+  s_cfb27be87796ed::t_e4230796f5d9e6 1-3
+internal/gatekit/g5ref/testdata/crash-events-object.report.json
+  s_cfb27be87796ed::t_e4230796f5d9e6 1-546
+internal/gatekit/g5ref/testdata/exec-ok-absent.report.json
+  s_cfb27be87796ed::t_e4230796f5d9e6 1-512
+internal/gatekit/g5ref/testdata/crash-report-list.report.json
+  s_cfb27be87796ed::t_e4230796f5d9e6 1-562
+internal/gatekit/g5ref/testdata/install-absent.report.json
+  s_cfb27be87796ed::t_e4230796f5d9e6 1-514
+internal/gatekit/g5ref/testdata/crash-resources-null.catalog.json
+  s_cfb27be87796ed::t_e4230796f5d9e6 1-88
+internal/gatekit/g5ref/testdata/exec-returns-failed.report.json
+  s_cfb27be87796ed::t_e4230796f5d9e6 1-560
+internal/gatekit/g5ref/testdata/exec-returns-one-entry.report.json
+  s_cfb27be87796ed::t_e4230796f5d9e6 1-559
+internal/gatekit/g5ref/testdata/refresh-with-property.report.json
+  s_cfb27be87796ed::t_e4230796f5d9e6 1-560
+internal/gatekit/g5ref/testdata/remove-unchanged.report.json
+  s_cfb27be87796ed::t_e4230796f5d9e6 1-560
+internal/gatekit/g5ref/testdata/clean.report.json
+  s_cfb27be87796ed::t_e4230796f5d9e6 1-560
+cmd/gatekit/main_test.go
+  s_cfb27be87796ed::t_28642f9fa05189 12,28,74-75,78,83-101
+  s_cfb27be87796ed::t_c72d0dec5f3aab 102-103
+internal/gatekit/g5ref/testdata/exec-returns-two-char-string.report.json
+  s_cfb27be87796ed::t_e4230796f5d9e6 1-557
+internal/gatekit/g5ref/testdata/latest-no-events.report.json
+  s_cfb27be87796ed::t_e4230796f5d9e6 1-546
+internal/gatekit/g5ref/g5ref_test.go
+  s_cfb27be87796ed::t_3a144bbb94b163 1-62
+internal/gatekit/g5ref/testdata/guarded-undeclared.catalog.json
+  s_cfb27be87796ed::t_e4230796f5d9e6 1-375
+internal/gatekit/g5ref/testdata/crash-desired-number.report.json
+  s_cfb27be87796ed::t_e4230796f5d9e6 1-557
+internal/gatekit/g5ref/testdata/guarded-undeclared.report.json
+  s_cfb27be87796ed::t_e4230796f5d9e6 1-560
+docs/maintainers/apply-spine.md
+  s_cfb27be87796ed::t_d51c8b463845a9 523-528
+  s_cfb27be87796ed::t_d0383bda07f8b7 99,337-388,397,478-479,543,677-679,1084
+internal/gatekit/g5ref/testdata/catalog-resources-empty-object.catalog.json
+  s_cfb27be87796ed::t_e4230796f5d9e6 1-88
+internal/gatekit/g5ref/testdata/guarded-present.report.json
+  s_cfb27be87796ed::t_e4230796f5d9e6 1-569
+internal/gatekit/g5ref/testdata/exec-fail-succeeded.report.json
+  s_cfb27be87796ed::t_e4230796f5d9e6 1-560
+internal/gatekit/g5ref/testdata/golden.json
+  s_cfb27be87796ed::t_e4230796f5d9e6 1-281
+internal/gatekit/g5ref/testdata/exec-fail-command.report.json
+  s_cfb27be87796ed::t_e4230796f5d9e6 1-560
+internal/gatekit/g5ref/testdata/catalog-resources-empty-object.report.json
+  s_cfb27be87796ed::t_e4230796f5d9e6 1-560
+internal/gatekit/g5ref/testdata/refresh-no-events.report.json
+  s_cfb27be87796ed::t_e4230796f5d9e6 1-546
+internal/gatekit/g5ref/testdata/exec-ok-two-events.report.json
+  s_cfb27be87796ed::t_e4230796f5d9e6 1-575
+internal/gatekit/pycompat/chars_test.go
+  s_cfb27be87796ed::t_2669d0e7923599 80,82
+internal/gatekit/pycompat/json.go
+  s_cfb27be87796ed::t_7bc5fd09fb3a60 36,43-47,54-56,69-145
+  s_cfb27be87796ed::t_3b46118d6a9c76 146
+  s_cfb27be87796ed::t_dc5566e7083f95 272-290
+internal/gatekit/pycompat/json_test.go
+  s_cfb27be87796ed::t_2b43798d3af304 93-95,101,103-108
+  s_cfb27be87796ed::t_7bc5fd09fb3a60 102
+  s_cfb27be87796ed::t_43784d367c26dd 109-110
+  s_cfb27be87796ed::t_f0e8e88ef5f650 144-159
+internal/gatekit/drift/drift_test.go
+  s_cfb27be87796ed::t_45ed1d15fffe98 122-131
+  s_cfb27be87796ed::t_d0383bda07f8b7 106,109,142,144,146
+internal/gatekit/drift/drift.go
+  s_cfb27be87796ed::t_23912e2f9261a1 272-273,276-289,293,298
+  s_cfb27be87796ed::t_d0383bda07f8b7 130-132,134
+internal/gatekit/reportcmp/normalise.go
+  s_cfb27be87796ed::t_3a28d752989f12 6
+  s_cfb27be87796ed::t_824eed7dada923 91-93,117-118
+  s_cfb27be87796ed::t_40a1d973f0fd6a 119
+  s_cfb27be87796ed::t_dc5566e7083f95 115
+docs/superpowers/specs/2026-10-03-retire-python-design.md
+  s_cfb27be87796ed::t_3a28d752989f12 190-195
+  s_cfb27be87796ed::t_0807cede7c5a67 196
+  s_cfb27be87796ed::t_44df7c0bbb641d 22-29,67-69,71-72,160-166,237
+internal/gatekit/reportcmp/normalise_test.go
+  s_cfb27be87796ed::t_2d877bd2bacf0c 1-41
+internal/gatekit/reportcmp/compare.go
+  s_cfb27be87796ed::t_dc5566e7083f95 59,65,70,78,207,213,223,265
+internal/gatekit/reportcmp/golden_test.go
+  s_cfb27be87796ed::t_30a2381b7a1307 5-6,82-83
+  s_cfb27be87796ed::t_cef806cd17e250 84
+internal/gatekit/reportcmp/imports_test.go
+  s_cfb27be87796ed::t_d37ccaf3582bf2 4,7-8,21-28,30-40,44-51,53-65,67,69-70,73-76,106-130
+docs/superpowers/plans/2026-10-03-retire-python-part2.md
+  s_cfb27be87796ed::t_afb0f9c9149007 1-2343
+  s_cfb27be87796ed::t_35666c3eb90bcc 2344-2361
+internal/gatekit/fleet/testdata/catalogs/axes-tier-content-padded.txt
+  s_cfb27be87796ed::t_b1e8411d9b671d 1-2
+internal/gatekit/fleet/testdata/catalogs/axes-resources-object.txt
+  s_cfb27be87796ed::t_b1e8411d9b671d 1-2
+internal/gatekit/fleet/testdata/catalogs/compliance-no-json-line.txt
+  s_cfb27be87796ed::t_b1e8411d9b671d 1
+internal/gatekit/fleet/ops.go
+  s_cfb27be87796ed::t_44fafc70ce5fe2 1-6,8-93,96-97,101-122,129-131
+  s_cfb27be87796ed::t_ffe0038fa056c5 123-128
+  s_cfb27be87796ed::t_67c2482d764653 7,94-95,98-99
+  s_cfb27be87796ed::t_a7cc19b1f6ba6b 100
+internal/gatekit/fleet/testdata/catalogs/compliance-unenforced.txt
+  s_cfb27be87796ed::t_b1e8411d9b671d 1-2
+internal/gatekit/fleet/testdata/catalogs/axes-message-params-list.txt
+  s_cfb27be87796ed::t_b1e8411d9b671d 1-2
+internal/gatekit/fleet/testdata/catalogs/compliance-message-false.txt
+  s_cfb27be87796ed::t_b1e8411d9b671d 1-2
+internal/gatekit/fleet/golden_test.go
+  s_cfb27be87796ed::t_767de5d3eefed7 1-155
+cmd/gatekit/fleet.go
+  s_cfb27be87796ed::t_ee02327de94bbc 1-85
+internal/gatekit/fleet/testdata/catalogs/axes-el-against-alt.txt
+  s_cfb27be87796ed::t_b1e8411d9b671d 1-2
+internal/gatekit/fleet/testdata/catalogs/axes-package-extra.txt
+  s_cfb27be87796ed::t_b1e8411d9b671d 1-2
+internal/gatekit/fleet/testdata/catalogs/axes-tier-content-number.txt
+  s_cfb27be87796ed::t_b1e8411d9b671d 1-2
+internal/gatekit/fleet/testdata/catalogs/axes-brace-in-notice.txt
+  s_cfb27be87796ed::t_b1e8411d9b671d 1-2
+internal/gatekit/fleet/testdata/catalogs/axes-package-title-number.txt
+  s_cfb27be87796ed::t_b1e8411d9b671d 1-2
+internal/gatekit/fleet/testdata/catalogs/compliance-enforced.txt
+  s_cfb27be87796ed::t_b1e8411d9b671d 1-2
+internal/gatekit/fleet/testdata/facts/full.json
+  s_cfb27be87796ed::t_b1e8411d9b671d 1
+internal/gatekit/fleet/testdata/catalogs/axes-truncated.txt
+  s_cfb27be87796ed::t_b1e8411d9b671d 1-2
+internal/gatekit/fleet/testdata/catalogs/axes-top-level-list.txt
+  s_cfb27be87796ed::t_b1e8411d9b671d 1-2
+cmd/gatekit/fleet_test.go
+  s_cfb27be87796ed::t_e281e6de6834ed 1-95
+internal/gatekit/fleet/testdata/catalogs/compliance-first-wins.txt
+  s_cfb27be87796ed::t_b1e8411d9b671d 1-2
+internal/gatekit/fleet/testdata/catalogs/axes-tier-absent.txt
+  s_cfb27be87796ed::t_b1e8411d9b671d 1-2
+internal/gatekit/fleet/testdata/catalogs/axes-indented-object.txt
+  s_cfb27be87796ed::t_b1e8411d9b671d 1-2
+internal/gatekit/fleet/testdata/catalogs/compliance-marker-absent.txt
+  s_cfb27be87796ed::t_b1e8411d9b671d 1-2
+internal/gatekit/fleet/testdata/golden.json
+  s_cfb27be87796ed::t_b1e8411d9b671d 1-334,337-346,362-380,391-548
+  s_cfb27be87796ed::t_82eaac2500311c 381-390
+  s_cfb27be87796ed::t_7675597f6fa094 335-336,347-360
+  s_cfb27be87796ed::t_7168b4a54f913a 361
+internal/gatekit/fleet/testdata/catalogs/compliance-message-null.txt
+  s_cfb27be87796ed::t_b1e8411d9b671d 1-2
+internal/gatekit/fleet/testdata/facts/values-null.json
+  s_cfb27be87796ed::t_b1e8411d9b671d 1
+internal/gatekit/fleet/testdata/facts/missing-all.json
+  s_cfb27be87796ed::t_b1e8411d9b671d 1
+internal/gatekit/fleet/testdata/catalogs/axes-el.txt
+  s_cfb27be87796ed::t_b1e8411d9b671d 1-2
+internal/gatekit/fleet/catalog.go
+  s_cfb27be87796ed::t_1ff6b3b9aa9d5d 205
+  s_cfb27be87796ed::t_3e76201fa9bbc7 1-10,12-47,51-149,151-204,206-226
+  s_cfb27be87796ed::t_b34efb6f0bfef5 150
+  s_cfb27be87796ed::t_9c038721ed9ecd 11
+  s_cfb27be87796ed::t_c2be579cbecd01 48-50
+internal/gatekit/fleet/testdata/catalogs/axes-no-json-line.txt
+  s_cfb27be87796ed::t_b1e8411d9b671d 1-2
+internal/gatekit/fleet/testdata/catalogs/axes-package-params-list.txt
+  s_cfb27be87796ed::t_b1e8411d9b671d 1-2
+internal/compile/runner_test.go
+  s_cfb27be87796ed::t_a2147c4d776bfe 53,60
+  s_cfb27be87796ed::t_4374b727066a6f 37
+  s_cfb27be87796ed::t_1c74d6415b8d87 44
+  s_cfb27be87796ed::t_f75652213ee82d 16
+  s_cfb27be87796ed::t_d034e546bf4bb3 27
+  s_cfb27be87796ed::t_57c69e949200c9 18,21,29,32,38,46,49,62,65
+internal/gatekit/fleet/testdata/catalogs/axes-resources-absent.txt
+  s_cfb27be87796ed::t_b1e8411d9b671d 1-2
+internal/compile/runner.go
+  s_cfb27be87796ed::t_4532ce28b6c30a 61,64,68
+internal/gatekit/fleet/testdata/catalogs/axes-message-number.txt
+  s_cfb27be87796ed::t_b1e8411d9b671d 1-2
+internal/gatekit/fleet/testdata/catalogs/axes-el-alt.txt
+  s_cfb27be87796ed::t_b1e8411d9b671d 1-2
+internal/gatekit/fleet/testdata/catalogs/axes-message-absent.txt
+  s_cfb27be87796ed::t_b1e8411d9b671d 1-2
+internal/gatekit/fleet/testdata/catalogs/compliance-params-list.txt
+  s_cfb27be87796ed::t_b1e8411d9b671d 1-2
+internal/gatekit/fleet/testdata/catalogs/compliance-other-value.txt
+  s_cfb27be87796ed::t_b1e8411d9b671d 1-2
+internal/gatekit/fleet/testdata/facts/missing-os.json
+  s_cfb27be87796ed::t_b1e8411d9b671d 1
+internal/gatekit/fleet/testdata/facts/exactly-twenty.json
+  s_cfb27be87796ed::t_b1e8411d9b671d 1
+internal/gatekit/fleet/testdata/catalogs/axes-message-twice-last-wins.txt
+  s_cfb27be87796ed::t_b1e8411d9b671d 1-2
+internal/gatekit/fleet/testdata/catalogs/axes-message-changed.txt
+  s_cfb27be87796ed::t_b1e8411d9b671d 1-2
+internal/gatekit/fleet/testdata/catalogs/compliance-params-absent.txt
+  s_cfb27be87796ed::t_b1e8411d9b671d 1-2
+internal/gatekit/fleet/testdata/catalogs/axes-tier-content-null.txt
+  s_cfb27be87796ed::t_b1e8411d9b671d 1-2
+internal/gatekit/fleet/testdata/catalogs/axes-deb-against-el.txt
+  s_cfb27be87796ed::t_b1e8411d9b671d 1-2
+internal/gatekit/fleet/testdata/catalogs/axes-resource-not-object.txt
+  s_cfb27be87796ed::t_b1e8411d9b671d 1-2
+internal/gatekit/fleet/ops_test.go
+  s_cfb27be87796ed::t_6b5818865ad79b 1-51,53-134
+  s_cfb27be87796ed::t_6f02925028414d 52
+internal/gatekit/fleet/testdata/catalogs/axes-deb.txt
+  s_cfb27be87796ed::t_b1e8411d9b671d 1-2
+internal/gatekit/fleet/testdata/facts/too-few.json
+  s_cfb27be87796ed::t_b1e8411d9b671d 1
+internal/gatekit/fleet/testdata/facts/values-absent.json
+  s_cfb27be87796ed::t_b1e8411d9b671d 1
+internal/gatekit/fleet/testdata/catalogs/axes-corrupt-byte-not-compared.txt
+  s_cfb27be87796ed::t_58363aa9bcf5d4 1-2
+internal/gatekit/fleet/testdata/catalogs/axes-corrupt-byte-in-structure.txt
+  s_cfb27be87796ed::t_44ef7f611109de 1-2
+internal/gatekit/fleet/testdata/catalogs/axes-trailing-data.txt
+  s_cfb27be87796ed::t_82eaac2500311c 1-4
+docs/superpowers/plans/2026-09-01-fleet-harness-stage1.md
+  s_cfb27be87796ed::t_0d85a94acb3382 1322-1348,1641,1643-1644,1654,1662-1664,2022-2025,2113-2116,2118,2133-2143,4210-4213,4264-4267,4358-4362,4459-4462,5757-5760,5804-5807
+  s_cfb27be87796ed::t_d0383bda07f8b7 5128-5150,5157-5165,8342,8827
+  s_cfb27be87796ed::t_d9963cff654b83 3834-3837,7329-7332,7340-7341
+  s_cfb27be87796ed::t_4b59af19d9a7c2 5151-5156
+fleet/bin/gate-common.sh
+  s_cfb27be87796ed::t_0d85a94acb3382 94-120,413,415-416,426,434-436
+fleet/bin/gate-axes.sh
+  s_cfb27be87796ed::t_0d85a94acb3382 79-82,133-136
+fleet/bin/gate-compliance.sh
+  s_cfb27be87796ed::t_0d85a94acb3382 79-82,126-129
+fleet/bin/gate-determinism-negative.sh
+  s_cfb27be87796ed::t_0d85a94acb3382 62-66,163-166
+fleet/bin/gate-implementations.sh
+  s_cfb27be87796ed::t_0d85a94acb3382 77-80,168-171,173,188-198
+docs/maintainers/fleet.md
+  s_cfb27be87796ed::t_d0383bda07f8b7 132-154,161-169
+  s_cfb27be87796ed::t_4b59af19d9a7c2 155-160
+fleet/tests/adjudication.sh
+  s_cfb27be87796ed::t_d0383bda07f8b7 486
+.taskfiles/dev.yml
+  s_cfb27be87796ed::t_d0383bda07f8b7 51-52
+internal/gatekit/reportcmp/testdata/allowlist.json
+  s_cfb27be87796ed::t_d0383bda07f8b7 25,31,43
+internal/gatekit/reportcmp/testdata/golden.json
+  s_cfb27be87796ed::t_d0383bda07f8b7 6
+internal/report/report.go
+  s_cfb27be87796ed::t_d0383bda07f8b7 309
+tests/spine/allowlist.json
+  s_cfb27be87796ed::t_d0383bda07f8b7 25,31,43
+fleet/tests/vendor-pins.sh
+  s_cfb27be87796ed::t_d0383bda07f8b7 439
+fleet/bin/gate-compliance-negative.sh
+  s_cfb27be87796ed::t_705607e0f54558 106-109,117-118
+fleet/bin/gate-exports.sh
+  s_cfb27be87796ed::t_705607e0f54558 72-75
+internal/gatekit/fleet/testdata/catalogs/axes-corrupt-byte-in-compared-message.txt
+  s_cfb27be87796ed::t_fd724a7f4e66e4 1-2
+docs/superpowers/plans/2026-10-03-retire-python-part1.md
+  s_cfb27be87796ed::t_7e557dec900daa 4960-4968
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "fd71907ff26148ad519ca2870749a6393a13ae6f",
+  "prompts": {},
+  "sessions": {
+    "s_cfb27be87796ed": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ff4fb4ed-63f0-4e76-b2c4-6248f690bf83",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "peiriannydd <peiriannydd@gmail.com>"
+    }
+  }
+}
