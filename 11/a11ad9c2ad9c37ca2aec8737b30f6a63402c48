@@ -1,0 +1,47 @@
+docs/superpowers/plans/2026-10-05-comparator-defects.md
+  s_cfb27be87796ed::t_542b0e6dabe186 608
+  s_cfb27be87796ed::t_bee487480baa84 610
+fleet/tests/adjudication.sh
+  s_cfb27be87796ed::t_841e48d2a80eac 5,99-101,237-239
+  s_cfb27be87796ed::t_f5756579eb0afb 8-9
+  s_cfb27be87796ed::t_edf2f2ba0afe36 6-7
+  s_cfb27be87796ed::t_ef578420e8ddad 10-11
+docs/superpowers/plans/2026-09-01-fleet-harness-stage1.md
+  s_cfb27be87796ed::t_cdb366adae1547 4597-4599,7576-7578,7926-7932,8020-8022,8158-8160
+fleet/bin/gate-determinism-negative.sh
+  s_cfb27be87796ed::t_841e48d2a80eac 264-266
+fleet/bin/gate-compliance-negative.sh
+  s_cfb27be87796ed::t_841e48d2a80eac 288-290
+docs/superpowers/plans/2026-10-03-retire-python-part1.md
+  s_cfb27be87796ed::t_bee487480baa84 4118,4259,4962
+docs/superpowers/plans/2026-10-03-retire-python-part2.md
+  s_cfb27be87796ed::t_bee487480baa84 150,158,356,373,2349,2352,2359
+docs/maintainers/apply-spine.md
+  s_cfb27be87796ed::t_dec956792fe901 522-523,819-823,852,887-888,980,997-998,1001,1004-1006
+docs/superpowers/specs/2026-10-03-retire-python-design.md
+  s_cfb27be87796ed::t_bee487480baa84 94-95
+docs/superpowers/specs/2026-10-04-comparator-defects-design.md
+  s_cfb27be87796ed::t_bee487480baa84 115
+internal/gatekit/fleet/testdata/golden.json
+  s_cfb27be87796ed::t_bee487480baa84 4
+docs/superpowers/plans/2026-09-13-apply-spine.md
+  s_cfb27be87796ed::t_bee487480baa84 58,349-350,781
+docs/superpowers/plans/2026-09-18-property-attribution.md
+  s_cfb27be87796ed::t_bee487480baa84 1760,1857
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "11a11ad9c2ad9c37ca2aec8737b30f6a63402c48",
+  "prompts": {},
+  "sessions": {
+    "s_cfb27be87796ed": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ff4fb4ed-63f0-4e76-b2c4-6248f690bf83",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "peiriannydd <peiriannydd@gmail.com>"
+    }
+  }
+}
