@@ -1,0 +1,38 @@
+internal/transaction/build.go
+  s_74faea8fa5075a::t_de785800c835d5 225
+tests/spine/report-diff.sh
+  s_74faea8fa5075a::t_fc37cc2e6f8367 67-69,72-73
+internal/ral/preflight.go
+  s_74faea8fa5075a::t_de785800c835d5 65
+internal/ral/ral_test.go
+  s_74faea8fa5075a::t_6f25626b5f3113 186-213
+internal/ral/preflight_test.go
+  s_74faea8fa5075a::t_6f25626b5f3113 307-321
+internal/ral/validate.go
+  s_74faea8fa5075a::t_de785800c835d5 40
+internal/transaction/transaction_test.go
+  s_74faea8fa5075a::t_6f25626b5f3113 2017-2045
+internal/ral/ral.go
+  s_74faea8fa5075a::t_de785800c835d5 275-279,291-312
+  s_74faea8fa5075a::t_15e85f07112881 313-314
+internal/transaction/transaction.go
+  s_74faea8fa5075a::t_de785800c835d5 79,565
+docs/maintainers/apply-spine.md
+  s_74faea8fa5075a::t_fc37cc2e6f8367 106
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "84bf0ed0a3a25a4446c22192e1c2243d5663501c",
+  "prompts": {},
+  "sessions": {
+    "s_74faea8fa5075a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4fedc2b7-9b6f-416e-a20f-447cc2ee0729",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "peiriannydd <peiriannydd@gmail.com>"
+    }
+  }
+}
