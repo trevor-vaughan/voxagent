@@ -1,0 +1,19 @@
+docs/superpowers/plans/2026-10-05-comparator-defects.md
+  s_cfb27be87796ed::t_495e253806b4ae 605-610
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e9226cb8534c5c4fb69f271abd8d0e0181121af1",
+  "prompts": {},
+  "sessions": {
+    "s_cfb27be87796ed": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ff4fb4ed-63f0-4e76-b2c4-6248f690bf83",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "peiriannydd <peiriannydd@gmail.com>"
+    }
+  }
+}
