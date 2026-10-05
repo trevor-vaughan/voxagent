@@ -1,0 +1,21 @@
+docs/maintainers/performance.md
+  s_74faea8fa5075a::t_04c7986f5378cb 1-91
+README.md
+  s_74faea8fa5075a::t_e79899262f7a26 60
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "fb81e9eb555eb0885ae118cac3efb373c0a945d3",
+  "prompts": {},
+  "sessions": {
+    "s_74faea8fa5075a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4fedc2b7-9b6f-416e-a20f-447cc2ee0729",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "peiriannydd <peiriannydd@gmail.com>"
+    }
+  }
+}
