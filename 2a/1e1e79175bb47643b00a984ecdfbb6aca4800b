@@ -1,0 +1,42 @@
+.taskfiles/dev.yml
+  s_c983d4f72f5510::t_6760105212fb82 144-151
+tests/spine/selinux-vm/meta-data
+  s_c983d4f72f5510::t_2b13226463eb3e 1-2
+tests/spine/build-image.sh
+  s_c983d4f72f5510::t_19135fa3467a20 1-47
+docs/maintainers/improvements.md
+  s_c983d4f72f5510::t_d97eb789b725a2 28,33-35
+tests/spine/selinux-vm/Containerfile
+  s_c983d4f72f5510::t_2b13226463eb3e 1-12
+tests/spine/report-diff-selinux.sh
+  s_c983d4f72f5510::t_39dc30d536b3f0 54
+  s_c983d4f72f5510::t_6645f1b480731a 118-122,188,192
+  s_c983d4f72f5510::t_33cace8b732d3c 201-223,334,343-345,349,357,375
+  s_c983d4f72f5510::t_6760105212fb82 244
+  s_c983d4f72f5510::t_ab094016f30667 1-53,55-117,123-187,189-191,193-200,224-243,245-333,335-342,346-348,350-356,358-374,376-437
+docs/maintainers/apply-spine.md
+  s_c983d4f72f5510::t_d97eb789b725a2 218
+  s_c983d4f72f5510::t_601cdb5108a125 851-960
+  s_c983d4f72f5510::t_95886ebb9616f0 121,1266-1268
+tests/spine/selinux-vm/user-data
+  s_c983d4f72f5510::t_2b13226463eb3e 1-9,13-31
+  s_c983d4f72f5510::t_39dc30d536b3f0 10-12
+tests/spine/report-diff-systemd.sh
+  s_c983d4f72f5510::t_5cf87b74939ea2 76-78,80,84-85
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2a1e1e79175bb47643b00a984ecdfbb6aca4800b",
+  "prompts": {},
+  "sessions": {
+    "s_c983d4f72f5510": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "379d2de1-f3ab-421d-a3b5-770f0ba78eb3",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "peiriannydd <peiriannydd@gmail.com>"
+    }
+  }
+}
