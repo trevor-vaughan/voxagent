@@ -1,0 +1,48 @@
+internal/ral/file_link.go
+  s_c983d4f72f5510::t_48e7b7e92b8fb3 1-39,41-47,49-189,191-199
+  s_c983d4f72f5510::t_42d72048f2baf4 40,48
+  s_c983d4f72f5510::t_cf857ff892f19d 190
+cmd/voxagent/main_test.go
+  s_c983d4f72f5510::t_a1cfb18efdb41c 611,617,625-629,635,641-642,645
+tests/spine/report-diff.sh
+  s_c983d4f72f5510::t_70b3b56ae53b01 111-119,141-144,171-176
+internal/ral/file_fs_test.go
+  s_c983d4f72f5510::t_cf5cd7115084cf 80-89,122-128
+  s_c983d4f72f5510::t_cf857ff892f19d 129
+internal/ral/file.go
+  s_c983d4f72f5510::t_2ce840f2d3a67e 287-288
+  s_c983d4f72f5510::t_42d72048f2baf4 738-741,786-787,789
+  s_c983d4f72f5510::t_f964592edbbe05 20-22,24-25,60-63,65-69,72-80,84,89,94,104,109-110,145-146,171-185,187-196,199-209,282-286,302-304,321-322
+  s_c983d4f72f5510::t_6d7a8a2d1d1463 266,268
+  s_c983d4f72f5510::t_52c36c111e7568 13,70-71,289-293
+internal/ral/file_fs.go
+  s_c983d4f72f5510::t_c144bc1239f343 40-43,82-83,264-287
+  s_c983d4f72f5510::t_09f3fc2514e4e9 288
+internal/ral/file_link_test.go
+  s_c983d4f72f5510::t_91cd13daea2390 194-197
+  s_c983d4f72f5510::t_ed60edd1bacbf7 439
+  s_c983d4f72f5510::t_52c36c111e7568 423
+  s_c983d4f72f5510::t_01e0d9ff68d3f2 1-193,198-422,424-438,440-442
+docs/maintainers/apply-spine.md
+  s_c983d4f72f5510::t_9278b4d7b400df 119,390-407,976-977,1039-1044
+docs/maintainers/improvements.md
+  s_c983d4f72f5510::t_e9c11ecd7a19bf 30
+internal/ral/file_test.go
+  s_c983d4f72f5510::t_2a7aa1acdc80e4 1364,2594-2599,2601,2603,2605-2606
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "43a881ccabf1b6166ce75dfbb3d1e146a59de1ba",
+  "prompts": {},
+  "sessions": {
+    "s_c983d4f72f5510": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "379d2de1-f3ab-421d-a3b5-770f0ba78eb3",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "peiriannydd <peiriannydd@gmail.com>"
+    }
+  }
+}
