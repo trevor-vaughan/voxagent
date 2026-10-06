@@ -1,0 +1,54 @@
+docs/maintainers/improvements.md
+  s_c983d4f72f5510::t_5d98ef56d9f559 29
+internal/ral/file_fs.go
+  s_c983d4f72f5510::t_6fad36ea223a67 43-44
+  s_c983d4f72f5510::t_ad79debe480f61 32-34,66,209
+  s_c983d4f72f5510::t_768c41692cfcb6 210-216
+internal/ral/file_fs_test.go
+  s_c983d4f72f5510::t_9f1261abafbff0 62-66,162-195
+  s_c983d4f72f5510::t_20e6ee1e3c938f 106
+  s_c983d4f72f5510::t_6ddf42058b2b2b 95,100,104,112,116
+  s_c983d4f72f5510::t_d99f90d792681c 196
+cmd/voxagent/main_test.go
+  s_c983d4f72f5510::t_049754b492db0a 928-933,947-951
+internal/transaction/transaction.go
+  s_c983d4f72f5510::t_b52e2793cdaeda 331
+internal/ral/file.go
+  s_c983d4f72f5510::t_0810efdffdff17 151
+  s_c983d4f72f5510::t_f59b114fe1020b 837,840,847,851-859,866
+  s_c983d4f72f5510::t_afb3a35f030e22 710,828,1005,1397-1401
+  s_c983d4f72f5510::t_8275ab532651f0 282-292,294,298-301,313-318,406,434-435,437-442,519-523,569-585,589-593,599-602,665,834,898,1016,1028
+  s_c983d4f72f5510::t_b499d376852f8c 20-21,23-27,29-35,60,86,150,152-153,198-199,224,256,735,897,1026,1030
+  s_c983d4f72f5510::t_264d33bad5d58e 711-713,715,733-734,736,778-780,790-791,797,829-832,886,891-896,901,903,905,1006-1009,1017,1023-1025,1027,1029,1108,1143
+docs/maintainers/apply-spine.md
+  s_c983d4f72f5510::t_d060cfebf605c5 119
+  s_c983d4f72f5510::t_5d98ef56d9f559 41-45,98,123,378-387
+  s_c983d4f72f5510::t_560fe0cffb462b 388
+internal/ral/file_test.go
+  s_c983d4f72f5510::t_bc89658847b794 3134-3149,3152-3158
+  s_c983d4f72f5510::t_847f862d7923a6 774-777,787-791,804-805,809-812,822-826,832-836,841-847,855-865,868-871,873-876,878-879,2707-2710,2723-2725,2734-2735
+  s_c983d4f72f5510::t_57ad072e682974 3150-3151
+  s_c983d4f72f5510::t_e5715cffda34ac 2736,2908-3133,3159-3160
+tests/spine/report-diff.sh
+  s_c983d4f72f5510::t_5f69e6e59b6857 106,109-110,156-158,160
+  s_c983d4f72f5510::t_3460e8c956d3f4 107-108,133,159
+  s_c983d4f72f5510::t_9f4e520d70eebb 131-132
+internal/ral/file_unix.go
+  s_c983d4f72f5510::t_d82e595f225bd0 11-16
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9e368f4256b68eaf693058ebb4aea8606c465db6",
+  "prompts": {},
+  "sessions": {
+    "s_c983d4f72f5510": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "379d2de1-f3ab-421d-a3b5-770f0ba78eb3",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "peiriannydd <peiriannydd@gmail.com>"
+    }
+  }
+}
