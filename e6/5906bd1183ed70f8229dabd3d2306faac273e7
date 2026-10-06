@@ -1,0 +1,26 @@
+docs/maintainers/apply-spine.md
+  s_c983d4f72f5510::t_46ffcfaad61786 965-967,1103-1147
+  s_c983d4f72f5510::t_60e1a651808fdb 1148
+README.md
+  s_c983d4f72f5510::t_46ffcfaad61786 21-26,43-52
+docs/superpowers/specs/2026-10-06-file-attribute-gaps-design.md
+  s_c983d4f72f5510::t_ead67b038311e7 336-382
+tests/spine/idempotence.sh
+  s_c983d4f72f5510::t_d6d19675181663 51-54,58-65,96-112
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e65906bd1183ed70f8229dabd3d2306faac273e7",
+  "prompts": {},
+  "sessions": {
+    "s_c983d4f72f5510": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "379d2de1-f3ab-421d-a3b5-770f0ba78eb3",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "peiriannydd <peiriannydd@gmail.com>"
+    }
+  }
+}
