@@ -1,0 +1,36 @@
+internal/ral/check.go
+  s_4a5d9640cfa4af::t_7ce577c67bbeeb 5,18-21
+cmd/voxagent/extension.go
+  s_4a5d9640cfa4af::t_d7c76066792eac 121-122,126-127
+  s_4a5d9640cfa4af::t_9856a7b40fa18a 128
+docs/maintainers/apply-spine.md
+  s_4a5d9640cfa4af::t_ac8c3e97542134 143,1267-1269
+  s_4a5d9640cfa4af::t_a655280248c11d 1270-1271
+internal/ral/preflight_test.go
+  s_4a5d9640cfa4af::t_4e6d5f6a9e05d3 415-443
+cmd/voxagent/extension_test.go
+  s_4a5d9640cfa4af::t_ebe065128efa8c 248-284
+README.md
+  s_4a5d9640cfa4af::t_ac8c3e97542134 103-107
+internal/ral/file_backup.go
+  s_4a5d9640cfa4af::t_d7c76066792eac 49,52-58
+  s_4a5d9640cfa4af::t_2e0f1da15cdbdb 59
+internal/ral/preflight.go
+  s_4a5d9640cfa4af::t_7ce577c67bbeeb 45-46,52,57-58
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "bb716f511dc1144c976c6512179c7d2ccb887fa7",
+  "prompts": {},
+  "sessions": {
+    "s_4a5d9640cfa4af": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "eb29ea52-6b56-4c6a-a351-5b3082b1172b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "peiriannydd <peiriannydd@gmail.com>"
+    }
+  }
+}
