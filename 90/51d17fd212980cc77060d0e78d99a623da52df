@@ -1,0 +1,46 @@
+internal/extension/script.go
+  s_4a5d9640cfa4af::t_e54b88ab94e8e1 18
+internal/extension/ruby_test.go
+  s_4a5d9640cfa4af::t_0063d7feb67680 272-282,284-285
+internal/transaction/evaluator_test.go
+  s_4a5d9640cfa4af::t_0063d7feb67680 59,62,66-67,69,203-214
+tests/spine/report-diff-extension.sh
+  s_4a5d9640cfa4af::t_419af6a4277a04 88-91
+internal/extension/host.rb
+  s_4a5d9640cfa4af::t_68c95c39b6905a 85,361-362,367,369,371
+internal/extension/testdata/libdir/puppet/provider/vox_value/file.rb
+  s_4a5d9640cfa4af::t_68c95c39b6905a 22-25
+internal/extension/host.go
+  s_4a5d9640cfa4af::t_68c95c39b6905a 365-366,368-371
+internal/ral/extension.go
+  s_4a5d9640cfa4af::t_68c95c39b6905a 114-115,139,141,145,147,149,151
+docs/maintainers/extension-host.md
+  s_4a5d9640cfa4af::t_676135ebfcc107 57,128,259-265,302
+internal/extension/messages.go
+  s_4a5d9640cfa4af::t_68c95c39b6905a 92-94,96-99
+internal/transaction/transaction.go
+  s_4a5d9640cfa4af::t_68c95c39b6905a 585,587-590,626-627
+internal/extension/host_test.go
+  s_4a5d9640cfa4af::t_0063d7feb67680 116-118,120-122,178-179,257
+internal/ral/extension_test.go
+  s_4a5d9640cfa4af::t_0063d7feb67680 106-107,109-110,112-116,119-122,124
+internal/ral/evaluator.go
+  s_4a5d9640cfa4af::t_68c95c39b6905a 46-50,57-65
+  s_4a5d9640cfa4af::t_ee61b71863c138 66-67
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9051d17fd212980cc77060d0e78d99a623da52df",
+  "prompts": {},
+  "sessions": {
+    "s_4a5d9640cfa4af": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "eb29ea52-6b56-4c6a-a351-5b3082b1172b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "peiriannydd <peiriannydd@gmail.com>"
+    }
+  }
+}
