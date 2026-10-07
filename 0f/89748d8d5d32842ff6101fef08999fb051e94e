@@ -1,0 +1,37 @@
+internal/extension/host_test.go
+  s_4a5d9640cfa4af::t_3502472c6908ff 56-64,542-575
+  s_4a5d9640cfa4af::t_02612ce5b6ffbd 576
+internal/extension/ruby_test.go
+  s_4a5d9640cfa4af::t_3502472c6908ff 340-343,389-393
+internal/extension/messages.go
+  s_4a5d9640cfa4af::t_069ce75ba8d48c 101-105
+  s_4a5d9640cfa4af::t_6b03b3c91ccb85 106
+cmd/voxagent/generation_test.go
+  s_4a5d9640cfa4af::t_3502472c6908ff 147-179
+internal/extension/host.go
+  s_4a5d9640cfa4af::t_069ce75ba8d48c 323-330
+cmd/voxagent/generation.go
+  s_4a5d9640cfa4af::t_a31d9f314bac4c 88-105
+docs/superpowers/specs/2026-10-07-ruby-extension-host-design.md
+  s_4a5d9640cfa4af::t_2ec491c851a7ac 61,63
+internal/extension/host.rb
+  s_4a5d9640cfa4af::t_f6c6e13e18287f 273-282,298,341-342,346-347
+internal/extension/script.go
+  s_4a5d9640cfa4af::t_18e376cd93c20c 18
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0f89748d8d5d32842ff6101fef08999fb051e94e",
+  "prompts": {},
+  "sessions": {
+    "s_4a5d9640cfa4af": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "eb29ea52-6b56-4c6a-a351-5b3082b1172b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "peiriannydd <peiriannydd@gmail.com>"
+    }
+  }
+}
