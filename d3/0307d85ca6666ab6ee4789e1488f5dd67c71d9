@@ -1,0 +1,28 @@
+internal/extension/host_test.go
+  s_4a5d9640cfa4af::t_77d5102abc6309 18-22
+  s_4a5d9640cfa4af::t_efd2f68cc1c163 7,62,68,70-84,128-130,132,246-327
+  s_4a5d9640cfa4af::t_addb24c931f6c3 69
+internal/extension/host.go
+  s_4a5d9640cfa4af::t_addb24c931f6c3 187
+  s_4a5d9640cfa4af::t_ab808cb4fa3383 39-41,86-89,94-95,102-103,184,197,199,396,400-410
+internal/extension/env_test.go
+  s_4a5d9640cfa4af::t_efd2f68cc1c163 18-25
+internal/extension/env.go
+  s_4a5d9640cfa4af::t_eb9319c18cc514 17
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d30307d85ca6666ab6ee4789e1488f5dd67c71d9",
+  "prompts": {},
+  "sessions": {
+    "s_4a5d9640cfa4af": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "eb29ea52-6b56-4c6a-a351-5b3082b1172b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "peiriannydd <peiriannydd@gmail.com>"
+    }
+  }
+}
