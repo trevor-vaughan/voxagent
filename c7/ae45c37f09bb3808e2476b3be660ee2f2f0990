@@ -1,0 +1,32 @@
+internal/extension/host.rb
+  s_4a5d9640cfa4af::t_c1ac2c0dccf1ee 72,189-191,198-199,272-279,375-379,381,383-385,388
+internal/extension/host_test.go
+  s_4a5d9640cfa4af::t_c1ac2c0dccf1ee 30
+internal/extension/host.go
+  s_4a5d9640cfa4af::t_c1ac2c0dccf1ee 231-234
+internal/extension/messages.go
+  s_4a5d9640cfa4af::t_c1ac2c0dccf1ee 65-68
+internal/extension/testdata/libdir/puppet/type/vox_gen.rb
+  s_4a5d9640cfa4af::t_c1ac2c0dccf1ee 8
+internal/extension/ruby_test.go
+  s_4a5d9640cfa4af::t_c9354c8d1498b0 41-42,226-261,264-265
+  s_4a5d9640cfa4af::t_fd5a58e5e1cc59 262-263
+internal/extension/script.go
+  s_4a5d9640cfa4af::t_c9354c8d1498b0 18
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c7ae45c37f09bb3808e2476b3be660ee2f2f0990",
+  "prompts": {},
+  "sessions": {
+    "s_4a5d9640cfa4af": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "eb29ea52-6b56-4c6a-a351-5b3082b1172b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "peiriannydd <peiriannydd@gmail.com>"
+    }
+  }
+}
