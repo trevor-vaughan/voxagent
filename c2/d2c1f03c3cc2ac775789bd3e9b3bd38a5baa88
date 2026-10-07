@@ -1,0 +1,41 @@
+internal/ral/extension_test.go
+  s_4a5d9640cfa4af::t_f951d8168ba6da 245-265
+internal/ral/file_test.go
+  s_4a5d9640cfa4af::t_f951d8168ba6da 3654-3669
+internal/ral/extension.go
+  s_4a5d9640cfa4af::t_0156b3a4c01610 34-35,49,66,164-165
+  s_4a5d9640cfa4af::t_55190ac66f4846 166
+internal/ral/check.go
+  s_4a5d9640cfa4af::t_0156b3a4c01610 83-101
+internal/transaction/transaction.go
+  s_4a5d9640cfa4af::t_6a3d8a0174e9d9 205,246-290
+  s_4a5d9640cfa4af::t_74b7994152a66d 291,784,787,795-826,837-871,873,876-881,886-897,900-911,914-934,938-941,961-980,982,985,987,994,1008,1045-1054,1263
+  s_4a5d9640cfa4af::t_8c82572183b154 1169-1172,1231,1236-1262
+  s_4a5d9640cfa4af::t_fb9acb4c46df6d 292,1264
+internal/transaction/evalgen_test.go
+  s_4a5d9640cfa4af::t_f96e6da0b14d16 38-43,79-81,89-91,93-94,263-266,268,270,273-276,279,292-301,303-304,311,316-409,411-442
+internal/ral/evaluator.go
+  s_4a5d9640cfa4af::t_0156b3a4c01610 151-159
+internal/ral/file.go
+  s_4a5d9640cfa4af::t_20d477913a2e4f 16,1464-1468
+  s_4a5d9640cfa4af::t_e9410ec3ff32b5 330,368
+  s_4a5d9640cfa4af::t_401ee3e4981e67 1469-1470
+docs/maintainers/apply-spine.md
+  s_4a5d9640cfa4af::t_0e5ff3925a701f 135
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c2d2c1f03c3cc2ac775789bd3e9b3bd38a5baa88",
+  "prompts": {},
+  "sessions": {
+    "s_4a5d9640cfa4af": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "eb29ea52-6b56-4c6a-a351-5b3082b1172b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "peiriannydd <peiriannydd@gmail.com>"
+    }
+  }
+}
