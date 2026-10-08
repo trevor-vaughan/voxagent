@@ -1,0 +1,31 @@
+internal/ral/file_mode.go
+  s_034e1f3e406d67::t_e176ad5210ccbe 1-139
+internal/ral/file_mode_test.go
+  s_034e1f3e406d67::t_62c0c90435d8f9 1-81
+internal/ral/inspect_test.go
+  s_034e1f3e406d67::t_d53088845ab56e 9
+  s_034e1f3e406d67::t_76d863a785a125 20
+  s_034e1f3e406d67::t_7a48f51799cbc1 22-23
+  s_034e1f3e406d67::t_62c0c90435d8f9 1-8,10-19,21,24-49
+internal/ral/file_backup.go
+  s_034e1f3e406d67::t_e20cc4aa7c0449 90
+internal/ral/inspect.go
+  s_034e1f3e406d67::t_e176ad5210ccbe 1-4,6-60,62-78
+  s_034e1f3e406d67::t_e20cc4aa7c0449 5,61
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4ae12340a76ec327859702a778d7065d4e62b3a4",
+  "prompts": {},
+  "sessions": {
+    "s_034e1f3e406d67": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0859a2f7-4c60-49c9-9cac-35f9cddb88aa",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "peiriannydd <peiriannydd@gmail.com>"
+    }
+  }
+}
