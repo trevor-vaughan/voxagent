@@ -1,0 +1,45 @@
+internal/ral/evaluator.go
+  s_034e1f3e406d67::t_141e6e22b05c60 63-69
+internal/transaction/transaction_test.go
+  s_034e1f3e406d67::t_90150257ed5b13 12,2774-2978,2982-2995,2997-3183
+  s_034e1f3e406d67::t_01f82ae6c16317 8-9,3184-3211
+  s_034e1f3e406d67::t_412c3f5a3615db 2979-2981
+  s_034e1f3e406d67::t_5fa4f6fd434a9f 2996
+internal/transaction/transaction.go
+  s_034e1f3e406d67::t_6f9cd8e642ce68 226-237,241-243,245,770-772
+internal/ral/file_test.go
+  s_034e1f3e406d67::t_a0976e9e17b9e8 3997-4004
+internal/ral/notify_test.go
+  s_034e1f3e406d67::t_a0976e9e17b9e8 172-179
+internal/ral/file.go
+  s_034e1f3e406d67::t_141e6e22b05c60 494-498
+docs/maintainers/extension-host.md
+  s_034e1f3e406d67::t_7035311959e3ae 496-498
+docs/superpowers/plans/2026-10-08-extension-host-part3-measurements/exec-argv-and-class-refresh.md
+  s_034e1f3e406d67::t_1bf170684278bd 203-204
+  s_034e1f3e406d67::t_908d4cc5d95c58 174-202,205
+docs/maintainers/apply-spine.md
+  s_034e1f3e406d67::t_7035311959e3ae 134,339-341,390-412,655
+internal/ral/exec.go
+  s_034e1f3e406d67::t_35f07b6615ebab 305-311,329
+internal/ral/notify.go
+  s_034e1f3e406d67::t_141e6e22b05c60 73-77
+internal/ral/exec_test.go
+  s_034e1f3e406d67::t_3656347e826367 442-478
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "89194c73469e7e213c308a65a742a51cefad1f11",
+  "prompts": {},
+  "sessions": {
+    "s_034e1f3e406d67": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0859a2f7-4c60-49c9-9cac-35f9cddb88aa",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "peiriannydd <peiriannydd@gmail.com>"
+    }
+  }
+}
