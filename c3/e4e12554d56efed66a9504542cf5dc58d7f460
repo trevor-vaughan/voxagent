@@ -1,0 +1,49 @@
+tests/spine/report-diff.sh
+  s_034e1f3e406d67::t_4fffc52effaa3c 293-298
+  s_034e1f3e406d67::t_fba7ccde6fa071 77-82,87-103
+  s_034e1f3e406d67::t_b0193fe0fbd9cb 104,351-359,366,380-381
+  s_034e1f3e406d67::t_8c6f6a5a6f4d77 371-379,382-389
+  s_034e1f3e406d67::t_72e99f90564232 23-27
+  s_034e1f3e406d67::t_87b8786372abef 245-248
+  s_034e1f3e406d67::t_10747f560182e2 170-202
+tests/spine/report-diff-selinux.sh
+  s_034e1f3e406d67::t_de5c0e2c7cd3a9 29-30
+  s_034e1f3e406d67::t_a345f72ea5d666 443
+  s_034e1f3e406d67::t_1e7fafec3c3063 440-442,444-454
+tests/spine/report-diff-systemd.sh
+  s_034e1f3e406d67::t_1e7fafec3c3063 28-29,316-318,320-327,329
+  s_034e1f3e406d67::t_a345f72ea5d666 319
+  s_034e1f3e406d67::t_47cb62503240ce 328,330
+docs/maintainers/apply-spine.md
+  s_034e1f3e406d67::t_3d8b643928023e 582,656-662,1007,1110
+  s_034e1f3e406d67::t_436e9dac9bfac5 1113-1115
+  s_034e1f3e406d67::t_f72cf5a877be78 1008-1010,1111-1112
+  s_034e1f3e406d67::t_bd63fc9f59e4d9 137,1188-1189
+  s_034e1f3e406d67::t_8361bd5064e1d1 630,635-636
+  s_034e1f3e406d67::t_915063dcdbf75a 631
+tests/spine/report-diff-extension.sh
+  s_034e1f3e406d67::t_de5c0e2c7cd3a9 20-24
+  s_034e1f3e406d67::t_f85d441745c780 202-204,215-218
+  s_034e1f3e406d67::t_bf45aa1e122f67 220,223,235-238,240-247
+  s_034e1f3e406d67::t_aea3138f9b9c84 205-213,226,239
+  s_034e1f3e406d67::t_de80ebc020be1e 214
+tests/spine/report-diff-container.sh
+  s_034e1f3e406d67::t_de5c0e2c7cd3a9 41
+  s_034e1f3e406d67::t_07e2fcac7a813b 504-513,520,525-542
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c3e4e12554d56efed66a9504542cf5dc58d7f460",
+  "prompts": {},
+  "sessions": {
+    "s_034e1f3e406d67": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0859a2f7-4c60-49c9-9cac-35f9cddb88aa",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "peiriannydd <peiriannydd@gmail.com>"
+    }
+  }
+}
