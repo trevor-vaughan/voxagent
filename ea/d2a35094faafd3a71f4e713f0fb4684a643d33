@@ -1,0 +1,37 @@
+internal/ral/file_test.go
+  s_034e1f3e406d67::t_9cb42bf544b49c 1510
+  s_034e1f3e406d67::t_bf2ef11a309c01 3859
+  s_034e1f3e406d67::t_2f910c138cc6cc 375-377,381,385-386,1655-1658
+  s_034e1f3e406d67::t_7b92ff2fe8e176 10,3700-3858,3860-3918
+tests/spine/report-diff.sh
+  s_034e1f3e406d67::t_43329e59e1dc29 141-143,185-186,231-232
+internal/ral/file.go
+  s_034e1f3e406d67::t_bf2ef11a309c01 231-237,345-351
+  s_034e1f3e406d67::t_e596666dfb699b 1210-1245,1263-1270,1281
+  s_034e1f3e406d67::t_9cb42bf544b49c 1286-1287
+  s_034e1f3e406d67::t_7ffe7141f3423a 766-772
+  s_034e1f3e406d67::t_f3557d1393759e 1197-1199
+  s_034e1f3e406d67::t_22c3fbde605f14 1118-1120,1145,1158,1161,1179,1188-1191,1193,1195
+  s_034e1f3e406d67::t_d88186bcbe1a57 719
+  s_034e1f3e406d67::t_a97fd8df6ab16d 941-945
+  s_034e1f3e406d67::t_9d3a8ce1f05af0 961-978,981-985,987-994
+  s_034e1f3e406d67::t_4e71b6e90d0c27 903
+docs/maintainers/improvements.md
+  s_034e1f3e406d67::t_d3d2c1734bacd2 46
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ead2a35094faafd3a71f4e713f0fb4684a643d33",
+  "prompts": {},
+  "sessions": {
+    "s_034e1f3e406d67": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0859a2f7-4c60-49c9-9cac-35f9cddb88aa",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "peiriannydd <peiriannydd@gmail.com>"
+    }
+  }
+}
