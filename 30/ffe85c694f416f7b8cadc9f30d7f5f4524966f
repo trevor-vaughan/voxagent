@@ -1,0 +1,31 @@
+tests/spine/report-diff-simp.sh
+  s_034e1f3e406d67::t_f49e20ea73efdc 263-266,274-275,304-316
+  s_034e1f3e406d67::t_3b901e575fca3b 250
+tests/spine/images/Containerfile.simp
+  s_034e1f3e406d67::t_9ee5d9a15acd97 12,21-23,26-29,31-32,51-57
+  s_034e1f3e406d67::t_baa7f9a4d2e734 13-20,24-25,30,33-50,58-59
+docs/maintainers/apply-spine.md
+  s_034e1f3e406d67::t_7f84fce053e7fb 102,661,1104-1153,1156-1178
+  s_034e1f3e406d67::t_54331a7412ae1a 1154-1155
+  s_034e1f3e406d67::t_26b019cd71a612 1179
+tests/spine/allowlist.json
+  s_034e1f3e406d67::t_defb6fd1aa38b2 55-70,77,126-144
+  s_034e1f3e406d67::t_03393b22f28fb8 71-76
+  s_034e1f3e406d67::t_3110b897127c29 91-93,95-98,148-152
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "30ffe85c694f416f7b8cadc9f30d7f5f4524966f",
+  "prompts": {},
+  "sessions": {
+    "s_034e1f3e406d67": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0859a2f7-4c60-49c9-9cac-35f9cddb88aa",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "peiriannydd <peiriannydd@gmail.com>"
+    }
+  }
+}
