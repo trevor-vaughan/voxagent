@@ -1,0 +1,48 @@
+cmd/voxagent/main_test.go
+  s_034e1f3e406d67::t_a13febf121ffde 969-1051
+internal/ral/preflight.go
+  s_034e1f3e406d67::t_532da682184934 47-48,55,62-68
+internal/catalog/catalog.go
+  s_034e1f3e406d67::t_a6185c2dac3930 83-86
+  s_034e1f3e406d67::t_532da682184934 72-74
+internal/catalog/richdata_test.go
+  s_034e1f3e406d67::t_71b6d73deb5b5a 1-93
+  s_034e1f3e406d67::t_10fc59ac8b6274 94-104
+internal/ral/extension.go
+  s_034e1f3e406d67::t_532da682184934 177-179,195-197,206-208
+internal/ral/check.go
+  s_034e1f3e406d67::t_532da682184934 34-41,68-74,90-92,101-104,108-125
+  s_034e1f3e406d67::t_a0d9c2bf503ebe 126-128
+internal/ral/extension_test.go
+  s_034e1f3e406d67::t_1a20dd1cc53361 266-299
+cmd/voxagent/main.go
+  s_034e1f3e406d67::t_532da682184934 92-100
+internal/ral/preflight_test.go
+  s_034e1f3e406d67::t_9cf1cbfea36528 444-497
+cmd/voxagent/generation.go
+  s_034e1f3e406d67::t_532da682184934 22-24,33-35,92-94
+cmd/voxagent/generation_test.go
+  s_034e1f3e406d67::t_8155b81aaf2122 92-120
+internal/catalog/richdata.go
+  s_034e1f3e406d67::t_22106ba76a4ebb 1-74,79,81-120,125-211
+  s_034e1f3e406d67::t_aec2ee52778a1a 75-78,80,121-124
+docs/maintainers/apply-spine.md
+  s_034e1f3e406d67::t_3674caf286cfcc 144
+  s_034e1f3e406d67::t_10fc59ac8b6274 145
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "837d6a3dd81624252db0647540813abfa0a0431c",
+  "prompts": {},
+  "sessions": {
+    "s_034e1f3e406d67": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0859a2f7-4c60-49c9-9cac-35f9cddb88aa",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "peiriannydd <peiriannydd@gmail.com>"
+    }
+  }
+}
