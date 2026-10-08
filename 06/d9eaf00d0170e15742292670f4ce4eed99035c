@@ -1,0 +1,21 @@
+internal/graph/graph.go
+  s_034e1f3e406d67::t_74fd74e5df5953 142,147
+internal/transaction/build_test.go
+  s_034e1f3e406d67::t_74fd74e5df5953 211-212,221,277-278,285
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "06d9eaf00d0170e15742292670f4ce4eed99035c",
+  "prompts": {},
+  "sessions": {
+    "s_034e1f3e406d67": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0859a2f7-4c60-49c9-9cac-35f9cddb88aa",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "peiriannydd <peiriannydd@gmail.com>"
+    }
+  }
+}
