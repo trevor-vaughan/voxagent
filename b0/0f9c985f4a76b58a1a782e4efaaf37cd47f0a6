@@ -1,0 +1,29 @@
+internal/gatekit/reportcmp/order_test.go
+  s_034e1f3e406d67::t_92bb9e2d9168c3 1-165
+cmd/gatekit/main.go
+  s_034e1f3e406d67::t_29b7e5a3508b3b 6,46,70,151-164
+  s_034e1f3e406d67::t_c90c1f30574357 165-167
+cmd/gatekit/main_test.go
+  s_034e1f3e406d67::t_29b7e5a3508b3b 27,109-148
+  s_034e1f3e406d67::t_ecffab0f50034c 149
+internal/gatekit/reportcmp/order.go
+  s_034e1f3e406d67::t_f0d18d43298028 123-131,156,183,186,189-190
+  s_034e1f3e406d67::t_77cc35e7111421 145-146,157-158,168,175-176,181-182,184-185,187-188,191-192,194-197,199
+  s_034e1f3e406d67::t_fa4a49873e5414 1-122,132-144,147-155,159-167,169-174,177-180,193,198,200-209
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b00f9c985f4a76b58a1a782e4efaaf37cd47f0a6",
+  "prompts": {},
+  "sessions": {
+    "s_034e1f3e406d67": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0859a2f7-4c60-49c9-9cac-35f9cddb88aa",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "peiriannydd <peiriannydd@gmail.com>"
+    }
+  }
+}
