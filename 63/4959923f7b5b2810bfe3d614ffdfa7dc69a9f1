@@ -1,0 +1,41 @@
+internal/ral/exec_argv.go
+  s_034e1f3e406d67::t_b018aba7128744 153-154
+  s_034e1f3e406d67::t_68e0cf464fb260 1-152,155-182
+docs/superpowers/plans/2026-10-08-extension-host-part3-measurements/exec-argv-and-class-refresh.md
+  s_034e1f3e406d67::t_bdbdd623cd3fac 143-173
+README.md
+  s_034e1f3e406d67::t_7735fd3c80c533 33-35
+internal/ral/exec.go
+  s_034e1f3e406d67::t_2d43af13b194ff 5,7,14,51-56,75-79,81-85,88,92-108,141-150,152-180,192-209,211-212,214-223,230-244,264,346,350-361,379,393,432,459-472,483-486,506,513-525,528,537-549,551,555,561-571,573-606,636-663
+  s_034e1f3e406d67::t_3d4cb33b5e2126 473-482
+docs/maintainers/apply-spine.md
+  s_034e1f3e406d67::t_4aa6fc916cc776 147
+  s_034e1f3e406d67::t_3920ff1293b67d 1638-1646
+internal/ral/exec_test.go
+  s_034e1f3e406d67::t_95552b85c43467 799-804
+  s_034e1f3e406d67::t_6fd288cbddc89a 840-844
+  s_034e1f3e406d67::t_ce2b8e63b458dc 617
+  s_034e1f3e406d67::t_43001e948bbf4c 976-1255
+  s_034e1f3e406d67::t_43ae73d49fdb13 839
+tests/spine/report-diff-container.sh
+  s_034e1f3e406d67::t_ecd04698574262 189-191,282-318
+  s_034e1f3e406d67::t_17ca12cb317cd0 319
+docs/maintainers/improvements.md
+  s_034e1f3e406d67::t_f11032d463ec88 49-50
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "634959923f7b5b2810bfe3d614ffdfa7dc69a9f1",
+  "prompts": {},
+  "sessions": {
+    "s_034e1f3e406d67": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0859a2f7-4c60-49c9-9cac-35f9cddb88aa",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "peiriannydd <peiriannydd@gmail.com>"
+    }
+  }
+}
