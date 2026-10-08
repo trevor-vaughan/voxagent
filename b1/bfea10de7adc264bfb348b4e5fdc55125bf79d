@@ -1,0 +1,20 @@
+docs/superpowers/specs/2026-10-07-ruby-extension-host-design.md
+  s_4a5d9640cfa4af::t_60b655077b09d6 17-20
+  s_4a5d9640cfa4af::t_49c2d23d0bc339 127,148,235-237
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b1bfea10de7adc264bfb348b4e5fdc55125bf79d",
+  "prompts": {},
+  "sessions": {
+    "s_4a5d9640cfa4af": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "eb29ea52-6b56-4c6a-a351-5b3082b1172b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "peiriannydd <peiriannydd@gmail.com>"
+    }
+  }
+}
