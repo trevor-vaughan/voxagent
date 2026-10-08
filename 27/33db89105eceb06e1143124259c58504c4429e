@@ -1,0 +1,24 @@
+internal/gatekit/reportcmp/order.go
+  s_034e1f3e406d67::t_82c5cecb4c8121 60-66,69,73,75,78-82,88,162-169,182,186,191-192,199-216,226-234
+  s_034e1f3e406d67::t_b96d4e7e854b0b 235
+internal/gatekit/reportcmp/order_test.go
+  s_034e1f3e406d67::t_2aa5548ba30612 116-169,190
+cmd/gatekit/main_test.go
+  s_034e1f3e406d67::t_2aa5548ba30612 128,142
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2733db89105eceb06e1143124259c58504c4429e",
+  "prompts": {},
+  "sessions": {
+    "s_034e1f3e406d67": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0859a2f7-4c60-49c9-9cac-35f9cddb88aa",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "peiriannydd <peiriannydd@gmail.com>"
+    }
+  }
+}
