@@ -1,0 +1,29 @@
+README.md
+  s_bc6041f77e1ec2::t_9b96261008476b 277
+cmd/voxagent/agent.go
+  s_bc6041f77e1ec2::t_f0f196a689065c 11-12,33-34,90,108-114,116-118,144
+cmd/voxagent/agent_test.go
+  s_bc6041f77e1ec2::t_9863991cb9b640 14,23,29,55-58,146-150,470-520
+cmd/voxagent/duration.go
+  s_bc6041f77e1ec2::t_03f94a4c655544 1-49
+cmd/voxagent/duration_test.go
+  s_bc6041f77e1ec2::t_0f6a6fa44a7f4f 1-49
+docs/maintainers/apply-spine.md
+  s_bc6041f77e1ec2::t_ed658eea862657 165,272
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "ff4f4ef9bdef24bcfd1d8bd982e653882dd066fc",
+  "prompts": {},
+  "sessions": {
+    "s_bc6041f77e1ec2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d6784fc4-c539-4452-b171-f12026727d11",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "peiriannydd <peiriannydd@gmail.com>"
+    }
+  }
+}
