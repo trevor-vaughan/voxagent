@@ -1,0 +1,24 @@
+internal/puppetapi/client.go
+  s_bc6041f77e1ec2::t_c5c5a9ffca7eb7 41-44,351-354,368-373,376-377
+  s_bc6041f77e1ec2::t_18c58da02c23f0 378
+internal/puppetapi/client_test.go
+  s_bc6041f77e1ec2::t_c5c5a9ffca7eb7 14,574-576
+  s_bc6041f77e1ec2::t_ef53079300c452 164-183,557-573,577-586
+  s_bc6041f77e1ec2::t_8baa5f66a8d137 587
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "c797b1ce39fe7dfa3a654008f6e149f5f1b7b3bb",
+  "prompts": {},
+  "sessions": {
+    "s_bc6041f77e1ec2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d6784fc4-c539-4452-b171-f12026727d11",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "peiriannydd <peiriannydd@gmail.com>"
+    }
+  }
+}
