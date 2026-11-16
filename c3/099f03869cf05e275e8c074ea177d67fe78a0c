@@ -1,0 +1,40 @@
+cmd/voxagent/agent_test.go
+  s_bc6041f77e1ec2::t_55ccf7fe01df15 14,187,281,327-401
+cmd/voxagent/apply.go
+  s_bc6041f77e1ec2::t_3bdab682fd4007 8,27-28,141,148-152,189-196
+  s_bc6041f77e1ec2::t_6486be4e1cbf7d 197
+internal/agent/pluginsync.go
+  s_bc6041f77e1ec2::t_b1a624ba004777 36-39,42-44,56-59,66,70
+internal/agent/run_test.go
+  s_bc6041f77e1ec2::t_6595d8819cf1d9 12,23-30,49-53,65,230-271
+  s_bc6041f77e1ec2::t_07234cca8586bd 272
+internal/puppetapi/client.go
+  s_bc6041f77e1ec2::t_80af4e24515233 19,23,217-230,238-239,242,263-275,278-280,282,285,287,289-290
+internal/agent/run.go
+  s_bc6041f77e1ec2::t_6e44f6bf90642a 26-27,34,71-74,90,103,107,115,118-127,131
+internal/agent/pluginsync_test.go
+  s_bc6041f77e1ec2::t_b1a624ba004777 230,252,276,288,305,328,358,387,408,427,449,470,494,515,541,567,584
+cmd/voxagent/agent.go
+  s_bc6041f77e1ec2::t_3e1b45c5e2c1cd 19,37,87-88,97,109,111,124,129-131,167-219
+  s_bc6041f77e1ec2::t_3d31e78b94f8c1 98
+tests/agent/run.sh
+  s_bc6041f77e1ec2::t_d48ae2fedd1bc5 56-58
+internal/puppetapi/client_test.go
+  s_bc6041f77e1ec2::t_8c06b07e8ceab0 92,619-646
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "c3099f03869cf05e275e8c074ea177d67fe78a0c",
+  "prompts": {},
+  "sessions": {
+    "s_bc6041f77e1ec2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d6784fc4-c539-4452-b171-f12026727d11",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "peiriannydd <peiriannydd@gmail.com>"
+    }
+  }
+}
