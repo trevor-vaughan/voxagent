@@ -1,0 +1,27 @@
+internal/ral/file.go
+  s_bc6041f77e1ec2::t_b6d24516abfa42 46-50,60,185-186,190,193,407,409,414,416
+internal/ral/file_recurse.go
+  s_bc6041f77e1ec2::t_ec7c1000d96c84 36-37,65,72-76,226-231,236,239-251,253,257,260,262-286,288
+internal/ral/file_source.go
+  s_bc6041f77e1ec2::t_2f63565e1da817 35-41,49-52,97,99-100,103-104,108,120-123,182-185
+internal/ral/file_source_test.go
+  s_bc6041f77e1ec2::t_3e75676574d910 9,106,117,136,153,163,180,199,410,495,510,680,684-839
+internal/ral/ral_test.go
+  s_bc6041f77e1ec2::t_2211638944ae4a 5,183-184,190-193
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "bdddd7d3a4f464f0761337f10958bb8f5b053ce9",
+  "prompts": {},
+  "sessions": {
+    "s_bc6041f77e1ec2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d6784fc4-c539-4452-b171-f12026727d11",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "peiriannydd <peiriannydd@gmail.com>"
+    }
+  }
+}
