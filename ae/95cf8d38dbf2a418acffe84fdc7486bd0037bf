@@ -1,0 +1,68 @@
+docs/superpowers/plans/2026-11-16-agent-transport-measurements/tools/decode_http_debug.py
+  s_bc6041f77e1ec2::t_bd725b2d92d608 1-172
+docs/superpowers/specs/2026-11-16-agent-transport-design.md
+  s_bc6041f77e1ec2::t_1dbc94e2ccf291 1-134
+  s_bc6041f77e1ec2::t_884914ac96b0ff 135-147
+docs/superpowers/plans/2026-11-16-agent-transport-measurements/protocol.md
+  s_bc6041f77e1ec2::t_a02fd0dd7a1f42 251-261
+  s_bc6041f77e1ec2::t_a109dd780d7205 153-155
+  s_bc6041f77e1ec2::t_c13f751ba75979 1-152,156-250,262-326
+docs/superpowers/plans/2026-11-16-agent-transport-measurements/README.md
+  s_bc6041f77e1ec2::t_cdaf2bd6fad88a 1-52
+docs/superpowers/plans/2026-11-16-agent-transport-measurements/catalog-static-true-no-code-id.json
+  s_bc6041f77e1ec2::t_7c70605d885b63 1-186
+docs/superpowers/plans/2026-11-16-agent-transport-measurements/compose.versioned-code.yml
+  s_bc6041f77e1ec2::t_a78bc3b6ccfd42 1-8
+docs/superpowers/plans/2026-11-16-agent-transport-measurements/compose.yml
+  s_bc6041f77e1ec2::t_0fd72804993717 1-41
+docs/superpowers/plans/2026-11-16-agent-transport-measurements/fixture/environments/production/manifests/site.pp
+  s_bc6041f77e1ec2::t_23f9e0c8ae9229 1-3
+docs/superpowers/plans/2026-11-16-agent-transport-measurements/fixture/environments/production/modules/vox_probe/facts.d/vox_probe.txt
+  s_bc6041f77e1ec2::t_9f801543b84f7e 1
+docs/superpowers/plans/2026-11-16-agent-transport-measurements/fixture/environments/production/modules/vox_probe/files/tree/a
+  s_bc6041f77e1ec2::t_26cea568a6a0a5 1
+docs/superpowers/plans/2026-11-16-agent-transport-measurements/fixture/environments/production/modules/vox_probe/files/tree/sub/b
+  s_bc6041f77e1ec2::t_03e5a623ddebdf 1
+docs/superpowers/plans/2026-11-16-agent-transport-measurements/fixture/environments/production/modules/vox_probe/files/x
+  s_bc6041f77e1ec2::t_bd393eb33a8782 1
+docs/superpowers/plans/2026-11-16-agent-transport-measurements/fixture/environments/production/modules/vox_probe/lib/puppet/provider/vox_marker/ruby.rb
+  s_bc6041f77e1ec2::t_d450ac6befd82c 1-15
+docs/superpowers/plans/2026-11-16-agent-transport-measurements/fixture/environments/production/modules/vox_probe/lib/puppet/type/vox_marker.rb
+  s_bc6041f77e1ec2::t_5ce408f6845695 1-8
+docs/superpowers/plans/2026-11-16-agent-transport-measurements/fixture/environments/production/modules/vox_probe/manifests/init.pp
+  s_bc6041f77e1ec2::t_eee7adcba0ddf7 1-25
+docs/superpowers/plans/2026-11-16-agent-transport-measurements/fixture/server/code-content.sh
+  s_bc6041f77e1ec2::t_6609b3e2a4b050 1-8
+docs/superpowers/plans/2026-11-16-agent-transport-measurements/fixture/server/code-id.sh
+  s_bc6041f77e1ec2::t_6262e4867de2c0 1-5
+docs/superpowers/plans/2026-11-16-agent-transport-measurements/fixture/server/request-logging.xml
+  s_bc6041f77e1ec2::t_303cf3f78e5597 1-18
+docs/superpowers/plans/2026-11-16-agent-transport-measurements/fixture/server/versioned-code.conf
+  s_bc6041f77e1ec2::t_107126bec0c0b7 1-6
+docs/superpowers/plans/2026-11-16-agent-transport-measurements/.gitignore
+  s_bc6041f77e1ec2::t_5293084197d1ec 1
+docs/superpowers/plans/2026-11-16-agent-transport-measurements/catalog-static-false-with-code-id.json
+  s_bc6041f77e1ec2::t_5c4f1c5b04270c 1
+docs/superpowers/plans/2026-11-16-agent-transport-measurements/catalog-static-true-with-code-id.json
+  s_bc6041f77e1ec2::t_cb624c51acf921 1-294
+docs/superpowers/plans/2026-11-16-agent-transport-measurements/facts-catalog-request-sample.json
+  s_bc6041f77e1ec2::t_8876f9a4b99f4a 1-71
+docs/superpowers/plans/2026-11-16-agent-transport-measurements/report-run1.json
+  s_bc6041f77e1ec2::t_3b41b909c1697a 1-3315
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "ae95cf8d38dbf2a418acffe84fdc7486bd0037bf",
+  "prompts": {},
+  "sessions": {
+    "s_bc6041f77e1ec2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d6784fc4-c539-4452-b171-f12026727d11",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "peiriannydd <peiriannydd@gmail.com>"
+    }
+  }
+}
