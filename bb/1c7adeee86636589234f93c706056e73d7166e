@@ -1,0 +1,19 @@
+docs/superpowers/specs/2026-11-16-agent-transport-design.md
+  s_bc6041f77e1ec2::t_88df8dad0483f1 148-165
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "bb1c7adeee86636589234f93c706056e73d7166e",
+  "prompts": {},
+  "sessions": {
+    "s_bc6041f77e1ec2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d6784fc4-c539-4452-b171-f12026727d11",
+        "model": "unknown"
+      },
+      "human_author": "peiriannydd <peiriannydd@gmail.com>"
+    }
+  }
+}
