@@ -1,0 +1,36 @@
+internal/report/report.go
+  s_bc6041f77e1ec2::t_ce6c50407ca566 185-228
+  s_bc6041f77e1ec2::t_09a6e6c9bed391 467,469-475,477-478,480,486
+  s_bc6041f77e1ec2::t_e85013f815a703 443-445,452-453,479,481,489
+internal/report/report_test.go
+  s_bc6041f77e1ec2::t_e53f222b85a031 473-519
+  s_bc6041f77e1ec2::t_6934ef8d95deb0 8
+internal/agent/run.go
+  s_bc6041f77e1ec2::t_1e692de737b1b8 103-106
+  s_bc6041f77e1ec2::t_5a8e273cf5043a 12,29,37-44,50-51,57,78-84,101-102,107-111,116,134,138,147,170,183
+cmd/voxagent/agent_test.go
+  s_bc6041f77e1ec2::t_40e483abc2ca9b 332-354
+cmd/voxagent/agent.go
+  s_bc6041f77e1ec2::t_bc5a042073123d 105-108,115,129
+cmd/voxagent/apply.go
+  s_bc6041f77e1ec2::t_bc5a042073123d 9,11,30-31,39,114-118,149-154
+  s_bc6041f77e1ec2::t_24f48c807e77ff 155
+internal/agent/run_test.go
+  s_bc6041f77e1ec2::t_bb1711676554d4 257-296
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "90da0d10e49e84ff9983b224cd0a68635db33e17",
+  "prompts": {},
+  "sessions": {
+    "s_bc6041f77e1ec2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d6784fc4-c539-4452-b171-f12026727d11",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "peiriannydd <peiriannydd@gmail.com>"
+    }
+  }
+}
