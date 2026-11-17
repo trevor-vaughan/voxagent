@@ -1,0 +1,28 @@
+tests/spine/report-diff-container.sh
+  s_35804f30d17a2b::t_203ded8329a90a 61
+tests/spine/report-diff-simp.sh
+  s_35804f30d17a2b::t_203ded8329a90a 79
+docs/maintainers/apply-spine.md
+  s_35804f30d17a2b::t_dc397aad2e0111 974-980
+tests/spine/state-diff.sh
+  s_35804f30d17a2b::t_203ded8329a90a 51
+  s_35804f30d17a2b::t_ee052301b556b3 42-45
+tests/spine/report-diff-systemd.sh
+  s_35804f30d17a2b::t_203ded8329a90a 49
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "86e2410910f34abd4a13dabc97504d9fd116503b",
+  "prompts": {},
+  "sessions": {
+    "s_35804f30d17a2b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "26a45295-a3e5-4a10-b1c5-f1f75284d55c",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "peiriannydd <peiriannydd@gmail.com>"
+    }
+  }
+}
