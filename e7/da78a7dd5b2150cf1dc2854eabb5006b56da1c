@@ -1,0 +1,41 @@
+internal/ral/package_test.go
+  s_35804f30d17a2b::t_14937e56da246d 1873-1900
+internal/ral/package.go
+  s_35804f30d17a2b::t_8a1000cb9be504 582-583,593-596
+internal/ral/exec.go
+  s_35804f30d17a2b::t_796f47ca446ef6 749,759,767,780,791
+  s_35804f30d17a2b::t_43880d50f4cf59 469-471,473-475,477,748
+internal/ral/exec_test.go
+  s_35804f30d17a2b::t_ea841f772ca67a 1437-1445
+internal/ral/file_sensitive_test.go
+  s_35804f30d17a2b::t_0d4527309312d7 8,215-272
+  s_35804f30d17a2b::t_3abc8283e130d5 273-295
+internal/ral/file_link.go
+  s_35804f30d17a2b::t_3abc8283e130d5 170-173
+  s_35804f30d17a2b::t_9058edec5ada01 8
+internal/ral/check.go
+  s_35804f30d17a2b::t_8a1000cb9be504 85
+  s_35804f30d17a2b::t_bd17f556930209 4,84
+internal/ral/file_recurse.go
+  s_35804f30d17a2b::t_50fc513400a825 56,66,142-145,155-162,175,179,184,194,206-207
+internal/ral/preflight.go
+  s_35804f30d17a2b::t_bd17f556930209 48-50,58,75
+internal/ral/preflight_test.go
+  s_35804f30d17a2b::t_bd17f556930209 526-543
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "e7da78a7dd5b2150cf1dc2854eabb5006b56da1c",
+  "prompts": {},
+  "sessions": {
+    "s_35804f30d17a2b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "26a45295-a3e5-4a10-b1c5-f1f75284d55c",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "peiriannydd <peiriannydd@gmail.com>"
+    }
+  }
+}
