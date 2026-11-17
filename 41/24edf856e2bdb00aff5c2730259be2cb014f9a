@@ -1,0 +1,24 @@
+internal/ral/exec_test.go
+  s_35804f30d17a2b::t_b5f3cf39601e0d 1626,1628,1632-1633
+  s_35804f30d17a2b::t_44dad3544503ba 1634
+internal/transaction/transaction_test.go
+  s_35804f30d17a2b::t_0bb015ec90a4a0 3295-3297,3302,3304-3308,3327,3330-3332
+internal/transaction/transaction.go
+  s_35804f30d17a2b::t_3b9eb24ac091e0 858-867
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "4124edf856e2bdb00aff5c2730259be2cb014f9a",
+  "prompts": {},
+  "sessions": {
+    "s_35804f30d17a2b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "26a45295-a3e5-4a10-b1c5-f1f75284d55c",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "peiriannydd <peiriannydd@gmail.com>"
+    }
+  }
+}
