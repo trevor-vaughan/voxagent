@@ -1,0 +1,133 @@
+.taskfiles/dev.yml
+  s_e3f859ac282ab5::t_0b36d5693dca45 55,189-199
+README.md
+  s_e3f859ac282ab5::t_e6476a8ac1b577 16,19-21,237-367
+cmd/voxagent/agent.go
+  s_e3f859ac282ab5::t_452bdd43fd6d69 1-238
+cmd/voxagent/agent_test.go
+  s_e3f859ac282ab5::t_f546404b935ced 1-709
+cmd/voxagent/apply.go
+  s_e3f859ac282ab5::t_e3740f0ba4bb5d 1-215
+cmd/voxagent/duration.go
+  s_e3f859ac282ab5::t_28786d1c73954d 1-49
+cmd/voxagent/duration_test.go
+  s_e3f859ac282ab5::t_64ed09298cecec 1-49
+cmd/voxagent/main.go
+  s_e3f859ac282ab5::t_8d0dc00115515f 1-2,24-30,32-37,87-92
+docs/maintainers/agent-transport.md
+  s_e3f859ac282ab5::t_44d94c37c3fae2 1-104
+docs/maintainers/apply-spine.md
+  s_e3f859ac282ab5::t_da3c53a375bcdd 152-170,275,697
+internal/agent/confine.go
+  s_e3f859ac282ab5::t_d19304f447bdb4 1-124
+internal/agent/confine_test.go
+  s_e3f859ac282ab5::t_3e4a6bdefaa740 1-151
+internal/agent/facts.go
+  s_e3f859ac282ab5::t_76d5196669d26f 1-155
+internal/agent/facts_test.go
+  s_e3f859ac282ab5::t_96b67b3dc25887 1-182
+internal/agent/pluginsync.go
+  s_e3f859ac282ab5::t_34cee552821fd9 1-350
+internal/agent/pluginsync_test.go
+  s_e3f859ac282ab5::t_1032da0199f734 1-647
+internal/agent/run.go
+  s_e3f859ac282ab5::t_1827b8eb6876d0 1-204
+internal/agent/run_test.go
+  s_e3f859ac282ab5::t_8ff8127c2e8807 1-439
+internal/agent/sources.go
+  s_e3f859ac282ab5::t_4d8e53410307c5 1-244
+internal/agent/sources_test.go
+  s_e3f859ac282ab5::t_c94c47a99bf6aa 1-532
+internal/agent/ssl.go
+  s_e3f859ac282ab5::t_6afad6cb5b6d35 1-780
+internal/agent/ssl_test.go
+  s_e3f859ac282ab5::t_64685464f1dcce 1-809
+internal/agent/testdata/facter-argv.sh
+  s_e3f859ac282ab5::t_2e561546165e0c 1-5
+internal/agent/testdata/facter-basic.sh
+  s_e3f859ac282ab5::t_e60615497c8e82 1-3
+internal/agent/testdata/facter-env.sh
+  s_e3f859ac282ab5::t_2fa23ff74d9af3 1-6
+internal/agent/testdata/facter-escfail.sh
+  s_e3f859ac282ab5::t_cc391dfd614997 1-3
+internal/agent/testdata/facter-fail.sh
+  s_e3f859ac282ab5::t_cb324117444da9 1-3
+internal/agent/testdata/facter-huge.sh
+  s_e3f859ac282ab5::t_c7d0731cf47775 1-5
+internal/agent/testdata/facter-noisy.sh
+  s_e3f859ac282ab5::t_758612746b2a2f 1-4
+internal/agent/testdata/facter-notjson.sh
+  s_e3f859ac282ab5::t_907c47fde8ff62 1-2
+internal/agent/testdata/facter-null.sh
+  s_e3f859ac282ab5::t_4d8b8fa5a8b10e 1-2
+internal/gatekit/reportcmp/cachingcatalog_test.go
+  s_e3f859ac282ab5::t_f0c712677474c7 1-57
+internal/gatekit/reportcmp/compare.go
+  s_e3f859ac282ab5::t_58bd319a385c0e 321
+internal/gatekit/reportcmp/normalise.go
+  s_e3f859ac282ab5::t_467200424d1f21 324-348
+internal/puppetapi/client.go
+  s_e3f859ac282ab5::t_48e1b867c84c79 1-539
+internal/puppetapi/client_test.go
+  s_e3f859ac282ab5::t_e58fa7d1bfe4d0 1-698
+internal/puppetapi/tls.go
+  s_e3f859ac282ab5::t_bca10d5db3df98 1-261
+internal/puppetapi/tls_test.go
+  s_e3f859ac282ab5::t_9dbea3ba45aaec 1-533
+internal/ral/file.go
+  s_e3f859ac282ab5::t_bdf382d8ae84f8 46-50,60,185-186,190,193,407,409,414,416
+internal/ral/file_recurse.go
+  s_e3f859ac282ab5::t_760d512649da52 36-37,65,72-76,226-231,236,239-251,253,257,260,262-286,288
+internal/ral/file_source.go
+  s_e3f859ac282ab5::t_0dc7983e8684a2 35-41,49-52,97,99-100,103-104,108,120-123,164-173,192-195,199,220,228,233,285
+internal/ral/file_source_test.go
+  s_e3f859ac282ab5::t_2705a2bbdc9484 9,106,117,136,153,163,180,199,410,495,510,680,684-876
+internal/ral/ral_test.go
+  s_e3f859ac282ab5::t_80a6dfea73598c 5,183-184,190-193
+internal/report/report.go
+  s_e3f859ac282ab5::t_e8a4bf3398c3a6 185-228,293,360-368,451-453,460-461,475,477-483,485-489,494,497,502,517-519,527,552,555
+internal/report/report_test.go
+  s_e3f859ac282ab5::t_2ed1c836e44a73 8,473-519,666-685
+tests/agent/allowlist.json
+  s_e3f859ac282ab5::t_8864bb617664a7 1-47
+tests/agent/compose.yml
+  s_e3f859ac282ab5::t_4e26ec8300b061 1-61
+tests/agent/fixture/environments/production/manifests/site.pp
+  s_e3f859ac282ab5::t_78eea9af9cf63c 1-3
+tests/agent/fixture/environments/production/modules/vox_probe/facts.d/vox_probe.txt
+  s_e3f859ac282ab5::t_50e490697cf19f 1
+tests/agent/fixture/environments/production/modules/vox_probe/files/tree/a
+  s_e3f859ac282ab5::t_25554b9eac8d5a 1
+tests/agent/fixture/environments/production/modules/vox_probe/files/tree/sub/b
+  s_e3f859ac282ab5::t_06a8aa7bae9a57 1
+tests/agent/fixture/environments/production/modules/vox_probe/files/x
+  s_e3f859ac282ab5::t_0581041606c07f 1
+tests/agent/fixture/environments/production/modules/vox_probe/lib/facter/vox_fact.rb
+  s_e3f859ac282ab5::t_90717aec9c41b3 1-5
+tests/agent/fixture/environments/production/modules/vox_probe/lib/puppet/provider/vox_marker/ruby.rb
+  s_e3f859ac282ab5::t_52a377f1c774bf 1-15
+tests/agent/fixture/environments/production/modules/vox_probe/lib/puppet/type/vox_marker.rb
+  s_e3f859ac282ab5::t_1ab824aeb8a5c7 1-8
+tests/agent/fixture/environments/production/modules/vox_probe/manifests/init.pp
+  s_e3f859ac282ab5::t_4bc103f09a15a7 1-27
+tests/agent/fixture/server/request-logging.xml
+  s_e3f859ac282ab5::t_23507603835902 1-18
+tests/agent/run.sh
+  s_e3f859ac282ab5::t_2ddfe02d268e64 1-283
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "1af7015928644a97988ce5c1bb9bdd09b88dd033",
+  "prompts": {},
+  "sessions": {
+    "s_e3f859ac282ab5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "687ac0e7-60a4-46e8-81fa-ff2f7a80f52f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "peiriannydd <peiriannydd@gmail.com>"
+    }
+  }
+}
