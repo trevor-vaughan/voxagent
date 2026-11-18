@@ -1,0 +1,115 @@
+.taskfiles/dev.yml
+  s_e3f859ac282ab5::t_da3af714969be4 22-24,104-112
+README.md
+  s_e3f859ac282ab5::t_3cd97d92c9ffc2 33-35,70-116,128,136-138,149-151
+cmd/voxagent/extension.go
+  s_e3f859ac282ab5::t_4fbce88d121331 1-144
+cmd/voxagent/extension_test.go
+  s_e3f859ac282ab5::t_045cfdf54b7b2c 1-180
+cmd/voxagent/main.go
+  s_e3f859ac282ab5::t_5f4888cba223d8 15,19,26,45-49,70-79,93-110,115,121-124,126-127,134-145,150,156,168,175-180,184-196,210,214
+internal/extension/env_test.go
+  s_e3f859ac282ab5::t_f5a9e6309ff1ff 1-25
+internal/extension/extensiontest/ruby.go
+  s_e3f859ac282ab5::t_8bd7c9f5f5f446 1-54
+internal/extension/frame.go
+  s_e3f859ac282ab5::t_baa916c6fc0dbe 1-54
+internal/extension/frame_test.go
+  s_e3f859ac282ab5::t_aea8152d089116 1-76
+internal/extension/host.rb
+  s_e3f859ac282ab5::t_ac438f9d15e33d 1-423
+internal/extension/host_test.go
+  s_e3f859ac282ab5::t_7147e7266312e3 1-408
+internal/extension/ruby_test.go
+  s_e3f859ac282ab5::t_50b6c1e3880145 1-326
+internal/extension/script_test.go
+  s_e3f859ac282ab5::t_48e645973339b7 1-58
+internal/extension/strict.go
+  s_e3f859ac282ab5::t_4275d5c7592e83 1-172
+internal/extension/strict_test.go
+  s_e3f859ac282ab5::t_baf93114aba80c 1-162
+internal/extension/testdata/libdir/puppet/provider/vox_conf/never.rb
+  s_e3f859ac282ab5::t_c7811660b007ff 1-10
+internal/extension/testdata/libdir/puppet/provider/vox_die/kill.rb
+  s_e3f859ac282ab5::t_d4d5f806d82530 1-11
+internal/extension/testdata/libdir/puppet/provider/vox_prefetch/bad.rb
+  s_e3f859ac282ab5::t_4e513e0dba44fd 1-12
+internal/extension/testdata/libdir/puppet/provider/vox_prefetch/good.rb
+  s_e3f859ac282ab5::t_8d18e0bb38b028 1-18
+internal/extension/testdata/libdir/puppet/provider/vox_value/file.rb
+  s_e3f859ac282ab5::t_620b330b2fc1e0 1-29
+internal/extension/testdata/libdir/puppet/type/vox_conf.rb
+  s_e3f859ac282ab5::t_9a52967fb21421 1-8
+internal/extension/testdata/libdir/puppet/type/vox_die.rb
+  s_e3f859ac282ab5::t_0bc2d85afd0b0a 1-7
+internal/extension/testdata/libdir/puppet/type/vox_gen.rb
+  s_e3f859ac282ab5::t_411003a760dffd 1-13
+internal/extension/testdata/libdir/puppet/type/vox_prefetch.rb
+  s_e3f859ac282ab5::t_58679874ea782e 1-9
+internal/extension/testdata/libdir/puppet/type/vox_rapi.rb
+  s_e3f859ac282ab5::t_d46fefdcb99d31 1-7
+internal/extension/testdata/libdir/puppet/type/vox_value.rb
+  s_e3f859ac282ab5::t_d9bb84eb62aca7 1-22
+internal/ral/evaluator.go
+  s_e3f859ac282ab5::t_1348b5fdf9a754 1-106
+internal/ral/extension_test.go
+  s_e3f859ac282ab5::t_59e638f1177add 1-151
+internal/ral/file.go
+  s_e3f859ac282ab5::t_78ca52a7e633bb 109-124,128-137
+internal/ral/file_test.go
+  s_e3f859ac282ab5::t_24de43801711ce 3627-3653
+internal/report/report.go
+  s_e3f859ac282ab5::t_92551c52c31681 88-93,299-310,319-321,418-426
+internal/report/report_test.go
+  s_e3f859ac282ab5::t_deb90d58f15209 421-424,439,443,608-617
+internal/transaction/build.go
+  s_e3f859ac282ab5::t_b34a2ef55a4e89 99-103,106-109,136-143,145-146,148-149,151-180
+internal/transaction/build_test.go
+  s_e3f859ac282ab5::t_129efa5d7f604b 9,489-605
+internal/transaction/evaluator_test.go
+  s_e3f859ac282ab5::t_4ef73effedc98e 1-343
+internal/transaction/transaction.go
+  s_e3f859ac282ab5::t_aca9d7c1d74bc4 276-309,330-341,356-359,364,409-433,435-502,508,510-511,513-524,526-531,557,559,567-568,593-685,687-699,743
+scripts/run-tests.sh
+  s_e3f859ac282ab5::t_fc6eb54ff1c3a0 28-32
+tests/spine/allowlist.json
+  s_e3f859ac282ab5::t_56db60955bb571 12,38-44,80-84
+tests/spine/report-diff-extension.sh
+  s_e3f859ac282ab5::t_91fdcc6d0b6c03 1-239
+Taskfile.yml
+  s_e3f859ac282ab5::t_186a6a0487d6d1 50
+docs/maintainers/apply-spine.md
+  s_e3f859ac282ab5::t_d253a95ad048b0 129-134,530,643-645,764-769
+docs/maintainers/extension-host.md
+  s_e3f859ac282ab5::t_87127ed55a1745 1-367
+docs/maintainers/improvements.md
+  s_e3f859ac282ab5::t_41c59035ef6821 37
+internal/extension/doc.go
+  s_e3f859ac282ab5::t_d750b306662f67 1-11
+internal/extension/env.go
+  s_e3f859ac282ab5::t_7f923a14965965 1-25
+internal/extension/host.go
+  s_e3f859ac282ab5::t_5023087bce99c4 1-431
+internal/extension/messages.go
+  s_e3f859ac282ab5::t_bd03c10add14c7 1-121
+internal/extension/script.go
+  s_e3f859ac282ab5::t_2eba528dd14501 1-79
+internal/ral/extension.go
+  s_e3f859ac282ab5::t_e6622db863ab0a 1-166
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "7ef9c58a02b92fd78a82c4334e60f4249a1d9f18",
+  "prompts": {},
+  "sessions": {
+    "s_e3f859ac282ab5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "687ac0e7-60a4-46e8-81fa-ff2f7a80f52f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "peiriannydd <peiriannydd@gmail.com>"
+    }
+  }
+}
