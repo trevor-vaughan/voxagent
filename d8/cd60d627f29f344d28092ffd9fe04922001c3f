@@ -1,0 +1,83 @@
+README.md
+  s_e3f859ac282ab5::t_9bf399a774f184 19-21,34-39
+cmd/voxagent/main.go
+  s_e3f859ac282ab5::t_737d7febb105c4 74-76
+cmd/voxagent/main_test.go
+  s_e3f859ac282ab5::t_c2ffff922c2798 9,163,170,753-956
+docs/maintainers/apply-spine.md
+  s_e3f859ac282ab5::t_1738de858cf638 94-95,113-117,191-201,209,361-371,921-923,935-939,992-1053
+docs/maintainers/performance.md
+  s_e3f859ac282ab5::t_b88bc93ac9cfa8 149-282
+internal/catalog/catalog.go
+  s_e3f859ac282ab5::t_be47a418140f15 26-32,46-50
+internal/catalog/catalog_test.go
+  s_e3f859ac282ab5::t_4e02f1e8546a33 86-100
+internal/ral/exec.go
+  s_e3f859ac282ab5::t_f467ca04c79e2a 425-427,447
+internal/ral/exec_test.go
+  s_e3f859ac282ab5::t_c3a9b3f41cb5cf 9,11,736-774
+internal/ral/exec_unix.go
+  s_e3f859ac282ab5::t_32162e38de65af 15-16
+internal/ral/file.go
+  s_e3f859ac282ab5::t_4219d2827f13d0 6,8-9,20,22-23,30-33,35-41,84-86,94-99,101-111,113,116-119,130-134,136-137,139-156,160-235,241,244,251,253,282-283,296-297,308-310,323-340,360,383-385,399,407-409,411,413-414,416,418,439-442,444-445,448,458-466,482,486-491,494-496,499-500,506,523,526,529,533,544-549,567,570,572,584,629,648,686-732,742,756,760-766,773,787,792-796,799,801,803,903,910,993,1028,1111-1157,1160-1172,1174-1183,1187,1201,1224-1225,1229-1231,1233-1239,1249,1253-1254,1264,1267-1273,1275-1277,1282-1287,1290-1291
+internal/ral/file_fs.go
+  s_e3f859ac282ab5::t_50458a36ae2979 1-255
+internal/ral/file_fs_test.go
+  s_e3f859ac282ab5::t_ec9945d7ec0674 1-192
+internal/ral/file_recurse.go
+  s_e3f859ac282ab5::t_ca9b971116b525 1-220
+internal/ral/file_recurse_test.go
+  s_e3f859ac282ab5::t_c647b0edd27d58 1-541
+internal/ral/file_source.go
+  s_e3f859ac282ab5::t_88aefe2721d285 1-248
+internal/ral/file_source_test.go
+  s_e3f859ac282ab5::t_94001b14c1d405 1-553
+internal/ral/file_test.go
+  s_e3f859ac282ab5::t_ffa10fdd30e0be 259-265,650-766,1105,2447-2619
+internal/ral/file_unix.go
+  s_e3f859ac282ab5::t_f5638d47c5c674 14-15
+internal/ral/fileoutput.go
+  s_e3f859ac282ab5::t_b9b5650713dbaf 21-33,36-37,46-54
+internal/ral/generate.go
+  s_e3f859ac282ab5::t_0106e51fc3c9cd 1-39
+internal/ral/preflight.go
+  s_e3f859ac282ab5::t_33e8023143b5ba 27-39,98-101,123-128,136-139,143-174
+internal/ral/preflight_test.go
+  s_e3f859ac282ab5::t_e06b0a4fa1c8b7 194,212-213,322-364
+internal/ral/ral.go
+  s_e3f859ac282ab5::t_1e38d8f623b9fd 72-77
+internal/ral/validate.go
+  s_e3f859ac282ab5::t_6fdb9e1d0938a8 4-5,27-28,45-57,74
+internal/ral/validate_test.go
+  s_e3f859ac282ab5::t_56da1c5e76db47 4,65-92
+internal/report/report.go
+  s_e3f859ac282ab5::t_76d61da9335f3d 96-101,168-174,193-208,413
+internal/report/report_test.go
+  s_e3f859ac282ab5::t_496754e881b89f 550-601
+internal/transaction/transaction.go
+  s_e3f859ac282ab5::t_8d5e59bbe2ec8e 6-7,30-37,39-50,53,58-71,82,87-97,99-143,145-146,148-209,211-229,231-233,235-261,263-296,298-317,319-327,329-334,336-357,359-371,373-380,382-396,398-418,421-442,444-476,478-480,482-534,536-537,539-582,585-590,592-596,599,601-621,623,625-629,631-634,636-674,676-693,695-722,724-736,738-741,743-750,752-784,884-920
+internal/transaction/transaction_test.go
+  s_e3f859ac282ab5::t_3db77e7b75ee4a 5,165-172,2107-2658
+tests/spine/idempotence.sh
+  s_e3f859ac282ab5::t_94bcb7da736b67 39-53,70-84
+tests/spine/report-diff-systemd.sh
+  s_e3f859ac282ab5::t_9b8604a75b662a 370-372
+tests/spine/report-diff.sh
+  s_e3f859ac282ab5::t_95f1800b42f7f8 50-56,85-96,114-136
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "d8cd60d627f29f344d28092ffd9fe04922001c3f",
+  "prompts": {},
+  "sessions": {
+    "s_e3f859ac282ab5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "687ac0e7-60a4-46e8-81fa-ff2f7a80f52f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "peiriannydd <peiriannydd@gmail.com>"
+    }
+  }
+}

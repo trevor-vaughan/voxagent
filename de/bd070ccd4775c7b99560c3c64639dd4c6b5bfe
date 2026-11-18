@@ -1,0 +1,475 @@
+.gitignore
+  s_e3f859ac282ab5::t_a3b5ed69aba620 6
+.taskfiles/dev.yml
+  s_e3f859ac282ab5::t_35bba5a7149fde 21,26,51,144-145
+.taskfiles/fleet.yml
+  s_e3f859ac282ab5::t_785b01bd15ccd4 40-42
+cmd/gatekit/fleet.go
+  s_e3f859ac282ab5::t_a3093ae5c37b1e 1-100
+cmd/gatekit/fleet_test.go
+  s_e3f859ac282ab5::t_31af6877a6a298 1-104
+docs/maintainers/apply-spine.md
+  s_e3f859ac282ab5::t_c5cfb22d729b45 99,337-386,395,476-477,501-533,548,682-684,813-817,846,881-882,975,992-1008,1089
+docs/maintainers/fleet.md
+  s_e3f859ac282ab5::t_a50260a237881a 132-170,312-348
+fleet/bin/gate-axes.sh
+  s_e3f859ac282ab5::t_1acfb416ec4379 79-82,133-136
+fleet/bin/gate-common.sh
+  s_e3f859ac282ab5::t_0a0578a7ff4ae2 94-154,446,448-449,459,467-469
+fleet/bin/gate-compliance-negative.sh
+  s_e3f859ac282ab5::t_05cb36323dc8b6 113-114,126-129,288-290
+fleet/bin/gate-compliance.sh
+  s_e3f859ac282ab5::t_daada0985e9754 79-82,126-129
+fleet/bin/gate-determinism-negative.sh
+  s_e3f859ac282ab5::t_a2a4def381081b 62-66,163-166,264-266
+fleet/bin/gate-exports.sh
+  s_e3f859ac282ab5::t_844a3f6cf5464f 72-78
+fleet/bin/gate-implementations.sh
+  s_e3f859ac282ab5::t_06f738476d3e18 77-80,168-171,173,188-198
+fleet/tests/adjudication.sh
+  s_e3f859ac282ab5::t_5914263365e0a4 5-11,99-101,237-239
+internal/compile/runner.go
+  s_e3f859ac282ab5::t_221a74a8d9b220 61,64,68
+internal/compile/runner_test.go
+  s_e3f859ac282ab5::t_6d6f23a7370705 16,18,21,27,29,32,37-38,44,46,49,53,60,62,65
+internal/gatekit/fleet/catalog.go
+  s_e3f859ac282ab5::t_1d49692a1a5f65 1-226
+internal/gatekit/fleet/certs.go
+  s_e3f859ac282ab5::t_6831184d875ee6 1-155
+internal/gatekit/fleet/certs_test.go
+  s_e3f859ac282ab5::t_ab41ff18693c66 1-223
+internal/gatekit/fleet/golden_test.go
+  s_e3f859ac282ab5::t_d26fdee13db536 1-155
+internal/gatekit/fleet/ops.go
+  s_e3f859ac282ab5::t_b2357236b95216 1-131
+internal/gatekit/fleet/ops_test.go
+  s_e3f859ac282ab5::t_45d62161403236 1-134
+internal/gatekit/fleet/testdata/catalogs/axes-brace-in-notice.txt
+  s_e3f859ac282ab5::t_eedace6f716315 1-2
+internal/gatekit/fleet/testdata/catalogs/axes-corrupt-byte-in-compared-message.txt
+  s_e3f859ac282ab5::t_72ae722f291639 1-2
+internal/gatekit/fleet/testdata/catalogs/axes-corrupt-byte-in-structure.txt
+  s_e3f859ac282ab5::t_bce22edc05febe 1-2
+internal/gatekit/fleet/testdata/catalogs/axes-corrupt-byte-not-compared.txt
+  s_e3f859ac282ab5::t_abbabcf7562d75 1-2
+internal/gatekit/fleet/testdata/catalogs/axes-deb-against-el.txt
+  s_e3f859ac282ab5::t_f33adc7b5b3b2e 1-2
+internal/gatekit/fleet/testdata/catalogs/axes-deb.txt
+  s_e3f859ac282ab5::t_be814620d69c4a 1-2
+internal/gatekit/fleet/testdata/catalogs/axes-el-against-alt.txt
+  s_e3f859ac282ab5::t_aa08b14bc7a6f2 1-2
+internal/gatekit/fleet/testdata/catalogs/axes-el-alt.txt
+  s_e3f859ac282ab5::t_70233fdb3dd2d9 1-2
+internal/gatekit/fleet/testdata/catalogs/axes-el.txt
+  s_e3f859ac282ab5::t_2710bf341a21c0 1-2
+internal/gatekit/fleet/testdata/catalogs/axes-indented-object.txt
+  s_e3f859ac282ab5::t_a13371b84159f7 1-2
+internal/gatekit/fleet/testdata/catalogs/axes-message-absent.txt
+  s_e3f859ac282ab5::t_853332ddb6fafd 1-2
+internal/gatekit/fleet/testdata/catalogs/axes-message-changed.txt
+  s_e3f859ac282ab5::t_f2b086deb49b64 1-2
+internal/gatekit/fleet/testdata/catalogs/axes-message-number.txt
+  s_e3f859ac282ab5::t_f56fa51d05bfa6 1-2
+internal/gatekit/fleet/testdata/catalogs/axes-message-params-list.txt
+  s_e3f859ac282ab5::t_74cfee5c9ba2bd 1-2
+internal/gatekit/fleet/testdata/catalogs/axes-message-twice-last-wins.txt
+  s_e3f859ac282ab5::t_845f1edf0a2022 1-2
+internal/gatekit/fleet/testdata/catalogs/axes-no-json-line.txt
+  s_e3f859ac282ab5::t_5a3aa35da24856 1-2
+internal/gatekit/fleet/testdata/catalogs/axes-package-extra.txt
+  s_e3f859ac282ab5::t_17c43c3ba0fb93 1-2
+internal/gatekit/fleet/testdata/catalogs/axes-package-params-list.txt
+  s_e3f859ac282ab5::t_3f5d45833ff74f 1-2
+internal/gatekit/fleet/testdata/catalogs/axes-package-title-number.txt
+  s_e3f859ac282ab5::t_d17a14b25b32d4 1-2
+internal/gatekit/fleet/testdata/catalogs/axes-resource-not-object.txt
+  s_e3f859ac282ab5::t_2fb87ca341dea2 1-2
+internal/gatekit/fleet/testdata/catalogs/axes-resources-absent.txt
+  s_e3f859ac282ab5::t_ea4bd5482eb3b1 1-2
+internal/gatekit/fleet/testdata/catalogs/axes-resources-object.txt
+  s_e3f859ac282ab5::t_4e67a176f4b4e5 1-2
+internal/gatekit/fleet/testdata/catalogs/axes-tier-absent.txt
+  s_e3f859ac282ab5::t_24e9f54a0cf118 1-2
+internal/gatekit/fleet/testdata/catalogs/axes-tier-content-null.txt
+  s_e3f859ac282ab5::t_3d39984c167018 1-2
+internal/gatekit/fleet/testdata/catalogs/axes-tier-content-number.txt
+  s_e3f859ac282ab5::t_5551090bdb3cca 1-2
+internal/gatekit/fleet/testdata/catalogs/axes-tier-content-padded.txt
+  s_e3f859ac282ab5::t_d8cdcc05370353 1-2
+internal/gatekit/fleet/testdata/catalogs/axes-top-level-list.txt
+  s_e3f859ac282ab5::t_216e542d7417f1 1-2
+internal/gatekit/fleet/testdata/catalogs/axes-trailing-data.txt
+  s_e3f859ac282ab5::t_448d72ef5c07f3 1-4
+internal/gatekit/fleet/testdata/catalogs/axes-truncated.txt
+  s_e3f859ac282ab5::t_5644b74f4822aa 1-2
+internal/gatekit/fleet/testdata/catalogs/compliance-enforced.txt
+  s_e3f859ac282ab5::t_331eb77abe0656 1-2
+internal/gatekit/fleet/testdata/catalogs/compliance-first-wins.txt
+  s_e3f859ac282ab5::t_278600a82c9e01 1-2
+internal/gatekit/fleet/testdata/catalogs/compliance-marker-absent.txt
+  s_e3f859ac282ab5::t_d5aa446917d054 1-2
+internal/gatekit/fleet/testdata/catalogs/compliance-message-false.txt
+  s_e3f859ac282ab5::t_fbaba3ea590f02 1-2
+internal/gatekit/fleet/testdata/catalogs/compliance-message-null.txt
+  s_e3f859ac282ab5::t_219abe4ef7c657 1-2
+internal/gatekit/fleet/testdata/catalogs/compliance-no-json-line.txt
+  s_e3f859ac282ab5::t_f5de44f978ebf6 1
+internal/gatekit/fleet/testdata/catalogs/compliance-other-value.txt
+  s_e3f859ac282ab5::t_9bf4e424961dda 1-2
+internal/gatekit/fleet/testdata/catalogs/compliance-params-absent.txt
+  s_e3f859ac282ab5::t_95841776cebbc4 1-2
+internal/gatekit/fleet/testdata/catalogs/compliance-params-list.txt
+  s_e3f859ac282ab5::t_a7c9621337b852 1-2
+internal/gatekit/fleet/testdata/catalogs/compliance-unenforced.txt
+  s_e3f859ac282ab5::t_e56400f2f9ec11 1-2
+internal/gatekit/fleet/testdata/facts/exactly-twenty.json
+  s_e3f859ac282ab5::t_3a97735c17f780 1
+internal/gatekit/fleet/testdata/facts/full.json
+  s_e3f859ac282ab5::t_aa31534b687c1d 1
+internal/gatekit/fleet/testdata/facts/missing-all.json
+  s_e3f859ac282ab5::t_427f62f84659d5 1
+internal/gatekit/fleet/testdata/facts/missing-os.json
+  s_e3f859ac282ab5::t_db2704e58776b8 1
+internal/gatekit/fleet/testdata/facts/too-few.json
+  s_e3f859ac282ab5::t_7afcfa6d96ff07 1
+internal/gatekit/fleet/testdata/facts/values-absent.json
+  s_e3f859ac282ab5::t_7de4597568cedf 1
+internal/gatekit/fleet/testdata/facts/values-null.json
+  s_e3f859ac282ab5::t_bc0aae447c8ac1 1
+internal/gatekit/g5ref/g5ref.go
+  s_e3f859ac282ab5::t_eff40dce2ccaac 1-277
+internal/gatekit/g5ref/g5ref_test.go
+  s_e3f859ac282ab5::t_96bf783e85b03b 1-62
+internal/gatekit/g5ref/testdata/catalog-resources-empty-object.catalog.json
+  s_e3f859ac282ab5::t_23ae85efe4a045 1-88
+internal/gatekit/g5ref/testdata/catalog-resources-empty-object.report.json
+  s_e3f859ac282ab5::t_813af2414936d2 1-560
+internal/gatekit/g5ref/testdata/catalog.json
+  s_e3f859ac282ab5::t_10b8d7da71dd96 1-394
+internal/gatekit/g5ref/testdata/clean.report.json
+  s_e3f859ac282ab5::t_b3fbca78848171 1-560
+internal/gatekit/g5ref/testdata/crash-desired-number.report.json
+  s_e3f859ac282ab5::t_a9ad374f9c281f 1-557
+internal/gatekit/g5ref/testdata/crash-events-object.report.json
+  s_e3f859ac282ab5::t_2e6351b65d9039 1-546
+internal/gatekit/g5ref/testdata/crash-report-list.report.json
+  s_e3f859ac282ab5::t_64602d150ba9c5 1-562
+internal/gatekit/g5ref/testdata/crash-resources-null.catalog.json
+  s_e3f859ac282ab5::t_3f47e9d4611ed9 1-88
+internal/gatekit/g5ref/testdata/crash-resources-null.report.json
+  s_e3f859ac282ab5::t_808040e19950a7 1-560
+internal/gatekit/g5ref/testdata/crash-status-string.report.json
+  s_e3f859ac282ab5::t_ad0b54b25385f9 1-515
+internal/gatekit/g5ref/testdata/crash-statuses-list.report.json
+  s_e3f859ac282ab5::t_3db296e5404bf2 1-3
+internal/gatekit/g5ref/testdata/exec-fail-command.report.json
+  s_e3f859ac282ab5::t_e3452abb6a3835 1-560
+internal/gatekit/g5ref/testdata/exec-fail-succeeded.report.json
+  s_e3f859ac282ab5::t_8d0068627209a0 1-560
+internal/gatekit/g5ref/testdata/exec-ok-absent.report.json
+  s_e3f859ac282ab5::t_0c55ff3c3fc76a 1-512
+internal/gatekit/g5ref/testdata/exec-ok-two-events.report.json
+  s_e3f859ac282ab5::t_ee4ef6c09cb468 1-575
+internal/gatekit/g5ref/testdata/exec-ok-unnamed.report.json
+  s_e3f859ac282ab5::t_e4c636f4cd3360 1-559
+internal/gatekit/g5ref/testdata/exec-returns-failed.report.json
+  s_e3f859ac282ab5::t_21d3bf5a1969e4 1-560
+internal/gatekit/g5ref/testdata/exec-returns-null.report.json
+  s_e3f859ac282ab5::t_232cf5dc0edf95 1-557
+internal/gatekit/g5ref/testdata/exec-returns-one-entry.report.json
+  s_e3f859ac282ab5::t_eadf9d0e4a0e0e 1-559
+internal/gatekit/g5ref/testdata/exec-returns-two-char-string.report.json
+  s_e3f859ac282ab5::t_1352c675248725 1-557
+internal/gatekit/g5ref/testdata/guarded-present.report.json
+  s_e3f859ac282ab5::t_f4806136c863a7 1-569
+internal/gatekit/g5ref/testdata/guarded-undeclared.catalog.json
+  s_e3f859ac282ab5::t_627486a0f88c2d 1-375
+internal/gatekit/g5ref/testdata/guarded-undeclared.report.json
+  s_e3f859ac282ab5::t_347e0432f3450c 1-560
+internal/gatekit/g5ref/testdata/install-absent.report.json
+  s_e3f859ac282ab5::t_9d6ad2ac2087a5 1-514
+internal/gatekit/g5ref/testdata/install-null.report.json
+  s_e3f859ac282ab5::t_348c26e134416d 1-515
+internal/gatekit/g5ref/testdata/latest-no-events.report.json
+  s_e3f859ac282ab5::t_a492204db705d7 1-546
+internal/gatekit/g5ref/testdata/missing-absent.report.json
+  s_e3f859ac282ab5::t_6ac8f7fa32f9d4 1-514
+internal/gatekit/g5ref/testdata/missing-not-failed.report.json
+  s_e3f859ac282ab5::t_13ac12f5bafa10 1-560
+internal/gatekit/g5ref/testdata/refresh-no-events.report.json
+  s_e3f859ac282ab5::t_73ae49a5b6d1ae 1-546
+internal/gatekit/g5ref/testdata/refresh-with-property.report.json
+  s_e3f859ac282ab5::t_a76fdb07c830b3 1-560
+internal/gatekit/g5ref/testdata/remove-unchanged.report.json
+  s_e3f859ac282ab5::t_9e86699c12773e 1-560
+internal/gatekit/pycompat/chars.go
+  s_e3f859ac282ab5::t_684accdc628ea8 1-73
+internal/gatekit/pycompat/chars_test.go
+  s_e3f859ac282ab5::t_e57506eb2dda1a 1-88
+internal/gatekit/pycompat/fnmatch.go
+  s_e3f859ac282ab5::t_76adc7f91ccd47 1-187
+internal/gatekit/pycompat/fnmatch_test.go
+  s_e3f859ac282ab5::t_8e92353871b8ec 1-56
+internal/gatekit/pycompat/json.go
+  s_e3f859ac282ab5::t_813526c71ac36b 1-326
+internal/gatekit/pycompat/json_test.go
+  s_e3f859ac282ab5::t_aab850822e8fc0 1-159
+internal/gatekit/reportcmp/golden_test.go
+  s_e3f859ac282ab5::t_7859aca87aa4c6 1-207
+internal/gatekit/reportcmp/imports_test.go
+  s_e3f859ac282ab5::t_1cddf0ec4c722a 1-130
+internal/gatekit/reportcmp/normalise.go
+  s_e3f859ac282ab5::t_58dc1429ce631a 1-295
+internal/gatekit/reportcmp/normalise_test.go
+  s_e3f859ac282ab5::t_460aeceb31d24a 1-41
+internal/gatekit/reportcmp/regex_test.go
+  s_e3f859ac282ab5::t_3894dfc76f4c7b 1-84
+internal/gatekit/reportcmp/runtorun.go
+  s_e3f859ac282ab5::t_15e46695b53b4c 1-142
+internal/gatekit/reportcmp/testdata/allowlist.json
+  s_e3f859ac282ab5::t_44bb4838bab35e 1-76
+internal/gatekit/reportcmp/testdata/corpus/d14-control-go.json
+  s_e3f859ac282ab5::t_560a7fa5059530 1-191
+internal/gatekit/reportcmp/testdata/corpus/d14-control-ruby.json
+  s_e3f859ac282ab5::t_cf9289e90a7827 1
+internal/gatekit/reportcmp/testdata/corpus/d14-rerun-go.json
+  s_e3f859ac282ab5::t_0f563021e35cf9 1-197
+internal/gatekit/reportcmp/testdata/corpus/d14-rerun-ruby.json
+  s_e3f859ac282ab5::t_dfaae016b15314 1
+internal/gatekit/reportcmp/testdata/corpus/d14-upgrade-go.json
+  s_e3f859ac282ab5::t_084358f3ee2390 1-197
+internal/gatekit/reportcmp/testdata/corpus/d14-upgrade-ruby.json
+  s_e3f859ac282ab5::t_f11ce90337783a 1
+internal/gatekit/reportcmp/testdata/corpus/spine-container-ruby.json
+  s_e3f859ac282ab5::t_95ea5e020bd11f 1
+internal/gatekit/reportcmp/testdata/corpus/spine-container-voxagent.json
+  s_e3f859ac282ab5::t_a9a182a2122938 1-809
+internal/gatekit/reportcmp/testdata/corpus/spine-layer-ruby.json
+  s_e3f859ac282ab5::t_bd278fb48129fa 1-131
+internal/gatekit/reportcmp/testdata/corpus/spine-layer-voxagent.json
+  s_e3f859ac282ab5::t_c29e2164ee989e 1-95
+internal/gatekit/reportcmp/testdata/corpus/spine-ruby.json
+  s_e3f859ac282ab5::t_2fcbf2e13c6152 1
+internal/gatekit/reportcmp/testdata/corpus/spine-voxagent.json
+  s_e3f859ac282ab5::t_b416d1810ef533 1-364
+internal/gatekit/reportcmp/testdata/corpus/unmeasured-V1-go.json
+  s_e3f859ac282ab5::t_1fbaa8a2068e28 1-141
+internal/gatekit/reportcmp/testdata/corpus/unmeasured-V1-ruby.json
+  s_e3f859ac282ab5::t_5841f84a38483d 1
+internal/gatekit/reportcmp/testdata/corpus/unmeasured-V2-go.json
+  s_e3f859ac282ab5::t_23982024d4eb87 1-197
+internal/gatekit/reportcmp/testdata/corpus/unmeasured-V2-ruby.json
+  s_e3f859ac282ab5::t_de851fb5dc1029 1
+internal/gatekit/reportcmp/testdata/corpus/unmeasured-V3-go.json
+  s_e3f859ac282ab5::t_178417053cb0ef 1-191
+internal/gatekit/reportcmp/testdata/corpus/unmeasured-V3-ruby.json
+  s_e3f859ac282ab5::t_c8863e1a0e08ad 1
+internal/gatekit/reportcmp/testdata/corpus/unmeasured-W1-go.json
+  s_e3f859ac282ab5::t_89a7ba94a198a6 1-197
+internal/gatekit/reportcmp/testdata/corpus/unmeasured-W1-ruby.json
+  s_e3f859ac282ab5::t_363dac4349c88d 1
+internal/gatekit/reportcmp/testdata/corpus/unmeasured-W2-go.json
+  s_e3f859ac282ab5::t_41c107315ad027 1-197
+internal/gatekit/reportcmp/testdata/corpus/unmeasured-W2-ruby.json
+  s_e3f859ac282ab5::t_0423111aca3fa0 1
+internal/gatekit/reportcmp/testdata/corpus/unmeasured-W3-go.json
+  s_e3f859ac282ab5::t_20dbeb6a148d4c 1-197
+internal/gatekit/reportcmp/testdata/corpus/unmeasured-W3-ruby.json
+  s_e3f859ac282ab5::t_3dc1a2c39d72b4 1
+internal/gatekit/reportcmp/testdata/edge/absent-equals-absent-string.ruby.json
+  s_e3f859ac282ab5::t_c07eec78875591 1
+internal/gatekit/reportcmp/testdata/edge/absent-equals-absent-string.voxagent.json
+  s_e3f859ac282ab5::t_a0ffb374d4a093 1
+internal/gatekit/reportcmp/testdata/edge/allowlist.json
+  s_e3f859ac282ab5::t_e80509aa4e4d41 1
+internal/gatekit/reportcmp/testdata/edge/applied-catalog-trailing-newline.ruby.json
+  s_e3f859ac282ab5::t_05a605d030c966 1
+internal/gatekit/reportcmp/testdata/edge/applied-catalog-trailing-newline.voxagent.json
+  s_e3f859ac282ab5::t_62e4df2579e6b1 1
+internal/gatekit/reportcmp/testdata/edge/big-integers-differ.ruby.json
+  s_e3f859ac282ab5::t_d270da0745ed85 1
+internal/gatekit/reportcmp/testdata/edge/big-integers-differ.voxagent.json
+  s_e3f859ac282ab5::t_197cf9bc146fd1 1
+internal/gatekit/reportcmp/testdata/edge/bool-equals-one.ruby.json
+  s_e3f859ac282ab5::t_6244701c6227f3 1
+internal/gatekit/reportcmp/testdata/edge/bool-equals-one.voxagent.json
+  s_e3f859ac282ab5::t_3571426d48d424 1
+internal/gatekit/reportcmp/testdata/edge/empty-key-path.ruby.json
+  s_e3f859ac282ab5::t_52683c6baf08e4 1
+internal/gatekit/reportcmp/testdata/edge/empty-key-path.voxagent.json
+  s_e3f859ac282ab5::t_b06d2734499c2f 1
+internal/gatekit/reportcmp/testdata/edge/err-log-masked.ruby.json
+  s_e3f859ac282ab5::t_c0bdc998ece9b2 1
+internal/gatekit/reportcmp/testdata/edge/err-log-masked.voxagent.json
+  s_e3f859ac282ab5::t_53d3fa3b1ca785 1
+internal/gatekit/reportcmp/testdata/edge/failure-detail-masked.ruby.json
+  s_e3f859ac282ab5::t_255223ed87d9f7 1
+internal/gatekit/reportcmp/testdata/edge/failure-detail-masked.voxagent.json
+  s_e3f859ac282ab5::t_208b82991c66ef 1
+internal/gatekit/reportcmp/testdata/edge/failure-location-compared.ruby.json
+  s_e3f859ac282ab5::t_b11f62393f0f4a 1
+internal/gatekit/reportcmp/testdata/edge/failure-location-compared.voxagent.json
+  s_e3f859ac282ab5::t_602a72bd20c4f2 1
+internal/gatekit/reportcmp/testdata/edge/int-equals-float.ruby.json
+  s_e3f859ac282ab5::t_47b6f7e59ea2e7 1
+internal/gatekit/reportcmp/testdata/edge/int-equals-float.voxagent.json
+  s_e3f859ac282ab5::t_8ec7d1f207c72f 1
+internal/gatekit/reportcmp/testdata/edge/log-count-ignored.ruby.json
+  s_e3f859ac282ab5::t_3f0625e24b41e8 1
+internal/gatekit/reportcmp/testdata/edge/log-count-ignored.voxagent.json
+  s_e3f859ac282ab5::t_5eafba0178566c 1
+internal/gatekit/reportcmp/testdata/edge/log-entry-not-object.ruby.json
+  s_e3f859ac282ab5::t_57d9cf4f9774bf 1
+internal/gatekit/reportcmp/testdata/edge/log-entry-not-object.voxagent.json
+  s_e3f859ac282ab5::t_3626dec36780e2 1
+internal/gatekit/reportcmp/testdata/edge/log-missing-fields.ruby.json
+  s_e3f859ac282ab5::t_d2fb2f68450381 1
+internal/gatekit/reportcmp/testdata/edge/log-missing-fields.voxagent.json
+  s_e3f859ac282ab5::t_4ab716430dd0b8 1
+internal/gatekit/reportcmp/testdata/edge/log-only-one-side.ruby.json
+  s_e3f859ac282ab5::t_ffd218c7000c4b 1
+internal/gatekit/reportcmp/testdata/edge/log-only-one-side.voxagent.json
+  s_e3f859ac282ab5::t_001c263347a63a 1
+internal/gatekit/reportcmp/testdata/edge/log-order-ignored.ruby.json
+  s_e3f859ac282ab5::t_4e791dea651aae 1
+internal/gatekit/reportcmp/testdata/edge/log-order-ignored.voxagent.json
+  s_e3f859ac282ab5::t_70f41e296b5d6e 1
+internal/gatekit/reportcmp/testdata/edge/logs-empty-object.ruby.json
+  s_e3f859ac282ab5::t_202123432ec933 1
+internal/gatekit/reportcmp/testdata/edge/logs-empty-object.voxagent.json
+  s_e3f859ac282ab5::t_29592d1051303b 1
+internal/gatekit/reportcmp/testdata/edge/logs-empty-string.ruby.json
+  s_e3f859ac282ab5::t_4881c3fa6e91e8 1
+internal/gatekit/reportcmp/testdata/edge/logs-empty-string.voxagent.json
+  s_e3f859ac282ab5::t_6b1c9f82111b0b 1
+internal/gatekit/reportcmp/testdata/edge/metric-name-not-string.ruby.json
+  s_e3f859ac282ab5::t_a560c14b27341e 1
+internal/gatekit/reportcmp/testdata/edge/metric-name-not-string.voxagent.json
+  s_e3f859ac282ab5::t_8ba0f093e0ce95 1
+internal/gatekit/reportcmp/testdata/edge/metrics-malformed-passthrough.ruby.json
+  s_e3f859ac282ab5::t_518793783e730a 1
+internal/gatekit/reportcmp/testdata/edge/metrics-malformed-passthrough.voxagent.json
+  s_e3f859ac282ab5::t_f316981110699c 1
+internal/gatekit/reportcmp/testdata/edge/metrics-rekeyed-by-name.ruby.json
+  s_e3f859ac282ab5::t_fcb2e4f598f8f6 1
+internal/gatekit/reportcmp/testdata/edge/metrics-rekeyed-by-name.voxagent.json
+  s_e3f859ac282ab5::t_d6d78a80f9500d 1
+internal/gatekit/reportcmp/testdata/edge/nan-literal.ruby.json
+  s_e3f859ac282ab5::t_2dfd307509a204 1
+internal/gatekit/reportcmp/testdata/edge/nan-literal.voxagent.json
+  s_e3f859ac282ab5::t_1d95d379013be6 1
+internal/gatekit/reportcmp/testdata/edge/not-utf8.ruby.json
+  s_e3f859ac282ab5::t_c2eafec8029d08 1
+internal/gatekit/reportcmp/testdata/edge/not-utf8.voxagent.json
+  s_e3f859ac282ab5::t_8bfcc06e46b74d 1
+internal/gatekit/reportcmp/testdata/edge/null-is-not-absent.ruby.json
+  s_e3f859ac282ab5::t_a683257a343b26 1
+internal/gatekit/reportcmp/testdata/edge/null-is-not-absent.voxagent.json
+  s_e3f859ac282ab5::t_7671d9999ff5f2 1
+internal/gatekit/reportcmp/testdata/edge/path-collision.ruby.json
+  s_e3f859ac282ab5::t_2054d1df4e16f8 1
+internal/gatekit/reportcmp/testdata/edge/path-collision.voxagent.json
+  s_e3f859ac282ab5::t_2841901f80f1a1 1
+internal/gatekit/reportcmp/testdata/edge/run-clean.allowlist.json
+  s_e3f859ac282ab5::t_77f1e39aff24ed 1
+internal/gatekit/reportcmp/testdata/edge/run-clean.first.json
+  s_e3f859ac282ab5::t_7d30f5341d09b7 1
+internal/gatekit/reportcmp/testdata/edge/run-clean.second.json
+  s_e3f859ac282ab5::t_3f6eca541f79c2 1
+internal/gatekit/reportcmp/testdata/edge/run-incomplete.allowlist.json
+  s_e3f859ac282ab5::t_2f5045efb0a20b 1
+internal/gatekit/reportcmp/testdata/edge/run-incomplete.first.json
+  s_e3f859ac282ab5::t_fc0c7823ad5785 1
+internal/gatekit/reportcmp/testdata/edge/run-incomplete.second.json
+  s_e3f859ac282ab5::t_9beac841184322 1
+internal/gatekit/reportcmp/testdata/edge/run-no-patterns.allowlist.json
+  s_e3f859ac282ab5::t_6e2d1b428ee042 1
+internal/gatekit/reportcmp/testdata/edge/run-no-patterns.first.json
+  s_e3f859ac282ab5::t_3443cffe1504bd 1
+internal/gatekit/reportcmp/testdata/edge/run-no-patterns.second.json
+  s_e3f859ac282ab5::t_3c9327476fc2a5 1
+internal/gatekit/reportcmp/testdata/edge/run-repeated-pattern.allowlist.json
+  s_e3f859ac282ab5::t_77d0b7be955261 1
+internal/gatekit/reportcmp/testdata/edge/run-repeated-pattern.first.json
+  s_e3f859ac282ab5::t_0bf47efc909ecd 1
+internal/gatekit/reportcmp/testdata/edge/run-repeated-pattern.second.json
+  s_e3f859ac282ab5::t_788061090b94ae 1
+internal/gatekit/reportcmp/testdata/edge/run-truncated.allowlist.json
+  s_e3f859ac282ab5::t_4e6bd80ff9edec 1
+internal/gatekit/reportcmp/testdata/edge/run-truncated.first.json
+  s_e3f859ac282ab5::t_e67a2f715ab6e2 1
+internal/gatekit/reportcmp/testdata/edge/run-truncated.second.json
+  s_e3f859ac282ab5::t_28e27f8a4243b0 1
+internal/gatekit/reportcmp/testdata/edge/success-message-untouched.ruby.json
+  s_e3f859ac282ab5::t_4acc74decba53e 1
+internal/gatekit/reportcmp/testdata/edge/success-message-untouched.voxagent.json
+  s_e3f859ac282ab5::t_6605fb577b0f6d 1
+internal/gatekit/reportcmp/testdata/edge/top-level-list.ruby.json
+  s_e3f859ac282ab5::t_cb1075c8bf414d 1
+internal/gatekit/reportcmp/testdata/edge/top-level-list.voxagent.json
+  s_e3f859ac282ab5::t_622ba03d091d94 1
+internal/gatekit/reportcmp/testdata/edge/unicode-digit-segment.ruby.json
+  s_e3f859ac282ab5::t_3d140c0c3b9901 1
+internal/gatekit/reportcmp/testdata/edge/unicode-digit-segment.voxagent.json
+  s_e3f859ac282ab5::t_e8e9c802a20cbd 1
+internal/gatekit/reportcmp/testdata/edge/wrapped-exception-ruby-only.ruby.json
+  s_e3f859ac282ab5::t_d9d7d03e53b168 1
+internal/gatekit/reportcmp/testdata/edge/wrapped-exception-ruby-only.voxagent.json
+  s_e3f859ac282ab5::t_47388ee262e8f1 1
+internal/gatekit/reportcmp/testdata/edge/wrapped-exception-voxagent-only.ruby.json
+  s_e3f859ac282ab5::t_8e0007cec4cef9 1
+internal/gatekit/reportcmp/testdata/edge/wrapped-exception-voxagent-only.voxagent.json
+  s_e3f859ac282ab5::t_08060668026b21 1
+internal/report/report.go
+  s_e3f859ac282ab5::t_eebcef6e158e91 309
+tests/spine/allowlist.json
+  s_e3f859ac282ab5::t_99cd3d8b4f9274 25,31,43
+tests/spine/derive-run-to-run.sh
+  s_e3f859ac282ab5::t_726d1e1e78e151 27-30,38-39,50-54,106
+tests/spine/fresh.sh
+  s_e3f859ac282ab5::t_bb96509f42f408 1-44
+tests/spine/idempotence.sh
+  s_e3f859ac282ab5::t_303de6321cfed2 29-33
+tests/spine/report-diff-container.sh
+  s_e3f859ac282ab5::t_b029c092eee663 37,49,110-114,393-400,409
+tests/spine/report-diff.sh
+  s_e3f859ac282ab5::t_89d051f7113869 31,39-43,120
+cmd/gatekit/main.go
+  s_e3f859ac282ab5::t_1138c766e07886 1-162
+cmd/gatekit/main_test.go
+  s_e3f859ac282ab5::t_60f9ff9298178d 1-93
+internal/gatekit/fleet/testdata/golden.json
+  s_e3f859ac282ab5::t_783f7de5e8493c 1-548
+internal/gatekit/g5ref/testdata/golden.json
+  s_e3f859ac282ab5::t_ee9f9d4083b861 1-281
+internal/gatekit/pycompat/testdata/fnmatch.json
+  s_e3f859ac282ab5::t_5290fb088096ff 1-3407
+internal/gatekit/pycompat/testdata/isdigit.json
+  s_e3f859ac282ab5::t_5d0abff567c296 1-86
+internal/gatekit/pycompat/testdata/isspace.json
+  s_e3f859ac282ab5::t_fe4b28d98b21e2 1-13
+internal/gatekit/reportcmp/compare.go
+  s_e3f859ac282ab5::t_786cafb9bba3e6 1-410
+internal/gatekit/reportcmp/defects_test.go
+  s_e3f859ac282ab5::t_9f415ccdbf8d0d 1-132
+internal/gatekit/reportcmp/testdata/golden.json
+  s_e3f859ac282ab5::t_a52ee0613cfbbb 1-3890
+internal/gatekit/reportcmp/testdata/regex.json
+  s_e3f859ac282ab5::t_1d93304bf651c3 1-245
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "debd070ccd4775c7b99560c3c64639dd4c6b5bfe",
+  "prompts": {},
+  "sessions": {
+    "s_e3f859ac282ab5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "687ac0e7-60a4-46e8-81fa-ff2f7a80f52f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "peiriannydd <peiriannydd@gmail.com>"
+    }
+  }
+}

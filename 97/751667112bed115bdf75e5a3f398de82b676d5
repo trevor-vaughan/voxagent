@@ -1,0 +1,119 @@
+README.md
+  s_e3f859ac282ab5::t_0b1c3c02582f07 60-101
+docs/maintainers/fleet.md
+  s_e3f859ac282ab5::t_6e3e70025aa635 1-353
+fleet/.certs/.gitignore
+  s_e3f859ac282ab5::t_28a4ee69c6cd9b 1-5
+fleet/.vendor/.gitignore
+  s_e3f859ac282ab5::t_245852066371bf 1-4
+fleet/bin/build-images.sh
+  s_e3f859ac282ab5::t_7d8b4990344a22 1-90
+fleet/bin/gate-axes.sh
+  s_e3f859ac282ab5::t_6a5d2387120834 1-219
+fleet/bin/gate-common.sh
+  s_e3f859ac282ab5::t_81f3d71abc6b81 1-425
+fleet/bin/gate-compliance-negative.sh
+  s_e3f859ac282ab5::t_26064b5665bdbe 1-379
+fleet/bin/gate-compliance.sh
+  s_e3f859ac282ab5::t_c630352b3f8e5d 1-192
+fleet/bin/gate-exports.sh
+  s_e3f859ac282ab5::t_598035936dac37 1-179
+fleet/bin/gate-implementations.sh
+  s_e3f859ac282ab5::t_293084d5c70a8b 1-235
+fleet/bin/gate-scan.sh
+  s_e3f859ac282ab5::t_d75f90ee7c5a2f 1-97
+fleet/bin/make-certs.sh
+  s_e3f859ac282ab5::t_d5d2bcd90c2066 1-164
+fleet/bin/puppet-node-deb
+  s_e3f859ac282ab5::t_7ff2caa1dd8943 1-8
+fleet/bin/puppet-node-deb-after-export
+  s_e3f859ac282ab5::t_6a2809feff4abc 1-51
+fleet/bin/vendor.sh
+  s_e3f859ac282ab5::t_cba2e62ce6782f 1-241
+fleet/bin/wait-for-openvoxdb.sh
+  s_e3f859ac282ab5::t_3a2356b72dd7b1 1-26
+fleet/code/environments/production/environment.conf
+  s_e3f859ac282ab5::t_b8d23f29eb58c4 1-3
+fleet/code/environments/production/hiera.yaml
+  s_e3f859ac282ab5::t_4c5ca17ecd45b5 1-23
+fleet/code/environments/production/hieradata/common.yaml
+  s_e3f859ac282ab5::t_4037c01664eae3 1-17
+fleet/code/environments/production/hieradata/nodes/node-deb.yaml
+  s_e3f859ac282ab5::t_5ed3a2268fd0e8 1-2
+fleet/code/environments/production/hieradata/nodes/node-el-alt.yaml
+  s_e3f859ac282ab5::t_be71039ce3d3d0 1-4
+fleet/code/environments/production/hieradata/nodes/node-el.yaml
+  s_e3f859ac282ab5::t_0077b63a45ae2e 1-5
+fleet/code/environments/production/hieradata/os/Debian.yaml
+  s_e3f859ac282ab5::t_e9678b59514684 1-5
+fleet/code/environments/production/hieradata/os/RedHat.yaml
+  s_e3f859ac282ab5::t_085f70a2a1fbcf 1-5
+fleet/code/environments/production/manifests/site.pp
+  s_e3f859ac282ab5::t_6dff9d0e47ba05 1-3
+fleet/code/environments/production/modules/fleet_profile/SIMP/compliance_profiles/checks.yaml
+  s_e3f859ac282ab5::t_1398724732a096 1-24
+fleet/code/environments/production/modules/fleet_profile/manifests/init.pp
+  s_e3f859ac282ab5::t_1cb39cd5c6a64e 1-90
+fleet/code/puppet-node-deb.conf
+  s_e3f859ac282ab5::t_39c2cf5cbe3dc6 1-8
+fleet/code/puppet-node-el-alt.conf
+  s_e3f859ac282ab5::t_078935e6448299 1-8
+fleet/code/puppet-node-el.conf
+  s_e3f859ac282ab5::t_57b4c3da9c117b 1-8
+fleet/code/puppetdb.conf
+  s_e3f859ac282ab5::t_0896b1e54063db 1-2
+fleet/code/routes.yaml
+  s_e3f859ac282ab5::t_caa42ec4cbe1f9 1-40
+fleet/compose.yml
+  s_e3f859ac282ab5::t_3f82940a8c45c9 1-135
+fleet/facts/node-deb/fleet.yaml
+  s_e3f859ac282ab5::t_0b2d16f023ab30 1-3
+fleet/facts/node-el-alt/fleet.yaml
+  s_e3f859ac282ab5::t_5b5d77b75f5e94 1-3
+fleet/facts/node-el/.gitignore
+  s_e3f859ac282ab5::t_b57690ff60a825 1-8
+fleet/facts/node-el/fleet.yaml
+  s_e3f859ac282ab5::t_585313f976850f 1-3
+fleet/images/Dockerfile.deb
+  s_e3f859ac282ab5::t_22e24f56523cf6 1-18
+fleet/images/Dockerfile.el
+  s_e3f859ac282ab5::t_45551e5c51dc44 1-45
+fleet/initdb/01-extensions.sql
+  s_e3f859ac282ab5::t_c6e1a29c05c9f8 1-6
+fleet/openvoxdb/zz-ssl.ini
+  s_e3f859ac282ab5::t_cfaf3204fb2b8f 1-15
+fleet/tests/fleet.venom.yml
+  s_e3f859ac282ab5::t_e2a7ee956e4056 1-107
+.taskfiles/dev.yml
+  s_e3f859ac282ab5::t_ab5c4259ca8fbc 32-58
+.taskfiles/fleet.yml
+  s_e3f859ac282ab5::t_58db6585459359 1-152
+Taskfile.yml
+  s_e3f859ac282ab5::t_df6760a41b3a8f 8-9,45
+fleet/bin/gate-determinism-negative.sh
+  s_e3f859ac282ab5::t_cc39422f911f7c 1-372
+fleet/bin/gate-determinism.sh
+  s_e3f859ac282ab5::t_49553c6193b272 1-138
+fleet/lib/fleet_catalog.py
+  s_e3f859ac282ab5::t_9093bbfdc13538 1-56
+fleet/tests/adjudication.sh
+  s_e3f859ac282ab5::t_84a455bcf7a5f5 1-481
+fleet/tests/vendor-pins.sh
+  s_e3f859ac282ab5::t_630b1ab2173889 1-434
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "97751667112bed115bdf75e5a3f398de82b676d5",
+  "prompts": {},
+  "sessions": {
+    "s_e3f859ac282ab5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "687ac0e7-60a4-46e8-81fa-ff2f7a80f52f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "peiriannydd <peiriannydd@gmail.com>"
+    }
+  }
+}
