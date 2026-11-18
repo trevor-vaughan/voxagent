@@ -1,0 +1,24 @@
+internal/ral/exec_test.go
+  s_ca0a009256e562::t_497184ecb75775 1291-1292
+  s_ca0a009256e562::t_6f108e8cf211fd 1277-1290,1293-1316
+internal/ral/exec.go
+  s_ca0a009256e562::t_a2d1ce9f9e341b 60-61
+  s_ca0a009256e562::t_2497690ca9b6f4 48-50
+  s_ca0a009256e562::t_1758a5afb1d102 114-119
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "d0caa86684e3ad1842f8b20c83fca9791f2bfa07",
+  "prompts": {},
+  "sessions": {
+    "s_ca0a009256e562": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4a85c9b6-5ceb-463f-a96c-b56a7ba95d94",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": null
+    }
+  }
+}
