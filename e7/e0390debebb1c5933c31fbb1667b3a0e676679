@@ -1,0 +1,38 @@
+internal/transaction/transaction_test.go
+  s_ca0a009256e562::t_1ecd6b8901df6f 3571-3589,3591-3594
+  s_ca0a009256e562::t_94f1e4992eef29 3590
+internal/ral/exec_run_test.go
+  s_ca0a009256e562::t_7ae3ef31470d0b 214
+  s_ca0a009256e562::t_e67ea1b9c5b9e6 1-213,215-303
+internal/ral/exec.go
+  s_ca0a009256e562::t_ec84c211a650db 472,544-548,552,554-556,558-559,634-635,656-663,666-667,681
+  s_ca0a009256e562::t_87bae567173b90 726-728,733-740,744-745,765-766,772-773,779
+  s_ca0a009256e562::t_92aa62f0020c75 553,557,664-665
+internal/ral/file_validate.go
+  s_ca0a009256e562::t_a461edff3aaafe 193
+internal/ral/exec_unix.go
+  s_ca0a009256e562::t_92aa62f0020c75 5,7-8
+internal/ral/fileoutput_test.go
+  s_ca0a009256e562::t_a461edff3aaafe 177,191
+internal/ral/exec_run.go
+  s_ca0a009256e562::t_4b7450228a20b0 1-44,49-105
+  s_ca0a009256e562::t_5d4c36a7501c6c 45-48
+internal/ral/fileoutput.go
+  s_ca0a009256e562::t_1022a9b697692b 88-90,93,100-102,122-127,137-141,152-153
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "e7e0390debebb1c5933c31fbb1667b3a0e676679",
+  "prompts": {},
+  "sessions": {
+    "s_ca0a009256e562": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4a85c9b6-5ceb-463f-a96c-b56a7ba95d94",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "peiriannydd <peiriannydd@gmail.com>"
+    }
+  }
+}
