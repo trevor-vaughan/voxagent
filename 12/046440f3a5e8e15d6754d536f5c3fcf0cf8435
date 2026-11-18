@@ -1,0 +1,26 @@
+README.md
+  s_eaccc035957881::t_3aea6437796267 44-46
+docs/maintainers/runlog.md
+  s_eaccc035957881::t_f232cf6f271b5f 71-72
+  s_eaccc035957881::t_f4cef7275b56fa 46-50
+internal/ral/fileoutput.go
+  s_eaccc035957881::t_f232cf6f271b5f 17-19
+internal/ral/sources.go
+  s_eaccc035957881::t_f232cf6f271b5f 7-9
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "12046440f3a5e8e15d6754d536f5c3fcf0cf8435",
+  "prompts": {},
+  "sessions": {
+    "s_eaccc035957881": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c7453851-32ce-4383-ad3c-4454d1492a85",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "peiriannydd <peiriannydd@gmail.com>"
+    }
+  }
+}
