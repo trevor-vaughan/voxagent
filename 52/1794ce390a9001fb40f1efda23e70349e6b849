@@ -1,0 +1,14 @@
+docs/maintainers/improvements.md
+  h_abdce1a04d105e 39
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "521794ce390a9001fb40f1efda23e70349e6b849",
+  "prompts": {},
+  "humans": {
+    "h_abdce1a04d105e": {
+      "author": "peiriannydd <peiriannydd@gmail.com>"
+    }
+  }
+}
