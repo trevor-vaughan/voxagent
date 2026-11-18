@@ -1,0 +1,71 @@
+.gitignore
+  s_e3f859ac282ab5::t_b7492149437c5b 1-13
+.taskfiles/dev.yml
+  s_e3f859ac282ab5::t_600aeb5ac2c43e 1-37
+.taskfiles/integration.yml
+  s_e3f859ac282ab5::t_8dcc546464532c 1-24
+README.md
+  s_e3f859ac282ab5::t_1038922dee644c 1-69
+Taskfile.yml
+  s_e3f859ac282ab5::t_9d932d2f09b84c 1-47
+cmd/voxdiff/main.go
+  s_e3f859ac282ab5::t_7b9f0a8ae50f16 1-230
+cmd/voxdiff/main_test.go
+  s_e3f859ac282ab5::t_86d920dc15d554 1-142
+docs/maintainers/harness.md
+  s_e3f859ac282ab5::t_df477d39359d55 1-191
+go.mod
+  s_e3f859ac282ab5::t_8706afa5d74583 1-3
+internal/catalog/catalog.go
+  s_e3f859ac282ab5::t_397db5fe35334d 1-67
+internal/catalog/catalog_test.go
+  s_e3f859ac282ab5::t_8d72fada748ce7 1-85
+internal/catalog/diff.go
+  s_e3f859ac282ab5::t_33d3197485c72e 1-234
+internal/catalog/diff_test.go
+  s_e3f859ac282ab5::t_f30761891c8419 1-218
+internal/catalog/normalize.go
+  s_e3f859ac282ab5::t_976a57fcb56562 1-26
+internal/catalog/normalize_test.go
+  s_e3f859ac282ab5::t_c06ee1f7868273 1-108
+internal/catalog/testdata/minimal.json
+  s_e3f859ac282ab5::t_f9450e774b12e6 1-33
+internal/compile/runner.go
+  s_e3f859ac282ab5::t_c6786098affbff 1-86
+internal/compile/runner_test.go
+  s_e3f859ac282ab5::t_d4ce22dfa25039 1-96
+internal/compile/testdata/environments/production/manifests/site.pp
+  s_e3f859ac282ab5::t_c74d65c6ae527e 1-3
+internal/instability/scan.go
+  s_e3f859ac282ab5::t_84ae6a8700394b 1-104
+internal/instability/scan_test.go
+  s_e3f859ac282ab5::t_918c72d4bf744e 1-159
+scripts/run-tests.sh
+  s_e3f859ac282ab5::t_723ef01aca7c82 1-34
+tests/fixtures/environments-b/production/manifests/site.pp
+  s_e3f859ac282ab5::t_ebfb4e06eb3de8 1-16
+tests/fixtures/environments/production/manifests/site.pp
+  s_e3f859ac282ab5::t_b556c637d2cfd1 1-15
+tests/fixtures/puppet-right
+  s_e3f859ac282ab5::t_20469feab1ebe9 1-27
+tests/fixtures/unstable/manifests/exported.pp
+  s_e3f859ac282ab5::t_39e2d972340efb 1-4
+tests/voxdiff.venom.yml
+  s_e3f859ac282ab5::t_e391fb42d2842b 1-115
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "9cdf35a233345d9c3299f8e835fa41ee67ac6990",
+  "prompts": {},
+  "sessions": {
+    "s_e3f859ac282ab5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "687ac0e7-60a4-46e8-81fa-ff2f7a80f52f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "peiriannydd <peiriannydd@gmail.com>"
+    }
+  }
+}
