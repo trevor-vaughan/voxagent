@@ -1,0 +1,157 @@
+README.md
+  s_e3f859ac282ab5::t_11dead0a0a3e02 5-55
+cmd/voxagent/main_test.go
+  s_e3f859ac282ab5::t_4d176b7740e31d 1-565
+cmd/voxdiff/main_test.go
+  s_e3f859ac282ab5::t_9ca9fa52f67ed5 114-125,127-128
+docs/maintainers/apply-spine.md
+  s_e3f859ac282ab5::t_db7d13d429bff6 1-1066
+fleet/bin/build-images.sh
+  s_e3f859ac282ab5::t_8f20eaf0a620c5 18-31
+fleet/bin/gate-axes.sh
+  s_e3f859ac282ab5::t_8ac549a7f419cf 33-46
+fleet/bin/gate-common.sh
+  s_e3f859ac282ab5::t_2ab069452536f7 74-82
+fleet/bin/gate-compliance-negative.sh
+  s_e3f859ac282ab5::t_2bd937aa41448c 37-50
+fleet/bin/gate-compliance.sh
+  s_e3f859ac282ab5::t_f8cc8626c8f678 33-46
+fleet/bin/gate-determinism-negative.sh
+  s_e3f859ac282ab5::t_78822cc10d50f0 19-32
+fleet/bin/gate-determinism.sh
+  s_e3f859ac282ab5::t_a507507f41ca6e 18-31
+fleet/bin/gate-exports.sh
+  s_e3f859ac282ab5::t_a061b3969a5052 22-35
+fleet/bin/gate-implementations.sh
+  s_e3f859ac282ab5::t_cd03af61aff602 34-47
+fleet/bin/gate-scan.sh
+  s_e3f859ac282ab5::t_552a61ea77a998 15-28
+fleet/bin/make-certs.sh
+  s_e3f859ac282ab5::t_10b19361946cc9 17-30
+fleet/bin/puppet-node-deb
+  s_e3f859ac282ab5::t_191e1cc03929d2 8-21
+fleet/bin/puppet-node-deb-after-export
+  s_e3f859ac282ab5::t_82403c07f29ff7 22-35
+fleet/bin/vendor.sh
+  s_e3f859ac282ab5::t_2de33cc3d6e064 89-102
+fleet/bin/wait-for-openvoxdb.sh
+  s_e3f859ac282ab5::t_a1c364dbd485ab 9-22
+fleet/tests/adjudication.sh
+  s_e3f859ac282ab5::t_014b60b64deabc 33-46
+fleet/tests/noclobber.sh
+  s_e3f859ac282ab5::t_a962ce64f8976b 1-125
+fleet/tests/vendor-pins.sh
+  s_e3f859ac282ab5::t_a9a39e9e0ea97e 28-41
+internal/graph/graph.go
+  s_e3f859ac282ab5::t_0d455a8afe8c57 1-385
+internal/graph/graph_test.go
+  s_e3f859ac282ab5::t_2ae2a9178c3ea7 1-621
+internal/node/certname.go
+  s_e3f859ac282ab5::t_ed6e37bd4e6765 1-95
+internal/node/certname_test.go
+  s_e3f859ac282ab5::t_b01614ec9555f0 1-101
+internal/ral/dnf_test.go
+  s_e3f859ac282ab5::t_6bd9a0185b4467 1-151
+internal/ral/exec.go
+  s_e3f859ac282ab5::t_826e87c1791bbb 1-460
+internal/ral/exec_test.go
+  s_e3f859ac282ab5::t_37fe0fd914f702 1-832
+internal/ral/exec_unix.go
+  s_e3f859ac282ab5::t_2d4bfc708004f0 1-54
+internal/ral/file.go
+  s_e3f859ac282ab5::t_c411d12dc0dba8 1-1004
+internal/ral/file_test.go
+  s_e3f859ac282ab5::t_240a65c7640d26 1-2289
+internal/ral/file_unix.go
+  s_e3f859ac282ab5::t_557e14fd8f040d 1-27
+internal/ral/notify.go
+  s_e3f859ac282ab5::t_fa5f588128b86d 1-74
+internal/ral/notify_test.go
+  s_e3f859ac282ab5::t_dd5511f9e15099 1-171
+internal/ral/preflight.go
+  s_e3f859ac282ab5::t_5ad0e7b3f006af 1-129
+internal/ral/preflight_test.go
+  s_e3f859ac282ab5::t_7ceca9e7629c2f 1-285
+internal/ral/ral.go
+  s_e3f859ac282ab5::t_1077f235410599 1-306
+internal/ral/ral_test.go
+  s_e3f859ac282ab5::t_7e81bfa5772d60 1-185
+internal/ral/rpmvercmp.go
+  s_e3f859ac282ab5::t_9d62f4659ddc8c 1-357
+internal/ral/rpmvercmp_test.go
+  s_e3f859ac282ab5::t_3bdc993121f63d 1-281
+internal/ral/testdata/dnf-check-update-updates.txt
+  s_e3f859ac282ab5::t_be69c420d821a8 1-9
+internal/ral/testdata/dnf-check-update.txt
+  s_e3f859ac282ab5::t_ff928da520c1fc 1
+internal/ral/testdata/rpm-evr.tsv
+  s_e3f859ac282ab5::t_958626fd263197 1-85
+internal/ral/testdata/rpm-parse-evr.tsv
+  s_e3f859ac282ab5::t_d528ce13c3f21f 1-78
+internal/ral/testdata/rpm-qa.txt
+  s_e3f859ac282ab5::t_73979c81cec65b 1-40
+internal/report/exitstatus.go
+  s_e3f859ac282ab5::t_a4fc991cfeec67 1-153
+internal/report/report.go
+  s_e3f859ac282ab5::t_00361471537ce5 1-444
+internal/report/report_test.go
+  s_e3f859ac282ab5::t_58597113575556 1-549
+internal/transaction/build.go
+  s_e3f859ac282ab5::t_e822fbb996744d 1-351
+internal/transaction/build_test.go
+  s_e3f859ac282ab5::t_a66bf1b4126079 1-457
+internal/transaction/transaction.go
+  s_e3f859ac282ab5::t_fdadb87445b358 1-719
+scripts/run-tests.sh
+  s_e3f859ac282ab5::t_9290d84c54e52c 7-20
+tests/spine/allowlist.json
+  s_e3f859ac282ab5::t_b030a210e92d43 1-76
+tests/spine/check-run-to-run.py
+  s_e3f859ac282ab5::t_17c2f2aab0737a 1-124
+tests/spine/compare-reports.py
+  s_e3f859ac282ab5::t_e1ca1e07e7368f 1-353
+tests/spine/derive-run-to-run.sh
+  s_e3f859ac282ab5::t_e1efef1239a19b 1-105
+tests/spine/idempotence.sh
+  s_e3f859ac282ab5::t_e8886295bd5e4a 1-112
+tests/spine/report-diff-container.sh
+  s_e3f859ac282ab5::t_06d84cf20f0009 1-550
+tests/spine/report-diff.sh
+  s_e3f859ac282ab5::t_25fbc47df0c250 1-151
+tests/spine/snapshot.sh
+  s_e3f859ac282ab5::t_390bffedabc1a5 1-60
+.taskfiles/dev.yml
+  s_e3f859ac282ab5::t_0e957d96b647b1 21,25,48-52,65-145
+Taskfile.yml
+  s_e3f859ac282ab5::t_302028f9eedaf1 45-50
+cmd/voxagent/main.go
+  s_e3f859ac282ab5::t_71b6033e09ff15 1-160
+internal/ral/dnf.go
+  s_e3f859ac282ab5::t_9e3cead351d73e 1-220
+internal/ral/package.go
+  s_e3f859ac282ab5::t_c99b39159dc952 1-732
+internal/ral/package_test.go
+  s_e3f859ac282ab5::t_80529fa48746df 1-1830
+internal/report/exitstatus_test.go
+  s_e3f859ac282ab5::t_4d01289f0097e4 1-174
+internal/transaction/transaction_test.go
+  s_e3f859ac282ab5::t_54086d81308b63 1-2016
+tests/spine/state-diff.sh
+  s_e3f859ac282ab5::t_e2099d4cf2d380 1-392
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "8334f90b9cf8a76b08b426d57273c1c2ed31f009",
+  "prompts": {},
+  "sessions": {
+    "s_e3f859ac282ab5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "687ac0e7-60a4-46e8-81fa-ff2f7a80f52f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "peiriannydd <peiriannydd@gmail.com>"
+    }
+  }
+}
