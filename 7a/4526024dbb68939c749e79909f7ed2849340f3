@@ -1,0 +1,127 @@
+README.md
+  s_e3f859ac282ab5::t_bf1fdad542f8d2 22-49,337,349
+cmd/voxagent/agent.go
+  s_e3f859ac282ab5::t_6ee9472930f244 19,22,42,87-88,98-99,127-128
+cmd/voxagent/agent_test.go
+  s_e3f859ac282ab5::t_4364b8815426ef 146-149,216,219,748-784
+cmd/voxagent/apply.go
+  s_e3f859ac282ab5::t_06d060495fe215 7-8,19,32-34,67,177-206,211,215,219-225,227,237,239-240,265-273
+cmd/voxagent/console.go
+  s_e3f859ac282ab5::t_5ae80775f8672b 1-75
+cmd/voxagent/debuglog_test.go
+  s_e3f859ac282ab5::t_8ad26677e752d5 1-195
+cmd/voxagent/extension.go
+  s_e3f859ac282ab5::t_c8768d70d06c8a 20,30,64-66
+cmd/voxagent/main.go
+  s_e3f859ac282ab5::t_2cbc8f5f6a0729 19,22,45-46,90-91,93,97
+cmd/voxagent/main_test.go
+  s_e3f859ac282ab5::t_a1286266e3ba36 1138-1139,1153,1182-1293
+cmd/voxagent/sensitive_test.go
+  s_e3f859ac282ab5::t_29ffea5f7bb012 7,31-32,94-99,255-257,262-267,270-272,279,295-299,311,314-316,342-352,359-370
+docs/maintainers/apply-spine.md
+  s_e3f859ac282ab5::t_9bba344fdb7e98 171-175,1230-1251
+docs/maintainers/runlog.md
+  s_e3f859ac282ab5::t_257b86ac665569 1-96
+internal/agent/debuglog_test.go
+  s_e3f859ac282ab5::t_e0f346f628a9aa 1-230
+internal/agent/facts.go
+  s_e3f859ac282ab5::t_594e27ef6c9701 13,18,120-123
+internal/agent/pluginsync.go
+  s_e3f859ac282ab5::t_776acdb8ea7809 23,111,114-115,118-122,132,211-213,216,220,225,235-237,240,244,247,250,256,260,263-271
+internal/agent/sources.go
+  s_e3f859ac282ab5::t_8f1b193337c5a9 11,14,18,27,70-75,77,79,84,126,135,139,167-169,172,175,181,183,185,190-191,196,199,203,211,214,220,224,232-234,236,238,242,245,247-248
+internal/extension/host.go
+  s_e3f859ac282ab5::t_3dcd4aadfa5442 194-196,206-207
+internal/extension/host.rb
+  s_e3f859ac282ab5::t_3b453e6e5a90a3 84,180-183,197-199
+internal/extension/host_test.go
+  s_e3f859ac282ab5::t_1c16d76df1b7a4 321,402,505,627,659,676,698,715,730,749,778,792
+internal/extension/ruby_test.go
+  s_e3f859ac282ab5::t_a9bbaf6fed1008 5,67-72,99,648-701
+internal/extension/script.go
+  s_e3f859ac282ab5::t_a53d0f22274b3d 18
+internal/extension/testdata/libdir/puppet/provider/vox_value/file.rb
+  s_e3f859ac282ab5::t_de9273948ebc09 9
+internal/puppetapi/client.go
+  s_e3f859ac282ab5::t_0b89159dfc62f6 28,419-437,461,466-473
+internal/puppetapi/client_test.go
+  s_e3f859ac282ab5::t_1b9d9f4ac43b27 14,23,701-799
+internal/ral/dnf.go
+  s_e3f859ac282ab5::t_d9e5013f55352c 49-51,53
+internal/ral/exec.go
+  s_e3f859ac282ab5::t_54dad7b913ca97 17,324-326,426-428,430,445,450,460,465,539,603-614,620-624,634,638-647,665-674,702,722,735
+internal/ral/exec_test.go
+  s_e3f859ac282ab5::t_e193d5ac392e62 16,1635-1864
+internal/ral/extension.go
+  s_e3f859ac282ab5::t_d1ae55c4204d8a 9,14,131-136,144-145,147,176,180,182,219-220,222
+internal/ral/file.go
+  s_e3f859ac282ab5::t_2b91ed9cb82c06 20,434,440,446,454,457,461,467,477,479,489,492,499,501,504,575,609,642-646,651,655,657,664-669,695,781,813,882,909,926,930,973,1000,1071,1091,1094,1153,1157-1158,1163,1208,1247-1248,1256-1259,1767,1769,1817,1823,1834,1897
+internal/ral/file_fs_test.go
+  s_e3f859ac282ab5::t_6d7c395ae5c590 102,107,112,116,120,124,128,132,203
+internal/ral/file_link.go
+  s_e3f859ac282ab5::t_9fcf1e534605cd 4,44,51,73,87,102,129,146,153-158,165,186,202,204,217
+internal/ral/file_link_test.go
+  s_e3f859ac282ab5::t_21b443801ba722 511,569
+internal/ral/file_selinux.go
+  s_e3f859ac282ab5::t_3131909eb35932 24,785-799,823
+internal/ral/file_selinux_test.go
+  s_e3f859ac282ab5::t_344dbdb5c09829 1452-1542
+internal/ral/file_source_test.go
+  s_e3f859ac282ab5::t_fda5c54fe94cf6 353,371,389,417,519,541
+internal/ral/file_test.go
+  s_e3f859ac282ab5::t_776ac222778687 390,803,822,882,1637,4004-4215
+internal/ral/file_validate.go
+  s_e3f859ac282ab5::t_d4392aebeb1478 4,19,94,96,101-108,155,169,188
+internal/ral/file_validate_test.go
+  s_e3f859ac282ab5::t_70c3171841d527 662-721
+internal/ral/fileoutput.go
+  s_e3f859ac282ab5::t_f82f01c6351dd7 4,12-14,17-19,49-67,69-108,116-120,123,133,135-136,138,140,144-169,172
+internal/ral/fileoutput_test.go
+  s_e3f859ac282ab5::t_3a8ebe043c4e74 5,7,9,15-17,123-371
+internal/ral/package.go
+  s_e3f859ac282ab5::t_5788ed965566ec 12,272-275,360-363,390-392,439-441,460-487,634-638,767-769
+internal/ral/package_test.go
+  s_e3f859ac282ab5::t_cab098ef25a006 8,14,1905-2082
+internal/ral/service.go
+  s_e3f859ac282ab5::t_972638f1a67c6b 10,183-192,248,255,388
+internal/ral/service_test.go
+  s_e3f859ac282ab5::t_94fd976d68fd96 7,407-475
+internal/ral/sources.go
+  s_e3f859ac282ab5::t_9659e7d50c8c60 1-32
+internal/ral/sources_test.go
+  s_e3f859ac282ab5::t_6f5b4561f02b28 1-43
+internal/report/report.go
+  s_e3f859ac282ab5::t_9fa0ee71f16484 185-188,336-340,343,355-357
+internal/report/report_test.go
+  s_e3f859ac282ab5::t_e6c62e441bce14 686-709
+internal/runlog/runlog.go
+  s_e3f859ac282ab5::t_d1fe23bda587ba 1-149
+internal/runlog/runlog_test.go
+  s_e3f859ac282ab5::t_ef7d1c4ae0eb0c 1-229
+internal/transaction/build.go
+  s_e3f859ac282ab5::t_07200a9fb30a20 5,13,40-41,70,117,140-143,152,183-208,212,215-219,242-247,249,276,286-292,295-296,299,305,318,320,322,324
+internal/transaction/build_test.go
+  s_e3f859ac282ab5::t_0b8bb540bb886d 4,13-14,47,74,107,137,153,170,190,247,277,314,338,406,418,446,462,491,509,519,534,566,598,650,679,706,718,757,778,849,885,898,918,928-1069
+internal/transaction/evaluator_test.go
+  s_e3f859ac282ab5::t_5057f3dcbf95c0 13,607-667
+internal/transaction/transaction.go
+  s_e3f859ac282ab5::t_7a15bbc64bd27d 19,144-146,244-247,252,374,407,411,421,430,456,464,479,489,493,497,567,583,762,840,845,847,887,946,993,996-999,1004-1064,1211,1246,1352-1354,1408,1420-1421,1574,1585-1594
+internal/transaction/transaction_test.go
+  s_e3f859ac282ab5::t_626f0699f42c28 11,97-100,123,125-127,243,245-247,351-356,361,675,3351-3570
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "7a4526024dbb68939c749e79909f7ed2849340f3",
+  "prompts": {},
+  "sessions": {
+    "s_e3f859ac282ab5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "687ac0e7-60a4-46e8-81fa-ff2f7a80f52f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "peiriannydd <peiriannydd@gmail.com>"
+    }
+  }
+}
