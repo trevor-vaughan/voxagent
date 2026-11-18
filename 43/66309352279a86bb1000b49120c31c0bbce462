@@ -1,0 +1,34 @@
+internal/transaction/transaction_test.go
+  s_ca0a009256e562::t_17f0256849adc2 3595-3678
+internal/ral/goroutines_test.go
+  s_ca0a009256e562::t_07551e75222176 1-47
+internal/ral/exec_stage_test.go
+  s_ca0a009256e562::t_07551e75222176 155
+  s_ca0a009256e562::t_57bfab6749038e 297-300
+  s_ca0a009256e562::t_8797606cb8879a 423-424
+  s_ca0a009256e562::t_d822548057c75e 1-154,156-296,301-422,425-427
+internal/ral/exec_stage.go
+  s_ca0a009256e562::t_58faae1402659c 1-5,7-187,190-199,201-204,209-225
+  s_ca0a009256e562::t_fea9c23cc84279 6,188-189,205-208
+  s_ca0a009256e562::t_a36a34fda07b17 200
+internal/ral/exec.go
+  s_ca0a009256e562::t_17f0256849adc2 725-740,742-743,751,787
+internal/transaction/transaction.go
+  s_ca0a009256e562::t_17f0256849adc2 108-110,318,322,335-337,505-509,860-863,1367-1369,1416-1418
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "4366309352279a86bb1000b49120c31c0bbce462",
+  "prompts": {},
+  "sessions": {
+    "s_ca0a009256e562": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4a85c9b6-5ceb-463f-a96c-b56a7ba95d94",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "peiriannydd <peiriannydd@gmail.com>"
+    }
+  }
+}
