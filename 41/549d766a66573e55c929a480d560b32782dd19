@@ -1,0 +1,55 @@
+cmd/voxagent/agent.go
+  s_c1bf641911d6e2::t_8062944fc65764 127
+cmd/voxagent/apply.go
+  s_c1bf641911d6e2::t_03a04f05bf7b6b 67,192-206,237,239
+cmd/voxagent/debuglog_test.go
+  s_c1bf641911d6e2::t_093ee42e89ec98 1-195
+cmd/voxagent/extension.go
+  s_c1bf641911d6e2::t_2238f43b46b743 20,30,64-66
+internal/agent/debuglog_test.go
+  s_c1bf641911d6e2::t_069a2d4d427471 1-161
+internal/agent/facts.go
+  s_c1bf641911d6e2::t_385551d6b731ca 13,18,120-123
+internal/agent/pluginsync.go
+  s_c1bf641911d6e2::t_7c05483c5ecf72 23,111,114-115,118-122,132,211-213,216,220,225,235-237,240,244,247,250,256,260,263-271
+internal/agent/sources.go
+  s_c1bf641911d6e2::t_8fc330db99027f 13,17,68-69,71,73,78,159-161,164,167,173,175,177,182-183,188,191,195,203,206,212,216,224-226,228,230,234,237,239-240
+internal/extension/host.go
+  s_c1bf641911d6e2::t_b71c4a1ab14598 194-196,206-207
+internal/extension/host.rb
+  s_c1bf641911d6e2::t_de3ca3a55ab149 84,180-183,197-199
+internal/extension/host_test.go
+  s_c1bf641911d6e2::t_0e38d16e5c5c3c 321,402,505,627,659,676,698,715,730,749,778,792
+internal/extension/ruby_test.go
+  s_c1bf641911d6e2::t_80f220a4728739 5,67-72,99,649-702
+internal/extension/script.go
+  s_c1bf641911d6e2::t_a688778f371637 18
+internal/extension/testdata/libdir/puppet/provider/vox_value/file.rb
+  s_c1bf641911d6e2::t_b16572422b6790 9
+internal/puppetapi/client.go
+  s_c1bf641911d6e2::t_3f71b58e305c62 29,443,448-451
+internal/puppetapi/client_test.go
+  s_c1bf641911d6e2::t_2c4cb61281c941 14,23,701-751
+internal/ral/extension.go
+  s_c1bf641911d6e2::t_3e6ebb11adbf7e 9,14,131-136,144-145,147,176,180,182,219-220,222
+internal/transaction/transaction.go
+  s_c1bf641911d6e2::t_9782eecaa7d5a3 1246,1574,1585-1594
+internal/transaction/transaction_test.go
+  s_c1bf641911d6e2::t_be7957fc88581b 11,3511-3572
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "41549d766a66573e55c929a480d560b32782dd19",
+  "prompts": {},
+  "sessions": {
+    "s_c1bf641911d6e2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a771aff57933e592c",
+        "model": "unknown"
+      },
+      "human_author": "peiriannydd <peiriannydd@gmail.com>"
+    }
+  }
+}
