@@ -1,0 +1,119 @@
+README.md
+  s_e3f859ac282ab5::t_17dd33a80c0d9a 20,24-29,38-39,77-121,141,162-171,176
+cmd/voxagent/extension.go
+  s_e3f859ac282ab5::t_41c3d69e7ddddb 46-47,60,65-69,104,119-136
+cmd/voxagent/extension_test.go
+  s_e3f859ac282ab5::t_fcf0372d68a82a 4,7,181-284
+cmd/voxagent/generation.go
+  s_e3f859ac282ab5::t_73e0616d5f5a9a 1-111
+cmd/voxagent/generation_test.go
+  s_e3f859ac282ab5::t_81371e196fcb50 1-179
+cmd/voxagent/main.go
+  s_e3f859ac282ab5::t_261eea8c06d21f 26,47,94,116,123
+cmd/voxagent/main_test.go
+  s_e3f859ac282ab5::t_775be6a3c0a635 946-968
+docs/maintainers/apply-spine.md
+  s_e3f859ac282ab5::t_82f9448d9d1b95 102,116,135-143,466-519,592-593,597,1259-1268
+docs/maintainers/extension-host.md
+  s_e3f859ac282ab5::t_ac9dcf7e6b53da 9-10,51,55,60-68,80-85,106-107,144-157,205-208,233,237-238,251-253,303-390,427-428,432-433,444-453,465-470,477,479-482,484,488-493
+docs/maintainers/improvements.md
+  s_e3f859ac282ab5::t_57384de60b4a2f 38-45
+internal/catalog/catalog.go
+  s_e3f859ac282ab5::t_a1f004d0c66f7d 46-51,82-127
+internal/catalog/catalog_test.go
+  s_e3f859ac282ab5::t_0561e8af760470 4,6-7,104-131
+internal/extension/host.go
+  s_e3f859ac282ab5::t_c199c5f908f85e 12-13,28-29,191-192,202,215-223,235-237,241-243,245,256-398
+internal/extension/host.rb
+  s_e3f859ac282ab5::t_e4f6ab8b3551a2 104,191,196-199,202-203,267-280,282-289,291-307,309-311,313-357,359-360,362-419
+internal/extension/host_test.go
+  s_e3f859ac282ab5::t_9441a987e30a6f 29,35-132,161-163,257,338,416,509-676
+internal/extension/messages.go
+  s_e3f859ac282ab5::t_a02a13a609adae 55-57,62-67,74-117
+internal/extension/ruby_test.go
+  s_e3f859ac282ab5::t_75ab3df76a79b7 34,46,51-52,79,321-436
+internal/extension/script.go
+  s_e3f859ac282ab5::t_5f4ac394014682 18
+internal/extension/testdata/libdir/puppet/type/vox_evalgen.rb
+  s_e3f859ac282ab5::t_da61406b987a66 1-13
+internal/extension/testdata/libdir/puppet/type/vox_gen.rb
+  s_e3f859ac282ab5::t_2bedb589d2fc59 9-12
+internal/gatekit/reportcmp/normalise.go
+  s_e3f859ac282ab5::t_2ac444044bc398 55-68,233-248,280,289
+internal/gatekit/reportcmp/normalise_test.go
+  s_e3f859ac282ab5::t_2a4bc807a0f413 42-61
+internal/ral/check.go
+  s_e3f859ac282ab5::t_d00475184ecccc 1-106
+internal/ral/evaluator.go
+  s_e3f859ac282ab5::t_cf57d3358ab7c0 80-86,114-161
+internal/ral/extension.go
+  s_e3f859ac282ab5::t_1bd90492888c52 21,34-35,49,66,82-84,164-207
+internal/ral/extension_test.go
+  s_e3f859ac282ab5::t_ec997bdc759c17 5,7,9,22-27,161-265
+internal/ral/file.go
+  s_e3f859ac282ab5::t_e72f689be6510a 16,25-26,28,46-49,171-172,237-239,333,337-348,350,388,401,407,413,421,424,428,434,444,456,459,466,468,471,538,567-573,646,675-683,730-736,739-743,766,768-769,771-772,819-827,869,873,923-926,945,995,1014,1518-1524,1608-1611,1728-1732,1734-1741,1792-1800
+internal/ral/file_backup.go
+  s_e3f859ac282ab5::t_a925689af68acb 1-1083
+internal/ral/file_backup_test.go
+  s_e3f859ac282ab5::t_03795111e0428c 1-1169
+internal/ral/file_fs.go
+  s_e3f859ac282ab5::t_8265b5de5432ff 46-50,91,320-342
+internal/ral/file_fs_test.go
+  s_e3f859ac282ab5::t_8600224c9e5b9e 103,108,112,116,120,124
+internal/ral/file_link.go
+  s_e3f859ac282ab5::t_82cde331e1a31f 42,49,64-66,68-72,85,100,127,141-144,152-160,166,169,176,178,190,192
+internal/ral/file_link_test.go
+  s_e3f859ac282ab5::t_a82f08cf35e9bf 512,569
+internal/ral/file_source.go
+  s_e3f859ac282ab5::t_93d7eac6b80a75 227-228,234
+internal/ral/file_source_test.go
+  s_e3f859ac282ab5::t_6a5bd81f210d40 388,518
+internal/ral/file_test.go
+  s_e3f859ac282ab5::t_7446d76b70ad2f 800,819,1636,3654-3692
+internal/ral/file_validate.go
+  s_e3f859ac282ab5::t_7ca00b131f1e59 1-300
+internal/ral/file_validate_test.go
+  s_e3f859ac282ab5::t_f8590eb344526b 1-661
+internal/ral/preflight.go
+  s_e3f859ac282ab5::t_eae0e2f3d5dd43 45-46,52,57-58,88-91,93
+internal/ral/preflight_test.go
+  s_e3f859ac282ab5::t_70f47259c9db7d 365-443
+internal/ral/ral.go
+  s_e3f859ac282ab5::t_f1d2b6145682a4 82-88
+internal/report/report.go
+  s_e3f859ac282ab5::t_48735d5b8f5a9a 103-105,107-109
+internal/transaction/build.go
+  s_e3f859ac282ab5::t_cafb05264dae0b 63,416-433
+internal/transaction/build_test.go
+  s_e3f859ac282ab5::t_8eef6c8cf68aff 606-633
+internal/transaction/evalgen_test.go
+  s_e3f859ac282ab5::t_9dc9b27e73c974 1-488
+internal/transaction/transaction.go
+  s_e3f859ac282ab5::t_1b80e09d9bad20 5,7,90-97,153-154,172,205,219-227,246-292,305,387,470-474,539-544,783-784,788-1047,1058-1059,1076-1077,1080,1082,1084-1087,1094-1107,1129-1179,1186-1187,1219-1222,1281,1286-1314
+internal/transaction/transaction_test.go
+  s_e3f859ac282ab5::t_3a8c394e5c3ee5 182-195,2702-2723
+tests/spine/allowlist.json
+  s_e3f859ac282ab5::t_7b83758fc0d20a 38-40,44-50,91-95,104-106
+tests/spine/report-diff-container.sh
+  s_e3f859ac282ab5::t_a2d04ce37e0eba 98-104,177-182,278-320,380
+tests/spine/report-diff-extension.sh
+  s_e3f859ac282ab5::t_a1b3518f9f7810 9-10,17-23,34,46-47,49,58-59,62,66,72-73,79-82,117-136,154-157,160-162,181-182,220-228,231-243,289-292,295-297,303-327
+tests/spine/report-diff.sh
+  s_e3f859ac282ab5::t_9c0c36c1fc28c6 23-26,139-140,180-182,224-239,249-261,272-273,296-327
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "0101bec21142be1b4bdeafb80f457cfa90b8e5cd",
+  "prompts": {},
+  "sessions": {
+    "s_e3f859ac282ab5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "687ac0e7-60a4-46e8-81fa-ff2f7a80f52f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "peiriannydd <peiriannydd@gmail.com>"
+    }
+  }
+}
