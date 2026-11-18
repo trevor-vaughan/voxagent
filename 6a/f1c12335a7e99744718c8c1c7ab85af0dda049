@@ -1,0 +1,59 @@
+cmd/voxagent/apply.go
+  s_eaccc035957881::t_8e895fc9174040 204-210
+internal/ral/file_test.go
+  s_eaccc035957881::t_b1d3bceaf16dbf 390
+  s_eaccc035957881::t_36d4b6141b95b4 4005-4042
+internal/ral/sources_test.go
+  s_eaccc035957881::t_f3ab480dda498d 1-30
+internal/ral/sources.go
+  s_eaccc035957881::t_5f7731bb9c6d52 1-31
+internal/transaction/build.go
+  s_eaccc035957881::t_c757f3ca9c5eda 5,13,40-41,70,117,152
+  s_eaccc035957881::t_8f3e629d4121f9 212,215-218
+  s_eaccc035957881::t_e2014dc78a2c78 276
+  s_eaccc035957881::t_3917076bf573a2 140-143
+  s_eaccc035957881::t_695e9ae96339d5 183-208,242-247,249,286-292,295-296,299,305,318,320,322,324
+  s_eaccc035957881::t_fb700ec0760770 219
+internal/ral/file_fs_test.go
+  s_eaccc035957881::t_b1d3bceaf16dbf 128,132,203
+cmd/voxagent/main_test.go
+  s_eaccc035957881::t_f516b4094db964 1284-1286
+internal/transaction/transaction.go
+  s_eaccc035957881::t_5ece98af8087c9 371,404,427,453,476,486,494,580,759,837,844,943,997-1043
+  s_eaccc035957881::t_8f3e629d4121f9 19,241-244,249
+  s_eaccc035957881::t_6b2976ee12ebf8 1044
+internal/ral/package.go
+  s_eaccc035957881::t_b1d3bceaf16dbf 12
+  s_eaccc035957881::t_26b0e933e66b73 272-275
+internal/ral/file.go
+  s_eaccc035957881::t_b1d3bceaf16dbf 20
+  s_eaccc035957881::t_26b0e933e66b73 479,1142,1146-1147
+internal/transaction/transaction_test.go
+  s_eaccc035957881::t_7217ebec2f0000 96-99,122,124-126,242,244-246,350-355,360,3352-3475
+  s_eaccc035957881::t_0350efc0642254 674
+internal/ral/package_test.go
+  s_eaccc035957881::t_36d4b6141b95b4 1904-1922
+  s_eaccc035957881::t_189c38eeace51e 13
+internal/transaction/build_test.go
+  s_eaccc035957881::t_9c874781035114 74,418,598,650,849,898
+  s_eaccc035957881::t_0350efc0642254 47,107,137,153,170,190,247,277,314,338,406,446,462,491,509,519,534,566,679,706,718,757,778,885,918
+  s_eaccc035957881::t_39f6eedc77bc20 4
+  s_eaccc035957881::t_fcce5042066cc8 13-14,928-978,980-1069
+  s_eaccc035957881::t_846dbb8cd7bdd2 979
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "6af1c12335a7e99744718c8c1c7ab85af0dda049",
+  "prompts": {},
+  "sessions": {
+    "s_eaccc035957881": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c7453851-32ce-4383-ad3c-4454d1492a85",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "peiriannydd <peiriannydd@gmail.com>"
+    }
+  }
+}
