@@ -1,0 +1,19 @@
+docs/maintainers/apply-spine.md
+  s_f27c5054eea59c::t_e49d42d412b3e9 104,147
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "5ab3a3e5e0a0bd15e352656e55699f6ace7a4348",
+  "prompts": {},
+  "sessions": {
+    "s_f27c5054eea59c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a79e4e1202dd56b07",
+        "model": "unknown"
+      },
+      "human_author": "peiriannydd <peiriannydd@gmail.com>"
+    }
+  }
+}
