@@ -1,0 +1,25 @@
+internal/ral/augeas_params.go
+  s_96e6f425552a49::t_0a60b5b46b39a3 224,401-402,414-415
+  s_96e6f425552a49::t_011c7ea35ee735 416
+internal/ral/augeas_params_test.go
+  s_96e6f425552a49::t_a942df7dafc8d9 56,134-135,272-277,282,350-362
+  s_96e6f425552a49::t_eb72ebb8ac12b0 363
+internal/ral/augeas_types.go
+  s_96e6f425552a49::t_0a60b5b46b39a3 128,146
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "acd789107c43ff8867d5e30b1221d26f88f0e62b",
+  "prompts": {},
+  "sessions": {
+    "s_96e6f425552a49": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "01a9104e-22a3-46ad-b4b0-ad2bc3b2fa6b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "peiriannydd <peiriannydd@gmail.com>"
+    }
+  }
+}
