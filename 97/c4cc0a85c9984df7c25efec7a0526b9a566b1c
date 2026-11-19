@@ -1,0 +1,22 @@
+tests/spine/report-diff-container.sh
+  s_96e6f425552a49::t_843dfeb76862d0 541-544,563-564,678
+  s_96e6f425552a49::t_b463419f295aa2 161-163,174-175,180-181,226,539,642-643,657-662,679,698-713,715-716,735,738
+  s_96e6f425552a49::t_153b47bae65539 45-46,870-948
+  s_96e6f425552a49::t_e138d89120fde9 540
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "97c4cc0a85c9984df7c25efec7a0526b9a566b1c",
+  "prompts": {},
+  "sessions": {
+    "s_96e6f425552a49": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "01a9104e-22a3-46ad-b4b0-ad2bc3b2fa6b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "peiriannydd <peiriannydd@gmail.com>"
+    }
+  }
+}
