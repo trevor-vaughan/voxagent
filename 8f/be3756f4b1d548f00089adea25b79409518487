@@ -1,0 +1,23 @@
+internal/ral/ral.go
+  s_aed3a55ac21e97::t_47bec3ce5265e6 246-249,274-279
+internal/transaction/transaction.go
+  s_aed3a55ac21e97::t_c5bfa5d1290579 173-176,231-240
+internal/transaction/transaction_test.go
+  s_aed3a55ac21e97::t_28ef74ddc4d6d0 3771-3850
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "8fbe3756f4b1d548f00089adea25b79409518487",
+  "prompts": {},
+  "sessions": {
+    "s_aed3a55ac21e97": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a83123b7e0acb852c",
+        "model": "unknown"
+      },
+      "human_author": "peiriannydd <peiriannydd@gmail.com>"
+    }
+  }
+}
