@@ -1,0 +1,19 @@
+cmd/voxagent/concat_test.go
+  s_f27c5054eea59c::t_2bc0c0028761a2 245,250-253,289
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "52d9a4424011c7b257a9f12e53be29d91688f4df",
+  "prompts": {},
+  "sessions": {
+    "s_f27c5054eea59c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a79e4e1202dd56b07",
+        "model": "unknown"
+      },
+      "human_author": "peiriannydd <peiriannydd@gmail.com>"
+    }
+  }
+}
