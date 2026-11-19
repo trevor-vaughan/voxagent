@@ -1,0 +1,19 @@
+internal/transaction/transaction_test.go
+  s_f27c5054eea59c::t_25812c3e745b72 3753-3770
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "891cc35f3bc3d4b31c7afbb8edddf54a9986f7eb",
+  "prompts": {},
+  "sessions": {
+    "s_f27c5054eea59c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a79e4e1202dd56b07",
+        "model": "unknown"
+      },
+      "human_author": "peiriannydd <peiriannydd@gmail.com>"
+    }
+  }
+}
