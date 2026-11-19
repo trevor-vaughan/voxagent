@@ -1,0 +1,33 @@
+internal/ral/sshd_config.go
+  s_96e6f425552a49::t_d93d00f328a199 1-252
+internal/ral/sshd_config_test.go
+  s_96e6f425552a49::t_a15e2abcc41b37 247,253-254,261-262,292,323-359
+  s_96e6f425552a49::t_cd1b14cbb6e713 1-246,248-252,255-260,263-291,293-322,360-371
+internal/ral/augeas_values_test.go
+  s_96e6f425552a49::t_b08d0163a83df9 26,47,76,79,88,100,111,114,121-143
+  s_96e6f425552a49::t_01970ceeea249b 144
+internal/ral/augeas_values.go
+  s_96e6f425552a49::t_bea46542c9f7e5 52-54,62-67,71,91,111-112,121,126-132
+  s_96e6f425552a49::t_62f4aca30ebd2b 133-134
+internal/ral/augeas_types.go
+  s_96e6f425552a49::t_66ecf40f6165e9 11-12
+internal/ral/ssh_config.go
+  s_96e6f425552a49::t_1a7d3c7fb4e69a 81,97,110,122,128,133,144-150
+  s_96e6f425552a49::t_02f579dce769cd 151-152
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "16f8d213e13a62ded4f75570634f077e1592d6df",
+  "prompts": {},
+  "sessions": {
+    "s_96e6f425552a49": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "01a9104e-22a3-46ad-b4b0-ad2bc3b2fa6b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "peiriannydd <peiriannydd@gmail.com>"
+    }
+  }
+}
