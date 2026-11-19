@@ -1,13 +1,19 @@
 internal/ral/exec.go
   s_ca0a009256e562::t_43bc449d07d9d4 695-699,707
+  s_ca0a009256e562::t_f8a753de14b66c 695-699,707
 internal/ral/exec_env.go
   s_ca0a009256e562::t_afd3f096d0436d 1-71
+  s_ca0a009256e562::t_f8a753de14b66c 1-71
 internal/ral/exec_env_test.go
   s_ca0a009256e562::t_99105e6a9e10bc 1-203
+  s_ca0a009256e562::t_caaa37c4d86f65 1-130,132-203
+  s_ca0a009256e562::t_0a00849ac0da7e 131
 internal/ral/file_validate.go
   s_ca0a009256e562::t_703a49dac4cbea 137-148
+  s_ca0a009256e562::t_c933822b0e2e3e 137-148
 internal/ral/fileoutput.go
   s_ca0a009256e562::t_094c7c3ab08315 70-72
+  s_ca0a009256e562::t_20c516a5f9f3f1 70-72
 ---
 {
   "schema_version": "authorship/3.0.0",
