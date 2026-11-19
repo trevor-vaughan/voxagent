@@ -1,0 +1,23 @@
+internal/transaction/transaction.go
+  s_96e6f425552a49::t_2b1d10e1d96daf 1185,1287-1290,1351
+internal/transaction/evalgen_test.go
+  s_96e6f425552a49::t_c348e53124fb91 193
+  s_96e6f425552a49::t_be34649699f6e7 22-23,32,34-36,181-192,194-196
+  s_96e6f425552a49::t_eaac182f506779 197-198
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "d72b5d09797c194ac7e0dd5be5da6ed73b5d62aa",
+  "prompts": {},
+  "sessions": {
+    "s_96e6f425552a49": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "01a9104e-22a3-46ad-b4b0-ad2bc3b2fa6b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "peiriannydd <peiriannydd@gmail.com>"
+    }
+  }
+}
