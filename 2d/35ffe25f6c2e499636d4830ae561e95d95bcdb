@@ -1,7 +1,12 @@
 internal/ral/exec.go
   s_ca0a009256e562::t_72e7e1177ee812 48-50,60-61,114-119
+  s_ca0a009256e562::t_a2d1ce9f9e341b 60-61
+  s_ca0a009256e562::t_2497690ca9b6f4 48-50
+  s_ca0a009256e562::t_1758a5afb1d102 114-119
 internal/ral/exec_test.go
   s_ca0a009256e562::t_714f2ce53e20ee 1277-1316
+  s_ca0a009256e562::t_497184ecb75775 1291-1292
+  s_ca0a009256e562::t_6f108e8cf211fd 1277-1290,1293-1316
 ---
 {
   "schema_version": "authorship/3.0.0",
