@@ -1,0 +1,19 @@
+internal/ral/file_validate.go
+  s_f27c5054eea59c::t_a989e854f66e94 39-40
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "4c855d44282b2d4cbc8ecba5453ea74e83acf650",
+  "prompts": {},
+  "sessions": {
+    "s_f27c5054eea59c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a79e4e1202dd56b07",
+        "model": "unknown"
+      },
+      "human_author": "peiriannydd <peiriannydd@gmail.com>"
+    }
+  }
+}
