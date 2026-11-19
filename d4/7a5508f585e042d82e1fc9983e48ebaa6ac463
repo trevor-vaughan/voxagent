@@ -1,0 +1,105 @@
+tests/spine/augeas/lens-dir-known-hosts-only/lenses
+  s_96e6f425552a49::t_14c6b402489130 1
+tests/spine/augeas/sysctl-file-before/seed.sh
+  s_96e6f425552a49::t_14c6b402489130 1-4
+tests/spine/augeas/refuse-ssh-config-relative-target/site.pp
+  s_96e6f425552a49::t_14c6b402489130 1
+tests/spine/augeas/sysctl-existing-w-fails/files
+  s_96e6f425552a49::t_14c6b402489130 1
+tests/spine/augeas/sysctl-stale-invalid-key/files
+  s_96e6f425552a49::t_14c6b402489130 1
+tests/spine/simp/lib.sh
+  s_96e6f425552a49::t_d4204f20bfb5cf 4-7
+  s_96e6f425552a49::t_06645c7cc05ed1 262-292
+  s_96e6f425552a49::t_13becca57b97de 3
+  s_96e6f425552a49::t_5076738074d8ac 293-296
+tests/spine/concat/g5.sh
+  s_96e6f425552a49::t_e5f74896ff6aee 4-5,274,280
+tests/spine/augeas/sysctl-prefetch-load-error/site.pp
+  s_96e6f425552a49::t_14c6b402489130 1-3
+tests/spine/augeas/image.sh
+  s_96e6f425552a49::t_82b1c794f0c87d 1-49
+tests/spine/augeas/sysctl-delegated/files
+  s_96e6f425552a49::t_14c6b402489130 1
+tests/spine/augeas/sysctl-shim.sh
+  s_96e6f425552a49::t_7aee75a9ed7ab6 1
+  s_96e6f425552a49::t_a4c77c4cd9a8b2 2-29
+tests/spine/augeas/refuse-sysctl-apply-yes/site.pp
+  s_96e6f425552a49::t_14c6b402489130 1
+scripts/augeas-lib-test.sh
+  s_96e6f425552a49::t_828e51d586c88b 12-15,30-35
+tests/spine/augeas/lens-dir-known-hosts-only/site.pp
+  s_96e6f425552a49::t_14c6b402489130 1-6
+tests/spine/augeas/lens-dir-known-hosts-only/seed.sh
+  s_96e6f425552a49::t_14c6b402489130 1
+tests/spine/g5-case.sh
+  s_96e6f425552a49::t_d1f4e3f4fae3a1 1-71
+tests/spine/report-diff-container.sh
+  s_96e6f425552a49::t_663d404b99c2f0 43,46-51,58-59,210-211,214-219,251-252,979-982
+tests/spine/augeas/sysctl-file-before/files
+  s_96e6f425552a49::t_14c6b402489130 1
+.taskfiles/dev.yml
+  s_96e6f425552a49::t_4a5c995d243361 203-206
+tests/spine/augeas/sshd-mode-preserved/seed.sh
+  s_96e6f425552a49::t_14c6b402489130 1-3
+tests/spine/augeas/sshd-mode-preserved/files
+  s_96e6f425552a49::t_14c6b402489130 1
+tests/spine/augeas/sysctl-existing-w-fails/seed.sh
+  s_96e6f425552a49::t_14c6b402489130 1-2
+tests/spine/augeas/lens-dir-known-hosts-only/files
+  s_96e6f425552a49::t_14c6b402489130 1-3
+tests/spine/augeas/sshd-two-handles/files
+  s_96e6f425552a49::t_14c6b402489130 1
+tests/spine/augeas/g5.sh
+  s_96e6f425552a49::t_05990b40d4942f 1-75,80-310
+  s_96e6f425552a49::t_c9e3d770281166 76-79
+tests/spine/augeas/sshd-two-handles/site.pp
+  s_96e6f425552a49::t_14c6b402489130 1-4
+tests/spine/augeas/sysctl-stale-invalid-key/seed.sh
+  s_96e6f425552a49::t_14c6b402489130 1
+tests/spine/augeas/sysctl-save-fails/files
+  s_96e6f425552a49::t_14c6b402489130 1
+tests/spine/augeas/sysctl-delegated/site.pp
+  s_96e6f425552a49::t_14c6b402489130 1-3
+tests/spine/augeas/sysctl-prefetch-load-error/seed.sh
+  s_96e6f425552a49::t_14c6b402489130 1
+tests/spine/augeas/refuse-sshd-array-append-maybe/site.pp
+  s_96e6f425552a49::t_14c6b402489130 1
+tests/spine/augeas/sysctl-delegated/seed.sh
+  s_96e6f425552a49::t_14c6b402489130 1
+tests/spine/augeas/sshd-mode-preserved/site.pp
+  s_96e6f425552a49::t_14c6b402489130 1
+tests/spine/augeas/sysctl-stale-invalid-key/site.pp
+  s_96e6f425552a49::t_14c6b402489130 1-2
+tests/spine/augeas/sysctl-prefetch-load-error/files
+  s_96e6f425552a49::t_14c6b402489130 1
+tests/spine/augeas/sysctl-existing-w-fails/site.pp
+  s_96e6f425552a49::t_14c6b402489130 1-5
+tests/spine/report-diff-simp.sh
+  s_96e6f425552a49::t_c50837f2a49716 18-26,35,37-39,103-108,203-206,326-338,362-368,370
+  s_96e6f425552a49::t_3fe93239f992ac 369,371
+tests/spine/augeas/sysctl-file-before/site.pp
+  s_96e6f425552a49::t_14c6b402489130 1-8
+tests/spine/augeas/refuse-ensure-bogus/site.pp
+  s_96e6f425552a49::t_14c6b402489130 1
+tests/spine/augeas/sysctl-save-fails/site.pp
+  s_96e6f425552a49::t_14c6b402489130 1-3
+tests/spine/images/Containerfile.augeas
+  s_96e6f425552a49::t_2a1c476f9f4ee0 1-10
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "d47a5508f585e042d82e1fc9983e48ebaa6ac463",
+  "prompts": {},
+  "sessions": {
+    "s_96e6f425552a49": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "01a9104e-22a3-46ad-b4b0-ad2bc3b2fa6b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "peiriannydd <peiriannydd@gmail.com>"
+    }
+  }
+}
