@@ -1,0 +1,23 @@
+README.md
+  s_ca0a009256e562::t_4594dc314059f6 104-108
+  s_ca0a009256e562::t_48ad672e3ac435 114-115
+docs/maintainers/apply-spine.md
+  s_ca0a009256e562::t_ed8ed422f9e337 171
+  s_ca0a009256e562::t_2e79e337450494 179
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "dda1e7d16050b86c4ff702c0c754c2470156b73f",
+  "prompts": {},
+  "sessions": {
+    "s_ca0a009256e562": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4a85c9b6-5ceb-463f-a96c-b56a7ba95d94",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": null
+    }
+  }
+}
