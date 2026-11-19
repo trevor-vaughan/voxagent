@@ -1,0 +1,25 @@
+docs/maintainers/apply-spine.md
+  s_346a6a16ca4b25::t_04d9f673ea856d 171
+internal/ral/file.go
+  s_346a6a16ca4b25::t_79df11b39350de 725
+internal/ral/file_validate.go
+  s_346a6a16ca4b25::t_ada4da3074bb90 32-35,39,42,51,106-109,116-118
+internal/ral/file_validate_test.go
+  s_346a6a16ca4b25::t_531e09f6e36908 721-777
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "fdb7aa7c1e3cae8356b2f74f6d735f546df038b1",
+  "prompts": {},
+  "sessions": {
+    "s_346a6a16ca4b25": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a5b03e4b383f3714a",
+        "model": "unknown"
+      },
+      "human_author": "peiriannydd <peiriannydd@gmail.com>"
+    }
+  }
+}
