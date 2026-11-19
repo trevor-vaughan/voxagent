@@ -1,0 +1,23 @@
+internal/ral/concat_content_test.go
+  s_96e6f425552a49::t_7ff0241a753f23 1-112,118-189
+  s_96e6f425552a49::t_0412edba9cf858 113-117
+internal/ral/concat_content.go
+  s_96e6f425552a49::t_0412edba9cf858 151-154
+  s_96e6f425552a49::t_883780478a65eb 1-150,155-171
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "80cc97e6c0c83c53a3977133bec62905d56e729f",
+  "prompts": {},
+  "sessions": {
+    "s_96e6f425552a49": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "01a9104e-22a3-46ad-b4b0-ad2bc3b2fa6b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "peiriannydd <peiriannydd@gmail.com>"
+    }
+  }
+}
