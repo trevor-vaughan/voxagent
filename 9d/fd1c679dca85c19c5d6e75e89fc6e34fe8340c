@@ -1,0 +1,23 @@
+README.md
+  s_43539a9685ebca::t_e8aab57dd79e65 98-99,102-104,276-277,319-321
+docs/maintainers/apply-spine.md
+  s_43539a9685ebca::t_cc6337afa0dd1b 182,786,790,1669-1674,1807
+docs/maintainers/extension-host.md
+  s_43539a9685ebca::t_337ec8c4a505bc 426-428,567-568
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "9dfd1c679dca85c19c5d6e75e89fc6e34fe8340c",
+  "prompts": {},
+  "sessions": {
+    "s_43539a9685ebca": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-aa9138f4b71e9ab47",
+        "model": "unknown"
+      },
+      "human_author": "peiriannydd <peiriannydd@gmail.com>"
+    }
+  }
+}
