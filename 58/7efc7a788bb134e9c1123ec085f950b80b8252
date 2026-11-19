@@ -1,0 +1,27 @@
+internal/ral/augeas_params.go
+  s_96e6f425552a49::t_ff2a88e286f115 1-6,8-98,101-162,166-167,172-177,435
+  s_96e6f425552a49::t_4cec30e173458a 7,168-171,181-182,185-186,188,190,196-203,205-206,214-434
+  s_96e6f425552a49::t_a327bbc691f100 99-100,163-165,178-180,183-184,187,189,191-195,204,207-213
+internal/ral/augeas_types.go
+  s_96e6f425552a49::t_5ce972511a87b8 1-134,138-181
+  s_96e6f425552a49::t_1e529c5b2b4f3b 135-137
+internal/ral/augeas_params_test.go
+  s_96e6f425552a49::t_1e529c5b2b4f3b 287-288
+  s_96e6f425552a49::t_5d5756b8dc61ca 1-286,289-343
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "587efc7a788bb134e9c1123ec085f950b80b8252",
+  "prompts": {},
+  "sessions": {
+    "s_96e6f425552a49": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "01a9104e-22a3-46ad-b4b0-ad2bc3b2fa6b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "peiriannydd <peiriannydd@gmail.com>"
+    }
+  }
+}
