@@ -1,0 +1,26 @@
+internal/extension/testdata/libdir/puppet/type/vox_evalgen.rb
+  s_96e6f425552a49::t_0597e054a098a2 3-5,10,15-17
+tests/spine/report-diff-extension.sh
+  s_96e6f425552a49::t_51fcf3dfe1a7e8 210-227,232-234,241-242,245-246,248,257-258,262,280,435-446
+  s_96e6f425552a49::t_6329a7f9dc3661 19,94-97,143-155,159-160,167-168,240,399,402-403
+  s_96e6f425552a49::t_dccd2444d1344d 162-166
+  s_96e6f425552a49::t_ec25973d900a26 69,447
+  s_96e6f425552a49::t_3a1dbc6f705106 161
+  s_96e6f425552a49::t_3ea2bfe6a53a43 17-18,20,22
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "9b988b0d874a667309f51db6053f135911e0fd34",
+  "prompts": {},
+  "sessions": {
+    "s_96e6f425552a49": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "01a9104e-22a3-46ad-b4b0-ad2bc3b2fa6b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "peiriannydd <peiriannydd@gmail.com>"
+    }
+  }
+}
