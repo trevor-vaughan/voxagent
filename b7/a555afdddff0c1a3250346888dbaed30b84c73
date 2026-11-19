@@ -1,0 +1,23 @@
+internal/ral/user_params.go
+  s_96e6f425552a49::t_6374ab199d034f 180-182,184-185
+  s_96e6f425552a49::t_0ba50783d5b0a1 172-179,183
+  s_96e6f425552a49::t_b7aa75798686ad 186
+internal/ral/user_params_test.go
+  s_96e6f425552a49::t_28a4db49ec96ca 41-43,101-103
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "b7a555afdddff0c1a3250346888dbaed30b84c73",
+  "prompts": {},
+  "sessions": {
+    "s_96e6f425552a49": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "01a9104e-22a3-46ad-b4b0-ad2bc3b2fa6b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "peiriannydd <peiriannydd@gmail.com>"
+    }
+  }
+}
