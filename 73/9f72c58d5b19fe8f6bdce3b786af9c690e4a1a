@@ -1,0 +1,401 @@
+docs/maintainers/apply-spine.md
+  s_96e6f425552a49::t_cfbff69e6034d8 1466-1469
+  s_96e6f425552a49::t_ae8f2bdb101b82 2011
+tests/spine/augeas/sysctl-shim.sh
+  s_96e6f425552a49::t_9737262e1407db 3
+tests/spine/images/Containerfile.augeas
+  s_96e6f425552a49::t_5a56014f6661fe 3-5
+tests/spine/concat/g5.sh
+  s_96e6f425552a49::t_79c6eb7e69a229 10-11
+  s_96e6f425552a49::t_736e4fe4458e06 7-9
+  s_96e6f425552a49::t_19106a18eca6c4 54-55,57-60,62-76
+  s_96e6f425552a49::t_826d3eec3de34f 253
+tests/spine/augeas/g5.sh
+  s_96e6f425552a49::t_afd07967e23cd0 250
+  s_96e6f425552a49::t_b8c9cefac41a1b 66-67,69-72,74-83
+  s_96e6f425552a49::t_1660b870674e52 15-18
+tests/spine/augeas/cases/sshd-mode-preserved/files
+  s_96e6f425552a49::t_81e7ffbd60be43 1
+tests/spine/augeas/cases/sshd-two-handles/files
+  s_96e6f425552a49::t_e86f09bb52700d 1
+tests/spine/augeas/cases/sysctl-file-before/files
+  s_96e6f425552a49::t_8b1a9e18f3bc51 1
+tests/spine/augeas/cases/sysctl-prefetch-load-error/files
+  s_96e6f425552a49::t_a53869c513b52f 1
+tests/spine/augeas/cases/sysctl-stale-invalid-key/files
+  s_96e6f425552a49::t_1f4e3dbb48381a 1
+tests/spine/concat/cases/21-file-visited-first/site.pp
+  s_96e6f425552a49::t_d85a1e853d52e9 1-12
+tests/spine/concat/cases/22-tag-truthiness/site.pp
+  s_96e6f425552a49::t_dc34262571343c 1-3
+tests/spine/concat/cases/23-group-false/site.pp
+  s_96e6f425552a49::t_521924c98a080a 1
+tests/spine/concat/cases/v10-12c-sensitive-newfile/site.pp
+  s_96e6f425552a49::t_8f670791ed82e3 1-3
+tests/spine/augeas/cases/01a-sysctl-new-file-absent/files
+  s_96e6f425552a49::t_1698141012ab69 1-2
+tests/spine/augeas/cases/01a-sysctl-new-file-absent/seed.sh
+  s_96e6f425552a49::t_60d259ce1012cb 1-26
+tests/spine/augeas/cases/01a-sysctl-new-file-absent/site.pp
+  s_96e6f425552a49::t_4d885857295c31 1
+tests/spine/augeas/cases/01b-sysctl-new-stock-file/files
+  s_96e6f425552a49::t_22334972e2de0d 1-2
+tests/spine/augeas/cases/01b-sysctl-new-stock-file/seed.sh
+  s_96e6f425552a49::t_42501cd1be5fbb 1-25
+tests/spine/augeas/cases/01b-sysctl-new-stock-file/site.pp
+  s_96e6f425552a49::t_57441c2bc72cd6 1
+tests/spine/augeas/cases/01c-sysctl-existing-differs/files
+  s_96e6f425552a49::t_a1c38ed98f0407 1-2
+tests/spine/augeas/cases/01c-sysctl-existing-differs/seed.sh
+  s_96e6f425552a49::t_712bb9840fe555 1-27
+tests/spine/augeas/cases/01c-sysctl-existing-differs/site.pp
+  s_96e6f425552a49::t_4e52eed7773a64 1-6
+tests/spine/augeas/cases/01d-sysctl-rerun/files
+  s_96e6f425552a49::t_a0a309ddb7fdd9 1-2
+tests/spine/augeas/cases/01d-sysctl-rerun/seed.sh
+  s_96e6f425552a49::t_4158206e222e91 1-29
+tests/spine/augeas/cases/01d-sysctl-rerun/site.pp
+  s_96e6f425552a49::t_7a5e1e1e75eef4 1-6
+tests/spine/augeas/cases/01e-sysctl-silent-real-sysctl/site.pp
+  s_96e6f425552a49::t_c485a985f177b5 1-6
+tests/spine/augeas/cases/01f-sysctl-d-default-target/files
+  s_96e6f425552a49::t_0939549103f29b 1-2
+tests/spine/augeas/cases/01f-sysctl-d-default-target/seed.sh
+  s_96e6f425552a49::t_74b725fe211ccb 1-27
+tests/spine/augeas/cases/01f-sysctl-d-default-target/site.pp
+  s_96e6f425552a49::t_01358bc198ca35 1
+tests/spine/augeas/cases/01g-sysctl-d-explicit-target/files
+  s_96e6f425552a49::t_6efcd4a471caf2 1-2
+tests/spine/augeas/cases/01g-sysctl-d-explicit-target/seed.sh
+  s_96e6f425552a49::t_0d72ab017ae63c 1-27
+tests/spine/augeas/cases/01g-sysctl-d-explicit-target/site.pp
+  s_96e6f425552a49::t_5249b504d73962 1
+tests/spine/augeas/cases/01h-sysctl-shim-failure/seed.sh
+  s_96e6f425552a49::t_d9d75224074aaf 1-25
+tests/spine/augeas/cases/01h-sysctl-shim-failure/site.pp
+  s_96e6f425552a49::t_b60d71c3e27931 1-5
+tests/spine/augeas/cases/01i-sysctl-65-resources-slices/site.pp
+  s_96e6f425552a49::t_dfcbc192214b1d 1-65
+tests/spine/augeas/cases/01j-sysctl-duplicates/seed.sh
+  s_96e6f425552a49::t_7ffa8ad94ffa54 1
+tests/spine/augeas/cases/01j-sysctl-duplicates/site.pp
+  s_96e6f425552a49::t_97c5e8f97aaf03 1
+tests/spine/augeas/cases/02a-ssh_config-add/files
+  s_96e6f425552a49::t_baeefa56b8e6aa 1
+tests/spine/augeas/cases/02a-ssh_config-add/site.pp
+  s_96e6f425552a49::t_0c40a7bd63ff66 1-4
+tests/spine/augeas/cases/02b-ssh_config-change/files
+  s_96e6f425552a49::t_b768c68ecda614 1
+tests/spine/augeas/cases/02b-ssh_config-change/seed.sh
+  s_96e6f425552a49::t_7db70b2499961c 1
+tests/spine/augeas/cases/02b-ssh_config-change/site.pp
+  s_96e6f425552a49::t_1e99a3e4e42491 1-4
+tests/spine/augeas/cases/02c-ssh_config-rerun/files
+  s_96e6f425552a49::t_7b5a6344a3b54c 1
+tests/spine/augeas/cases/02c-ssh_config-rerun/seed.sh
+  s_96e6f425552a49::t_f9f170dddd3fc2 1-2
+tests/spine/augeas/cases/02c-ssh_config-rerun/site.pp
+  s_96e6f425552a49::t_7f56f0133468dc 1-4
+tests/spine/augeas/cases/02d-ssh_config-array-add/files
+  s_96e6f425552a49::t_8a2b6cd8402a2a 1
+tests/spine/augeas/cases/02d-ssh_config-array-add/site.pp
+  s_96e6f425552a49::t_d9c0d2ddfedcb5 1-4
+tests/spine/augeas/cases/02e-ssh_config-array-change/files
+  s_96e6f425552a49::t_3b2852aed9ba31 1
+tests/spine/augeas/cases/02e-ssh_config-array-change/seed.sh
+  s_96e6f425552a49::t_d2a8c39750e41f 1
+tests/spine/augeas/cases/02e-ssh_config-array-change/site.pp
+  s_96e6f425552a49::t_69a4d8e0861bc0 1-4
+tests/spine/augeas/cases/02f-ssh_config-absent/files
+  s_96e6f425552a49::t_08c60426dd8894 1
+tests/spine/augeas/cases/02f-ssh_config-absent/seed.sh
+  s_96e6f425552a49::t_cc2a2a8e90b80d 1
+tests/spine/augeas/cases/02f-ssh_config-absent/site.pp
+  s_96e6f425552a49::t_54b798f041a365 1-4
+tests/spine/augeas/cases/02g-ssh_config-absent-rerun/files
+  s_96e6f425552a49::t_480b704ee2a4c4 1
+tests/spine/augeas/cases/02g-ssh_config-absent-rerun/seed.sh
+  s_96e6f425552a49::t_929d79d8a70705 1-2
+tests/spine/augeas/cases/02g-ssh_config-absent-rerun/site.pp
+  s_96e6f425552a49::t_8b4a155777a4a8 1-4
+tests/spine/augeas/cases/03a-sshd_config-plain-add-change/seed.sh
+  s_96e6f425552a49::t_a84da435a5e917 1
+tests/spine/augeas/cases/03a-sshd_config-plain-add-change/site.pp
+  s_96e6f425552a49::t_3c05215650ec4f 1-4
+tests/spine/augeas/cases/03b-sshd_config-rerun/seed.sh
+  s_96e6f425552a49::t_bf75f9a817fb09 1-2
+tests/spine/augeas/cases/03b-sshd_config-rerun/site.pp
+  s_96e6f425552a49::t_ea1052ea312883 1-4
+tests/spine/augeas/cases/03c-sshd_config-array-new-stock/files
+  s_96e6f425552a49::t_1f0a362920e48d 1
+tests/spine/augeas/cases/03c-sshd_config-array-new-stock/site.pp
+  s_96e6f425552a49::t_f126cf160f1a21 1-3
+tests/spine/augeas/cases/03d-sshd_config-array-new-one-array-only/files
+  s_96e6f425552a49::t_14a145786bd086 1
+tests/spine/augeas/cases/03d-sshd_config-array-new-one-array-only/site.pp
+  s_96e6f425552a49::t_34a2d00d7a6d91 1-2
+tests/spine/augeas/cases/03e-sshd_config-array-existing/files
+  s_96e6f425552a49::t_3b858d8fc456a2 1
+tests/spine/augeas/cases/03e-sshd_config-array-existing/seed.sh
+  s_96e6f425552a49::t_67a1ff1f209bd1 1
+tests/spine/augeas/cases/03e-sshd_config-array-existing/site.pp
+  s_96e6f425552a49::t_c94030e0dcf5bb 1-3
+tests/spine/augeas/cases/03f-sshd_config-array-append/files
+  s_96e6f425552a49::t_73b5b7540abd59 1
+tests/spine/augeas/cases/03f-sshd_config-array-append/seed.sh
+  s_96e6f425552a49::t_82f2937dc21f59 1
+tests/spine/augeas/cases/03f-sshd_config-array-append/site.pp
+  s_96e6f425552a49::t_9ee15485690e43 1
+tests/spine/augeas/cases/03g-sshd_config-match-new/files
+  s_96e6f425552a49::t_d31007aa09b763 1
+tests/spine/augeas/cases/03g-sshd_config-match-new/site.pp
+  s_96e6f425552a49::t_eecbdbdec9372d 1-2
+tests/spine/augeas/cases/03h-sshd_config-match-existing/files
+  s_96e6f425552a49::t_22e0869c63b251 1
+tests/spine/augeas/cases/03h-sshd_config-match-existing/seed.sh
+  s_96e6f425552a49::t_43fca216ba509d 1
+tests/spine/augeas/cases/03h-sshd_config-match-existing/site.pp
+  s_96e6f425552a49::t_0b2384bd3df9c6 1-3
+tests/spine/augeas/cases/03i-sshd_config-plain-with-match-present/files
+  s_96e6f425552a49::t_5405e38d98ca0c 1
+tests/spine/augeas/cases/03i-sshd_config-plain-with-match-present/seed.sh
+  s_96e6f425552a49::t_884db7728d9c1e 1
+tests/spine/augeas/cases/03i-sshd_config-plain-with-match-present/site.pp
+  s_96e6f425552a49::t_2580594cc34fd0 1-3
+tests/spine/augeas/cases/03j-sshd_config-match-rerun/files
+  s_96e6f425552a49::t_df6ab17d4eb2c3 1
+tests/spine/augeas/cases/03j-sshd_config-match-rerun/seed.sh
+  s_96e6f425552a49::t_0b1994c302e58e 1-2
+tests/spine/augeas/cases/03j-sshd_config-match-rerun/site.pp
+  s_96e6f425552a49::t_6996568916bb56 1-3
+tests/spine/augeas/cases/03k-sshd_config-absent/files
+  s_96e6f425552a49::t_de85e682f9e304 1
+tests/spine/augeas/cases/03k-sshd_config-absent/seed.sh
+  s_96e6f425552a49::t_c1e0869f63886c 1
+tests/spine/augeas/cases/03k-sshd_config-absent/site.pp
+  s_96e6f425552a49::t_4359b15f2f7b7c 1-4
+tests/spine/augeas/cases/03l-sshd_config-notify-only/files
+  s_96e6f425552a49::t_631d87a392a6ce 1
+tests/spine/augeas/cases/03l-sshd_config-notify-only/site.pp
+  s_96e6f425552a49::t_60b1ba7ddac1d8 1-3
+tests/spine/augeas/cases/04a-subsystem-add/files
+  s_96e6f425552a49::t_e2626ffcbb1f5a 1
+tests/spine/augeas/cases/04a-subsystem-add/seed.sh
+  s_96e6f425552a49::t_89ae9659e687d7 1
+tests/spine/augeas/cases/04a-subsystem-add/site.pp
+  s_96e6f425552a49::t_b2ce1d7feb24cf 1
+tests/spine/augeas/cases/04b-subsystem-change/files
+  s_96e6f425552a49::t_77dea62caf1b70 1
+tests/spine/augeas/cases/04b-subsystem-change/site.pp
+  s_96e6f425552a49::t_485987ca237fe4 1
+tests/spine/augeas/cases/04c-subsystem-rerun/files
+  s_96e6f425552a49::t_46a0d6c045a48e 1
+tests/spine/augeas/cases/04c-subsystem-rerun/seed.sh
+  s_96e6f425552a49::t_f44fe1d752f10e 1
+tests/spine/augeas/cases/04c-subsystem-rerun/site.pp
+  s_96e6f425552a49::t_160a90d41d2674 1
+tests/spine/augeas/cases/04d-subsystem-with-match/files
+  s_96e6f425552a49::t_56c53ed11a25ad 1
+tests/spine/augeas/cases/04d-subsystem-with-match/seed.sh
+  s_96e6f425552a49::t_6fb9815e9276d7 1
+tests/spine/augeas/cases/04d-subsystem-with-match/site.pp
+  s_96e6f425552a49::t_cb69b2ad49a3d1 1-2
+tests/spine/augeas/cases/04e-subsystem-absent/files
+  s_96e6f425552a49::t_a6ef2038bcab06 1
+tests/spine/augeas/cases/04e-subsystem-absent/site.pp
+  s_96e6f425552a49::t_d8c0e70fc8a480 1
+tests/spine/augeas/cases/07a-no-simp-lens/files
+  s_96e6f425552a49::t_e75adbf2213ee5 1-2
+tests/spine/augeas/cases/07a-no-simp-lens/seed.sh
+  s_96e6f425552a49::t_94fb045113051c 1
+tests/spine/augeas/cases/07a-no-simp-lens/site.pp
+  s_96e6f425552a49::t_7c7f892d81b2d2 1-6
+tests/spine/augeas/cases/07b-simp-ssh-lens/files
+  s_96e6f425552a49::t_eaec49447e8cbe 1-2
+tests/spine/augeas/cases/07b-simp-ssh-lens/lenses
+  s_96e6f425552a49::t_ee64f8dc0bee34 1
+tests/spine/augeas/cases/07b-simp-ssh-lens/seed.sh
+  s_96e6f425552a49::t_91a0b82c9b00e0 1
+tests/spine/augeas/cases/07b-simp-ssh-lens/site.pp
+  s_96e6f425552a49::t_c99284170d0641 1-6
+tests/spine/augeas/cases/07c-all-simp-lenses/files
+  s_96e6f425552a49::t_06b42f539ff0dc 1-2
+tests/spine/augeas/cases/07c-all-simp-lenses/lenses
+  s_96e6f425552a49::t_562697b1e4b5e9 1-3
+tests/spine/augeas/cases/07c-all-simp-lenses/seed.sh
+  s_96e6f425552a49::t_46ae510ccf9bcf 1
+tests/spine/augeas/cases/07c-all-simp-lenses/site.pp
+  s_96e6f425552a49::t_6ad6d97815612a 1-6
+tests/spine/augeas/cases/07d-simp-ssh-lens-match-file/files
+  s_96e6f425552a49::t_8a454c8136be2f 1-2
+tests/spine/augeas/cases/07d-simp-ssh-lens-match-file/lenses
+  s_96e6f425552a49::t_8facf400dffc27 1
+tests/spine/augeas/cases/07d-simp-ssh-lens-match-file/seed.sh
+  s_96e6f425552a49::t_3f58b71f65fe1d 1
+tests/spine/augeas/cases/07d-simp-ssh-lens-match-file/site.pp
+  s_96e6f425552a49::t_06341a3c93504a 1-6
+tests/spine/augeas/cases/07e-no-simp-lens-match-file/files
+  s_96e6f425552a49::t_bc3c5a755c6309 1-2
+tests/spine/augeas/cases/07e-no-simp-lens-match-file/seed.sh
+  s_96e6f425552a49::t_74450dbe9e363b 1
+tests/spine/augeas/cases/07e-no-simp-lens-match-file/site.pp
+  s_96e6f425552a49::t_24c5d4eac9b246 1-6
+tests/spine/augeas/cases/07f-simp-ssh-lens-stock-file-add/files
+  s_96e6f425552a49::t_49ce45fd2d3466 1
+tests/spine/augeas/cases/07f-simp-ssh-lens-stock-file-add/lenses
+  s_96e6f425552a49::t_a2f4a8441bfb61 1
+tests/spine/augeas/cases/07f-simp-ssh-lens-stock-file-add/site.pp
+  s_96e6f425552a49::t_22adde0e8bd77e 1-7
+tests/spine/augeas/cases/07g-simp-ssh-lens-simple-change/files
+  s_96e6f425552a49::t_924a4788d12797 1
+tests/spine/augeas/cases/07g-simp-ssh-lens-simple-change/lenses
+  s_96e6f425552a49::t_05677f8e9a12fe 1
+tests/spine/augeas/cases/07g-simp-ssh-lens-simple-change/seed.sh
+  s_96e6f425552a49::t_a4eb61bf95df6d 1
+tests/spine/augeas/cases/07g-simp-ssh-lens-simple-change/site.pp
+  s_96e6f425552a49::t_547f7a410987e7 1-4
+tests/spine/augeas/cases/07h-simp-ssh-lens-array-change/files
+  s_96e6f425552a49::t_cccf346338f9ef 1
+tests/spine/augeas/cases/07h-simp-ssh-lens-array-change/lenses
+  s_96e6f425552a49::t_314acd92e75f80 1
+tests/spine/augeas/cases/07h-simp-ssh-lens-array-change/seed.sh
+  s_96e6f425552a49::t_7a51e699fad680 1
+tests/spine/augeas/cases/07h-simp-ssh-lens-array-change/site.pp
+  s_96e6f425552a49::t_2e909506486cf0 1-4
+tests/spine/augeas/cases/07i-simp-ssh-lens-absent/files
+  s_96e6f425552a49::t_c5f7b3ee5541ea 1
+tests/spine/augeas/cases/07i-simp-ssh-lens-absent/lenses
+  s_96e6f425552a49::t_e274e679f78592 1
+tests/spine/augeas/cases/07i-simp-ssh-lens-absent/seed.sh
+  s_96e6f425552a49::t_17197ff79f5306 1
+tests/spine/augeas/cases/07i-simp-ssh-lens-absent/site.pp
+  s_96e6f425552a49::t_4c5bd53e19e1a0 1-4
+tests/spine/concat/cases/01-basic/site.pp
+  s_96e6f425552a49::t_9de042cc40e165 1-4
+tests/spine/concat/cases/02-rerun/seed.sh
+  s_96e6f425552a49::t_523d5476de5b10 1
+tests/spine/concat/cases/02-rerun/site.pp
+  s_96e6f425552a49::t_b948e5429084f4 1-4
+tests/spine/concat/cases/03a-order-numeric/site.pp
+  s_96e6f425552a49::t_39b009db2e49f7 1-10
+tests/spine/concat/cases/03b-order-alpha/site.pp
+  s_96e6f425552a49::t_cf268147a98eb7 1-10
+tests/spine/concat/cases/03c-order-mixed-error/site.pp
+  s_96e6f425552a49::t_f3efa90bf90171 1-5
+tests/spine/concat/cases/03d-order-default-and-number-str/site.pp
+  s_96e6f425552a49::t_e09468b70ceb1e 1-5
+tests/spine/concat/cases/04-ensure-newline/site.pp
+  s_96e6f425552a49::t_e98aa8b59af17c 1-10
+tests/spine/concat/cases/05-existing-differs/files
+  s_96e6f425552a49::t_8823b457188b9a 1-6
+tests/spine/concat/cases/05-existing-differs/seed.sh
+  s_96e6f425552a49::t_ec4725b85c8042 1
+tests/spine/concat/cases/05-existing-differs/site.pp
+  s_96e6f425552a49::t_f7e4669029f1a8 1-8
+tests/spine/concat/cases/06-replace-false/seed.sh
+  s_96e6f425552a49::t_bfb1f6566dd892 1
+tests/spine/concat/cases/06-replace-false/site.pp
+  s_96e6f425552a49::t_45ce484015197f 1-6
+tests/spine/concat/cases/07-create-empty-file/seed.sh
+  s_96e6f425552a49::t_072340a95d1c5f 1
+tests/spine/concat/cases/07-create-empty-file/site.pp
+  s_96e6f425552a49::t_32b515a71f92f2 1-8
+tests/spine/concat/cases/08-fragment-targeting/site.pp
+  s_96e6f425552a49::t_e553da29cad64c 1-10
+tests/spine/concat/cases/09-owner-group-mode/seed.sh
+  s_96e6f425552a49::t_cb1fbbcec1ef17 1
+tests/spine/concat/cases/09-owner-group-mode/site.pp
+  s_96e6f425552a49::t_d8ecef03f8aa08 1-8
+tests/spine/concat/cases/10-validate-cmd/seed.sh
+  s_96e6f425552a49::t_cf3a74136d6c87 1
+tests/spine/concat/cases/10-validate-cmd/site.pp
+  s_96e6f425552a49::t_a7621eb2af84f8 1-8
+tests/spine/concat/cases/12-sensitive/seed.sh
+  s_96e6f425552a49::t_e5a1df87be4535 1
+tests/spine/concat/cases/12-sensitive/site.pp
+  s_96e6f425552a49::t_55981d660c3130 1-5
+tests/spine/concat/cases/13-refresh-order/seed.sh
+  s_96e6f425552a49::t_bef610870d7f70 1
+tests/spine/concat/cases/13-refresh-order/site.pp
+  s_96e6f425552a49::t_310d39b00ec157 1-8
+tests/spine/concat/cases/13b-refresh-insync/seed.sh
+  s_96e6f425552a49::t_1dd47d8364bd84 1
+tests/spine/concat/cases/13b-refresh-insync/site.pp
+  s_96e6f425552a49::t_bba3e63e13a118 1-8
+tests/spine/concat/cases/14-declared-file/site.pp
+  s_96e6f425552a49::t_c458a795903dc2 1-10
+tests/spine/concat/cases/15a-simp-limits/site.pp
+  s_96e6f425552a49::t_9005ac485d5c5a 1-35
+tests/spine/concat/cases/15b-simp-sudoers/seed.sh
+  s_96e6f425552a49::t_a07610b5de7860 1
+tests/spine/concat/cases/15b-simp-sudoers/site.pp
+  s_96e6f425552a49::t_a558a180b98d3e 1-62
+tests/spine/concat/cases/15c-simp-access/site.pp
+  s_96e6f425552a49::t_21132268eddda2 1-58
+tests/spine/concat/cases/17a-frag-no-target-tag/site.pp
+  s_96e6f425552a49::t_ffd02cbbef8561 1
+tests/spine/concat/cases/17b-frag-order-slash/site.pp
+  s_96e6f425552a49::t_c7d1aa7761e1cd 1-2
+tests/spine/concat/cases/17d-frag-neither/site.pp
+  s_96e6f425552a49::t_bbff38643211cc 1-2
+tests/spine/concat/cases/17e-file-relative-path/site.pp
+  s_96e6f425552a49::t_f48764f6d75350 1
+tests/spine/concat/cases/17f-bad-format/site.pp
+  s_96e6f425552a49::t_dded7ee39dfc19 1
+tests/spine/concat/cases/17g-frag-order-colon-newline/site.pp
+  s_96e6f425552a49::t_313f02e4b96097 1-3
+tests/spine/concat/cases/17h-validate-cmd-int/site.pp
+  s_96e6f425552a49::t_119565cb5e5847 1
+tests/spine/concat/cases/17i-backup-int/site.pp
+  s_96e6f425552a49::t_985acc01a569a0 1
+tests/spine/concat/cases/17j-concat-order-enum/site.pp
+  s_96e6f425552a49::t_e2b1cf06581b5f 1
+tests/spine/concat/cases/17k-frag-target-int/site.pp
+  s_96e6f425552a49::t_34b239730111bd 1
+tests/spine/concat/cases/17l-frag-content-int/site.pp
+  s_96e6f425552a49::t_3f3014c6e092ac 1
+tests/spine/concat/cases/17m-frag-order-float/site.pp
+  s_96e6f425552a49::t_e5739e90a088e1 1
+tests/spine/concat/cases/17o-concat-replace-str/site.pp
+  s_96e6f425552a49::t_417eb3e6ccd1ac 1
+tests/spine/concat/cases/18-ensure-absent/seed.sh
+  s_96e6f425552a49::t_172b3b5f689f86 1
+tests/spine/concat/cases/18-ensure-absent/site.pp
+  s_96e6f425552a49::t_c9e3dddbc7ad56 1-5
+tests/spine/concat/cases/v10-07-create-empty-file/seed.sh
+  s_96e6f425552a49::t_703361a69e7ccd 1
+tests/spine/concat/cases/v10-07-create-empty-file/site.pp
+  s_96e6f425552a49::t_f05bca9576db08 1-8
+tests/spine/concat/cases/v10-08-tag-list/site.pp
+  s_96e6f425552a49::t_00e5a80113763e 1-10
+tests/spine/concat/cases/v10-12-sensitive/seed.sh
+  s_96e6f425552a49::t_ffb71ad3b21170 1
+tests/spine/concat/cases/v10-12-sensitive/site.pp
+  s_96e6f425552a49::t_7b61a0bdb1fbf4 1-5
+tests/spine/concat/cases/v10-12b-sensitive-tag-list/seed.sh
+  s_96e6f425552a49::t_7b0dcd6e36731c 1
+tests/spine/concat/cases/v10-12b-sensitive-tag-list/site.pp
+  s_96e6f425552a49::t_7938df68d70496 1-4
+tests/spine/concat/cases/v10-14-declared-file/site.pp
+  s_96e6f425552a49::t_0275264af9100a 1-10
+tests/spine/concat/cases/v10-18-ensure-absent/seed.sh
+  s_96e6f425552a49::t_1d241409842878 1
+tests/spine/concat/cases/v10-18-ensure-absent/site.pp
+  s_96e6f425552a49::t_55b65ad5de56f8 1-5
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "739f72c58d5b19fe8f6bdce3b786af9c690e4a1a",
+  "prompts": {},
+  "sessions": {
+    "s_96e6f425552a49": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "01a9104e-22a3-46ad-b4b0-ad2bc3b2fa6b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "peiriannydd <peiriannydd@gmail.com>"
+    }
+  }
+}
