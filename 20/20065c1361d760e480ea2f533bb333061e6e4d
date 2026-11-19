@@ -1,0 +1,83 @@
+cmd/voxagent/concat_test.go
+  s_96e6f425552a49::t_540f705dd03e9e 256
+  s_96e6f425552a49::t_e47fc92d21b2e5 254,268
+internal/ral/augeas_api.go
+  s_96e6f425552a49::t_c6403bb73e79f0 32-39
+internal/ral/testdata/augeasproviders/README
+  s_96e6f425552a49::t_1202d800fb0a5b 1-19
+internal/ral/augeas_route.go
+  s_96e6f425552a49::t_dcf98022fdea12 1-33,44-230
+  s_96e6f425552a49::t_910b9677d22946 34-43
+internal/ral/usergroup_route.go
+  s_96e6f425552a49::t_b5d4d7efb8c266 13
+  s_96e6f425552a49::t_97cb299e90ead5 14
+  s_96e6f425552a49::t_5702b5d7ecf3fc 25-26,76-81
+internal/ral/concat_route_test.go
+  s_96e6f425552a49::t_9607a9d7a7c470 8,177-188
+  s_96e6f425552a49::t_d5d60144a9bff1 189-190
+cmd/voxagent/augeas_test.go
+  s_96e6f425552a49::t_c6403bb73e79f0 54-64
+  s_96e6f425552a49::t_696429e7f9a7a6 122
+  s_96e6f425552a49::t_d19ac734a1b015 111,121,124-126
+  s_96e6f425552a49::t_75c833c0b9a8f8 16,206,209-219,221-225
+  s_96e6f425552a49::t_ab7719bd107fd5 1-15,17-53,65-110,112-120,123,127-205,207-208,220,226-227
+internal/ral/augeas_types.go
+  s_96e6f425552a49::t_97cb299e90ead5 12-13,37-50
+  s_96e6f425552a49::t_2a0ce9a457ee1c 51
+internal/ral/augeas_lib_linux.go
+  s_96e6f425552a49::t_c6403bb73e79f0 121-131
+internal/ral/concat_route.go
+  s_96e6f425552a49::t_ffb39151c90fdd 17-19
+  s_96e6f425552a49::t_c6403bb73e79f0 24-26,61-70
+  s_96e6f425552a49::t_d0446ecdd2bf63 71-72
+NOTICE
+  s_96e6f425552a49::t_0aa71465ae5278 21-33
+cmd/voxagent/apply.go
+  s_96e6f425552a49::t_540f705dd03e9e 6,10,41-42,48-51,54,67-76,103,246-247
+  s_96e6f425552a49::t_ee5a6e03ce3325 248
+internal/ral/augeas_route_test.go
+  s_96e6f425552a49::t_85ccaac551c7a5 481
+  s_96e6f425552a49::t_d06f94ca6d6e29 483
+  s_96e6f425552a49::t_5d936d9215d8f9 9,204
+  s_96e6f425552a49::t_1f4ebb03b973d9 1-8,10-203,205-480,482,484-517
+cmd/voxagent/usergroup_test.go
+  s_96e6f425552a49::t_60b295a2efa04b 33-34
+internal/ral/testdata/augeasproviders/lib/puppet/feature/augeas.rb
+  s_96e6f425552a49::t_c6bc741ade75a0 1-5
+internal/ral/testdata/augeasproviders/lib/puppet/provider/augeasprovider/default.rb
+  s_96e6f425552a49::t_28bcdcd1d02dea 1-906
+internal/ral/testdata/augeasproviders/lib/puppet/provider/ssh_config/augeas.rb
+  s_96e6f425552a49::t_5ee11224799e9d 1-165
+internal/ral/testdata/augeasproviders/lib/puppet/provider/sshd_config/augeas.rb
+  s_96e6f425552a49::t_3ad6c1f45d7dbf 1-244
+internal/ral/testdata/augeasproviders/lib/puppet/provider/sshd_config_subsystem/augeas.rb
+  s_96e6f425552a49::t_99b5f64fab466a 1-75
+internal/ral/testdata/augeasproviders/lib/puppet/provider/sysctl/augeas.rb
+  s_96e6f425552a49::t_2ed4e6d414aaca 1-360
+internal/ral/testdata/augeasproviders/lib/puppet/type/augeasprovider.rb
+  s_96e6f425552a49::t_82810e619ef356 1-7
+internal/ral/testdata/augeasproviders/lib/puppet/type/ssh_config.rb
+  s_96e6f425552a49::t_d95541ff14dc41 1-62
+internal/ral/testdata/augeasproviders/lib/puppet/type/sshd_config.rb
+  s_96e6f425552a49::t_db1899654d639d 1-155
+internal/ral/testdata/augeasproviders/lib/puppet/type/sshd_config_subsystem.rb
+  s_96e6f425552a49::t_0d9393b86996a1 1-36
+internal/ral/testdata/augeasproviders/lib/puppet/type/sysctl.rb
+  s_96e6f425552a49::t_b5ac84f8e44f08 1-113
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "2020065c1361d760e480ea2f533bb333061e6e4d",
+  "prompts": {},
+  "sessions": {
+    "s_96e6f425552a49": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "01a9104e-22a3-46ad-b4b0-ad2bc3b2fa6b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "peiriannydd <peiriannydd@gmail.com>"
+    }
+  }
+}
