@@ -1,0 +1,50 @@
+internal/units/units.go
+  s_125ade92b668d5::t_9634dc429304dc 11,17
+internal/ral/sensitive_test.go
+  s_125ade92b668d5::t_8b01d04621126d 24-31,87
+internal/units/package/testdata/rpm-parse-evr.tsv
+  s_125ade92b668d5::t_6d4fc30b6ae0ad 31
+internal/units/units_test.go
+  s_125ade92b668d5::t_0fead98274a140 165
+internal/units/package/testdata/rpm-evr.tsv
+  s_125ade92b668d5::t_6d4fc30b6ae0ad 23
+internal/units/package/package.go
+  s_125ade92b668d5::t_ee4afc189de622 5
+  s_125ade92b668d5::t_5fc8a8ed626ffc 19,140,279,321,329,367,387,397,407,409,443,467,602,606,611,637
+  s_125ade92b668d5::t_af97406858b07c 135
+  s_125ade92b668d5::t_9634dc429304dc 1-4
+internal/units/package/rpmvercmp.go
+  s_125ade92b668d5::t_ee4afc189de622 1
+cmd/voxagent/testdata/units.golden.json
+  s_125ade92b668d5::t_0fead98274a140 119-135
+internal/units/package/rpmvercmp_test.go
+  s_125ade92b668d5::t_ee4afc189de622 1
+internal/units/package/dnf.go
+  s_125ade92b668d5::t_ee4afc189de622 1
+cmd/voxagent/apply.go
+  s_125ade92b668d5::t_9634dc429304dc 62
+internal/units/package/dnf_test.go
+  s_125ade92b668d5::t_ee4afc189de622 1
+docs/maintainers/apply-spine.md
+  s_125ade92b668d5::t_ad7b59d1eff795 86,104,106-109,150,175,235,237,254
+internal/units/package/package_test.go
+  s_125ade92b668d5::t_ee4afc189de622 1
+internal/units/package/manifest.go
+  s_125ade92b668d5::t_b1439bda3567d4 1-31
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "cffada45c2cb4faf0cf43d13ce856561ca7b100e",
+  "prompts": {},
+  "sessions": {
+    "s_125ade92b668d5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b0208aed-5da2-407d-978e-c79ba7416205",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "peiriannydd <peiriannydd@gmail.com>"
+    }
+  }
+}
