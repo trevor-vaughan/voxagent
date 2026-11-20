@@ -1,0 +1,31 @@
+cmd/voxagent/apply.go
+  s_29523da587f222::t_d02af7b19368a8 18,65,75
+internal/lib/plugintree/plugintree.go
+  s_29523da587f222::t_b271cedf20f743 1-54
+internal/ral/augeas_generic_route_test.go
+  s_29523da587f222::t_5c66a9c80677a0 10,30
+internal/ral/augeas_lib_linux.go
+  s_29523da587f222::t_050cac05b73759 102-103,172
+internal/ral/augeas_route_test.go
+  s_29523da587f222::t_47fa718d997048 15,113,260,265,277,287,298,315,326,461,550,558
+internal/ral/concat_route_test.go
+  s_29523da587f222::t_59d72a9a084ea4 14,120,141,156,162,290
+internal/ral/plugintree.go
+  s_29523da587f222::t_959a13eca30c00 8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "017e86edc6e1525adc671902bce77f10b4a3cdae",
+  "prompts": {},
+  "sessions": {
+    "s_29523da587f222": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a6d695517310c89c4",
+        "model": "unknown"
+      },
+      "human_author": "peiriannydd <peiriannydd@gmail.com>"
+    }
+  }
+}
