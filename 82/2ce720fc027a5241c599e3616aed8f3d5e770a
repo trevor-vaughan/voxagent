@@ -1,0 +1,93 @@
+internal/units/user/user_params_test.go
+  s_125ade92b668d5::t_ad5486ae1280ea 9
+  s_125ade92b668d5::t_39198b26bde135 1
+  s_125ade92b668d5::t_0fc1f58992760e 117,129
+internal/units/units.go
+  s_125ade92b668d5::t_c8cd8a9ea5e91f 10,14,20
+internal/units/user/user_apply.go
+  s_125ade92b668d5::t_49aba8d8798c6e 26-27,56,61,84,94,96,100,229,234,239,320
+  s_125ade92b668d5::t_39198b26bde135 1
+  s_125ade92b668d5::t_d1b9dbf735db9d 19
+internal/units/user/user_apply_test.go
+  s_125ade92b668d5::t_39198b26bde135 1
+  s_125ade92b668d5::t_0fc1f58992760e 18,27-34,166,592,671,677,680
+  s_125ade92b668d5::t_b59f35f7cb69a2 99
+internal/units/user/manifest.go
+  s_125ade92b668d5::t_43e6c435f98e16 1-75
+internal/units/units_test.go
+  s_125ade92b668d5::t_137434ae0d25a9 164,168
+internal/units/user/route_test.go
+  s_125ade92b668d5::t_9122a4c638db79 128-133
+  s_125ade92b668d5::t_b727788b9d3be7 1-118,121-127,134-202,204,211,214,217-218,221-222
+  s_125ade92b668d5::t_b90a4566933c45 119-120,203,205-210,212-213,215-216,219-220
+internal/lib/nameservice/nameservice_test.go
+  s_125ade92b668d5::t_2c690717416df9 7-8,287-314
+  s_125ade92b668d5::t_1d2eecf885dba7 315
+internal/units/group/group_test.go
+  s_125ade92b668d5::t_7d46d750698b2e 17,99,150,155,168,190,259,290,387
+  s_125ade92b668d5::t_39198b26bde135 1
+cmd/voxagent/usergroup_test.go
+  s_125ade92b668d5::t_26e44d4b898178 11-13,16-31,69,94
+internal/units/group/route_test.go
+  s_125ade92b668d5::t_1e9dbf7676bacc 10-11,22-25
+  s_125ade92b668d5::t_b727788b9d3be7 51-53,60-61,78-80,89-91,93-100,104-106,146,148-161,163-169,172,176-178,187,192,201-202
+  s_125ade92b668d5::t_39198b26bde135 1
+  s_125ade92b668d5::t_9122a4c638db79 131-132
+  s_125ade92b668d5::t_9a49e283b2878e 144-145,207
+internal/lib/rubyvalue/rubyvalue.go
+  s_125ade92b668d5::t_f4ab712ca3d273 175
+internal/units/group/group.go
+  s_125ade92b668d5::t_45c26597453599 99-100
+  s_125ade92b668d5::t_57cb762c58215b 21,80,123,128,230-232,234,280
+  s_125ade92b668d5::t_7d46d750698b2e 1-3
+  s_125ade92b668d5::t_43e6c435f98e16 26
+  s_125ade92b668d5::t_ecda922b1a0da2 47-48,54,58,81,95,101,182-183,213,219,222,226,229,253,279
+  s_125ade92b668d5::t_39198b26bde135 4
+internal/units/user/user_params.go
+  s_125ade92b668d5::t_39198b26bde135 1
+internal/ral/platform.go
+  s_125ade92b668d5::t_82be71d5b8fc21 33,35
+  s_125ade92b668d5::t_f4ab712ca3d273 12
+internal/units/user/user_autoreq_test.go
+  s_125ade92b668d5::t_39198b26bde135 1
+cmd/voxagent/apply.go
+  s_125ade92b668d5::t_c8cd8a9ea5e91f 49-50
+cmd/voxagent/sensitive_test.go
+  s_125ade92b668d5::t_26e44d4b898178 371
+docs/maintainers/apply-spine.md
+  s_125ade92b668d5::t_f4ab712ca3d273 1944-1945,1949-1950,1996
+internal/units/user/user.go
+  s_125ade92b668d5::t_43e6c435f98e16 21
+  s_125ade92b668d5::t_49aba8d8798c6e 51-52,126-127,135
+  s_125ade92b668d5::t_d1b9dbf735db9d 1-3,16-17
+  s_125ade92b668d5::t_39198b26bde135 4
+cmd/voxagent/testdata/units.golden.json
+  s_125ade92b668d5::t_137434ae0d25a9 103-119,170-188
+internal/ral/augeas_route.go
+  s_125ade92b668d5::t_82be71d5b8fc21 193
+internal/units/group/route.go
+  s_125ade92b668d5::t_82be71d5b8fc21 5,8-12,16,19-20
+  s_125ade92b668d5::t_39198b26bde135 1
+docs/maintainers/extension-host.md
+  s_125ade92b668d5::t_f4ab712ca3d273 316
+internal/units/group/manifest.go
+  s_125ade92b668d5::t_45c26597453599 1-52
+internal/ral/platform_test.go
+  s_125ade92b668d5::t_1517b46aa46019 1-9
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "822ce720fc027a5241c599e3616aed8f3d5e770a",
+  "prompts": {},
+  "sessions": {
+    "s_125ade92b668d5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b0208aed-5da2-407d-978e-c79ba7416205",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "peiriannydd <peiriannydd@gmail.com>"
+    }
+  }
+}
