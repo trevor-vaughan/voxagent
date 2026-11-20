@@ -1,0 +1,39 @@
+cmd/voxagent/apply.go
+  s_8f5b6c3cabf7ec::t_c51b06d8da3e44 51-53,70,74-80
+internal/lib/augeas/session.go
+  s_8f5b6c3cabf7ec::t_c81c4e7f8f5316 1-38
+internal/lib/augeas/session_test.go
+  s_8f5b6c3cabf7ec::t_2674f131fd5c5b 1-51
+internal/ral/augeas_generic_route_test.go
+  s_8f5b6c3cabf7ec::t_0a8d4795df7dc1 30,32,187
+internal/ral/augeas_mixin.go
+  s_8f5b6c3cabf7ec::t_19322f18e1801c 59-69
+internal/ral/augeas_route.go
+  s_8f5b6c3cabf7ec::t_f4c0e5240166b0 8,53-54,60,65-68,73-76,85-123,126-135,137-138,142-143,147,151-154,157-161,166-167,171-172,180,190,197,201-259,262,265
+internal/ral/augeas_route_test.go
+  s_8f5b6c3cabf7ec::t_3c5da873153de1 7,97-138,156,158,162,183,305,310,322,332,347,360,371,506,559-560,562,573-574,621-684
+internal/ral/augeas_types.go
+  s_8f5b6c3cabf7ec::t_0aabbb87f417d0 16-17
+internal/ral/platform.go
+  s_8f5b6c3cabf7ec::t_c6fb6ed96425fb 12
+internal/ral/plugintree.go
+  s_8f5b6c3cabf7ec::t_46d0bef2c462a2 3
+internal/unit/unit.go
+  s_8f5b6c3cabf7ec::t_6029cc5aff7bfe 10,64
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "4963c6a3eefdd435ab618dcd07ca686ae2fc2826",
+  "prompts": {},
+  "sessions": {
+    "s_8f5b6c3cabf7ec": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a47b8fb97a0d3aad9",
+        "model": "unknown"
+      },
+      "human_author": "peiriannydd <peiriannydd@gmail.com>"
+    }
+  }
+}
