@@ -1,0 +1,30 @@
+NOTICE
+  s_125ade92b668d5::t_10563468092a5d 22
+tests/spine/augeas/trace/README
+  s_125ade92b668d5::t_5204456f5bdef8 15
+docs/maintainers/apply-spine.md
+  s_125ade92b668d5::t_bc4199142edb38 108,116-117,146-147,173,185,1981,2006,2084-2085
+  s_125ade92b668d5::t_9d873f2e726fc0 180,182
+  s_125ade92b668d5::t_ed215716aaf1c8 613-616,1952-1954
+docs/maintainers/improvements.md
+  s_125ade92b668d5::t_5204456f5bdef8 56
+  s_125ade92b668d5::t_10563468092a5d 51,55
+docs/maintainers/runlog.md
+  s_125ade92b668d5::t_5204456f5bdef8 50
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "04dd7df23ae63998af462bf22c58a33952e9a3de",
+  "prompts": {},
+  "sessions": {
+    "s_125ade92b668d5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b0208aed-5da2-407d-978e-c79ba7416205",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "peiriannydd <peiriannydd@gmail.com>"
+    }
+  }
+}
