@@ -1,0 +1,29 @@
+cmd/voxagent/usergroup_test.go
+  s_c16e8c4b914698::t_55d7b4c0483563 4,123-187
+internal/units/group/group.go
+  s_c16e8c4b914698::t_72ee8631306ee2 111,126,130,141,146,167
+internal/units/group/route.go
+  s_c16e8c4b914698::t_1150a0bb08ee09 4,7,33
+internal/units/group/route_test.go
+  s_c16e8c4b914698::t_3e36448db5c982 6,253-287
+internal/units/user/route_test.go
+  s_c16e8c4b914698::t_4da85ae5745e3d 6,271-305
+internal/units/user/user_params.go
+  s_c16e8c4b914698::t_a9de71ba9862c3 81,91,261
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "9a5e75c5437718ef8c09363534737cb7e7390e03",
+  "prompts": {},
+  "sessions": {
+    "s_c16e8c4b914698": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-ab762fc6a4ef9a96b",
+        "model": "unknown"
+      },
+      "human_author": "peiriannydd <peiriannydd@gmail.com>"
+    }
+  }
+}
