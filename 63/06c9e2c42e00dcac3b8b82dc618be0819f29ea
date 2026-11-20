@@ -1,0 +1,51 @@
+internal/lib/nameservice/nss_linux_test.go
+  s_125ade92b668d5::t_1082334b53a9e7 1-211
+internal/ral/user.go
+  s_125ade92b668d5::t_6d45c0be5f1510 11
+  s_125ade92b668d5::t_39b97d5665da6f 27,97
+internal/ral/user_autoreq_test.go
+  s_125ade92b668d5::t_6d45c0be5f1510 8
+  s_125ade92b668d5::t_39b97d5665da6f 33-34,67
+internal/ral/user_apply_test.go
+  s_125ade92b668d5::t_39b97d5665da6f 60,63,68,77-79,84,89,107,113,137,140,146,190,209,231,235,239,321,401,419,476,490,543,557,579,603,622,639,651,678-679,685
+  s_125ade92b668d5::t_6d45c0be5f1510 16
+internal/ral/group.go
+  s_125ade92b668d5::t_6d45c0be5f1510 15
+  s_125ade92b668d5::t_39b97d5665da6f 26,66,69,186,193,296,312,330,365,367
+internal/lib/nameservice/nss_linux.go
+  s_125ade92b668d5::t_1082334b53a9e7 1-209
+internal/ral/helpers_test.go
+  s_125ade92b668d5::t_d0190e9c19c460 8,54-96
+cmd/voxagent/sensitive_test.go
+  s_125ade92b668d5::t_ae99902a479b7e 290,312
+internal/ral/group_test.go
+  s_125ade92b668d5::t_6d45c0be5f1510 14
+  s_125ade92b668d5::t_39b97d5665da6f 46,50,52,55-56,64,67,70,80-82,86,97,227,258,274,291,308,318,329,339,350,360,367,377,388,428,437,446-448,462,483-485,487-488,491
+internal/ral/user_apply.go
+  s_125ade92b668d5::t_6d45c0be5f1510 16
+  s_125ade92b668d5::t_39b97d5665da6f 36-37,66,72,107,112,138,169,289,296,416,418
+internal/lib/nameservice/nameservice_test.go
+  s_125ade92b668d5::t_1082334b53a9e7 1-284
+internal/ral/user_params.go
+  s_125ade92b668d5::t_6d45c0be5f1510 11
+  s_125ade92b668d5::t_39b97d5665da6f 316
+internal/lib/nameservice/nameservice.go
+  s_125ade92b668d5::t_9d47d3cf4b2901 12,42-47,287
+  s_125ade92b668d5::t_1082334b53a9e7 1-11,13-41,48-286,288-292
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "6306c9e2c42e00dcac3b8b82dc618be0819f29ea",
+  "prompts": {},
+  "sessions": {
+    "s_125ade92b668d5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b0208aed-5da2-407d-978e-c79ba7416205",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "peiriannydd <peiriannydd@gmail.com>"
+    }
+  }
+}
