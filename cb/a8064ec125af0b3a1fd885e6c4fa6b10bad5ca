@@ -1,0 +1,37 @@
+cmd/voxagent/main.go
+  s_125ade92b668d5::t_754df2d3b8be74 31-32,37
+internal/unit/match.go
+  s_125ade92b668d5::t_754df2d3b8be74 1-85
+internal/unit/route_test.go
+  s_125ade92b668d5::t_a12b8b3be59a70 1-71
+internal/unit/unit.go
+  s_125ade92b668d5::t_754df2d3b8be74 1-71
+internal/units/units.go
+  s_125ade92b668d5::t_754df2d3b8be74 1-11
+cmd/voxagent/units_test.go
+  s_125ade92b668d5::t_a12b8b3be59a70 1-52
+cmd/voxagent/testdata/units.golden.json
+  s_125ade92b668d5::t_a12b8b3be59a70 1
+cmd/voxagent/units.go
+  s_125ade92b668d5::t_754df2d3b8be74 1-59
+internal/unit/route.go
+  s_125ade92b668d5::t_754df2d3b8be74 1-34
+internal/unit/match_test.go
+  s_125ade92b668d5::t_a12b8b3be59a70 1-144
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "cba8064ec125af0b3a1fd885e6c4fa6b10bad5ca",
+  "prompts": {},
+  "sessions": {
+    "s_125ade92b668d5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b0208aed-5da2-407d-978e-c79ba7416205",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "peiriannydd <peiriannydd@gmail.com>"
+    }
+  }
+}
