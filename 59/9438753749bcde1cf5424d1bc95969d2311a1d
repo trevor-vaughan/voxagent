@@ -1,0 +1,185 @@
+internal/units/file/file_sensitive_test.go
+  s_125ade92b668d5::t_afc77d34776ca5 14
+  s_125ade92b668d5::t_9e4b29c26b6a7a 221
+  s_125ade92b668d5::t_af13c8465ac337 1
+internal/agent/sources.go
+  s_125ade92b668d5::t_2a8151b3f3fdcd 31
+internal/units/file/file_test.go
+  s_125ade92b668d5::t_af13c8465ac337 1
+  s_125ade92b668d5::t_9e4b29c26b6a7a 747,750,1318,1844,2014,2047,2310,2312,2382,2513,2735,3731
+  s_125ade92b668d5::t_afc77d34776ca5 21
+  s_125ade92b668d5::t_9bc0ca0deb3a5c 2936,2941
+  s_125ade92b668d5::t_0a15fb3fc5b132 4221-4256
+internal/units/file/file_link_test.go
+  s_125ade92b668d5::t_af13c8465ac337 1
+  s_125ade92b668d5::t_afc77d34776ca5 16
+  s_125ade92b668d5::t_9e4b29c26b6a7a 21,44
+docs/maintainers/apply-spine.md
+  s_125ade92b668d5::t_420c44028c1c31 182
+  s_125ade92b668d5::t_1ae99f24978324 32,38,44,66,98-99,102,104-105,119-125,127-128,134,138-141,143,171,175,183,753,808,1820,2003,2080,2149,2225,2628
+  s_125ade92b668d5::t_e83adba03c4ac2 2009-2010
+internal/units/concat/concat_route.go
+  s_125ade92b668d5::t_ec3add2e01af52 21-23,25-26,31-34,36,47,55,58
+  s_125ade92b668d5::t_f196fa8e6fa49d 5,10-11,14-15,17-19
+  s_125ade92b668d5::t_bb56664e0c7446 1
+cmd/voxagent/concat_test.go
+  s_125ade92b668d5::t_2a8151b3f3fdcd 17-18,26,28,46
+  s_125ade92b668d5::t_1ae99f24978324 27
+  s_125ade92b668d5::t_095e86d8199355 34,38
+cmd/voxagent/apply.go
+  s_125ade92b668d5::t_1cf00112248e96 62
+  s_125ade92b668d5::t_5dd5a612299e4b 51-53
+  s_125ade92b668d5::t_2a8151b3f3fdcd 36
+internal/units/file/file_selinux.go
+  s_125ade92b668d5::t_afc77d34776ca5 28
+  s_125ade92b668d5::t_af13c8465ac337 1
+  s_125ade92b668d5::t_9e4b29c26b6a7a 906,910-911,932,940
+internal/transaction/sensitive_test.go
+  s_125ade92b668d5::t_9fb2f57d9c73d5 204-205,208
+  s_125ade92b668d5::t_2a8151b3f3fdcd 11-12,206,303
+internal/units/file/file_recurse.go
+  s_125ade92b668d5::t_9e4b29c26b6a7a 53,147,203,207
+  s_125ade92b668d5::t_af13c8465ac337 1
+  s_125ade92b668d5::t_afc77d34776ca5 17
+internal/units/file/file_recurse_test.go
+  s_125ade92b668d5::t_af13c8465ac337 1
+  s_125ade92b668d5::t_9e4b29c26b6a7a 213,215
+  s_125ade92b668d5::t_9bc0ca0deb3a5c 573,583
+  s_125ade92b668d5::t_afc77d34776ca5 18
+internal/units/file/file_backup_test.go
+  s_125ade92b668d5::t_af13c8465ac337 1
+  s_125ade92b668d5::t_afc77d34776ca5 18
+  s_125ade92b668d5::t_9e4b29c26b6a7a 39,639
+internal/transaction/build_test.go
+  s_125ade92b668d5::t_2a8151b3f3fdcd 10-11,434
+internal/units/concat/concat.go
+  s_125ade92b668d5::t_9aa9334a395b1e 1-4
+  s_125ade92b668d5::t_f3bd2d8b7db4ee 16-17,383-384,390-391,397,400,405,410,415,420-422,425
+  s_125ade92b668d5::t_bb56664e0c7446 5
+docs/maintainers/extension-host.md
+  s_125ade92b668d5::t_1ae99f24978324 312
+  s_125ade92b668d5::t_e83adba03c4ac2 472
+internal/units/concat/concat_evalgen.go
+  s_125ade92b668d5::t_bb56664e0c7446 1
+  s_125ade92b668d5::t_f3bd2d8b7db4ee 8-9,53,56,58-59,74,97,101,103,105,108,112
+internal/units/concat/concat_content_test.go
+  s_125ade92b668d5::t_bb56664e0c7446 1
+docs/maintainers/improvements.md
+  s_125ade92b668d5::t_1ae99f24978324 38-39,42-48
+NOTICE
+  s_125ade92b668d5::t_1ae99f24978324 13,18
+internal/units/file/file_fs.go
+  s_125ade92b668d5::t_af13c8465ac337 1
+internal/units/concat/concat_content.go
+  s_125ade92b668d5::t_bb56664e0c7446 1
+internal/units/file/manifest.go
+  s_125ade92b668d5::t_50d34ae27564f5 1-28,32-34
+  s_125ade92b668d5::t_6968c97dbe3920 29-31
+internal/units/file/file_source_test.go
+  s_125ade92b668d5::t_5c696be4b4ac19 704,730
+  s_125ade92b668d5::t_afc77d34776ca5 17
+  s_125ade92b668d5::t_9bc0ca0deb3a5c 433,444
+  s_125ade92b668d5::t_af13c8465ac337 1
+internal/units/file/file_unix.go
+  s_125ade92b668d5::t_af13c8465ac337 3
+internal/ral/plugintree.go
+  s_125ade92b668d5::t_8814348f794b97 3
+internal/units/concat/concat_evalgen_test.go
+  s_125ade92b668d5::t_bb56664e0c7446 1
+  s_125ade92b668d5::t_cd9524118aa030 50
+  s_125ade92b668d5::t_f3bd2d8b7db4ee 9-10,31,51,53,66,81-82,151,157,179-184,203-204
+  s_125ade92b668d5::t_1fa4c0b319995f 177
+internal/transaction/transaction.go
+  s_125ade92b668d5::t_2a8151b3f3fdcd 15-16,47,190,1178
+internal/units/file/file_fs_test.go
+  s_125ade92b668d5::t_af13c8465ac337 1
+internal/units/file/file_backup.go
+  s_125ade92b668d5::t_9e4b29c26b6a7a 44,942
+  s_125ade92b668d5::t_afc77d34776ca5 21
+  s_125ade92b668d5::t_af13c8465ac337 1
+internal/units/concat/concat_generate_test.go
+  s_125ade92b668d5::t_1fa4c0b319995f 7-9,73
+  s_125ade92b668d5::t_bb56664e0c7446 1
+internal/units/file/file_source.go
+  s_125ade92b668d5::t_af13c8465ac337 1
+internal/units/concat/manifest.go
+  s_125ade92b668d5::t_fabe8790d169b1 1-68
+internal/ral/validate_test.go
+  s_125ade92b668d5::t_d2332e6744ac02 5-6,12-18,20,23-24,26,49,64
+internal/agent/sources_test.go
+  s_125ade92b668d5::t_2a8151b3f3fdcd 24-25,497,512
+internal/ral/sensitive_test.go
+  s_125ade92b668d5::t_d2332e6744ac02 24-35,55,57,59,61,63,65,67,83,120
+internal/transaction/build.go
+  s_125ade92b668d5::t_2a8151b3f3fdcd 10-11,469
+internal/units/file/file_link.go
+  s_125ade92b668d5::t_afc77d34776ca5 13
+  s_125ade92b668d5::t_9e4b29c26b6a7a 46,60,63,79,87,91,104,125,127,148,159,180,204-205
+  s_125ade92b668d5::t_af13c8465ac337 1
+internal/units/concat/concat_params_test.go
+  s_125ade92b668d5::t_1fa4c0b319995f 9-10,293,299,309,315
+  s_125ade92b668d5::t_f3bd2d8b7db4ee 294,310,322,328,331
+  s_125ade92b668d5::t_cd9524118aa030 351
+  s_125ade92b668d5::t_bb56664e0c7446 1
+internal/units/file/file.go
+  s_125ade92b668d5::t_0198b0f53b11c8 99-103
+  s_125ade92b668d5::t_af13c8465ac337 4
+  s_125ade92b668d5::t_9e4b29c26b6a7a 187-188,197,225,262,286,323,329,375,391,545,600,619,624,655,692,720-722,750,788,893,955-956,975,1050,1097,1154,1178,1233,1244,1305,1309,1317,1319,1428,1437,1455-1456,1468,1520,1527,1551,1562,1943
+  s_125ade92b668d5::t_afc77d34776ca5 27
+  s_125ade92b668d5::t_50d34ae27564f5 1-3
+  s_125ade92b668d5::t_22f30c02413d9d 196
+internal/units/file/file_validate.go
+  s_125ade92b668d5::t_af13c8465ac337 1
+internal/units/concat/testdata/README
+  s_125ade92b668d5::t_49b40b6b4f43d3 13
+  s_125ade92b668d5::t_a4d86044f36281 6-7,9-12
+internal/units/units_test.go
+  s_125ade92b668d5::t_095e86d8199355 159-163
+internal/units/concat/concat_generate.go
+  s_125ade92b668d5::t_f3bd2d8b7db4ee 6-7,94
+  s_125ade92b668d5::t_bb56664e0c7446 1
+cmd/voxagent/loadgen_test.go
+  s_125ade92b668d5::t_2a8151b3f3fdcd 11-12,80
+internal/agent/run.go
+  s_125ade92b668d5::t_2a8151b3f3fdcd 49
+tests/spine/simp/lib.sh
+  s_125ade92b668d5::t_1ae99f24978324 235
+internal/units/file/file_validate_test.go
+  s_125ade92b668d5::t_0a15fb3fc5b132 798-819
+  s_125ade92b668d5::t_af13c8465ac337 1
+  s_125ade92b668d5::t_afc77d34776ca5 17
+  s_125ade92b668d5::t_9e4b29c26b6a7a 103
+internal/units/units.go
+  s_125ade92b668d5::t_1cf00112248e96 7,9,16
+cmd/voxagent/sensitive_test.go
+  s_125ade92b668d5::t_2a8151b3f3fdcd 12-13,54,257-258
+internal/units/file/file_selinux_test.go
+  s_125ade92b668d5::t_af13c8465ac337 1
+  s_125ade92b668d5::t_9e4b29c26b6a7a 811,826,1141
+  s_125ade92b668d5::t_afc77d34776ca5 18
+cmd/voxagent/testdata/units.golden.json
+  s_125ade92b668d5::t_90a6acfb95de5a 2-68,86-99,102
+  s_125ade92b668d5::t_9375c9115b5a0b 100-101
+internal/units/exec/exec.go
+  s_125ade92b668d5::t_0198b0f53b11c8 45
+internal/units/concat/concat_route_test.go
+  s_125ade92b668d5::t_d4920bc5734782 14,17-20,25-33,35,54,118,129-130,140,193-194,239,262-267,271-272,290
+  s_125ade92b668d5::t_095e86d8199355 251,254,258
+  s_125ade92b668d5::t_bb56664e0c7446 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "599438753749bcde1cf5424d1bc95969d2311a1d",
+  "prompts": {},
+  "sessions": {
+    "s_125ade92b668d5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b0208aed-5da2-407d-978e-c79ba7416205",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "peiriannydd <peiriannydd@gmail.com>"
+    }
+  }
+}
