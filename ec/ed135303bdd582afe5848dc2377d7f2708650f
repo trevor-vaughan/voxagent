@@ -1,0 +1,154 @@
+internal/ral/testdata/augeas/traces/06i-augeas-changes-string-vs-array.txt
+  s_7eccd3c84c2723::t_6a8862a0c6a6ac 1-103
+tests/spine/augeas/cases/augeas-runtime-errors/seed.sh
+  s_7eccd3c84c2723::t_34b17b3eb08f86 1
+tests/spine/augeas/cases/06d-augeas-resolv-simp-shape/files
+  s_7eccd3c84c2723::t_7e3a2e9e521a1b 1
+internal/ral/testdata/augeas/traces/06a-augeas-kmod-new.txt
+  s_7eccd3c84c2723::t_6a8862a0c6a6ac 1-49
+tests/spine/augeas/cases/refuse-augeas-onlyif/seed.sh
+  s_7eccd3c84c2723::t_34b17b3eb08f86 1
+tests/spine/augeas/cases/06i-augeas-changes-string-vs-array/files
+  s_7eccd3c84c2723::t_7e3a2e9e521a1b 1
+tests/spine/augeas/cases/06d-augeas-resolv-simp-shape/site.pp
+  s_7eccd3c84c2723::t_7e3a2e9e521a1b 1-6
+tests/spine/augeas/cases/augeas-apply-ignores-libdir-lens/lenses/modprobe.aug
+  s_7eccd3c84c2723::t_34b17b3eb08f86 1-3
+tests/spine/augeas/cases/refuse-augeas-onlyif/files
+  s_7eccd3c84c2723::t_34b17b3eb08f86 1
+tests/spine/augeas/cases/refuse-augeas-setm/files
+  s_7eccd3c84c2723::t_34b17b3eb08f86 1
+tests/spine/augeas/cases/06c-augeas-kmod-option-and-rm/files
+  s_7eccd3c84c2723::t_7e3a2e9e521a1b 1
+tests/spine/augeas/g5.sh
+  s_7eccd3c84c2723::t_c7b9b808581dd8 16-18,25-27,32-35,38-42,46,50-51,70-77,80,96,127,147-148,153-156,167,171,173-176,253-254,258-264,305-308,312
+tests/spine/augeas/cases/06e-augeas-resolv-rerun/seed.sh
+  s_7eccd3c84c2723::t_7e3a2e9e521a1b 1,3-5
+  s_7eccd3c84c2723::t_29aa4d323c5e7b 2
+tests/spine/augeas/cases/augeas-notified/files
+  s_7eccd3c84c2723::t_34b17b3eb08f86 1
+internal/ral/testdata/augeas/traces/06k-augeas-kmod-option-and-rm-correct.txt
+  s_7eccd3c84c2723::t_6a8862a0c6a6ac 1-51
+tests/spine/augeas/cases/06i-augeas-changes-string-vs-array/site.pp
+  s_7eccd3c84c2723::t_7e3a2e9e521a1b 1-18
+tests/spine/augeas/cases/augeas-apply-ignores-libdir-lens/seed.sh
+  s_7eccd3c84c2723::t_34b17b3eb08f86 1
+tests/spine/augeas/trace/trace.sh
+  s_7eccd3c84c2723::t_161a58d31d03a2 7-16,25-27,44-45,72-86,91-92,95,102,104-107
+tests/spine/augeas/cases/06k-augeas-kmod-option-and-rm-correct/seed.sh
+  s_7eccd3c84c2723::t_7e3a2e9e521a1b 1
+tests/spine/augeas/cases/06b-augeas-kmod-rerun/seed.sh
+  s_7eccd3c84c2723::t_7e3a2e9e521a1b 1-2
+internal/ral/augeas_replay_test.go
+  s_7eccd3c84c2723::t_77c7d5776fa0a6 344-345,354,359-360,363-365
+tests/spine/augeas/cases/06a-augeas-kmod-new/seed.sh
+  s_7eccd3c84c2723::t_7e3a2e9e521a1b 1
+tests/spine/augeas/cases/06e-augeas-resolv-rerun/site.pp
+  s_7eccd3c84c2723::t_7e3a2e9e521a1b 1-6
+internal/ral/testdata/augeas/traces/06d-augeas-resolv-simp-shape.txt
+  s_7eccd3c84c2723::t_6a8862a0c6a6ac 1-53
+internal/ral/testdata/augeas/traces/augeas-notified.txt
+  s_7eccd3c84c2723::t_6a8862a0c6a6ac 1-17
+tests/spine/augeas/cases/augeas-runtime-errors/site.pp
+  s_7eccd3c84c2723::t_34b17b3eb08f86 1-13
+tests/spine/augeas/cases/refuse-augeas-force/site.pp
+  s_7eccd3c84c2723::t_34b17b3eb08f86 1-7
+tests/spine/augeas/cases/augeas-notified/site.pp
+  s_7eccd3c84c2723::t_34b17b3eb08f86 1-7
+tests/spine/augeas/cases/06c-augeas-kmod-option-and-rm/seed.sh
+  s_7eccd3c84c2723::t_7e3a2e9e521a1b 1
+tests/spine/augeas/cases/refuse-augeas-parse-error/site.pp
+  s_7eccd3c84c2723::t_34b17b3eb08f86 1-4
+tests/spine/report-diff-simp.sh
+  s_7eccd3c84c2723::t_3124c3d8dc95c4 20,204
+  s_7eccd3c84c2723::t_81a499cf8ad2e1 203,205
+tests/spine/augeas/cases/augeas-apply-ignores-libdir-lens/site.pp
+  s_7eccd3c84c2723::t_34b17b3eb08f86 1-6
+tests/spine/augeas/cases/06k-augeas-kmod-option-and-rm-correct/site.pp
+  s_7eccd3c84c2723::t_7e3a2e9e521a1b 1-13
+tests/spine/augeas/cases/06a-augeas-kmod-new/site.pp
+  s_7eccd3c84c2723::t_7e3a2e9e521a1b 1-13
+tests/spine/augeas/cases/refuse-augeas-force/seed.sh
+  s_7eccd3c84c2723::t_34b17b3eb08f86 1
+internal/ral/testdata/augeas/traces/augeas-apply-ignores-libdir-lens.txt
+  s_7eccd3c84c2723::t_6a8862a0c6a6ac 1-17
+tests/spine/augeas/cases/refuse-augeas-setm/seed.sh
+  s_7eccd3c84c2723::t_34b17b3eb08f86 1
+tests/spine/augeas/cases/06a-augeas-kmod-new/files
+  s_7eccd3c84c2723::t_7e3a2e9e521a1b 1
+internal/ral/testdata/augeas/traces/06b-augeas-kmod-rerun.txt
+  s_7eccd3c84c2723::t_6a8862a0c6a6ac 1-31
+tests/spine/augeas/cases/augeas-apply-ignores-libdir-lens/files
+  s_7eccd3c84c2723::t_34b17b3eb08f86 1
+internal/ral/testdata/augeas/traces/06e-augeas-resolv-rerun.txt
+  s_7eccd3c84c2723::t_6a8862a0c6a6ac 1-31
+internal/ral/testdata/augeas/traces/06r-augeas-resolv-save-fails-on-mount.txt
+  s_7eccd3c84c2723::t_6a8862a0c6a6ac 1-54
+tests/spine/augeas/cases/06r-augeas-resolv-save-fails-on-mount/seed.sh
+  s_7eccd3c84c2723::t_7e3a2e9e521a1b 1
+tests/spine/augeas/trace/README
+  s_7eccd3c84c2723::t_a69fe592fe1304 7-12,23-24,27-28
+tests/spine/augeas/cases/augeas-notified/seed.sh
+  s_7eccd3c84c2723::t_34b17b3eb08f86 1
+tests/spine/simp/lib.sh
+  s_7eccd3c84c2723::t_3124c3d8dc95c4 265,271-272
+  s_7eccd3c84c2723::t_b17edc9e0d849f 273-275
+  s_7eccd3c84c2723::t_81a499cf8ad2e1 266-267,269-270,291-293
+tests/spine/augeas/cases/06e-augeas-resolv-rerun/podman-args
+  s_7eccd3c84c2723::t_7e3a2e9e521a1b 1
+internal/ral/testdata/augeas/traces/README
+  s_7eccd3c84c2723::t_7dafef2fe7c9f5 9-16
+tests/spine/augeas/cases/06b-augeas-kmod-rerun/site.pp
+  s_7eccd3c84c2723::t_7e3a2e9e521a1b 1-13
+tests/spine/augeas/cases/refuse-augeas-force/files
+  s_7eccd3c84c2723::t_34b17b3eb08f86 1
+internal/ral/testdata/augeas/traces/augeas-runtime-errors.txt
+  s_7eccd3c84c2723::t_6a8862a0c6a6ac 1-131
+tests/spine/augeas/cases/06b-augeas-kmod-rerun/files
+  s_7eccd3c84c2723::t_7e3a2e9e521a1b 1
+tests/spine/augeas/cases/06r-augeas-resolv-save-fails-on-mount/files
+  s_7eccd3c84c2723::t_7e3a2e9e521a1b 1
+tests/spine/augeas/cases/06r-augeas-resolv-save-fails-on-mount/site.pp
+  s_7eccd3c84c2723::t_7e3a2e9e521a1b 1-6
+tests/spine/augeas/cases/06c-augeas-kmod-option-and-rm/site.pp
+  s_7eccd3c84c2723::t_7e3a2e9e521a1b 1-13
+tests/spine/augeas/cases/refuse-augeas-onlyif/site.pp
+  s_7eccd3c84c2723::t_34b17b3eb08f86 1-7
+internal/ral/testdata/augeas/traces/06c-augeas-kmod-option-and-rm.txt
+  s_7eccd3c84c2723::t_6a8862a0c6a6ac 1-23
+tests/spine/augeas/cases/06d-augeas-resolv-simp-shape/seed.sh
+  s_7eccd3c84c2723::t_7e3a2e9e521a1b 1,3-4
+  s_7eccd3c84c2723::t_29aa4d323c5e7b 2
+tests/spine/augeas/cases/06i-augeas-changes-string-vs-array/seed.sh
+  s_7eccd3c84c2723::t_7e3a2e9e521a1b 1
+tests/spine/augeas/cases/06k-augeas-kmod-option-and-rm-correct/files
+  s_7eccd3c84c2723::t_7e3a2e9e521a1b 1
+tests/spine/augeas/cases/refuse-augeas-setm/site.pp
+  s_7eccd3c84c2723::t_34b17b3eb08f86 1-6
+tests/spine/augeas/cases/augeas-runtime-errors/files
+  s_7eccd3c84c2723::t_34b17b3eb08f86 1
+tests/spine/augeas/cases/refuse-augeas-parse-error/files
+  s_7eccd3c84c2723::t_34b17b3eb08f86 1
+tests/spine/augeas/cases/06d-augeas-resolv-simp-shape/podman-args
+  s_7eccd3c84c2723::t_7e3a2e9e521a1b 1
+tests/spine/augeas/cases/06e-augeas-resolv-rerun/files
+  s_7eccd3c84c2723::t_7e3a2e9e521a1b 1
+tests/spine/augeas/cases/refuse-augeas-parse-error/seed.sh
+  s_7eccd3c84c2723::t_34b17b3eb08f86 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "eced135303bdd582afe5848dc2377d7f2708650f",
+  "prompts": {},
+  "sessions": {
+    "s_7eccd3c84c2723": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bff116f9-c9fe-48e6-be9f-9ac44ffa4009",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "peiriannydd <peiriannydd@gmail.com>"
+    }
+  }
+}
