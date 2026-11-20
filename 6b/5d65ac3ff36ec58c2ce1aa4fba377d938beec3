@@ -1,0 +1,19 @@
+internal/ral/lib_puppetpath.go
+  s_125ade92b668d5::t_5871cb0287e440 1-162
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "6b5d65ac3ff36ec58c2ce1aa4fba377d938beec3",
+  "prompts": {},
+  "sessions": {
+    "s_125ade92b668d5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b0208aed-5da2-407d-978e-c79ba7416205",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "peiriannydd <peiriannydd@gmail.com>"
+    }
+  }
+}
