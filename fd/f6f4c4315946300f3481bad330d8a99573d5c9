@@ -1,0 +1,149 @@
+internal/ral/augeas_generic_params_test.go
+  s_125ade92b668d5::t_3f3d521430c387 8-9
+  s_125ade92b668d5::t_1e45275810606a 152,154,156-157,164,166
+internal/ral/preflight.go
+  s_125ade92b668d5::t_1e45275810606a 76,114
+  s_125ade92b668d5::t_3f3d521430c387 7
+internal/ral/preflight_test.go
+  s_125ade92b668d5::t_1e45275810606a 127
+internal/ral/file_source.go
+  s_125ade92b668d5::t_1e45275810606a 87,89,93,230,235,252,261,267,273
+  s_125ade92b668d5::t_3f3d521430c387 15
+internal/ral/package_test.go
+  s_125ade92b668d5::t_1e45275810606a 1122
+internal/ral/sshd_subsystem.go
+  s_125ade92b668d5::t_1e45275810606a 104,106
+  s_125ade92b668d5::t_3f3d521430c387 7
+internal/ral/sysctl_prefetch.go
+  s_125ade92b668d5::t_1e45275810606a 136,150,156
+  s_125ade92b668d5::t_3f3d521430c387 10
+internal/ral/file_validate.go
+  s_125ade92b668d5::t_1e45275810606a 321
+  s_125ade92b668d5::t_3f3d521430c387 19
+internal/ral/augeas_generic_params.go
+  s_125ade92b668d5::t_3f3d521430c387 11
+  s_125ade92b668d5::t_1e45275810606a 272,287,309,345,387
+internal/ral/file_mode_test.go
+  s_125ade92b668d5::t_3f3d521430c387 3-7
+  s_125ade92b668d5::t_1e45275810606a 77
+internal/ral/group.go
+  s_125ade92b668d5::t_3f3d521430c387 14
+  s_125ade92b668d5::t_1e45275810606a 102,108,110,112,117,121,132,137,144,146,158,239,251,286,295,307,373,375
+internal/ral/file_backup.go
+  s_125ade92b668d5::t_3f3d521430c387 20
+  s_125ade92b668d5::t_1e45275810606a 83,93
+internal/ral/user.go
+  s_125ade92b668d5::t_3f3d521430c387 10
+  s_125ade92b668d5::t_1e45275810606a 82
+internal/lib/rubyvalue/rubyvalue_test.go
+  s_125ade92b668d5::t_4618f45c176f91 1-72
+  s_125ade92b668d5::t_e588465ca6ab03 73-80
+internal/ral/augeas_params_test.go
+  s_125ade92b668d5::t_3f3d521430c387 11
+  s_125ade92b668d5::t_1e45275810606a 83,85,92,154,156
+internal/lib/rubyvalue/rubyvalue.go
+  s_125ade92b668d5::t_1e45275810606a 3-383
+  s_125ade92b668d5::t_144e9e03cce4cc 1-2
+internal/ral/file_link.go
+  s_125ade92b668d5::t_1e45275810606a 158
+  s_125ade92b668d5::t_3f3d521430c387 12
+internal/ral/file_selinux.go
+  s_125ade92b668d5::t_3f3d521430c387 24
+  s_125ade92b668d5::t_1e45275810606a 687
+internal/ral/concat_evalgen.go
+  s_125ade92b668d5::t_1e45275810606a 155,157
+  s_125ade92b668d5::t_3f3d521430c387 9
+internal/ral/fileoutput.go
+  s_125ade92b668d5::t_3f3d521430c387 15
+  s_125ade92b668d5::t_1e45275810606a 74,114,135,150
+internal/ral/exec.go
+  s_125ade92b668d5::t_1e45275810606a 561,753,799,837,839,844,1046
+  s_125ade92b668d5::t_3f3d521430c387 19
+internal/ral/augeas_route.go
+  s_125ade92b668d5::t_1e45275810606a 66,171
+  s_125ade92b668d5::t_3f3d521430c387 14
+internal/ral/augeas_types.go
+  s_125ade92b668d5::t_1e45275810606a 95
+internal/ral/concat_route.go
+  s_125ade92b668d5::t_1e45275810606a 33,55
+  s_125ade92b668d5::t_3f3d521430c387 10
+internal/ral/nss.go
+  s_125ade92b668d5::t_3f3d521430c387 10
+  s_125ade92b668d5::t_1e45275810606a 67
+internal/ral/concat.go
+  s_125ade92b668d5::t_1e45275810606a 113,119,145,148,155,162,165,167,175-176,178,193,197,202,204,214-215,217,223,229,241,243,245,261,275,277-278,280,310,316,326,335,341,344,351,353,357,360
+  s_125ade92b668d5::t_3f3d521430c387 13
+internal/ral/package.go
+  s_125ade92b668d5::t_1e45275810606a 160,318-319,450,478,671,737,740
+  s_125ade92b668d5::t_3f3d521430c387 12
+internal/ral/service.go
+  s_125ade92b668d5::t_3f3d521430c387 10
+  s_125ade92b668d5::t_1e45275810606a 91,99,204
+internal/ral/ssh_config.go
+  s_125ade92b668d5::t_3f3d521430c387 9
+  s_125ade92b668d5::t_1e45275810606a 160
+internal/ral/augeas_params.go
+  s_125ade92b668d5::t_3f3d521430c387 14
+  s_125ade92b668d5::t_1e45275810606a 20,90,97,101,126,142,145,226
+internal/ral/concat_params_test.go
+  s_125ade92b668d5::t_1e45275810606a 93,140,177,179,181-182,274-276,282,370
+  s_125ade92b668d5::t_3f3d521430c387 10
+internal/ral/warnonce.go
+  s_125ade92b668d5::t_3f3d521430c387 7
+  s_125ade92b668d5::t_1e45275810606a 35
+internal/lib/rubyvalue/rubyint_test.go
+  s_125ade92b668d5::t_a50f077957252a 1,3-5,13,15,19,21
+internal/ral/file.go
+  s_125ade92b668d5::t_1e45275810606a 274,311,317,333,340,344,353,450,494,499,540,549,680,1521,1556,1603,1616,1931
+  s_125ade92b668d5::t_3f3d521430c387 20
+internal/ral/user_params.go
+  s_125ade92b668d5::t_1e45275810606a 80,88,90,106,113,115,131,140,148,150,152,187,190,221,223,225,233,245,247,260
+  s_125ade92b668d5::t_3f3d521430c387 11
+internal/ral/exec_argv.go
+  s_125ade92b668d5::t_3f3d521430c387 10-11
+  s_125ade92b668d5::t_1e45275810606a 28,47,57,105
+internal/ral/usergroup_route.go
+  s_125ade92b668d5::t_1e45275810606a 22,29
+  s_125ade92b668d5::t_3f3d521430c387 8
+internal/ral/file_mode.go
+  s_125ade92b668d5::t_3f3d521430c387 11
+  s_125ade92b668d5::t_1e45275810606a 48,123,125
+internal/ral/file_recurse.go
+  s_125ade92b668d5::t_3f3d521430c387 16
+  s_125ade92b668d5::t_1e45275810606a 53,89,208,268,281
+internal/ral/exec_stage.go
+  s_125ade92b668d5::t_3f3d521430c387 15-16
+  s_125ade92b668d5::t_1e45275810606a 126,133,158,160
+internal/ral/exec_params.go
+  s_125ade92b668d5::t_1e45275810606a 63,69,75,85,87,90,94,99,104,109,114,134,137,150,153,187,191,207,239,247,252,255,268,272,275,277,279,282
+  s_125ade92b668d5::t_3f3d521430c387 16
+internal/ral/goroutines_test.go
+  s_125ade92b668d5::t_0dee59cd406818 19-23
+internal/ral/usergroup_route_test.go
+  s_125ade92b668d5::t_1e45275810606a 195
+  s_125ade92b668d5::t_3f3d521430c387 8
+internal/ral/exec_env.go
+  s_125ade92b668d5::t_3f3d521430c387 12
+  s_125ade92b668d5::t_1e45275810606a 54,60
+internal/lib/rubyvalue/inspect_test.go
+  s_125ade92b668d5::t_a50f077957252a 1,3-5,31-32,54-55
+internal/ral/user_apply.go
+  s_125ade92b668d5::t_3f3d521430c387 15
+  s_125ade92b668d5::t_1e45275810606a 125,265,353-354,356,371,440,466
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "fdf6f4c4315946300f3481bad330d8a99573d5c9",
+  "prompts": {},
+  "sessions": {
+    "s_125ade92b668d5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b0208aed-5da2-407d-978e-c79ba7416205",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "peiriannydd <peiriannydd@gmail.com>"
+    }
+  }
+}
