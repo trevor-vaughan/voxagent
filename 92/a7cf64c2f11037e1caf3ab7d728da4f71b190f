@@ -1,0 +1,21 @@
+internal/ral/augeas_route.go
+  s_1737acd0cbb04a::t_5bb6587c790969 112-113,115
+internal/ral/augeas_route_test.go
+  s_1737acd0cbb04a::t_806e370061f226 685-696
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "92a7cf64c2f11037e1caf3ab7d728da4f71b190f",
+  "prompts": {},
+  "sessions": {
+    "s_1737acd0cbb04a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-ab8226b4e146477eb",
+        "model": "unknown"
+      },
+      "human_author": "peiriannydd <peiriannydd@gmail.com>"
+    }
+  }
+}
