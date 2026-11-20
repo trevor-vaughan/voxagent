@@ -1,0 +1,79 @@
+cmd/voxagent/apply.go
+  s_56d04da2eca063::t_fbc32092906a01 67
+cmd/voxagent/main_test.go
+  s_56d04da2eca063::t_5a8bb9547fbbc6 456
+cmd/voxagent/testdata/units.golden.json
+  s_56d04da2eca063::t_ed19f1de7bdeab 2-18
+docs/maintainers/apply-spine.md
+  s_56d04da2eca063::t_cc59a38c4522d7 59,102,104,116,147,171-172,176-179,829,892,975,1061
+docs/maintainers/extension-host.md
+  s_56d04da2eca063::t_fc3d03df1c761f 314
+docs/maintainers/improvements.md
+  s_56d04da2eca063::t_6094b73a5a2023 49-50,54,56
+internal/ral/goroutines_test.go
+  s_56d04da2eca063::t_2651d92920a80a 52-53
+internal/ral/ral_test.go
+  s_56d04da2eca063::t_bce1f0e881129a 169,177
+internal/ral/sensitive_test.go
+  s_56d04da2eca063::t_14ec8a72db71a6 18-26,57,59,61
+internal/ral/warnonce.go
+  s_56d04da2eca063::t_d32212c77562f6 24,28
+internal/transaction/build_test.go
+  s_56d04da2eca063::t_d16d496e857745 15,432
+internal/transaction/transaction.go
+  s_56d04da2eca063::t_03ffa21bb02aa4 21,115,555,934
+internal/transaction/transaction_test.go
+  s_56d04da2eca063::t_c9a91742590d49 22,3289,3635,3660,3690,3718,3746,3757
+internal/units/exec/exec.go
+  s_56d04da2eca063::t_899c190bcdcbd7 1-4,25,40,43-47,65,138,140-142,273,276,352,359,370,388-389,403,450-451,464,510,518,530,556,634,638,645,651,667,681
+internal/units/exec/exec_argv.go
+  s_56d04da2eca063::t_c88472a8a8ea8f 1
+internal/units/exec/exec_env.go
+  s_56d04da2eca063::t_3b5c3c22003712 1,13,48
+internal/units/exec/exec_env_test.go
+  s_56d04da2eca063::t_3d23d10e4d96e0 1,15,32,106,133,143
+internal/units/exec/exec_output.go
+  s_56d04da2eca063::t_2347c9265c8a1b 1
+internal/units/exec/exec_output_test.go
+  s_56d04da2eca063::t_ae36c71f327110 1
+internal/units/exec/exec_params.go
+  s_56d04da2eca063::t_1afe57d9a56eb5 1
+internal/units/exec/exec_params_test.go
+  s_56d04da2eca063::t_cea082b3c7dda8 1
+internal/units/exec/exec_run.go
+  s_56d04da2eca063::t_a368ef2c10849c 1
+internal/units/exec/exec_run_test.go
+  s_56d04da2eca063::t_d1deed8e078d9a 1
+internal/units/exec/exec_stage.go
+  s_56d04da2eca063::t_bcc5de3e5982b0 1
+internal/units/exec/exec_stage_test.go
+  s_56d04da2eca063::t_5ce7dc2246c484 1
+internal/units/exec/exec_test.go
+  s_56d04da2eca063::t_08f8a26f891898 1,21,25,29,813,1123,1671,1680,2306-2313
+internal/units/exec/exec_truncation_test.go
+  s_56d04da2eca063::t_fc43dc4456f06f 1
+internal/units/exec/exec_unix.go
+  s_56d04da2eca063::t_a7ee38dd3db4b0 3
+internal/units/exec/manifest.go
+  s_56d04da2eca063::t_d6b579be40a1f9 1-32
+internal/units/units.go
+  s_56d04da2eca063::t_b7fc23b0d0e847 7,14
+internal/units/units_test.go
+  s_56d04da2eca063::t_f89a5a9cc76e36 159
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "f5f145dce55db082b389b272ebeb46569b30fd29",
+  "prompts": {},
+  "sessions": {
+    "s_56d04da2eca063": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a3aa433154eb51c8b",
+        "model": "unknown"
+      },
+      "human_author": "peiriannydd <peiriannydd@gmail.com>"
+    }
+  }
+}
