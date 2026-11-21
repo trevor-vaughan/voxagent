@@ -1,0 +1,33 @@
+internal/extension/ruby_test.go
+  s_125ade92b668d5::t_91b20bf00a3987 768-770,786-791,846-872
+  s_125ade92b668d5::t_4e074ae8b22398 830-840
+  s_125ade92b668d5::t_40895f3a422321 873
+internal/extension/host.rb
+  s_125ade92b668d5::t_2a95dd94affc80 72-78,82-99,101,663-665,667,692-696,703
+internal/extension/testdata/libdir/puppet/provider/vox_secret/echo.rb
+  s_125ade92b668d5::t_91b20bf00a3987 1-8
+internal/extension/script.go
+  s_125ade92b668d5::t_2a95dd94affc80 18
+docs/maintainers/apply-spine.md
+  s_125ade92b668d5::t_109400a10055c4 171
+internal/extension/testdata/libdir/puppet/type/vox_secret.rb
+  s_125ade92b668d5::t_91b20bf00a3987 6,18
+  s_125ade92b668d5::t_4e074ae8b22398 7,24
+  s_125ade92b668d5::t_479145589d560d 25
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "00a7d8648aab52059d9732ecfb3f3e90068bfb51",
+  "prompts": {},
+  "sessions": {
+    "s_125ade92b668d5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b0208aed-5da2-407d-978e-c79ba7416205",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "peiriannydd <peiriannydd@gmail.com>"
+    }
+  }
+}
