@@ -1,0 +1,23 @@
+cmd/voxagent/canary_test.go
+  s_350083d403e244::t_89d77a7b0c263c 281,283,285-286,310-317,369-381,383
+  s_350083d403e244::t_79dea296806e56 382
+tests/spine/sensitive-canary.sh
+  s_350083d403e244::t_116dd586cf8f03 23-25
+  s_350083d403e244::t_89d77a7b0c263c 111
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "9fa987b9b8c6b7bc627ecb24f99ec7cd9d348646",
+  "prompts": {},
+  "sessions": {
+    "s_350083d403e244": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "477f6051-fea0-4b85-b91e-b136b0dadcb8",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "peiriannydd <peiriannydd@gmail.com>"
+    }
+  }
+}
