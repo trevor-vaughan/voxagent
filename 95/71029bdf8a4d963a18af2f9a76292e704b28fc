@@ -1,0 +1,20 @@
+cmd/voxagent/canary_test.go
+  s_350083d403e244::t_1a0e7b7f95535e 4,280,282,298-302,311-351
+  s_350083d403e244::t_f5d55238c931a7 352-353
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "9571029bdf8a4d963a18af2f9a76292e704b28fc",
+  "prompts": {},
+  "sessions": {
+    "s_350083d403e244": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "477f6051-fea0-4b85-b91e-b136b0dadcb8",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "peiriannydd <peiriannydd@gmail.com>"
+    }
+  }
+}
