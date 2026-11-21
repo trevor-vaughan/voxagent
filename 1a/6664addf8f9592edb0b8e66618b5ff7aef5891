@@ -1,0 +1,25 @@
+README.md
+  s_6893f8d28d6c7a::t_11a3f02218c108 578-583
+docs/maintainers/apply-spine.md
+  s_6893f8d28d6c7a::t_5dea45d7181d10 171
+docs/maintainers/runlog.md
+  s_6893f8d28d6c7a::t_51ef7791f9878d 16-18,43-54,101-103
+tests/spine/report-diff-container.sh
+  s_6893f8d28d6c7a::t_28052dc4636309 493
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "1a6664addf8f9592edb0b8e66618b5ff7aef5891",
+  "prompts": {},
+  "sessions": {
+    "s_6893f8d28d6c7a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a59c7e3598f47a959",
+        "model": "unknown"
+      },
+      "human_author": "peiriannydd <peiriannydd@gmail.com>"
+    }
+  }
+}
