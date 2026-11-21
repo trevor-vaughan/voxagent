@@ -1,0 +1,25 @@
+internal/lib/rubyvalue/rubyvalue.go
+  s_e88f6028404bda::t_5746457fef8bab 122-124,132,313-322
+internal/lib/rubyvalue/rubyvalue_test.go
+  s_e88f6028404bda::t_cdfe0cbc7f4988 3-7,85-106
+internal/units/group/group.go
+  s_e88f6028404bda::t_06fa45d5d4665f 117,121,187,216,225,239-240,264,267,279,290-291,297,311,316-317,327,338-339,348,353,360-362,367,372
+internal/units/group/group_test.go
+  s_e88f6028404bda::t_53ca5a7ae4e43f 9,465-558
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "a36eae97cb469b72de9335482768ac45dcc986be",
+  "prompts": {},
+  "sessions": {
+    "s_e88f6028404bda": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a03f74080a19e6806",
+        "model": "unknown"
+      },
+      "human_author": "peiriannydd <peiriannydd@gmail.com>"
+    }
+  }
+}
