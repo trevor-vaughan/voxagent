@@ -1,0 +1,21 @@
+internal/units/file/file_selinux.go
+  s_e88f6028404bda::t_fffdf0a4d7f3eb 759-761,806-807,945
+internal/units/file/file_selinux_test.go
+  s_e88f6028404bda::t_fae3085cd22eb0 1547-1565
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "e75a4b83d5d5f732e9f567a550f8e872626d4538",
+  "prompts": {},
+  "sessions": {
+    "s_e88f6028404bda": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a03f74080a19e6806",
+        "model": "unknown"
+      },
+      "human_author": "peiriannydd <peiriannydd@gmail.com>"
+    }
+  }
+}
