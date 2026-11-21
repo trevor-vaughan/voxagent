@@ -1,0 +1,23 @@
+internal/lib/command/command.go
+  s_52e3c87c4b4698::t_9293a7312238cc 137-139,141-143
+internal/lib/command/command_test.go
+  s_52e3c87c4b4698::t_2e0a2792c3b1cf 392
+internal/units/user/user_apply_test.go
+  s_52e3c87c4b4698::t_3bf07c6a537fe9 224-225,344,364
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "520ed78a52a594398899c746c066aa1f70865922",
+  "prompts": {},
+  "sessions": {
+    "s_52e3c87c4b4698": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-ad97a2fdba7437ed2",
+        "model": "unknown"
+      },
+      "human_author": "peiriannydd <peiriannydd@gmail.com>"
+    }
+  }
+}
