@@ -1,0 +1,19 @@
+cmd/voxagent/sensitive_test.go
+  s_e88f6028404bda::t_51f52766c419f3 469,481-482
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "2dd4fb5a242e35edc166e02596e1f722f924689e",
+  "prompts": {},
+  "sessions": {
+    "s_e88f6028404bda": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a03f74080a19e6806",
+        "model": "unknown"
+      },
+      "human_author": "peiriannydd <peiriannydd@gmail.com>"
+    }
+  }
+}
