@@ -1,0 +1,21 @@
+internal/lib/puppetpath/puppetpath.go
+  s_e88f6028404bda::t_a06b27fa879d03 125
+internal/lib/puppetpath/puppetpath_test.go
+  s_e88f6028404bda::t_09a9bf54289293 63-77
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "943b8efa489d1a8e57844bc17263e601bb4ae5cc",
+  "prompts": {},
+  "sessions": {
+    "s_e88f6028404bda": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a03f74080a19e6806",
+        "model": "unknown"
+      },
+      "human_author": "peiriannydd <peiriannydd@gmail.com>"
+    }
+  }
+}
