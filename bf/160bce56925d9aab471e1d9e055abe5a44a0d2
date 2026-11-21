@@ -1,0 +1,21 @@
+internal/units/exec/exec.go
+  s_e88f6028404bda::t_5fcfb1abdc6b8c 571-573,575,581,605-606,669-670,683,685-688,696-699
+internal/units/exec/exec_test.go
+  s_e88f6028404bda::t_f9dae75be7dbc8 2314-2379
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "bf160bce56925d9aab471e1d9e055abe5a44a0d2",
+  "prompts": {},
+  "sessions": {
+    "s_e88f6028404bda": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a03f74080a19e6806",
+        "model": "unknown"
+      },
+      "human_author": "peiriannydd <peiriannydd@gmail.com>"
+    }
+  }
+}
