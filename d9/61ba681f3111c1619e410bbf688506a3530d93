@@ -1,0 +1,21 @@
+internal/units/service/service.go
+  s_e88f6028404bda::t_fb627993a8328e 10,138-148,156,340
+internal/units/service/service_test.go
+  s_e88f6028404bda::t_966d3a9b4febc6 487-543
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "d961ba681f3111c1619e410bbf688506a3530d93",
+  "prompts": {},
+  "sessions": {
+    "s_e88f6028404bda": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a03f74080a19e6806",
+        "model": "unknown"
+      },
+      "human_author": "peiriannydd <peiriannydd@gmail.com>"
+    }
+  }
+}
