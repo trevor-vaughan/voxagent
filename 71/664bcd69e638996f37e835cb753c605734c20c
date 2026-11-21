@@ -1,0 +1,21 @@
+internal/units/concat/concat_route.go
+  s_e88f6028404bda::t_84919f9ef50d0e 5,46-51,53
+internal/units/concat/concat_route_test.go
+  s_e88f6028404bda::t_fec70c1875682c 313-319
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "71664bcd69e638996f37e835cb753c605734c20c",
+  "prompts": {},
+  "sessions": {
+    "s_e88f6028404bda": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a03f74080a19e6806",
+        "model": "unknown"
+      },
+      "human_author": "peiriannydd <peiriannydd@gmail.com>"
+    }
+  }
+}
