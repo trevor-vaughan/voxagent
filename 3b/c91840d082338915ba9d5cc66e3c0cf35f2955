@@ -1,0 +1,23 @@
+internal/lib/nameservice/nameservice.go
+  s_e88f6028404bda::t_dbbb3b232160e8 64-66,141-142
+internal/lib/nameservice/nameservice_test.go
+  s_e88f6028404bda::t_ad168ff132d685 61,168,316-331
+internal/units/user/user_apply.go
+  s_e88f6028404bda::t_96898cd9b45ce1 139,290-291,298
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "3bc91840d082338915ba9d5cc66e3c0cf35f2955",
+  "prompts": {},
+  "sessions": {
+    "s_e88f6028404bda": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a03f74080a19e6806",
+        "model": "unknown"
+      },
+      "human_author": "peiriannydd <peiriannydd@gmail.com>"
+    }
+  }
+}
