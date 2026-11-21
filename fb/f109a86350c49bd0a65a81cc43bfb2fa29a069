@@ -1,0 +1,21 @@
+internal/units/file/file.go
+  s_e88f6028404bda::t_dd6421c0db74f7 756,1732-1734,1761-1764,1768,1900
+internal/units/file/file_sensitive_test.go
+  s_e88f6028404bda::t_8cec51208eab56 349-378
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "fbf109a86350c49bd0a65a81cc43bfb2fa29a069",
+  "prompts": {},
+  "sessions": {
+    "s_e88f6028404bda": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a03f74080a19e6806",
+        "model": "unknown"
+      },
+      "human_author": "peiriannydd <peiriannydd@gmail.com>"
+    }
+  }
+}
