@@ -1,0 +1,19 @@
+internal/lib/parsedfile/grammar.go
+  s_c23748220ff815::t_eb219660c22510 65-67
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "a7116fdc63db1b7d400031cfb961ef02203f9db3",
+  "prompts": {},
+  "sessions": {
+    "s_c23748220ff815": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-ae6aac4da32e826a9",
+        "model": "unknown"
+      },
+      "human_author": "peiriannydd <peiriannydd@gmail.com>"
+    }
+  }
+}
