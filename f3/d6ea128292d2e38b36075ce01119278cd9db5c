@@ -1,0 +1,35 @@
+internal/units/cron_core/cron_params.go
+  s_332352ebbc2aad::t_cad5ccfbdad92b 1-37,42-95,99-110,112-234,236-369,371-376,378-381,383-413,420-462,464-470
+  s_332352ebbc2aad::t_09b2670b231a02 38-41,96-98,111,235,370,377,382,414-419,463
+internal/units/cron_core/cron.go
+  s_332352ebbc2aad::t_cad5ccfbdad92b 1,9
+  s_332352ebbc2aad::t_280379c90d3a67 2-8,10-72
+internal/units/cron_core/cron_params_test.go
+  s_332352ebbc2aad::t_85cea24d696224 2-27,30-35,37,41-43,47-72,74-85,88-96,98-101,328,332,364-365,374-375,380,393,489
+  s_332352ebbc2aad::t_0546635d34068a 447-448,451
+  s_332352ebbc2aad::t_cad5ccfbdad92b 1
+  s_332352ebbc2aad::t_924a1b288b30af 28-29,36,38-40,44-46,73,86-87,97,102-327,329-331,333-363,366-373,376-379,381-392,394-446,449-450,452-488
+internal/units/cron_core/cron_autoreq_test.go
+  s_332352ebbc2aad::t_83c8e80a224596 4,47
+  s_332352ebbc2aad::t_0522fbb5a19a49 2-3,5-46,48-65
+  s_332352ebbc2aad::t_cad5ccfbdad92b 1
+internal/units/cron_core/source_scan_test.go
+  s_332352ebbc2aad::t_cad5ccfbdad92b 1
+  s_332352ebbc2aad::t_0522fbb5a19a49 2-54
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "f3d6ea128292d2e38b36075ce01119278cd9db5c",
+  "prompts": {},
+  "sessions": {
+    "s_332352ebbc2aad": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9f267e29-7e1c-4c89-9a1e-ff38a4dd01f0",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "peiriannydd <peiriannydd@gmail.com>"
+    }
+  }
+}
