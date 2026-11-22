@@ -1,0 +1,144 @@
+tests/spine/cron/cases/user-created-in-run/files
+  s_332352ebbc2aad::t_378775ba0acbaf 1-2
+tests/spine/cron/cases/special-to-numeric/seed.sh
+  s_332352ebbc2aad::t_3bece029efe553 1
+tests/spine/cron/cases/parse-error-unrelated-file/files
+  s_332352ebbc2aad::t_e1a70299d12e53 1-2
+tests/spine/cron/cases-2.1.0/minute-0x1f/files
+  s_332352ebbc2aad::t_378775ba0acbaf 1-2
+tests/spine/cron/cases/parse-error/site.pp
+  s_332352ebbc2aad::t_e1a70299d12e53 1-2
+tests/spine/cron/cases/same-name-two-targets/seed.sh
+  s_332352ebbc2aad::t_378775ba0acbaf 1-2
+tests/spine/cron/cases-2.1.0/weekday-true/site.pp
+  s_332352ebbc2aad::t_378775ba0acbaf 1
+tests/spine/cron/cases/line-breaks/site.pp
+  s_332352ebbc2aad::t_378775ba0acbaf 1-5
+tests/spine/cron/cases-2.1.0/env-empty/files
+  s_332352ebbc2aad::t_378775ba0acbaf 1
+tests/spine/cron/cases/parse-error-unrelated-file/site.pp
+  s_332352ebbc2aad::t_e1a70299d12e53 1
+tests/spine/cron/cases/simp-yum-update/files
+  s_332352ebbc2aad::t_e1a70299d12e53 1
+tests/spine/cron/cases/modify/files
+  s_332352ebbc2aad::t_9b653e7ec9a68b 2
+  s_332352ebbc2aad::t_3bece029efe553 1
+tests/spine/cron/cases/user-created-in-run/site.pp
+  s_332352ebbc2aad::t_378775ba0acbaf 1-4
+tests/spine/cron/cases/read-error/site.pp
+  s_332352ebbc2aad::t_e1a70299d12e53 1-3
+tests/spine/cron/cases/adoption/files
+  s_332352ebbc2aad::t_e1a70299d12e53 1
+tests/spine/cron/cases/line-breaks/files
+  s_332352ebbc2aad::t_378775ba0acbaf 1-3
+tests/spine/cron/cases/remove/seed.sh
+  s_332352ebbc2aad::t_3bece029efe553 1
+tests/spine/cron/cases/remove/files
+  s_332352ebbc2aad::t_3bece029efe553 1
+tests/spine/cron/cases/two-in-one-crontab/files
+  s_332352ebbc2aad::t_e1a70299d12e53 1
+tests/spine/cron/cases/environment/seed.sh
+  s_332352ebbc2aad::t_3bece029efe553 1
+tests/spine/cron/cases/special-to-numeric/files
+  s_332352ebbc2aad::t_3bece029efe553 1
+tests/spine/cron/cases-2.1.0/env-empty/site.pp
+  s_332352ebbc2aad::t_378775ba0acbaf 1-2
+tests/spine/cron/cases/parse-error/files
+  s_332352ebbc2aad::t_e1a70299d12e53 1-2
+tests/spine/cron/cases/modify/site.pp
+  s_332352ebbc2aad::t_3bece029efe553 1
+tests/spine/cron/cases/same-name-two-targets/site.pp
+  s_332352ebbc2aad::t_378775ba0acbaf 1-5
+tests/spine/cron/cases/parse-error-unrelated-file/seed.sh
+  s_332352ebbc2aad::t_e1a70299d12e53 1
+tests/spine/cron/cases/parse-error/seed.sh
+  s_332352ebbc2aad::t_e1a70299d12e53 1
+tests/spine/cron/cases/modify/seed.sh
+  s_332352ebbc2aad::t_3bece029efe553 1
+tests/spine/report-diff-simp.sh
+  s_332352ebbc2aad::t_bbc29d6311d6da 21-22,212-214
+  s_332352ebbc2aad::t_314bc2016c5228 371-372,376,378
+tests/spine/cron/cases/numeric-to-special/seed.sh
+  s_332352ebbc2aad::t_3bece029efe553 1
+tests/spine/cron/cases/environment/files
+  s_332352ebbc2aad::t_3bece029efe553 1
+tests/spine/cron/cases/create/site.pp
+  s_332352ebbc2aad::t_3bece029efe553 1
+tests/spine/cron/cases/remove/site.pp
+  s_332352ebbc2aad::t_3bece029efe553 1-2
+tests/spine/cron/cases/adoption/site.pp
+  s_332352ebbc2aad::t_e1a70299d12e53 1-2
+tests/spine/cron/cases-2.1.0/env-empty/seed.sh
+  s_332352ebbc2aad::t_378775ba0acbaf 1
+tests/spine/cron/cases/special-to-numeric/site.pp
+  s_332352ebbc2aad::t_3bece029efe553 1
+tests/spine/report-diff-container.sh
+  s_332352ebbc2aad::t_eefbbd1c6860d8 52-56,62-64,226-229,262-263,998-1001
+tests/spine/cron/cases/simp-absent/files
+  s_332352ebbc2aad::t_e1a70299d12e53 1
+tests/spine/simp/lib.sh
+  s_332352ebbc2aad::t_bbc29d6311d6da 3-4
+  s_332352ebbc2aad::t_14c4905bc3fd24 306-326
+  s_332352ebbc2aad::t_2befd4c94abb49 327-330
+tests/spine/cron/cases/create/files
+  s_332352ebbc2aad::t_3bece029efe553 1
+tests/spine/cron/cases/read-error/files
+  s_332352ebbc2aad::t_e1a70299d12e53 1-2
+tests/spine/cron/cases/env-empty/seed.sh
+  s_332352ebbc2aad::t_378775ba0acbaf 1
+tests/spine/cron/cases/two-in-one-crontab/site.pp
+  s_332352ebbc2aad::t_e1a70299d12e53 1-2
+tests/spine/cron/cases/simp-yum-update/site.pp
+  s_332352ebbc2aad::t_e1a70299d12e53 1-11
+tests/spine/cron/cases/simp-absent-empty/site.pp
+  s_332352ebbc2aad::t_e1a70299d12e53 1-3
+tests/spine/cron/cases/simp-absent/seed.sh
+  s_332352ebbc2aad::t_e1a70299d12e53 1
+tests/spine/cron/cases/no-command/site.pp
+  s_332352ebbc2aad::t_378775ba0acbaf 1-2
+tests/spine/cron/cases/simp-absent/site.pp
+  s_332352ebbc2aad::t_e1a70299d12e53 1-3
+tests/spine/cron/cases/adoption/seed.sh
+  s_332352ebbc2aad::t_e1a70299d12e53 1
+tests/spine/cron/cases-2.1.0/minute-0x1f/site.pp
+  s_332352ebbc2aad::t_378775ba0acbaf 1-2
+tests/spine/cron/g5.sh
+  s_332352ebbc2aad::t_2ca385f4e9a1ce 171-173
+  s_332352ebbc2aad::t_a3f45d3dc4df70 26-28
+  s_332352ebbc2aad::t_c1c679502ce514 1-25,29-170,174-260
+tests/spine/cron/cases/no-command/files
+  s_332352ebbc2aad::t_378775ba0acbaf 1
+tests/spine/cron/cases/env-empty/site.pp
+  s_332352ebbc2aad::t_378775ba0acbaf 1-2
+tests/spine/cron/cases/numeric-to-special/site.pp
+  s_332352ebbc2aad::t_3bece029efe553 1
+tests/spine/cron/cases/numeric-to-special/files
+  s_332352ebbc2aad::t_3bece029efe553 1
+tests/spine/cron/cases/env-empty/files
+  s_332352ebbc2aad::t_378775ba0acbaf 1
+tests/spine/cron/cases/same-name-two-targets/files
+  s_332352ebbc2aad::t_378775ba0acbaf 1-2
+  s_332352ebbc2aad::t_9b653e7ec9a68b 3
+tests/spine/cron/cases/simp-absent-empty/files
+  s_332352ebbc2aad::t_e1a70299d12e53 1
+tests/spine/cron/cases/environment/site.pp
+  s_332352ebbc2aad::t_3bece029efe553 1-2
+tests/spine/cron/cases/no-command/seed.sh
+  s_332352ebbc2aad::t_378775ba0acbaf 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "baa7354815d847fc1dd8b7eeb77f812960050a88",
+  "prompts": {},
+  "sessions": {
+    "s_332352ebbc2aad": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9f267e29-7e1c-4c89-9a1e-ff38a4dd01f0",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "peiriannydd <peiriannydd@gmail.com>"
+    }
+  }
+}
