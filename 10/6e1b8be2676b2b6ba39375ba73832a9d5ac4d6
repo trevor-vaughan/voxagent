@@ -1,0 +1,19 @@
+tests/spine/report-diff-simp.sh
+  s_c23748220ff815::t_358a4486566821 363-369
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "106e1b8be2676b2b6ba39375ba73832a9d5ac4d6",
+  "prompts": {},
+  "sessions": {
+    "s_c23748220ff815": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-ae6aac4da32e826a9",
+        "model": "unknown"
+      },
+      "human_author": "peiriannydd <peiriannydd@gmail.com>"
+    }
+  }
+}
