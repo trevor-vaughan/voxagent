@@ -1,0 +1,41 @@
+internal/units/exec/exec_test.go
+  s_332352ebbc2aad::t_02bd5142a321a0 1505
+internal/units/augeasproviders_sysctl/manifest.go
+  s_332352ebbc2aad::t_cfcee3e1c048cc 11
+  s_332352ebbc2aad::t_eb4b01e21ec3dc 104
+internal/units/exec/exec_output.go
+  s_332352ebbc2aad::t_f33844333d7dda 12,57
+internal/lib/command/command_test.go
+  s_332352ebbc2aad::t_8e3c8d9f850b3e 482-516
+internal/units/exec/exec_output_test.go
+  s_332352ebbc2aad::t_02bd5142a321a0 8,54-55
+internal/lib/rubyvalue/rubyvalue_test.go
+  s_332352ebbc2aad::t_02bd5142a321a0 110,112,114
+  s_332352ebbc2aad::t_b5b9841789ca60 107-109,111,113,115-123
+internal/lib/rubyvalue/rubyvalue.go
+  s_332352ebbc2aad::t_889b763e1b9f1e 74-97,180-182,220,222,229-270
+  s_332352ebbc2aad::t_f33844333d7dda 53-73,170-174,221
+  s_332352ebbc2aad::t_0c292afd8a68ab 175,271
+internal/lib/rubyvalue/rubyint_test.go
+  s_332352ebbc2aad::t_0a68591dc807ed 4-6,14-15,23,30-59
+internal/lib/command/command.go
+  s_332352ebbc2aad::t_eb4b01e21ec3dc 408-411
+  s_332352ebbc2aad::t_e6c3dc53453a4f 12,396-407,412-428
+  s_332352ebbc2aad::t_a7bfd135e7634c 429
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "5d71e8f16cc2c56eb34413c6cf3caa686b20ae54",
+  "prompts": {},
+  "sessions": {
+    "s_332352ebbc2aad": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9f267e29-7e1c-4c89-9a1e-ff38a4dd01f0",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "peiriannydd <peiriannydd@gmail.com>"
+    }
+  }
+}
