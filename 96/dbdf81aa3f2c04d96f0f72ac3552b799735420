@@ -1,0 +1,27 @@
+internal/lib/parsedfile/grammar.go
+  s_c23748220ff815::t_7c4a77362e8ade 69-72,182-183,196-197
+internal/lib/parsedfile/grammar_test.go
+  s_c23748220ff815::t_d3394a152a8d97 154,169-186
+internal/lib/parsedfile/vectors_test.go
+  s_c23748220ff815::t_85c1d098a833f5 194
+internal/units/cron_core/cron_grammar.go
+  s_c23748220ff815::t_8c9bb35aee8ced 123,127,132-135,143,146-148,157
+internal/units/cron_core/cron_grammar_test.go
+  s_c23748220ff815::t_a7aca04209d295 20-30
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "96dbdf81aa3f2c04d96f0f72ac3552b799735420",
+  "prompts": {},
+  "sessions": {
+    "s_c23748220ff815": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-ae6aac4da32e826a9",
+        "model": "unknown"
+      },
+      "human_author": "peiriannydd <peiriannydd@gmail.com>"
+    }
+  }
+}
