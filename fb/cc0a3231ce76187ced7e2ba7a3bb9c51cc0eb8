@@ -1,0 +1,19 @@
+internal/units/cron_core/cron_apply_test.go
+  s_c23748220ff815::t_dc6697a84390c4 562-589
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "fbcc0a3231ce76187ced7e2ba7a3bb9c51cc0eb8",
+  "prompts": {},
+  "sessions": {
+    "s_c23748220ff815": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-ae6aac4da32e826a9",
+        "model": "unknown"
+      },
+      "human_author": "peiriannydd <peiriannydd@gmail.com>"
+    }
+  }
+}
