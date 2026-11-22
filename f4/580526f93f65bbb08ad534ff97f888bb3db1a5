@@ -1,0 +1,30 @@
+internal/lib/parsedfile/match_test.go
+  s_332352ebbc2aad::t_ca6da145a98f00 12,58-61,70-71,74-76,78-79,93-94,96,102-103,109,111-114,120,123-124
+  s_332352ebbc2aad::t_dfc5af921c94b5 125
+internal/lib/parsedfile/grammar_test.go
+  s_332352ebbc2aad::t_ca6da145a98f00 148-180
+internal/lib/parsedfile/testdata/vectors.json
+  s_332352ebbc2aad::t_ca6da145a98f00 2546-2568
+  s_332352ebbc2aad::t_6b82174d1f7746 2545
+internal/lib/parsedfile/vectors_test.go
+  s_332352ebbc2aad::t_ca6da145a98f00 72-73,78-82
+internal/lib/parsedfile/grammar.go
+  s_332352ebbc2aad::t_ca6da145a98f00 28-30,204,209,262-263,284,290,322-329
+  s_332352ebbc2aad::t_2e4a541ccd6624 330
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "f4580526f93f65bbb08ad534ff97f888bb3db1a5",
+  "prompts": {},
+  "sessions": {
+    "s_332352ebbc2aad": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9f267e29-7e1c-4c89-9a1e-ff38a4dd01f0",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "peiriannydd <peiriannydd@gmail.com>"
+    }
+  }
+}
