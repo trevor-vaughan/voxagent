@@ -1,0 +1,35 @@
+internal/lib/nameservice/nss_linux_test.go
+  s_332352ebbc2aad::t_73f21e456b77c8 103-122,128-137,167,191-224,245,263-266,268,274
+internal/lib/nameservice/nss_linux.go
+  s_332352ebbc2aad::t_be1dd170447d65 20-31,89-95,117-136,245-261,267,270,272-273
+  s_332352ebbc2aad::t_58cd505c0f25bd 262-266,268-269,271
+internal/lib/nameservice/nameservice.go
+  s_332352ebbc2aad::t_366e0db6674ef7 200,206,229,235,255-256
+  s_332352ebbc2aad::t_3a933899bc0432 160,168
+  s_332352ebbc2aad::t_71658b91cf4867 48-49,52-53,161-167,169-199,201-205,207-228,230-234,236-250,253,257-258
+  s_332352ebbc2aad::t_268180d367b47b 251-252,254,259-261
+internal/lib/raltest/nss.go
+  s_332352ebbc2aad::t_be1dd170447d65 3-6,8-11,23-39
+  s_332352ebbc2aad::t_2dfd2c19e956c4 40
+internal/lib/nameservice/nameservice_test.go
+  s_332352ebbc2aad::t_366e0db6674ef7 322
+  s_332352ebbc2aad::t_01d075de0a1e0a 321
+  s_332352ebbc2aad::t_9955699ae59342 7,12,52-69,199-320,323-349
+  s_332352ebbc2aad::t_0b165a82ab95cb 350
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "0fa3492645961d403874f5ba86861ef102ba44fa",
+  "prompts": {},
+  "sessions": {
+    "s_332352ebbc2aad": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9f267e29-7e1c-4c89-9a1e-ff38a4dd01f0",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "peiriannydd <peiriannydd@gmail.com>"
+    }
+  }
+}
