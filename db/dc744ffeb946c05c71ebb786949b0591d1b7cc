@@ -1,0 +1,21 @@
+internal/lib/parsedfile/filetype.go
+  s_c23748220ff815::t_6460832b0dda06 298-301,305-309
+internal/lib/parsedfile/filetype_test.go
+  s_c23748220ff815::t_77631db882249e 215-229,572,574
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "dbdc744ffeb946c05c71ebb786949b0591d1b7cc",
+  "prompts": {},
+  "sessions": {
+    "s_c23748220ff815": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-ae6aac4da32e826a9",
+        "model": "unknown"
+      },
+      "human_author": "peiriannydd <peiriannydd@gmail.com>"
+    }
+  }
+}
