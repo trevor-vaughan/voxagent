@@ -1,0 +1,47 @@
+cmd/voxagent/sensitive_test.go
+  s_052bc29fd340ba::t_1092ea549fc74a 7,314-328
+  s_052bc29fd340ba::t_c3a260d2d4f6c8 329
+docs/maintainers/apply-spine.md
+  s_052bc29fd340ba::t_8b6985eeb9e86a 2349-2353
+  s_052bc29fd340ba::t_824591a6e5b145 192,194
+internal/units/sshkeys_core/sak_file.go
+  s_052bc29fd340ba::t_6eca25ea273667 1-213
+internal/ral/parsedfile_provider.go
+  s_052bc29fd340ba::t_ba8f8f9c270499 11
+  s_052bc29fd340ba::t_b7bb33763bb888 12-13
+  s_052bc29fd340ba::t_525556696c181b 14-16
+  s_052bc29fd340ba::t_8dabaf1d5b2849 73-77,130-137
+internal/units/sshkeys_core/sak.go
+  s_052bc29fd340ba::t_041724c5aeb310 5-6,9-11,13,18-20,26-37,39-58
+internal/units/sshkeys_core/sak_apply_test.go
+  s_052bc29fd340ba::t_41e2ac94f53637 860,889
+  s_052bc29fd340ba::t_c4df503690aa4a 1148-1149
+  s_052bc29fd340ba::t_03985344c61550 1238-1254
+  s_052bc29fd340ba::t_d9541fafc3047c 418,522,528,551,581,608,648,655-656
+  s_052bc29fd340ba::t_261807da345a38 1-417,419-521,523-527,529-550,552-580,582-607,609-647,649-654,657-859,861-888,890-1147,1150-1157
+  s_052bc29fd340ba::t_1aeba7ab333add 1192-1237
+  s_052bc29fd340ba::t_94c7c590b5ee42 1158-1191
+  s_052bc29fd340ba::t_c7409f1e360b80 1255-1278
+internal/ral/parsedfile_provider_test.go
+  s_052bc29fd340ba::t_c294025b886b21 321-354
+docs/maintainers/improvements.md
+  s_052bc29fd340ba::t_824591a6e5b145 64-65
+internal/units/sshkeys_core/sak_apply.go
+  s_052bc29fd340ba::t_9e04b1f76fa4a7 1-361
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "597545e9ae7b956ccc0fb202763c92d2a0db753d",
+  "prompts": {},
+  "sessions": {
+    "s_052bc29fd340ba": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "28e54bde-3f35-4b98-9ae5-6bfa6717fecf",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "peiriannydd <peiriannydd@gmail.com>"
+    }
+  }
+}
