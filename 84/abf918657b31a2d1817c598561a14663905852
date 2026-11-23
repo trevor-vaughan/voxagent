@@ -1,0 +1,27 @@
+internal/units/mount_core/mount_apply_test.go
+  s_052bc29fd340ba::t_31a3ad2f61b97c 542-543,745-746,796-798
+  s_052bc29fd340ba::t_30dd64ace4673c 578-581
+  s_052bc29fd340ba::t_ac49ef72fccfd9 1-539,544-546,551,553-577,582-744,747-795,799-836
+  s_052bc29fd340ba::t_6a2bd4e4e67fe3 540-541,547-550,552
+internal/units/mount_core/mount_apply.go
+  s_052bc29fd340ba::t_feab20d90a19c7 1-109,112-465
+  s_052bc29fd340ba::t_31a3ad2f61b97c 110-111
+internal/units/mount_core/mount.go
+  s_052bc29fd340ba::t_1f52caf2ef1208 6-10,15-21,27-32,34-40
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "84abf918657b31a2d1817c598561a14663905852",
+  "prompts": {},
+  "sessions": {
+    "s_052bc29fd340ba": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "28e54bde-3f35-4b98-9ae5-6bfa6717fecf",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "peiriannydd <peiriannydd@gmail.com>"
+    }
+  }
+}
