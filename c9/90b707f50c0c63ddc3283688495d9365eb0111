@@ -1,0 +1,37 @@
+internal/lib/parsedfile/parsedfile.go
+  s_052bc29fd340ba::t_b24489a3c68699 280-299,314-316
+internal/units/cron_core/cron_grammar.go
+  s_052bc29fd340ba::t_3ad3d8ffd78cee 123,135
+  s_052bc29fd340ba::t_b24489a3c68699 127,133,143,147,157
+internal/lib/parsedfile/grammar.go
+  s_052bc29fd340ba::t_b24489a3c68699 151-154,177-180,190-192
+  s_052bc29fd340ba::t_d2203bb4931e2d 204-209,211,213
+  s_052bc29fd340ba::t_2c1b5b49e82548 70-73
+internal/lib/parsedfile/grammar_test.go
+  s_052bc29fd340ba::t_3ad3d8ffd78cee 154,169,172,174,199-215
+  s_052bc29fd340ba::t_715357d74ffd57 216
+internal/lib/parsedfile/vectors_test.go
+  s_052bc29fd340ba::t_3ad3d8ffd78cee 194
+internal/lib/parsedfile/parsedfile_test.go
+  s_052bc29fd340ba::t_9ebf70f648a821 604-605
+  s_052bc29fd340ba::t_3ad3d8ffd78cee 531-603,606-612
+internal/units/cron_core/cron_grammar_test.go
+  s_052bc29fd340ba::t_b24489a3c68699 26-27
+  s_052bc29fd340ba::t_1a7cfc4ddb25bf 6
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "c990b707f50c0c63ddc3283688495d9365eb0111",
+  "prompts": {},
+  "sessions": {
+    "s_052bc29fd340ba": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "28e54bde-3f35-4b98-9ae5-6bfa6717fecf",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "peiriannydd <peiriannydd@gmail.com>"
+    }
+  }
+}
