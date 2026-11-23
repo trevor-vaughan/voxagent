@@ -1,0 +1,138 @@
+tests/spine/sshkey/cases/name-whitespace/site.pp
+  s_052bc29fd340ba::t_1248eb4484d39e 1
+tests/spine/sshkey/cases/existing/site.pp
+  s_052bc29fd340ba::t_1248eb4484d39e 1
+tests/spine/sshkey/cases/comment-key-dropped/files
+  s_052bc29fd340ba::t_1248eb4484d39e 1
+tests/spine/sshkey/cases/comment-key-dropped/seed.sh
+  s_052bc29fd340ba::t_1248eb4484d39e 1
+tests/spine/sshkey/cases/key-whitespace/files
+  s_052bc29fd340ba::t_1248eb4484d39e 1
+tests/spine/sshkey/cases/line-break-key/files
+  s_052bc29fd340ba::t_1248eb4484d39e 1
+tests/spine/sshkey/cases/refs/site.pp
+  s_052bc29fd340ba::t_1248eb4484d39e 1-3
+tests/spine/sshkey/cases/existing/files
+  s_052bc29fd340ba::t_1248eb4484d39e 1
+tests/spine/sshkey/cases/aliases-empty/files
+  s_052bc29fd340ba::t_1248eb4484d39e 1
+docs/maintainers/apply-spine.md
+  s_052bc29fd340ba::t_e80e34f68245e6 1616-1638
+  s_052bc29fd340ba::t_5189e754c603b5 2237-2295
+tests/spine/sshkey/cases/leading-whitespace/seed.sh
+  s_052bc29fd340ba::t_1248eb4484d39e 1
+tests/spine/sshkey/cases/absent-no-type/files
+  s_052bc29fd340ba::t_1248eb4484d39e 1
+tests/spine/sshkey/cases/no-type/files
+  s_052bc29fd340ba::t_1248eb4484d39e 1
+tests/spine/sshkey/cases/leading-whitespace/files
+  s_052bc29fd340ba::t_1248eb4484d39e 1-2
+tests/spine/sshkey/cases/alias-string/site.pp
+  s_052bc29fd340ba::t_1248eb4484d39e 1
+tests/spine/sshkey/cases/aliases-empty/site.pp
+  s_052bc29fd340ba::t_1248eb4484d39e 1
+tests/spine/sshkey/cases/aliases-empty/seed.sh
+  s_052bc29fd340ba::t_1248eb4484d39e 1
+tests/spine/sshkey/cases/absent-no-type/seed.sh
+  s_052bc29fd340ba::t_1248eb4484d39e 1
+tests/spine/sshkey/cases/aliases-reordered/site.pp
+  s_052bc29fd340ba::t_1248eb4484d39e 1
+tests/spine/sshkey/cases/remove/site.pp
+  s_052bc29fd340ba::t_1248eb4484d39e 1-3
+tests/spine/sshkey/cases/aliases-reordered/seed.sh
+  s_052bc29fd340ba::t_1248eb4484d39e 1
+tests/spine/sshkey/cases-3.1.0/key-whitespace/site.pp
+  s_052bc29fd340ba::t_1248eb4484d39e 1
+tests/spine/sshkey/cases/alias-string/files
+  s_052bc29fd340ba::t_1248eb4484d39e 1
+tests/spine/sshkey/cases/comment-key-in-sync/files
+  s_052bc29fd340ba::t_1248eb4484d39e 1
+tests/spine/sshkey/cases/alias-comma/site.pp
+  s_052bc29fd340ba::t_1248eb4484d39e 1
+tests/spine/sshkey/cases/modify-key/site.pp
+  s_052bc29fd340ba::t_1248eb4484d39e 1
+tests/spine/sshkey/cases/aliases-empty-create/site.pp
+  s_052bc29fd340ba::t_1248eb4484d39e 1-2
+tests/spine/sshkey/cases/modify-key/files
+  s_052bc29fd340ba::t_1248eb4484d39e 1
+tests/spine/sshkey/cases/absent-no-type/site.pp
+  s_052bc29fd340ba::t_1248eb4484d39e 1
+tests/spine/sshkey/cases-3.1.0/create/seed.sh
+  s_052bc29fd340ba::t_1248eb4484d39e 1
+tests/spine/sshkey/cases/bad-type/site.pp
+  s_052bc29fd340ba::t_1248eb4484d39e 1
+tests/spine/sshkey/g5.sh
+  s_052bc29fd340ba::t_f0577e94fce2f7 1-269
+tests/spine/sshkey/cases/no-type/site.pp
+  s_052bc29fd340ba::t_1248eb4484d39e 1
+tests/spine/sshkey/cases/remove/seed.sh
+  s_052bc29fd340ba::t_1248eb4484d39e 1
+tests/spine/sshkey/cases/comment-key-dropped/site.pp
+  s_052bc29fd340ba::t_1248eb4484d39e 1
+tests/spine/sshkey/cases/missing-target-dir/files
+  s_052bc29fd340ba::t_1248eb4484d39e 1
+tests/spine/sshkey/cases/comment-key-in-sync/seed.sh
+  s_052bc29fd340ba::t_1248eb4484d39e 1
+tests/spine/sshkey/cases/key-whitespace/site.pp
+  s_052bc29fd340ba::t_1248eb4484d39e 1
+tests/spine/sshkey/cases/leading-whitespace/site.pp
+  s_052bc29fd340ba::t_1248eb4484d39e 1-3
+tests/spine/sshkey/cases/comment-key-in-sync/site.pp
+  s_052bc29fd340ba::t_1248eb4484d39e 1-2
+tests/spine/sshkey/cases/aliases-empty-create/files
+  s_052bc29fd340ba::t_1248eb4484d39e 1-2
+tests/spine/sshkey/cases-3.1.0/create/files
+  s_052bc29fd340ba::t_1248eb4484d39e 1
+tests/spine/sshkey/cases/line-break-key/seed.sh
+  s_052bc29fd340ba::t_1248eb4484d39e 1
+tests/spine/sshkey/cases/remove/files
+  s_052bc29fd340ba::t_1248eb4484d39e 1
+tests/spine/sshkey/cases-3.1.0/line-break-key/site.pp
+  s_052bc29fd340ba::t_1248eb4484d39e 1
+docs/maintainers/improvements.md
+  s_052bc29fd340ba::t_f150aab7ea9232 63
+tests/spine/sshkey/cases/modify-key/seed.sh
+  s_052bc29fd340ba::t_1248eb4484d39e 1
+internal/units/sshkeys_core/sshkey_apply_test.go
+  s_052bc29fd340ba::t_ed4f4ffad728b9 259-288
+tests/spine/sshkey/cases/aliases-reordered/files
+  s_052bc29fd340ba::t_1248eb4484d39e 1
+tests/spine/sshkey/cases/create/files
+  s_052bc29fd340ba::t_1248eb4484d39e 1
+tests/spine/sshkey/cases/missing-target-dir/site.pp
+  s_052bc29fd340ba::t_1248eb4484d39e 1
+tests/spine/sshkey/cases/create/site.pp
+  s_052bc29fd340ba::t_1248eb4484d39e 1
+tests/spine/sshkey/cases/alias-whitespace/site.pp
+  s_052bc29fd340ba::t_1248eb4484d39e 1
+tests/spine/sshkey/cases/refs/files
+  s_052bc29fd340ba::t_1248eb4484d39e 1
+tests/spine/sshkey/cases/name-comma/site.pp
+  s_052bc29fd340ba::t_1248eb4484d39e 1
+tests/spine/sshkey/cases-3.1.0/create/site.pp
+  s_052bc29fd340ba::t_1248eb4484d39e 1
+tests/spine/sshkey/cases/existing/seed.sh
+  s_052bc29fd340ba::t_1248eb4484d39e 1-3
+tests/spine/sshkey/cases/line-break-key/site.pp
+  s_052bc29fd340ba::t_1248eb4484d39e 1
+docs/maintainers/units.md
+  s_052bc29fd340ba::t_885e1234fa5c16 9,67,84,162-169
+tests/spine/report-diff-container.sh
+  s_052bc29fd340ba::t_7d7ae6cd0279a9 63-68,75-77,247-248,283-284,1027-1030
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "88c1ceea59d21993c2850aebd68844e885ef7f41",
+  "prompts": {},
+  "sessions": {
+    "s_052bc29fd340ba": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "28e54bde-3f35-4b98-9ae5-6bfa6717fecf",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "peiriannydd <peiriannydd@gmail.com>"
+    }
+  }
+}
