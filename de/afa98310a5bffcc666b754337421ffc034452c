@@ -1,0 +1,204 @@
+tests/spine/sak/cases/drop-false-untrusted/site.pp
+  s_052bc29fd340ba::t_ece7c55c8c4358 1-2
+tests/spine/sak/cases/drop-false-dir/site.pp
+  s_052bc29fd340ba::t_ece7c55c8c4358 1
+tests/spine/sak/cases/chmod-refused/files
+  s_052bc29fd340ba::t_ece7c55c8c4358 1-2
+tests/spine/sak/cases/type-bad/site.pp
+  s_052bc29fd340ba::t_ece7c55c8c4358 1
+tests/spine/sak/cases/no-home/files
+  s_052bc29fd340ba::t_ece7c55c8c4358 1
+tests/spine/sak/cases-3.1.0/create/files
+  s_052bc29fd340ba::t_ece7c55c8c4358 1-2
+tests/spine/sak/cases/remove/files
+  s_052bc29fd340ba::t_ece7c55c8c4358 1-2
+tests/spine/sak/cases/remove/site.pp
+  s_052bc29fd340ba::t_ece7c55c8c4358 1-2
+tests/spine/sak/cases/drop-false-file/seed.sh
+  s_052bc29fd340ba::t_ece7c55c8c4358 1
+  s_052bc29fd340ba::t_bf1621e1ab20e9 2-3
+tests/spine/sak/cases/drop-false-dir/files
+  s_052bc29fd340ba::t_ece7c55c8c4358 1
+tests/spine/sak/cases/move-target/seed.sh
+  s_052bc29fd340ba::t_ece7c55c8c4358 1-6
+tests/spine/sak/cases/shared-target-across-types/site.pp
+  s_052bc29fd340ba::t_93f19d05b22b3a 1,3
+  s_052bc29fd340ba::t_ece7c55c8c4358 2
+tests/spine/sak/cases/move-not-target/files
+  s_052bc29fd340ba::t_ece7c55c8c4358 1-2
+tests/spine/sak/cases/write-refused/files
+  s_052bc29fd340ba::t_ece7c55c8c4358 1-2
+tests/spine/sak/cases/mkdir-refused/files
+  s_052bc29fd340ba::t_ece7c55c8c4358 1-2
+tests/spine/sak/cases/key-v1-unnamed/seed.sh
+  s_052bc29fd340ba::t_ece7c55c8c4358 1-4
+tests/spine/sak/cases/move-not-target/site.pp
+  s_052bc29fd340ba::t_ece7c55c8c4358 1
+tests/spine/sak/cases/no-home/seed.sh
+  s_052bc29fd340ba::t_ece7c55c8c4358 1
+tests/spine/sak/cases/move-target/site.pp
+  s_052bc29fd340ba::t_c056bb458e0f55 1
+  s_052bc29fd340ba::t_ece7c55c8c4358 2-3
+tests/spine/sak/cases/drop-privileges-maybe/site.pp
+  s_052bc29fd340ba::t_ece7c55c8c4358 1-2
+tests/spine/sak/cases/line-break-name/seed.sh
+  s_052bc29fd340ba::t_ece7c55c8c4358 1
+tests/spine/sak/cases/shared-target-across-types/seed.sh
+  s_052bc29fd340ba::t_ece7c55c8c4358 1-5
+tests/spine/sak/cases/write-refused/seed.sh
+  s_052bc29fd340ba::t_ece7c55c8c4358 1-4
+tests/spine/sak/cases/line-break-options/seed.sh
+  s_052bc29fd340ba::t_ece7c55c8c4358 1
+tests/spine/sak/cases/create/files
+  s_052bc29fd340ba::t_ed512c15b28aef 1-2
+tests/spine/sak/cases/no-home/site.pp
+  s_052bc29fd340ba::t_ece7c55c8c4358 1
+tests/spine/sak/cases/mkdir-refused/seed.sh
+  s_052bc29fd340ba::t_ece7c55c8c4358 1-2
+tests/spine/sak/g5.sh
+  s_052bc29fd340ba::t_62f84c4776656f 188-192,205,208-209
+  s_052bc29fd340ba::t_4b76b9fb14e65c 2-6,8-11,16-32,34-40,47,50-51,56-63,65-66,186,199-200,223-224,227-228,234
+  s_052bc29fd340ba::t_3c6cba81f18870 41-46
+  s_052bc29fd340ba::t_255b0e7d859a35 187
+  s_052bc29fd340ba::t_5f63282f1aced5 206-207
+  s_052bc29fd340ba::t_4534449ff6081d 1,7,12-15,33,48-49,52-55,64,67-185,193-198,201-204,210-222,225-226,229-233,235-295
+tests/spine/sak/cases/no-user-target/seed.sh
+  s_052bc29fd340ba::t_ece7c55c8c4358 1
+tests/spine/sak/cases/existing/files
+  s_052bc29fd340ba::t_ece7c55c8c4358 1-2
+internal/units/sshkeys_core/sak_file.go
+  s_052bc29fd340ba::t_c6bbcd3fc3f82b 40
+tests/spine/sak/cases/options-change/site.pp
+  s_052bc29fd340ba::t_ece7c55c8c4358 1
+docs/maintainers/apply-spine.md
+  s_052bc29fd340ba::t_6dfe315a39d198 1644-1677
+  s_052bc29fd340ba::t_51ce1ed4edf6e5 2335-2352,2358-2374,2378-2413
+  s_052bc29fd340ba::t_3aad6997d7566a 2353-2354
+  s_052bc29fd340ba::t_6b1189192439b5 2287
+  s_052bc29fd340ba::t_a7f1dd986e72aa 2355-2357,2375-2377
+  s_052bc29fd340ba::t_c3ad218da4bad5 2414
+tests/spine/sak/cases/drop-false-dir/seed.sh
+  s_052bc29fd340ba::t_bf1621e1ab20e9 2
+  s_052bc29fd340ba::t_ece7c55c8c4358 1
+tests/spine/sak/cases/options-change/files
+  s_052bc29fd340ba::t_ece7c55c8c4358 1-2
+tests/spine/sak/cases/sensitive/site.pp
+  s_052bc29fd340ba::t_ece7c55c8c4358 1-2
+tests/spine/sak/cases/shared-target-across-types/files
+  s_052bc29fd340ba::t_ece7c55c8c4358 1
+docs/maintainers/improvements.md
+  s_052bc29fd340ba::t_95b28716bc0f14 65
+tests/spine/sak/cases/key-whitespace/site.pp
+  s_052bc29fd340ba::t_ece7c55c8c4358 1-2
+tests/spine/sak/cases/mkdir-refused/site.pp
+  s_052bc29fd340ba::t_ece7c55c8c4358 1
+tests/spine/sak/cases/no-user-target/files
+  s_052bc29fd340ba::t_ece7c55c8c4358 1
+tests/spine/sak/cases/key-v1/site.pp
+  s_052bc29fd340ba::t_ece7c55c8c4358 1-2
+tests/spine/sak/cases/move-target/files
+  s_052bc29fd340ba::t_ece7c55c8c4358 1-2
+tests/spine/sak/cases/nonexistent-user/seed.sh
+  s_052bc29fd340ba::t_ece7c55c8c4358 1
+tests/spine/sak/cases/nonexistent-user/site.pp
+  s_052bc29fd340ba::t_ece7c55c8c4358 1-2
+tests/spine/sak/cases/write-symlink/seed.sh
+  s_052bc29fd340ba::t_ece7c55c8c4358 1-6
+tests/spine/sak/cases/move-not-target/seed.sh
+  s_052bc29fd340ba::t_ece7c55c8c4358 1-6
+tests/spine/sak/cases/write-refused/site.pp
+  s_052bc29fd340ba::t_ece7c55c8c4358 1
+tests/spine/sak/cases/chmod-refused/site.pp
+  s_052bc29fd340ba::t_ece7c55c8c4358 1
+tests/spine/sak/cases/no-user-target/site.pp
+  s_052bc29fd340ba::t_ece7c55c8c4358 1
+tests/spine/sak/cases-3.1.0/create/site.pp
+  s_052bc29fd340ba::t_ece7c55c8c4358 1-2
+tests/spine/sak/cases/line-break-name/files
+  s_052bc29fd340ba::t_ece7c55c8c4358 1-2
+tests/spine/sak/cases/user-in-run/files
+  s_052bc29fd340ba::t_ece7c55c8c4358 1
+tests/spine/sak/cases/line-break-name/site.pp
+  s_052bc29fd340ba::t_ece7c55c8c4358 1
+tests/spine/sak/cases/line-break-options/files
+  s_052bc29fd340ba::t_ece7c55c8c4358 1-2
+tests/spine/sak/cases/drop-false-file/files
+  s_052bc29fd340ba::t_ece7c55c8c4358 1
+tests/spine/sak/cases/line-break-options/site.pp
+  s_052bc29fd340ba::t_ece7c55c8c4358 1
+tests/spine/sak/cases/existing/seed.sh
+  s_052bc29fd340ba::t_ece7c55c8c4358 1-13
+tests/spine/sak/cases/create/seed.sh
+  s_052bc29fd340ba::t_ed512c15b28aef 1
+tests/spine/sak/cases/options-change/seed.sh
+  s_052bc29fd340ba::t_ece7c55c8c4358 1-13
+tests/spine/sak/cases/nonexistent-user/files
+  s_052bc29fd340ba::t_ece7c55c8c4358 1
+tests/spine/sak/cases/key-v1-unnamed/site.pp
+  s_052bc29fd340ba::t_ece7c55c8c4358 1-2
+tests/spine/sak/cases/key-v1/files
+  s_052bc29fd340ba::t_ece7c55c8c4358 1
+tests/spine/sak/cases/user-in-run/site.pp
+  s_052bc29fd340ba::t_ece7c55c8c4358 1-2
+tests/spine/sak/cases/user-after-key/files
+  s_052bc29fd340ba::t_ece7c55c8c4358 1
+tests/spine/sak/cases/drop-false-file/site.pp
+  s_052bc29fd340ba::t_ece7c55c8c4358 1
+tests/spine/sak/cases/key-v1/seed.sh
+  s_052bc29fd340ba::t_ece7c55c8c4358 1-7
+tests/spine/sak/cases/user-after-key/site.pp
+  s_052bc29fd340ba::t_ece7c55c8c4358 1-3
+tests/spine/sak/cases/remove/seed.sh
+  s_052bc29fd340ba::t_ece7c55c8c4358 1-13
+tests/spine/sak/cases/key-v1-unnamed/files
+  s_052bc29fd340ba::t_ece7c55c8c4358 1
+tests/spine/sak/cases/existing/site.pp
+  s_052bc29fd340ba::t_ece7c55c8c4358 1
+tests/spine/sak/cases/sensitive/seed.sh
+  s_052bc29fd340ba::t_ece7c55c8c4358 1-4
+docs/maintainers/units.md
+  s_052bc29fd340ba::t_b969bc1f03ff55 68
+  s_052bc29fd340ba::t_41f3980fd04221 63-64
+  s_052bc29fd340ba::t_6b1189192439b5 163-171
+tests/spine/sak/cases/no-user/site.pp
+  s_052bc29fd340ba::t_ece7c55c8c4358 1
+tests/spine/sak/cases/drop-false-untrusted/files
+  s_052bc29fd340ba::t_ece7c55c8c4358 1-2
+tests/spine/sak/cases/title-vs-name/site.pp
+  s_052bc29fd340ba::t_ece7c55c8c4358 1-5
+tests/spine/sak/cases/write-symlink/files
+  s_052bc29fd340ba::t_ece7c55c8c4358 1-3
+tests/spine/sak/cases/write-symlink/site.pp
+  s_052bc29fd340ba::t_ece7c55c8c4358 1
+tests/spine/sak/cases/sensitive/files
+  s_052bc29fd340ba::t_ece7c55c8c4358 1
+tests/spine/report-diff-container.sh
+  s_052bc29fd340ba::t_2039d81f759d4c 69-73,80-82,254-255,291-292,1039-1042
+tests/spine/sak/cases/chmod-refused/seed.sh
+  s_052bc29fd340ba::t_ece7c55c8c4358 1-6
+tests/spine/sak/cases/drop-false-untrusted/seed.sh
+  s_052bc29fd340ba::t_ece7c55c8c4358 1
+  s_052bc29fd340ba::t_bf1621e1ab20e9 2-3
+tests/spine/sak/cases/options-bad/site.pp
+  s_052bc29fd340ba::t_ece7c55c8c4358 1
+tests/spine/sak/cases-3.1.0/create/seed.sh
+  s_052bc29fd340ba::t_ece7c55c8c4358 1
+tests/spine/sak/cases/create/site.pp
+  s_052bc29fd340ba::t_ed512c15b28aef 1-2
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "deafa98310a5bffcc666b754337421ffc034452c",
+  "prompts": {},
+  "sessions": {
+    "s_052bc29fd340ba": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "28e54bde-3f35-4b98-9ae5-6bfa6717fecf",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "peiriannydd <peiriannydd@gmail.com>"
+    }
+  }
+}
