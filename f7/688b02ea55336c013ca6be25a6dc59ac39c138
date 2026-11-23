@@ -1,0 +1,26 @@
+docs/maintainers/units.md
+  s_052bc29fd340ba::t_6be3d34067e5ca 61
+internal/lib/suid/suid.go
+  s_052bc29fd340ba::t_3fbc07c237f4fe 1-161
+internal/units/exec/exec.go
+  s_052bc29fd340ba::t_6f9c94457a19d8 867-869
+  s_052bc29fd340ba::t_6be3d34067e5ca 25
+internal/lib/suid/suid_test.go
+  s_052bc29fd340ba::t_3f0b6fdeda7964 1-82
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "f7688b02ea55336c013ca6be25a6dc59ac39c138",
+  "prompts": {},
+  "sessions": {
+    "s_052bc29fd340ba": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "28e54bde-3f35-4b98-9ae5-6bfa6717fecf",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "peiriannydd <peiriannydd@gmail.com>"
+    }
+  }
+}
