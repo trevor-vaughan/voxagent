@@ -1,0 +1,25 @@
+internal/lib/parsedfile/testdata/vectors.json
+  s_052bc29fd340ba::t_54737bfbad67f0 3424-5105
+  s_052bc29fd340ba::t_64548ac2db3930 5106-5639
+internal/lib/parsedfile/testdata/fileparsing_vectors.rb
+  s_052bc29fd340ba::t_137ab53e4c4f80 13,15-16,75-105
+  s_052bc29fd340ba::t_aa871f31bebfe6 106
+internal/lib/parsedfile/vectors_test.go
+  s_052bc29fd340ba::t_7808e82812cf10 212-213,220
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "9e61d8d6ebed83e38e40f693b8a6c50ed5b2addc",
+  "prompts": {},
+  "sessions": {
+    "s_052bc29fd340ba": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "28e54bde-3f35-4b98-9ae5-6bfa6717fecf",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "peiriannydd <peiriannydd@gmail.com>"
+    }
+  }
+}
