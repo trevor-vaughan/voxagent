@@ -1,0 +1,115 @@
+tests/spine/host/cases/aliases-after-empty/site.pp
+  s_052bc29fd340ba::t_c916c6f1ccd87e 1-4
+tests/spine/host/cases/alias-string-one-word/seed.sh
+  s_052bc29fd340ba::t_c916c6f1ccd87e 1
+tests/spine/host/cases/alias-string-whitespace/site.pp
+  s_052bc29fd340ba::t_c916c6f1ccd87e 1
+tests/spine/host/cases/aliases-empty/site.pp
+  s_052bc29fd340ba::t_c916c6f1ccd87e 1-4
+tests/spine/host/cases/comment-added-removed/seed.sh
+  s_052bc29fd340ba::t_c916c6f1ccd87e 1
+tests/spine/host/cases/create/site.pp
+  s_052bc29fd340ba::t_c916c6f1ccd87e 1-4
+tests/spine/host/cases/aliases-empty/files
+  s_052bc29fd340ba::t_c916c6f1ccd87e 1
+tests/spine/host/cases/line-break-name/site.pp
+  s_052bc29fd340ba::t_c916c6f1ccd87e 1
+tests/spine/host/cases/comment-added-removed/site.pp
+  s_052bc29fd340ba::t_c916c6f1ccd87e 1-6
+tests/spine/host/cases/comment-added-removed/files
+  s_052bc29fd340ba::t_c916c6f1ccd87e 1
+tests/spine/host/cases/aliases-reordered/site.pp
+  s_052bc29fd340ba::t_c916c6f1ccd87e 1-3
+tests/spine/host/cases/invalid-name/site.pp
+  s_052bc29fd340ba::t_c916c6f1ccd87e 1
+tests/spine/host/cases/noop/seed.sh
+  s_052bc29fd340ba::t_c916c6f1ccd87e 1-2
+tests/spine/host/cases/preserve/seed.sh
+  s_052bc29fd340ba::t_c916c6f1ccd87e 1-3
+tests/spine/host/cases/aliases-empty/seed.sh
+  s_052bc29fd340ba::t_c916c6f1ccd87e 1
+tests/spine/host/cases/preserve/site.pp
+  s_052bc29fd340ba::t_c916c6f1ccd87e 1-5
+tests/spine/host/cases/create/files
+  s_052bc29fd340ba::t_c916c6f1ccd87e 1
+tests/spine/host/cases/noop/site.pp
+  s_052bc29fd340ba::t_c916c6f1ccd87e 1-4
+tests/spine/host/cases/remove/files
+  s_052bc29fd340ba::t_c916c6f1ccd87e 1
+tests/spine/host/cases/remove/site.pp
+  s_052bc29fd340ba::t_c916c6f1ccd87e 1-4
+tests/spine/host/g5.sh
+  s_052bc29fd340ba::t_c7b288cbd7367b 1-246
+tests/spine/report-diff-container.sh
+  s_052bc29fd340ba::t_a609cc6b0c475b 69-70,236-239,273-274,1013-1016
+  s_052bc29fd340ba::t_ffef64b7650545 57-62
+docs/maintainers/units.md
+  s_052bc29fd340ba::t_e226587507a732 9,65,82,153-159
+tests/spine/g5-case.sh
+  s_052bc29fd340ba::t_7d3969822eed4b 68-74
+  s_052bc29fd340ba::t_1183fa2c6dabbd 51-54,57-62
+tests/spine/host/cases/invalid-ip/site.pp
+  s_052bc29fd340ba::t_c916c6f1ccd87e 1
+tests/spine/host/cases/remove/seed.sh
+  s_052bc29fd340ba::t_c916c6f1ccd87e 1
+tests/spine/host/cases/missing-target/files
+  s_052bc29fd340ba::t_c916c6f1ccd87e 1-2
+tests/spine/host/cases/aliases-after-empty/files
+  s_052bc29fd340ba::t_c916c6f1ccd87e 1
+tests/spine/host/cases/aliases-after-empty/seed.sh
+  s_052bc29fd340ba::t_c916c6f1ccd87e 1
+tests/spine/host/cases/line-break-ip/site.pp
+  s_052bc29fd340ba::t_c916c6f1ccd87e 1-2
+tests/spine/host/cases/alias-string-one-word/files
+  s_052bc29fd340ba::t_c916c6f1ccd87e 1
+tests/spine/host/cases/create/seed.sh
+  s_052bc29fd340ba::t_c916c6f1ccd87e 1
+docs/maintainers/apply-spine.md
+  s_052bc29fd340ba::t_a048e659e5149c 2180,2184-2185
+  s_052bc29fd340ba::t_39108f2b799058 1594-1615,2160-2179,2181-2183,2186-2211
+  s_052bc29fd340ba::t_93f8006b4b02f1 2212
+tests/spine/host/cases/preserve/files
+  s_052bc29fd340ba::t_c916c6f1ccd87e 1
+tests/spine/host/cases/aliases-reordered/files
+  s_052bc29fd340ba::t_c916c6f1ccd87e 1
+tests/spine/host/cases/missing-target/seed.sh
+  s_052bc29fd340ba::t_c916c6f1ccd87e 1-2
+tests/spine/host/cases/missing-target/site.pp
+  s_052bc29fd340ba::t_c916c6f1ccd87e 1-5
+tests/spine/host/cases/line-break-alias/site.pp
+  s_052bc29fd340ba::t_c916c6f1ccd87e 1
+tests/spine/host/cases/no-ip/files
+  s_052bc29fd340ba::t_c916c6f1ccd87e 1
+tests/spine/host/cases/line-break-comment/site.pp
+  s_052bc29fd340ba::t_c916c6f1ccd87e 1
+tests/spine/host/cases/no-ip/seed.sh
+  s_052bc29fd340ba::t_c916c6f1ccd87e 1
+tests/spine/host/cases/no-ip/site.pp
+  s_052bc29fd340ba::t_c916c6f1ccd87e 1-2
+tests/spine/host/cases/noop/files
+  s_052bc29fd340ba::t_c916c6f1ccd87e 1
+tests/spine/host/cases/alias-string-one-word/site.pp
+  s_052bc29fd340ba::t_c916c6f1ccd87e 1-2
+tests/spine/parsedfile/image.sh
+  s_052bc29fd340ba::t_54ffade62dcd5a 1-49
+tests/spine/host/cases/aliases-reordered/seed.sh
+  s_052bc29fd340ba::t_c916c6f1ccd87e 1
+tests/spine/images/Containerfile.parsedfile-types
+  s_052bc29fd340ba::t_a5bc6955630afd 1-8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "15045d52437b63e6efbff6399921120f34bd26bf",
+  "prompts": {},
+  "sessions": {
+    "s_052bc29fd340ba": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "28e54bde-3f35-4b98-9ae5-6bfa6717fecf",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "peiriannydd <peiriannydd@gmail.com>"
+    }
+  }
+}
