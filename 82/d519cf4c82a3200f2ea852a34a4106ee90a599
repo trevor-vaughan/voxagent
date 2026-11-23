@@ -1,0 +1,25 @@
+internal/units/cron_core/cron_apply.go
+  s_052bc29fd340ba::t_1b18bff7c04105 236,240,277
+internal/lib/parsedfile/grammar.go
+  s_052bc29fd340ba::t_6541a2d76f426a 37-65
+internal/lib/parsedfile/grammar_test.go
+  s_052bc29fd340ba::t_ad5049e723b2a3 230
+  s_052bc29fd340ba::t_2656e8dda131e6 6
+  s_052bc29fd340ba::t_fe49bd13498293 218-229,231-243
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "82d519cf4c82a3200f2ea852a34a4106ee90a599",
+  "prompts": {},
+  "sessions": {
+    "s_052bc29fd340ba": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "28e54bde-3f35-4b98-9ae5-6bfa6717fecf",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "peiriannydd <peiriannydd@gmail.com>"
+    }
+  }
+}
