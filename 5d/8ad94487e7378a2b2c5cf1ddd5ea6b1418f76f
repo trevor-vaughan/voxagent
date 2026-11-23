@@ -1,0 +1,238 @@
+tests/spine/report-diff-container.sh
+  s_052bc29fd340ba::t_26ffaa2b8b78d7 74-79,86,262-263,300-301,1052-1055
+tests/spine/mount/g5.sh
+  s_052bc29fd340ba::t_d0ed436f680650 7-14,16-37,39-42,50-59,61
+  s_052bc29fd340ba::t_e632817800e765 206-207
+  s_052bc29fd340ba::t_f06ca53433a0b8 1-6,15,38,43-49,60,62-134,136-170,172-179,183,187-194,196-200,212-296
+  s_052bc29fd340ba::t_4a924b39a02f1c 135,171,180-182,184,195,201-205,208-211
+  s_052bc29fd340ba::t_040ef6c526acf2 185-186
+docs/maintainers/apply-spine.md
+  s_052bc29fd340ba::t_912375d72f74f0 2527-2612,2615
+  s_052bc29fd340ba::t_3b5da9574993d2 1678-1712
+  s_052bc29fd340ba::t_fa8724eb9e9ff3 2613-2614
+  s_052bc29fd340ba::t_a9cbb2921bc535 2616
+docs/maintainers/units.md
+  s_052bc29fd340ba::t_e6c8e6f84fea62 9,68,85,172-180
+tests/spine/mount/cases-2.1.0/create/files
+  s_052bc29fd340ba::t_a35ded1ce21b72 1
+tests/spine/mount/cases-2.1.0/create/mounts
+  s_052bc29fd340ba::t_231ef55e830197 1
+tests/spine/mount/cases-2.1.0/create/seed.sh
+  s_052bc29fd340ba::t_3ab434b48506ae 1
+tests/spine/mount/cases-2.1.0/create/site.pp
+  s_052bc29fd340ba::t_dd741e180d883d 1
+tests/spine/mount/cases/atboot/files
+  s_052bc29fd340ba::t_9ccde0d956881b 1
+tests/spine/mount/cases/atboot/site.pp
+  s_052bc29fd340ba::t_2221ff2b3c7aea 1-3
+tests/spine/mount/cases/dash-defined/files
+  s_052bc29fd340ba::t_f2af811dd121a7 1
+tests/spine/mount/cases/dash-defined/site.pp
+  s_052bc29fd340ba::t_53ddef11782c68 1
+tests/spine/mount/cases/dash-mounted/files
+  s_052bc29fd340ba::t_84052c3e5339cd 1
+tests/spine/mount/cases/dash-mounted/site.pp
+  s_052bc29fd340ba::t_0170e8ed7f53e1 1
+tests/spine/mount/cases/defined-absent/files
+  s_052bc29fd340ba::t_87af02e0271022 1
+tests/spine/mount/cases/defined-absent/seed.sh
+  s_052bc29fd340ba::t_4f122f74eba453 1
+tests/spine/mount/cases/defined-absent/site.pp
+  s_052bc29fd340ba::t_5d95afd2957cda 1
+tests/spine/mount/cases/dump-bad/files
+  s_052bc29fd340ba::t_258a1f0525187a 1
+tests/spine/mount/cases/dump-bad/site.pp
+  s_052bc29fd340ba::t_4195dcc158c2ed 1
+tests/spine/mount/cases/dump-pass-reset/files
+  s_052bc29fd340ba::t_f6d18ace808a6b 1
+tests/spine/mount/cases/dump-pass-reset/seed.sh
+  s_052bc29fd340ba::t_1217f762d3f154 1
+tests/spine/mount/cases/dump-pass-reset/site.pp
+  s_052bc29fd340ba::t_81ab5e3ce8b545 1
+tests/spine/mount/cases/fields/files
+  s_052bc29fd340ba::t_a39523c22c1fc4 1
+tests/spine/mount/cases/fields/seed.sh
+  s_052bc29fd340ba::t_3871ce6ed4959a 1-4
+tests/spine/mount/cases/fields/site.pp
+  s_052bc29fd340ba::t_108c54f49a1791 1-4
+tests/spine/mount/cases/ghost-no-ensure/files
+  s_052bc29fd340ba::t_455eac94ed36c3 1
+tests/spine/mount/cases/ghost-no-ensure/mounts
+  s_052bc29fd340ba::t_8e7bb504bbcc68 1
+tests/spine/mount/cases/ghost-no-ensure/seed.sh
+  s_052bc29fd340ba::t_2959f9c9bb3a34 1-2
+tests/spine/mount/cases/ghost-no-ensure/site.pp
+  s_052bc29fd340ba::t_9288ff352fe09f 1
+tests/spine/mount/cases/ghost-to-absent/files
+  s_052bc29fd340ba::t_604f4c443440d5 1
+tests/spine/mount/cases/ghost-to-absent/mounts
+  s_052bc29fd340ba::t_282385eb83e799 1
+tests/spine/mount/cases/ghost-to-absent/seed.sh
+  s_052bc29fd340ba::t_b7f01f3c7ccd3c 1-3
+tests/spine/mount/cases/ghost-to-absent/site.pp
+  s_052bc29fd340ba::t_9b1618e1329c19 1
+tests/spine/mount/cases/ghost-to-mounted/files
+  s_052bc29fd340ba::t_a0a46767995ec0 1
+tests/spine/mount/cases/ghost-to-mounted/mounts
+  s_052bc29fd340ba::t_82f20c1e372708 1
+tests/spine/mount/cases/ghost-to-mounted/seed.sh
+  s_052bc29fd340ba::t_32fdfb017e190e 1-2
+tests/spine/mount/cases/ghost-to-mounted/site.pp
+  s_052bc29fd340ba::t_4a9c849b40acf4 1
+tests/spine/mount/cases/leading-whitespace/files
+  s_052bc29fd340ba::t_2045a79e75ff15 1
+tests/spine/mount/cases/leading-whitespace/seed.sh
+  s_052bc29fd340ba::t_05148142e54bd7 1
+tests/spine/mount/cases/leading-whitespace/site.pp
+  s_052bc29fd340ba::t_400bedc0909a14 1
+tests/spine/mount/cases/line-break-device/files
+  s_052bc29fd340ba::t_189ef123f00bf4 1
+tests/spine/mount/cases/line-break-device/seed.sh
+  s_052bc29fd340ba::t_7b96effdea7f9c 1
+tests/spine/mount/cases/line-break-device/site.pp
+  s_052bc29fd340ba::t_048af51e7a41e6 1
+tests/spine/mount/cases/line-break-dump/files
+  s_052bc29fd340ba::t_7d9806974ebe49 1
+tests/spine/mount/cases/line-break-dump/seed.sh
+  s_052bc29fd340ba::t_0b1710098129ba 1
+tests/spine/mount/cases/line-break-dump/site.pp
+  s_052bc29fd340ba::t_a6792c67bcc7a0 1
+tests/spine/mount/cases/line-break-name/files
+  s_052bc29fd340ba::t_2217714ce89592 1
+tests/spine/mount/cases/line-break-name/seed.sh
+  s_052bc29fd340ba::t_564f926dbc9854 1
+tests/spine/mount/cases/line-break-name/site.pp
+  s_052bc29fd340ba::t_75b00818a7337b 1
+tests/spine/mount/cases/line-break-pass/files
+  s_052bc29fd340ba::t_9608ff108394d2 1
+tests/spine/mount/cases/line-break-pass/seed.sh
+  s_052bc29fd340ba::t_3dbeca90e17fc9 1
+tests/spine/mount/cases/line-break-pass/site.pp
+  s_052bc29fd340ba::t_277daf8df7aa3b 1
+tests/spine/mount/cases/missing-fstype/files
+  s_052bc29fd340ba::t_14d9a81df046d1 1
+tests/spine/mount/cases/missing-fstype/seed.sh
+  s_052bc29fd340ba::t_77ae9717484ee0 1
+tests/spine/mount/cases/missing-fstype/site.pp
+  s_052bc29fd340ba::t_5853d9b60db80d 1-3
+tests/spine/mount/cases/mount-fails/files
+  s_052bc29fd340ba::t_29496611f9e96c 1
+tests/spine/mount/cases/mount-fails/mounts
+  s_052bc29fd340ba::t_8aa2c47d7768c7 1
+tests/spine/mount/cases/mount-fails/site.pp
+  s_052bc29fd340ba::t_77abde74315835 1
+tests/spine/mount/cases/mounted-from-absent/files
+  s_052bc29fd340ba::t_1143a084b19a4c 1
+tests/spine/mount/cases/mounted-from-absent/mounts
+  s_052bc29fd340ba::t_c07186fe9ede28 1
+tests/spine/mount/cases/mounted-from-absent/seed.sh
+  s_052bc29fd340ba::t_7da290d66d218b 1
+tests/spine/mount/cases/mounted-from-absent/site.pp
+  s_052bc29fd340ba::t_e5bef2c38861c2 1
+tests/spine/mount/cases/name-040/files
+  s_052bc29fd340ba::t_ecbbccffea6c4c 1
+tests/spine/mount/cases/name-040/seed.sh
+  s_052bc29fd340ba::t_5eaf1d1aee1c98 1
+tests/spine/mount/cases/name-040/site.pp
+  s_052bc29fd340ba::t_dec952f45af4bc 1-2
+tests/spine/mount/cases/notify-refresh/files
+  s_052bc29fd340ba::t_da9aa7c2c3a649 1
+tests/spine/mount/cases/notify-refresh/mounts
+  s_052bc29fd340ba::t_79dda1713d5092 1-3
+tests/spine/mount/cases/notify-refresh/seed.sh
+  s_052bc29fd340ba::t_37d823a0f8c795 1-4
+tests/spine/mount/cases/notify-refresh/site.pp
+  s_052bc29fd340ba::t_9fc5263c15bacd 1-4
+tests/spine/mount/cases/options-remount/files
+  s_052bc29fd340ba::t_b659cc07107316 1
+tests/spine/mount/cases/options-remount/mounts
+  s_052bc29fd340ba::t_b6feb40714e635 1
+tests/spine/mount/cases/options-remount/seed.sh
+  s_052bc29fd340ba::t_7c172a0350d0dc 1-3
+tests/spine/mount/cases/options-remount/site.pp
+  s_052bc29fd340ba::t_ca597aca760760 1
+tests/spine/mount/cases/options-unmounted-to-mounted/files
+  s_052bc29fd340ba::t_c8096d7c5c1624 1
+tests/spine/mount/cases/options-unmounted-to-mounted/mounts
+  s_052bc29fd340ba::t_a22f3fa549d271 1
+tests/spine/mount/cases/options-unmounted-to-mounted/seed.sh
+  s_052bc29fd340ba::t_9e8e01ece02a36 1-2
+tests/spine/mount/cases/options-unmounted-to-mounted/site.pp
+  s_052bc29fd340ba::t_ce20a33e389cf9 1
+tests/spine/mount/cases/refresh-fails/files
+  s_052bc29fd340ba::t_168595ffaf1d35 1
+tests/spine/mount/cases/refresh-fails/mounts
+  s_052bc29fd340ba::t_216eed3d1c723a 1
+tests/spine/mount/cases/refresh-fails/seed.sh
+  s_052bc29fd340ba::t_d82d58aa17b83a 1-3
+tests/spine/mount/cases/refresh-fails/site.pp
+  s_052bc29fd340ba::t_df992d111bbef3 1-2
+tests/spine/mount/cases/relations/files
+  s_052bc29fd340ba::t_14a5f24cd37b6c 1
+tests/spine/mount/cases/relations/mounts
+  s_052bc29fd340ba::t_83ee82e271b9db 1-2
+tests/spine/mount/cases/relations/seed.sh
+  s_052bc29fd340ba::t_36b9e5679fe750 1
+tests/spine/mount/cases/relations/site.pp
+  s_052bc29fd340ba::t_2d79ff2078424f 1-4
+tests/spine/mount/cases/remounts-false/files
+  s_052bc29fd340ba::t_81405f013b6765 1
+tests/spine/mount/cases/remounts-false/mounts
+  s_052bc29fd340ba::t_0f408f5b04ef51 1
+tests/spine/mount/cases/remounts-false/seed.sh
+  s_052bc29fd340ba::t_7bedf900172a83 1-3
+tests/spine/mount/cases/remounts-false/site.pp
+  s_052bc29fd340ba::t_aa8ae11a2adcac 1
+tests/spine/mount/cases/remove/files
+  s_052bc29fd340ba::t_07213b9888b963 1
+tests/spine/mount/cases/remove/seed.sh
+  s_052bc29fd340ba::t_3b1ff6ce88b426 1-2
+tests/spine/mount/cases/remove/site.pp
+  s_052bc29fd340ba::t_b40e2674b6d63c 1
+tests/spine/mount/cases/swap/files
+  s_052bc29fd340ba::t_4de49552ef2006 1
+tests/spine/mount/cases/swap/mounts
+  s_052bc29fd340ba::t_db5d225cde1b12 1
+tests/spine/mount/cases/swap/seed.sh
+  s_052bc29fd340ba::t_636c005821008f 1-3
+tests/spine/mount/cases/swap/site.pp
+  s_052bc29fd340ba::t_637b7b3f8beceb 1
+tests/spine/mount/cases/trailing-slash/files
+  s_052bc29fd340ba::t_23897e47ca74c2 1
+tests/spine/mount/cases/trailing-slash/seed.sh
+  s_052bc29fd340ba::t_d035288f728991 1
+tests/spine/mount/cases/trailing-slash/site.pp
+  s_052bc29fd340ba::t_caa2f9c89ca16d 1-4
+tests/spine/mount/cases/umount-busy/files
+  s_052bc29fd340ba::t_9cd7dda2b7e172 1
+tests/spine/mount/cases/umount-busy/mounts
+  s_052bc29fd340ba::t_c0f7b0fc40ccf7 1
+tests/spine/mount/cases/umount-busy/seed.sh
+  s_052bc29fd340ba::t_46980da19d04c5 1-4
+tests/spine/mount/cases/umount-busy/site.pp
+  s_052bc29fd340ba::t_aa3d0da2c06d4f 1
+tests/spine/mount/cases/unmounted-from-mounted/files
+  s_052bc29fd340ba::t_697d6f5ec09bad 1
+tests/spine/mount/cases/unmounted-from-mounted/mounts
+  s_052bc29fd340ba::t_ab6143133e19fc 1
+tests/spine/mount/cases/unmounted-from-mounted/seed.sh
+  s_052bc29fd340ba::t_5220d817697010 1-3
+tests/spine/mount/cases/unmounted-from-mounted/site.pp
+  s_052bc29fd340ba::t_67f7e2babe6704 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "5d8ad94487e7378a2b2c5cf1ddd5ea6b1418f76f",
+  "prompts": {},
+  "sessions": {
+    "s_052bc29fd340ba": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "28e54bde-3f35-4b98-9ae5-6bfa6717fecf",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "peiriannydd <peiriannydd@gmail.com>"
+    }
+  }
+}
