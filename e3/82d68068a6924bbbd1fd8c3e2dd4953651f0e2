@@ -1,0 +1,27 @@
+internal/units/sshkeys_core/sshkey.go
+  s_052bc29fd340ba::t_1b18bff7c04105 7
+cmd/voxagent/sensitive_test.go
+  s_052bc29fd340ba::t_12c93463035914 302,305-306
+internal/units/sshkeys_core/sshkey_apply_test.go
+  s_052bc29fd340ba::t_ad5049e723b2a3 267,301,330,350,398,421,446
+  s_052bc29fd340ba::t_12c93463035914 237,259-265,270,273-278,369-370,493-496,499-502
+  s_052bc29fd340ba::t_9f0d427e529ceb 266,268-269,271-272
+internal/units/sshkeys_core/sshkey_apply.go
+  s_052bc29fd340ba::t_6541a2d76f426a 216-217
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "e382d68068a6924bbbd1fd8c3e2dd4953651f0e2",
+  "prompts": {},
+  "sessions": {
+    "s_052bc29fd340ba": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "28e54bde-3f35-4b98-9ae5-6bfa6717fecf",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "peiriannydd <peiriannydd@gmail.com>"
+    }
+  }
+}
