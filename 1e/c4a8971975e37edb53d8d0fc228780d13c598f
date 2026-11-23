@@ -1,0 +1,31 @@
+internal/units/mount_core/mount_apply_test.go
+  s_052bc29fd340ba::t_bc13ab1213fe5c 785-786,789-790,792
+internal/units/mount_core/mount_relations_test.go
+  s_052bc29fd340ba::t_ac726ab55409e5 6,14,158-159,162,189-190,288
+  s_052bc29fd340ba::t_c8ae0aba37c4b1 1-5,7-13,15-157,160-161,163-188,191-287,289-312
+internal/units/mount_core/mount_relations.go
+  s_052bc29fd340ba::t_847a9cb9a2e0a4 1-120
+internal/units/mount_core/mount.go
+  s_052bc29fd340ba::t_950e9974b99e25 31-33,40
+internal/units/mount_core/mount_apply.go
+  s_052bc29fd340ba::t_080215b89bfa0c 181
+  s_052bc29fd340ba::t_2baaebaa697e4d 214-215,222
+  s_052bc29fd340ba::t_f0b30012dde2d0 55-59
+  s_052bc29fd340ba::t_6c4cb891969064 386-424
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "1ec4a8971975e37edb53d8d0fc228780d13c598f",
+  "prompts": {},
+  "sessions": {
+    "s_052bc29fd340ba": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "28e54bde-3f35-4b98-9ae5-6bfa6717fecf",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "peiriannydd <peiriannydd@gmail.com>"
+    }
+  }
+}
