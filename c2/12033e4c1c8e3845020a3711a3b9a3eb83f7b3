@@ -1,0 +1,25 @@
+internal/lib/augeas/augeas_lib_linux.go
+  s_411d42c8948373::t_b2d00b1a6ac20e 114-119,126-132
+  s_411d42c8948373::t_4341af240dfe17 98
+  s_411d42c8948373::t_56943958c3d416 186-187
+internal/lib/augeas/augeas_lib_linux_test.go
+  s_411d42c8948373::t_032b4ba3f64f0b 33
+docs/maintainers/apply-spine.md
+  s_411d42c8948373::t_41c7c5077ebb97 184
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "c212033e4c1c8e3845020a3711a3b9a3eb83f7b3",
+  "prompts": {},
+  "sessions": {
+    "s_411d42c8948373": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6fbd78ea-f5e2-4858-81d3-0d512986c831",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "peiriannydd <peiriannydd@gmail.com>"
+    }
+  }
+}
