@@ -1,0 +1,25 @@
+scripts/demo.sh
+  s_0ca9f471dbeb30::t_ca1aa95ad60323 1-83
+.taskfiles/dev.yml
+  s_0ca9f471dbeb30::t_54718bbceea614 130-136
+README.md
+  s_0ca9f471dbeb30::t_b72452af9b00da 5-12
+scripts/demo.tape
+  s_0ca9f471dbeb30::t_4984d8ee730c57 1-60
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "c48507ed75693dfe2c7fcfe08cc95f0a7c5e0671",
+  "prompts": {},
+  "sessions": {
+    "s_0ca9f471dbeb30": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e6df357e-84ad-47f8-ba8b-cf12e2b15057",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "LLM (riotbox) <llm@riotbox>"
+    }
+  }
+}
