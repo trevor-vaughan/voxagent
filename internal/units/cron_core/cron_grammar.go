@@ -120,19 +120,19 @@ func cronClass(release string, providerTarget, spoolDir string, newFileType func
 
 // nameFromComment is the comment's post_parse (prov:9-11): a "Puppet Name: "
 // anywhere in the line names the record, trailing spaces included.
-func nameFromComment(r *parsedfile.Record) bool {
+func nameFromComment(r *parsedfile.Record) error {
 	if m := puppetNameLine.FindStringSubmatch(r.Line); m != nil {
 		r.Fields["name"] = parsedfile.Value{Kind: parsedfile.Str, S: m[1]}
 	}
-	return true
+	return nil
 }
 
 // splitTime is the crontab's post_parse (prov:37-62). The line pattern allows
 // only "@\w+" or five words as the time, and the two patterns here cover both,
 // so Ruby's third branch (an error) is unreachable through a parsed line. It is
-// kept as a false return, which fails the parse for that line, so that a time
+// kept as an ErrNoRecord return, which fails the parse for that line, so that a time
 // neither pattern matches cannot panic.
-func splitTime(r *parsedfile.Record) bool {
+func splitTime(r *parsedfile.Record) error {
 	timeText := r.Fields["time"].S
 	delete(r.Fields, "time")
 	if m := specialTime.FindStringSubmatch(timeText); m != nil {
@@ -140,11 +140,11 @@ func splitTime(r *parsedfile.Record) bool {
 			r.Fields[f] = parsedfile.Value{Kind: parsedfile.Absent}
 		}
 		r.Fields["special"] = parsedfile.Value{Kind: parsedfile.Str, S: m[1]}
-		return true
+		return nil
 	}
 	m := fiveWordTime.FindStringSubmatch(timeText)
 	if m == nil {
-		return false
+		return parsedfile.ErrNoRecord
 	}
 	r.Fields["special"] = parsedfile.Value{Kind: parsedfile.Absent}
 	for i, f := range timeFields {
@@ -154,7 +154,7 @@ func splitTime(r *parsedfile.Record) bool {
 			r.Fields[f] = parsedfile.Value{Kind: parsedfile.List, L: parsedfile.Split(m[i+1], commaSeparator)}
 		}
 	}
-	return true
+	return nil
 }
 
 // jobToLine is the crontab's to_line and pre_gen (prov:64-97): the name

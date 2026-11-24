@@ -205,6 +205,7 @@ type libuserPlatform struct{}
 func (libuserPlatform) Executable(path string) bool {
 	return path == "/usr/sbin/luseradd" || path == "/usr/sbin/lgroupadd" || path == "/usr/sbin/sysctl"
 }
+func (libuserPlatform) FileExists(string) bool     { return false }
 func (libuserPlatform) OSRelease() ([]byte, error) { return augeasPlatform{}.OSRelease() }
 
 // Every delegated type the catalog holds is reported at debug, sorted by type

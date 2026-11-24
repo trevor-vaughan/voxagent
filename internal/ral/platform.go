@@ -13,6 +13,7 @@ import (
 // an interface so tests do not depend on the machine they run on.
 type Platform interface {
 	Executable(path string) bool
+	FileExists(path string) bool
 	OSRelease() ([]byte, error)
 }
 
@@ -23,6 +24,13 @@ type realPlatform struct{}
 
 // Executable is FileTest.file? && FileTest.executable?, following symlinks.
 func (realPlatform) Executable(path string) bool { return command.ExecutableFile(path) }
+
+// FileExists is Puppet::FileSystem.exist?: os.Stat succeeds, following symlinks. Any error,
+// including a permission failure on a parent, means the path is absent.
+func (realPlatform) FileExists(path string) bool {
+	_, err := os.Stat(path)
+	return err == nil
+}
 
 func (realPlatform) OSRelease() ([]byte, error) { return os.ReadFile("/etc/os-release") }
 

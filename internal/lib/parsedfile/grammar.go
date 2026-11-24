@@ -67,9 +67,10 @@ type LineType struct {
 	// whose generated line can hold a line break must account for that.
 	RTS *regexp.Regexp
 	// PostParse runs on every record of this type after parsing (fp:276). It
-	// returns false for a line it cannot make a record of, which fails the
-	// parse with a ParseError for that line, as an error raised there does.
-	PostParse func(*Record) bool
+	// returns ErrNoRecord for a line it cannot make a record of, which fails
+	// the parse with a ParseError for that line; any other error aborts the
+	// parse and is returned as is, as an error raised there does.
+	PostParse func(*Record) error
 	// PreGen runs on a shallow copy before generating (fp:341-344).
 	PreGen func(*Record)
 	// ToLine replaces the join and RTS; its result is used verbatim (fp:349).
@@ -147,6 +148,10 @@ func (g *Grammar) Lines(text string) []string {
 	return lines
 }
 
+// ErrNoRecord is what a PostParse returns for a line that is not a record of
+// its type: Parse turns it into the ParseError for that line.
+var ErrNoRecord = errors.New("parsedfile: line is not a record of this type")
+
 // ParseError is a line no line type matched. Line is the physical line number
 // plus one: Ruby's counter starts at 1 and is incremented before the first
 // line (fp:251-262). The ParsedFile layer sets File.
@@ -169,7 +174,10 @@ func (g *Grammar) Parse(text string) ([]*Record, error) {
 		if len(g.types) == 0 {
 			return nil, errors.New("No record types defined; cannot parse lines")
 		}
-		r := g.parseLine(line)
+		r, err := g.parseLine(line)
+		if err != nil {
+			return nil, err
+		}
 		if r == nil {
 			return nil, &ParseError{Line: i + 2, Text: line}
 		}
@@ -179,9 +187,9 @@ func (g *Grammar) Parse(text string) ([]*Record, error) {
 }
 
 // parseLine tries the types in definition order; the first match wins and its
-// PostParse runs on the result (fp:267-285); a PostParse that rejects the line
-// ends the search with nil.
-func (g *Grammar) parseLine(line string) *Record {
+// PostParse runs on the result (fp:267-285); a PostParse that returns
+// ErrNoRecord ends the search with nil, any other error is returned.
+func (g *Grammar) parseLine(line string) (*Record, error) {
 	for i := range g.types {
 		lt := &g.types[i]
 		var r *Record
@@ -193,12 +201,16 @@ func (g *Grammar) parseLine(line string) *Record {
 		if r == nil {
 			continue
 		}
-		if lt.PostParse != nil && !lt.PostParse(r) {
-			return nil
+		if lt.PostParse != nil {
+			if err := lt.PostParse(r); errors.Is(err, ErrNoRecord) {
+				return nil, nil
+			} else if err != nil {
+				return nil, err
+			}
 		}
-		return r
+		return r, nil
 	}
-	return nil
+	return nil, nil
 }
 
 // textLine is fp:163-165: the selector matches anywhere in the line.

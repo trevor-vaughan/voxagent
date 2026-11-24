@@ -10,9 +10,10 @@
 # (String) or {"list":[...]} (Array; an element is a String or
 # {"absent":true}); a record is {"type","line","fields"}.
 #
-# The grammars below are the generic ones of the engine's tests and cron's
+# The grammars below are the generic ones of the engine's tests, cron's
 # (record definitions copied from cron_core 1.3.0
-# lib/puppet/provider/cron/crontab.rb:9-98). internal/lib/parsedfile's
+# lib/puppet/provider/cron/crontab.rb:9-98) and host's (host_core
+# lib/puppet/provider/host/parsed.rb:21-48). internal/lib/parsedfile's
 # vectors_test.go defines the generic ones again in Go and
 # TestRubyMatchesSharedVectors re-runs this script and compares.
 # String#inspect escapes non-ASCII unless the external encoding is UTF-8;
@@ -70,6 +71,38 @@ GRAMMARS = {
     g.record_line :h, fields: %w[a b], separator: /\s+/, rts: true,
                       post_parse: proc { |r| r[:seen] = 'yes' },
                       to_line: proc { |r| "<#{r[:a]}|#{r[:b]}>  " }
+  },
+  # host_core lib/puppet/provider/host/parsed.rb:21-48, including its
+  # :incomplete pattern, which Onigmo decides.
+  'host' => lambda { |g|
+    g.text_line :comment, match: %r{^#}
+    g.text_line :blank, match: %r{^\s*$}
+    hosts_pattern = '^([0-9a-f:]\S+)\s+([^#\s+]\S+)\s*(.*?)?(?:\s*#\s*(.*))?$'
+    g.record_line :parsed, fields: ['ip', 'name', 'host_aliases', 'comment'],
+                           optional: ['host_aliases', 'comment'],
+                           match: %r{#{hosts_pattern}},
+                           post_parse: proc { |hash|
+                                         # An absent comment should match "comment => ''"
+                                         hash[:comment] = '' if hash[:comment].nil? || hash[:comment] == :absent
+                                         unless hash[:host_aliases].nil? || hash[:host_aliases] == :absent
+                                           hash[:host_aliases].gsub!(%r{\s+}, ' ') # Change delimiter
+                                         end
+                                       },
+                           to_line: proc { |hash|
+                                      [:ip, :name].each do |n|
+                                        raise ArgumentError, _('%{attr} is a required attribute for hosts') % { attr: n } unless hash[n] && hash[n] != :absent
+                                      end
+                                      str = "#{hash[:ip]}\t#{hash[:name]}"
+                                      if hash.include?(:host_aliases) && !hash[:host_aliases].nil? && hash[:host_aliases] != :absent
+                                        str += "\t#{hash[:host_aliases]}"
+                                      end
+                                      if hash.include?(:comment) && !hash[:comment].empty?
+                                        str += "\t# #{hash[:comment]}"
+                                      end
+                                      str
+                                    }
+
+    g.text_line :incomplete, match: %r{(?! (#{hosts_pattern}))}
   },
   # cron_core 1.3.0 crontab.rb:9-98.
   'cron' => lambda { |g|

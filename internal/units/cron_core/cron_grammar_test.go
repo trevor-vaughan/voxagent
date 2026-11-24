@@ -2,7 +2,7 @@ package croncore
 
 import (
 	"context"
-	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/voxagent/voxagent/internal/lib/parsedfile"
+	"github.com/voxagent/voxagent/internal/lib/parsedfile/vectorstest"
 	"github.com/voxagent/voxagent/internal/report"
 	"github.com/voxagent/voxagent/internal/runlog"
 )
@@ -22,8 +23,8 @@ import (
 func TestSplitTimeRejectsATimeNoPatternMatches(t *testing.T) {
 	for _, tm := range []string{"", "1 2 3 4", "x"} {
 		r := &parsedfile.Record{Fields: map[string]parsedfile.Value{"time": {Kind: parsedfile.Str, S: tm}}}
-		if splitTime(r) {
-			t.Errorf("splitTime(%q) = true; want false", tm)
+		if err := splitTime(r); !errors.Is(err, parsedfile.ErrNoRecord) {
+			t.Errorf("splitTime(%q) = %v; want ErrNoRecord", tm, err)
 		}
 	}
 }
@@ -96,160 +97,10 @@ func TestCronClassIdentity(t *testing.T) {
 
 // ---- the shared vectors -------------------------------------------------
 
-// vecValue decodes the vectors' Value encoding: null, {"absent":true},
-// {"s":"x"} or {"list":[...]}.
-type vecValue parsedfile.Value
-
-func (v *vecValue) UnmarshalJSON(b []byte) error {
-	if string(b) == "null" {
-		*v = vecValue{Kind: parsedfile.Nil}
-		return nil
-	}
-	var raw struct {
-		Absent bool               `json:"absent"`
-		S      *string            `json:"s"`
-		List   *[]json.RawMessage `json:"list"`
-	}
-	if err := json.Unmarshal(b, &raw); err != nil {
-		return err
-	}
-	switch {
-	case raw.Absent:
-		*v = vecValue{Kind: parsedfile.Absent}
-	case raw.S != nil:
-		*v = vecValue{Kind: parsedfile.Str, S: *raw.S}
-	case raw.List != nil:
-		// Ruby's lone [:absent] is the engine's Absent; a list holds strings.
-		l := []string{}
-		for _, e := range *raw.List {
-			var s string
-			if err := json.Unmarshal(e, &s); err != nil {
-				if len(*raw.List) == 1 {
-					*v = vecValue{Kind: parsedfile.Absent}
-					return nil
-				}
-				return fmt.Errorf("list element %s is not a string", e)
-			}
-			l = append(l, s)
-		}
-		*v = vecValue{Kind: parsedfile.List, L: l}
-	default:
-		return fmt.Errorf("unknown value %s", b)
-	}
-	return nil
-}
-
-type vecRecord struct {
-	Type   string              `json:"type"`
-	Line   string              `json:"line"`
-	Fields map[string]vecValue `json:"fields"`
-}
-
-func (r vecRecord) record() parsedfile.Record {
-	rec := parsedfile.Record{Type: r.Type, Line: r.Line, Fields: map[string]parsedfile.Value{}}
-	for k, v := range r.Fields {
-		rec.Fields[k] = parsedfile.Value(v)
-	}
-	return rec
-}
-
-type vecCase struct {
-	Name    string          `json:"name"`
-	Grammar string          `json:"grammar"`
-	Op      string          `json:"op"`
-	Text    string          `json:"text"`
-	Record  *vecRecord      `json:"record"`
-	Records []vecRecord     `json:"records"`
-	Want    json.RawMessage `json:"want"`
-}
-
 func TestCronGrammarMatchesSharedVectors(t *testing.T) {
-	raw, err := os.ReadFile("../../lib/parsedfile/testdata/vectors.json")
-	if err != nil {
-		t.Fatal(err)
-	}
-	var file struct {
-		Cases []vecCase `json:"cases"`
-	}
-	if err := json.Unmarshal(raw, &file); err != nil {
-		t.Fatal(err)
-	}
 	g := testClass("2.1.0", "/nonexistent", map[string]*fakeFile{}).Grammar
-	ran := 0
-	for _, c := range file.Cases {
-		if c.Grammar != "cron" {
-			continue
-		}
-		ran++
-		t.Run(c.Name+"/"+c.Op, func(t *testing.T) {
-			var want struct {
-				Records *[]vecRecord `json:"records"`
-				Line    *string      `json:"line"`
-				Text    *string      `json:"text"`
-				Error   *string      `json:"error"`
-			}
-			if err := json.Unmarshal(c.Want, &want); err != nil {
-				t.Fatal(err)
-			}
-			var got struct {
-				records []vecRecord
-				text    string
-				err     error
-			}
-			switch c.Op {
-			case "parse":
-				recs, err := g.Parse(c.Text)
-				got.err = err
-				for _, r := range recs {
-					vr := vecRecord{Type: r.Type, Line: r.Line, Fields: map[string]vecValue{}}
-					for k, v := range r.Fields {
-						vr.Fields[k] = vecValue(v)
-					}
-					got.records = append(got.records, vr)
-				}
-			case "to_line":
-				got.text, got.err = g.ToLine(c.Record.record())
-			case "to_file":
-				var rs []*parsedfile.Record
-				for _, r := range c.Records {
-					rec := r.record()
-					rs = append(rs, &rec)
-				}
-				got.text, got.err = g.ToFile(rs)
-			default:
-				t.Fatalf("unknown op %q", c.Op)
-			}
-			switch {
-			case want.Error != nil:
-				if got.err == nil || got.err.Error() != *want.Error {
-					t.Errorf("error = %v, want %q", got.err, *want.Error)
-				}
-			case got.err != nil:
-				t.Fatalf("unexpected error: %v", got.err)
-			case want.Records != nil:
-				if len(got.records) != len(*want.Records) {
-					t.Fatalf("got %d records, want %d", len(got.records), len(*want.Records))
-				}
-				for i, w := range *want.Records {
-					if !reflect.DeepEqual(got.records[i], w) {
-						t.Errorf("record %d = %+v, want %+v", i, got.records[i], w)
-					}
-				}
-			case want.Line != nil:
-				if got.text != *want.Line {
-					t.Errorf("line = %q, want %q", got.text, *want.Line)
-				}
-			case want.Text != nil:
-				if got.text != *want.Text {
-					t.Errorf("text = %q, want %q", got.text, *want.Text)
-				}
-			default:
-				t.Fatal("case has no expectation")
-			}
-		})
-	}
-	if ran == 0 {
-		t.Fatal("no cron case ran")
+	for _, c := range vectorstest.Read(t, "cron") {
+		t.Run(c.Name+"/"+c.Op, func(t *testing.T) { c.Check(t, g) })
 	}
 }
 

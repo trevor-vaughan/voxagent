@@ -1,0 +1,8 @@
+# The node the ParsedFile-types measurements (2026-11-23) and G5's host,
+# sshkey, ssh_authorized_key and mount halves run on: the G5 base plus
+# openssh, which owns /etc/ssh (sshkey's default target directory).
+# fleet-node-el has /etc/hosts, mount and umount, and no /etc/ssh (M2).
+# openvox is the base's own, which tests/spine/parsedfile/image.sh checks
+# after every build. Building it needs the CentOS Stream mirrors.
+FROM localhost/fleet-node-el:latest
+RUN dnf -y install openssh && dnf clean all

@@ -48,18 +48,30 @@ g5_judge() {
 
 # g5_refusal OUT LABEL: compares a catalog Ruby refuses at conversion: Ruby's
 # `Error: Could not run: <detail> (file: ..., line: N)` against voxagent's
-# first `voxagent: <detail>`, exit 2, and no report from either.
+# first `voxagent: <detail>`, exit 2, and no report from either. A detail may
+# span lines (a title holding a raw newline, host's I-39 refusals): Ruby's runs
+# to the line ending in the `(file: ..., line: N)` suffix, voxagent's to the
+# next line that starts with `voxagent: ` or a log level.
 g5_refusal() {
   local out="$1" label="$2" want got
-  want="$(sed -n 's/^Error: Could not run: \(.*\) (file: [^)]*, line: [0-9]*)$/\1/p' "$out/ruby-live.out")"
+  want="$(awk '
+    on && /^(Debug|Info|Notice|Warning|Error): / { on = 0 }
+    !on && sub(/^Error: Could not run: /, "") { on = 1; d = "" }
+    on && sub(/ \(file: [^)]*, line: [0-9]+\)$/, "") { print d $0; exit }
+    on { d = d $0 "\n" }
+  ' "$out/ruby-live.out")"
   if [ -z "$want" ] || [ -s "$out/ruby-live.json" ]; then
     echo "report-diff-container: $label: Ruby did not refuse the catalog:" >&2
     sed -n '1,10p' "$out/ruby-live.out" >&2
     return 2
   fi
-  got="$(grep '^voxagent: ' "$out/voxagent-live.out" |
-    grep -Ev '^voxagent: ([0-9]+ invalid resource\(s\); nothing applied|outcome=.*)$' |
-    sed -n '1s/^voxagent: //p')"
+  got="$(awk '
+    /^voxagent: ([0-9]+ invalid resource\(s\); nothing applied|outcome=.*)$/ { if (on) exit; next }
+    on && /^(voxagent|Debug|Info|Notice|Warning|Error): / { exit }
+    !on && sub(/^voxagent: /, "") { on = 1; d = $0; next }
+    on { d = d "\n" $0 }
+    END { if (on) print d }
+  ' "$out/voxagent-live.out")"
   if [ "$got" != "$want" ] || [ -s "$out/voxagent-live.json" ] || [ "$(cat "$out/voxagent-live.rc")" != 2 ]; then
     echo "report-diff-container: $label: DIVERGE: Ruby refuses with" >&2
     echo "  $want" >&2

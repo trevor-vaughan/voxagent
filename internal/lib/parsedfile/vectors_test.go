@@ -191,7 +191,7 @@ func genericGrammars(t *testing.T) map[string]*Grammar {
 		},
 		"pregen": {{Name: "t", Text: true, Match: re(`.`), PreGen: func(r *Record) { r.Line = "X" + r.Line }}},
 		"hook": {{Name: "h", Fields: []string{"a", "b"}, Separator: sp, RTS: regexp.MustCompile(Space + `+$`),
-			PostParse: func(r *Record) bool { r.Fields["seen"] = Value{Kind: Str, S: "yes"}; return true },
+			PostParse: func(r *Record) error { r.Fields["seen"] = Value{Kind: Str, S: "yes"}; return nil },
 			ToLine: func(r Record) (string, error) {
 				return "<" + rubyStr(r.Fields["a"]) + "|" + rubyStr(r.Fields["b"]) + ">  ", nil
 			}}},
@@ -209,14 +209,15 @@ func genericGrammars(t *testing.T) map[string]*Grammar {
 
 // TestGrammarMatchesSharedVectors runs every generic-grammar case of
 // testdata/vectors.json (wants produced by the real fileparsing.rb). Cases of
-// the "cron" grammar are read by cron_core's test, which owns that grammar.
+// the "cron" and "host" grammars are read by cron_core's and host_core's tests,
+// which own those grammars.
 func TestGrammarMatchesSharedVectors(t *testing.T) {
 	grammars := genericGrammars(t)
 	ran := 0
 	for _, c := range readVectors(t) {
 		g, ok := grammars[c.Grammar]
 		if !ok {
-			if c.Grammar != "cron" {
+			if c.Grammar != "cron" && c.Grammar != "host" {
 				t.Errorf("%s: unknown grammar %q", c.Name, c.Grammar)
 			}
 			continue

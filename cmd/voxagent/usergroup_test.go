@@ -33,6 +33,7 @@ func nativeUserGroup(p ral.Platform, cat *catalog.Catalog) (hasUser, hasGroup bo
 type fakePlatform struct{ release string }
 
 func (fakePlatform) Executable(string) bool       { return false }
+func (fakePlatform) FileExists(string) bool       { return false }
 func (f fakePlatform) OSRelease() ([]byte, error) { return []byte(f.release), nil }
 
 // User and Group are native only where their contract was measured (spec

@@ -6,7 +6,7 @@ unit is, how units are laid out and routed, and how to add one. Go citations are
 ## What a unit is
 
 A unit is a Go package under `internal/units/<name>` that reproduces one Ruby origin: either Puppet itself (one unit per
-core type: `exec`, `file`, `group`, `notify`, `package`, `service`, `user`) or one Ruby module (`concat`, `cron_core`, `augeas_core`,
+core type: `exec`, `file`, `group`, `notify`, `package`, `service`, `user`) or one Ruby module (`concat`, `cron_core`, `host_core`, `augeas_core`,
 `augeasproviders_sysctl`, `augeasproviders_ssh`). `augeasproviders_core` is a library unit: it serves no type, and holds
 the run object, mixin and fingerprinted files its two dependents share. A unit supplies two things through
 `unit.Unit` (`internal/unit/unit.go`):
@@ -58,10 +58,11 @@ Consequences worth knowing before you move code:
 |---|---|
 | `rubyvalue` | Ruby/Puppet value rendering and coercion (`Inspect`, `Integer()` parsing), parameter access, `UnimplementedValue` |
 | `puppetpath` | Puppet's clean-absolute-path and file-mode rules, used by `file`, `concat`, `exec`, `augeasproviders_core` and `ral` (`augeas_checks.go`) |
+| `suid` | Ruby SUIDManager identity resolution: a user and group to a `syscall.Credential`, with Sensitive redaction; used by `exec` |
 | `sources` | the per-resource `Sources` context value |
 | `command` | running external commands, output capping, shadow and argv runners, `ExecFailure`, executable checks, `RubyWhich` (`Puppet::Util.which`, shared by sysctl and cron) |
 | `nameservice` | libc NSS access through cgo (`nss_linux.go`) for `user`, `group` and `cron` (`PosixUID`, `UserByID`, `AllUsers`) |
-| `parsedfile` | Puppet's ParsedFile engine: a line grammar, per-run records, targets, and the crontab and flat filetypes. It knows no catalog or unit; `cron_core` is its one consumer (`docs/maintainers/apply-spine.md`, "`cron` and the ParsedFile engine") |
+| `parsedfile` | Puppet's ParsedFile engine: a line grammar, per-run records, targets, and the crontab and flat filetypes. It knows no catalog or unit; `cron_core` (crontab filetype) and `host_core` (flat filetype) are its consumers (`docs/maintainers/apply-spine.md`, "`cron` and the ParsedFile engine", "`host`") |
 | `plugintree` | `LibdirTree`, reading the plugin tree under `--libdir` |
 | `augeas` | the libaugeas `dlopen` probe and `Session` (the probe is made at most once per run) |
 | `raltest` | test support: fakes, catalog builders, the libaugeas trace replay (`trace.go`). Never imports `ral` or a unit |
@@ -78,7 +79,7 @@ live in `lib`.
 | `Name` | the unit; equals its directory name under `internal/units` |
 | `Version` | the unit's own semver, independent of voxagent's (see "Versioning") |
 | `Source` | `Origin{Implementation, Version}`: the Ruby implementation reproduced. Core units: `puppet` `8.10.0`. Module units: the module name and an empty `Version` (the versions are in `Releases`) |
-| `Oracle` | `Origin` the behaviour was measured against: `openvox` `8.33.0` for every unit |
+| `Oracle` | `Origin` the behaviour was measured against: `openvox` `8.33.0` for every unit but `host_core`, measured on `8.34.0` |
 | `Types` | the catalog types the unit serves, lower case. Empty for a library unit |
 | `Requires` | names of units this one imports; the layering test allows imports of exactly these |
 | `Releases` | `[]Release{Version, Files, Types}`: one entry per measured version of the module's Ruby files |
@@ -149,6 +150,13 @@ Each unit's remaining checks are its own, and every failure is a `Delegated` rea
   1.3.0, else `MatchFiles` for 1.3.0 or 2.1.0, and no second provider file under `puppet/provider/cron/`), a `Resources`
   purge of `cron`, then value shapes (`rubyvalue.UnimplementedValue`). The release it found is passed to the provider
   (`cron_core/manifest.go:Route`, `pluginRelease`). It also reads `Env.LookupEnv` and `Env.Stderr`, which no other unit uses.
+- `host_core`: the measured platform (`ral.MeasuredRelease`), `/etc/hosts` existing, following symlinks
+  (`ral.Platform.FileExists`, Ruby's `confine exists:`), a `provider` other than `parsed` (`group.ForeignProvider`; the
+  unit requires `group`, and `file` for `file.BucketBackup` and `file.RelabelHook`), the plugin tree (none of the two
+  files is the vendored 1.3.0, else `MatchFiles` for 1.3.0, and no provider file under `puppet/provider/host/` but
+  `parsed.rb`: `checkTree`), a `Resources` purge of `host`, then value shapes (`rubyvalue.UnimplementedValue`). One
+  release covers both openvox's vendored 1.3.0 and SIMP's 2.1.0, whose two files are the same bytes
+  (`host_core/manifest.go:Route`).
 - `exec`, `file`, `notify`, `package`, `service`: native on every run.
 
 D-87, D-89, D-91 and D-94 in [apply-spine.md](apply-spine.md) say what is measured and why each condition delegates.

@@ -45,6 +45,10 @@ type backup struct {
 	// warnings are the run-level, Puppet-sourced warnings backing up raised,
 	// which Apply returns.
 	warnings []ral.Warning
+	// log, when set, receives the lines Puppet's dipper logs while it saves
+	// (level, message, all source Puppet): the lock on paths. The file
+	// resource leaves it nil.
+	log func(level, message string)
 }
 
 // defaultBucket is the only bucket voxagent implements: the one backup =>
@@ -926,6 +930,11 @@ func (b *backup) saveToShard(shard *os.Root, in *os.File, sum, real string) erro
 	defer paths.Close()
 	if err := lockExclusive(paths, lockTimeout); err != nil {
 		return err
+	}
+	if b.log != nil {
+		locked := filepath.Join(shard.Name(), "paths")
+		b.log("debug", "Locked '"+locked+"'")
+		defer b.log("debug", "Unlocked '"+locked+"'")
 	}
 
 	existing, err := regularNoFollow(shard, "contents")

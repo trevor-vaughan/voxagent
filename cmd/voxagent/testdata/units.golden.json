@@ -388,6 +388,46 @@
     "releases": []
   },
   {
+    "name": "host_core",
+    "version": "1.0.0",
+    "source": {
+      "implementation": "puppetlabs-host_core",
+      "version": ""
+    },
+    "oracle": {
+      "implementation": "openvox",
+      "version": "8.34.0"
+    },
+    "types": [
+      "host"
+    ],
+    "requires": [
+      "group",
+      "file"
+    ],
+    "releases": [
+      {
+        "version": "1.3.0",
+        "files": [
+          {
+            "path": "puppet/type/host.rb",
+            "sha256": "e0d448a5835a12a2565d309b348ed071c0f849aeec87372777c948acc6bf1e35"
+          },
+          {
+            "path": "puppet/provider/host/parsed.rb",
+            "sha256": "a396f906038d718f6c69cb7a836f13eed16de5e9b2cf9d39a020eed9e9685f7d"
+          }
+        ],
+        "types": {
+          "host": [
+            "puppet/type/host.rb",
+            "puppet/provider/host/parsed.rb"
+          ]
+        }
+      }
+    ]
+  },
+  {
     "name": "notify",
     "version": "1.0.0",
     "source": {

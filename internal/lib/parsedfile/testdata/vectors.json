@@ -3421,6 +3421,2222 @@
       "want": {
         "text": "\n"
       }
+    },
+    {
+      "name": "host-parse-plain",
+      "grammar": "host",
+      "op": "parse",
+      "text": "127.0.0.1\tlocalhost",
+      "want": {
+        "records": [
+          {
+            "type": "parsed",
+            "line": "",
+            "fields": {
+              "ip": {
+                "s": "127.0.0.1"
+              },
+              "name": {
+                "s": "localhost"
+              },
+              "host_aliases": {
+                "absent": true
+              },
+              "comment": {
+                "s": ""
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "host-parse-ipv6",
+      "grammar": "host",
+      "op": "parse",
+      "text": "::1     localhost",
+      "want": {
+        "records": [
+          {
+            "type": "parsed",
+            "line": "",
+            "fields": {
+              "ip": {
+                "s": "::1"
+              },
+              "name": {
+                "s": "localhost"
+              },
+              "host_aliases": {
+                "absent": true
+              },
+              "comment": {
+                "s": ""
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "host-parse-ip-name-comment",
+      "grammar": "host",
+      "op": "parse",
+      "text": "127.0.0.1   localhost # A comment with a #-char",
+      "want": {
+        "records": [
+          {
+            "type": "parsed",
+            "line": "",
+            "fields": {
+              "ip": {
+                "s": "127.0.0.1"
+              },
+              "name": {
+                "s": "localhost"
+              },
+              "host_aliases": {
+                "absent": true
+              },
+              "comment": {
+                "s": "A comment with a #-char"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "host-parse-aliases",
+      "grammar": "host",
+      "op": "parse",
+      "text": "127.0.0.1   localhost   localhost.localdomain",
+      "want": {
+        "records": [
+          {
+            "type": "parsed",
+            "line": "",
+            "fields": {
+              "ip": {
+                "s": "127.0.0.1"
+              },
+              "name": {
+                "s": "localhost"
+              },
+              "host_aliases": {
+                "s": "localhost.localdomain"
+              },
+              "comment": {
+                "s": ""
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "host-parse-aliases-mixed-ws",
+      "grammar": "host",
+      "op": "parse",
+      "text": "127.0.0.1 host alias1\talias2   alias3",
+      "want": {
+        "records": [
+          {
+            "type": "parsed",
+            "line": "",
+            "fields": {
+              "ip": {
+                "s": "127.0.0.1"
+              },
+              "name": {
+                "s": "host"
+              },
+              "host_aliases": {
+                "s": "alias1 alias2 alias3"
+              },
+              "comment": {
+                "s": ""
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "host-parse-all-fields",
+      "grammar": "host",
+      "op": "parse",
+      "text": "127.0.0.1\t   host  alias1\talias2   alias3   #   A comment with a #-char",
+      "want": {
+        "records": [
+          {
+            "type": "parsed",
+            "line": "",
+            "fields": {
+              "ip": {
+                "s": "127.0.0.1"
+              },
+              "name": {
+                "s": "host"
+              },
+              "host_aliases": {
+                "s": "alias1 alias2 alias3"
+              },
+              "comment": {
+                "s": "A comment with a #-char"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "host-parse-reserialise",
+      "grammar": "host",
+      "op": "parse",
+      "text": "192.0.2.1\th1  a   b   # c",
+      "want": {
+        "records": [
+          {
+            "type": "parsed",
+            "line": "",
+            "fields": {
+              "ip": {
+                "s": "192.0.2.1"
+              },
+              "name": {
+                "s": "h1"
+              },
+              "host_aliases": {
+                "s": "a b"
+              },
+              "comment": {
+                "s": "c"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "host-parse-dead-beef",
+      "grammar": "host",
+      "op": "parse",
+      "text": "dead   beef  # x",
+      "want": {
+        "records": [
+          {
+            "type": "parsed",
+            "line": "",
+            "fields": {
+              "ip": {
+                "s": "dead"
+              },
+              "name": {
+                "s": "beef"
+              },
+              "host_aliases": {
+                "absent": true
+              },
+              "comment": {
+                "s": "x"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "host-parse-ip-only",
+      "grammar": "host",
+      "op": "parse",
+      "text": "192.0.2.3",
+      "want": {
+        "records": [
+          {
+            "type": "incomplete",
+            "line": "192.0.2.3",
+            "fields": {
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "host-parse-ip-space",
+      "grammar": "host",
+      "op": "parse",
+      "text": "127.0.0.1 ",
+      "want": {
+        "records": [
+          {
+            "type": "incomplete",
+            "line": "127.0.0.1 ",
+            "fields": {
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "host-parse-name-only",
+      "grammar": "host",
+      "op": "parse",
+      "text": "www.example.com",
+      "want": {
+        "records": [
+          {
+            "type": "incomplete",
+            "line": "www.example.com",
+            "fields": {
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "host-parse-name-space",
+      "grammar": "host",
+      "op": "parse",
+      "text": "www.example.com ",
+      "want": {
+        "records": [
+          {
+            "type": "incomplete",
+            "line": "www.example.com ",
+            "fields": {
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "host-parse-name-aliases",
+      "grammar": "host",
+      "op": "parse",
+      "text": "www.example.com  www xyz",
+      "want": {
+        "records": [
+          {
+            "type": "incomplete",
+            "line": "www.example.com  www xyz",
+            "fields": {
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "host-parse-ip-comment",
+      "grammar": "host",
+      "op": "parse",
+      "text": "127.0.0.1  #www xyz",
+      "want": {
+        "records": [
+          {
+            "type": "incomplete",
+            "line": "127.0.0.1  #www xyz",
+            "fields": {
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "host-parse-name-comment",
+      "grammar": "host",
+      "op": "parse",
+      "text": "xyz  #www test123",
+      "want": {
+        "records": [
+          {
+            "type": "incomplete",
+            "line": "xyz  #www test123",
+            "fields": {
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "host-parse-crazy",
+      "grammar": "host",
+      "op": "parse",
+      "text": "%th1s is a\t cr$zy    !incompl1t line",
+      "want": {
+        "records": [
+          {
+            "type": "incomplete",
+            "line": "%th1s is a\t cr$zy    !incompl1t line",
+            "fields": {
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "host-parse-face",
+      "grammar": "host",
+      "op": "parse",
+      "text": "face",
+      "want": {
+        "records": [
+          {
+            "type": "incomplete",
+            "line": "face",
+            "fields": {
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "host-parse-tab-comment",
+      "grammar": "host",
+      "op": "parse",
+      "text": "\t# c",
+      "want": {
+        "records": [
+          {
+            "type": "incomplete",
+            "line": "\t# c",
+            "fields": {
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "host-parse-indented",
+      "grammar": "host",
+      "op": "parse",
+      "text": "  indented",
+      "want": {
+        "records": [
+          {
+            "type": "incomplete",
+            "line": "  indented",
+            "fields": {
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "host-parse-hash-space",
+      "grammar": "host",
+      "op": "parse",
+      "text": "# ",
+      "want": {
+        "records": [
+          {
+            "type": "comment",
+            "line": "# ",
+            "fields": {
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "host-parse-hash-alone",
+      "grammar": "host",
+      "op": "parse",
+      "text": "#",
+      "want": {
+        "records": [
+          {
+            "type": "comment",
+            "line": "#",
+            "fields": {
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "host-parse-empty",
+      "grammar": "host",
+      "op": "parse",
+      "text": "",
+      "want": {
+        "records": [
+
+        ]
+      }
+    },
+    {
+      "name": "host-parse-blank-spaces",
+      "grammar": "host",
+      "op": "parse",
+      "text": "   \t ",
+      "want": {
+        "records": [
+          {
+            "type": "blank",
+            "line": "   \t ",
+            "fields": {
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "host-parse-blank-vtab",
+      "grammar": "host",
+      "op": "parse",
+      "text": "\u000b",
+      "want": {
+        "records": [
+          {
+            "type": "blank",
+            "line": "\u000b",
+            "fields": {
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "host-parse-single-char-ip",
+      "grammar": "host",
+      "op": "parse",
+      "text": "f h",
+      "want": {
+        "records": [
+          {
+            "type": "incomplete",
+            "line": "f h",
+            "fields": {
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "host-parse-upper-ip",
+      "grammar": "host",
+      "op": "parse",
+      "text": "FE80::1 h",
+      "want": {
+        "records": [
+          {
+            "type": "incomplete",
+            "line": "FE80::1 h",
+            "fields": {
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "host-parse-v6-link-local",
+      "grammar": "host",
+      "op": "parse",
+      "text": "fe80::1%eth0 h",
+      "want": {
+        "records": [
+          {
+            "type": "incomplete",
+            "line": "fe80::1%eth0 h",
+            "fields": {
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "host-parse-name-starts-hash",
+      "grammar": "host",
+      "op": "parse",
+      "text": "10.0.0.1 #c",
+      "want": {
+        "records": [
+          {
+            "type": "incomplete",
+            "line": "10.0.0.1 #c",
+            "fields": {
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "host-parse-name-starts-plus",
+      "grammar": "host",
+      "op": "parse",
+      "text": "10.0.0.1 +x",
+      "want": {
+        "records": [
+          {
+            "type": "incomplete",
+            "line": "10.0.0.1 +x",
+            "fields": {
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "host-parse-name-has-hash",
+      "grammar": "host",
+      "op": "parse",
+      "text": "1.2.3.4 h#x y",
+      "want": {
+        "records": [
+          {
+            "type": "parsed",
+            "line": "",
+            "fields": {
+              "ip": {
+                "s": "1.2.3.4"
+              },
+              "name": {
+                "s": "h#x"
+              },
+              "host_aliases": {
+                "s": "y"
+              },
+              "comment": {
+                "s": ""
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "host-parse-alias-hash",
+      "grammar": "host",
+      "op": "parse",
+      "text": "1.2.3.4 h a#b",
+      "want": {
+        "records": [
+          {
+            "type": "incomplete",
+            "line": "1.2.3.4 h a#b",
+            "fields": {
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "host-parse-empty-comment",
+      "grammar": "host",
+      "op": "parse",
+      "text": "1.2.3.4 h #",
+      "want": {
+        "records": [
+          {
+            "type": "incomplete",
+            "line": "1.2.3.4 h #",
+            "fields": {
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "host-parse-empty-comment-aliases",
+      "grammar": "host",
+      "op": "parse",
+      "text": "1.2.3.4 h a #",
+      "want": {
+        "records": [
+          {
+            "type": "incomplete",
+            "line": "1.2.3.4 h a #",
+            "fields": {
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "host-parse-trailing-space",
+      "grammar": "host",
+      "op": "parse",
+      "text": "10.0.0.1         host1         ",
+      "want": {
+        "records": [
+          {
+            "type": "parsed",
+            "line": "",
+            "fields": {
+              "ip": {
+                "s": "10.0.0.1"
+              },
+              "name": {
+                "s": "host1"
+              },
+              "host_aliases": {
+                "absent": true
+              },
+              "comment": {
+                "s": ""
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "host-parse-trailing-tab-comment",
+      "grammar": "host",
+      "op": "parse",
+      "text": "1.2.3.4 h a\t# c \t",
+      "want": {
+        "records": [
+          {
+            "type": "incomplete",
+            "line": "1.2.3.4 h a\t# c \t",
+            "fields": {
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "host-parse-vtab-sep",
+      "grammar": "host",
+      "op": "parse",
+      "text": "1.2.3.4\u000bh\u000ba\u000bb",
+      "want": {
+        "records": [
+          {
+            "type": "incomplete",
+            "line": "1.2.3.4\u000bh\u000ba\u000bb",
+            "fields": {
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "host-parse-ff-sep",
+      "grammar": "host",
+      "op": "parse",
+      "text": "1.2.3.4\fh\fa",
+      "want": {
+        "records": [
+          {
+            "type": "incomplete",
+            "line": "1.2.3.4\fh\fa",
+            "fields": {
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "host-parse-cr-end",
+      "grammar": "host",
+      "op": "parse",
+      "text": "1.2.3.4 h a\r",
+      "want": {
+        "records": [
+          {
+            "type": "incomplete",
+            "line": "1.2.3.4 h a\r",
+            "fields": {
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "host-parse-em-space-sep",
+      "grammar": "host",
+      "op": "parse",
+      "text": "1.2.3.4 h",
+      "want": {
+        "records": [
+          {
+            "type": "incomplete",
+            "line": "1.2.3.4 h",
+            "fields": {
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "host-parse-nbsp-alias",
+      "grammar": "host",
+      "op": "parse",
+      "text": "1.2.3.4 h a b",
+      "want": {
+        "records": [
+          {
+            "type": "incomplete",
+            "line": "1.2.3.4 h a b",
+            "fields": {
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "host-parse-non-ascii",
+      "grammar": "host",
+      "op": "parse",
+      "text": "1.2.3.4 hé aé # cé",
+      "want": {
+        "records": [
+          {
+            "type": "parsed",
+            "line": "",
+            "fields": {
+              "ip": {
+                "s": "1.2.3.4"
+              },
+              "name": {
+                "s": "hé"
+              },
+              "host_aliases": {
+                "s": "aé"
+              },
+              "comment": {
+                "s": "cé"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "host-parse-comment-in-comment",
+      "grammar": "host",
+      "op": "parse",
+      "text": "1.2.3.4 h # a # b",
+      "want": {
+        "records": [
+          {
+            "type": "incomplete",
+            "line": "1.2.3.4 h # a # b",
+            "fields": {
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "host-parse-hash-first-comment-line",
+      "grammar": "host",
+      "op": "parse",
+      "text": "#1.2.3.4 h",
+      "want": {
+        "records": [
+          {
+            "type": "comment",
+            "line": "#1.2.3.4 h",
+            "fields": {
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "host-parse-indented-host",
+      "grammar": "host",
+      "op": "parse",
+      "text": "  1.2.3.4 h",
+      "want": {
+        "records": [
+          {
+            "type": "incomplete",
+            "line": "  1.2.3.4 h",
+            "fields": {
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "host-parse-colon-name",
+      "grammar": "host",
+      "op": "parse",
+      "text": "1.2.3.4 :x",
+      "want": {
+        "records": [
+          {
+            "type": "parsed",
+            "line": "",
+            "fields": {
+              "ip": {
+                "s": "1.2.3.4"
+              },
+              "name": {
+                "s": ":x"
+              },
+              "host_aliases": {
+                "absent": true
+              },
+              "comment": {
+                "s": ""
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "host-parse-plus-in-name",
+      "grammar": "host",
+      "op": "parse",
+      "text": "1.2.3.4 h+x",
+      "want": {
+        "records": [
+          {
+            "type": "parsed",
+            "line": "",
+            "fields": {
+              "ip": {
+                "s": "1.2.3.4"
+              },
+              "name": {
+                "s": "h+x"
+              },
+              "host_aliases": {
+                "absent": true
+              },
+              "comment": {
+                "s": ""
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "host-parse-fixture-valid-hosts",
+      "grammar": "host",
+      "op": "parse",
+      "text": "# Some leading comment, that should be ignored\n# The next line is empty so it should be ignored\n\n::1 localhost\n\n# We now try another delimiter: Several tabs\n127.0.0.1         localhost\n\n# No test trailing spaces\n10.0.0.1         host1         \n\n# Ok its time to test aliases\n2001:252:0:1::2008:8 ipv6host alias1\n192.168.0.1 ipv4host alias2 alias3\n\n# Testing inlinecomments now\n192.168.0.2 host3 # This is host3\n192.168.0.3 host4 alias10 # This is host4\n192.168.0.4 host5   alias11             alias12      #     This is host5\n",
+      "want": {
+        "records": [
+          {
+            "type": "comment",
+            "line": "# Some leading comment, that should be ignored",
+            "fields": {
+            }
+          },
+          {
+            "type": "comment",
+            "line": "# The next line is empty so it should be ignored",
+            "fields": {
+            }
+          },
+          {
+            "type": "blank",
+            "line": "",
+            "fields": {
+            }
+          },
+          {
+            "type": "parsed",
+            "line": "",
+            "fields": {
+              "ip": {
+                "s": "::1"
+              },
+              "name": {
+                "s": "localhost"
+              },
+              "host_aliases": {
+                "absent": true
+              },
+              "comment": {
+                "s": ""
+              }
+            }
+          },
+          {
+            "type": "blank",
+            "line": "",
+            "fields": {
+            }
+          },
+          {
+            "type": "comment",
+            "line": "# We now try another delimiter: Several tabs",
+            "fields": {
+            }
+          },
+          {
+            "type": "parsed",
+            "line": "",
+            "fields": {
+              "ip": {
+                "s": "127.0.0.1"
+              },
+              "name": {
+                "s": "localhost"
+              },
+              "host_aliases": {
+                "absent": true
+              },
+              "comment": {
+                "s": ""
+              }
+            }
+          },
+          {
+            "type": "blank",
+            "line": "",
+            "fields": {
+            }
+          },
+          {
+            "type": "comment",
+            "line": "# No test trailing spaces",
+            "fields": {
+            }
+          },
+          {
+            "type": "parsed",
+            "line": "",
+            "fields": {
+              "ip": {
+                "s": "10.0.0.1"
+              },
+              "name": {
+                "s": "host1"
+              },
+              "host_aliases": {
+                "absent": true
+              },
+              "comment": {
+                "s": ""
+              }
+            }
+          },
+          {
+            "type": "blank",
+            "line": "",
+            "fields": {
+            }
+          },
+          {
+            "type": "comment",
+            "line": "# Ok its time to test aliases",
+            "fields": {
+            }
+          },
+          {
+            "type": "parsed",
+            "line": "",
+            "fields": {
+              "ip": {
+                "s": "2001:252:0:1::2008:8"
+              },
+              "name": {
+                "s": "ipv6host"
+              },
+              "host_aliases": {
+                "s": "alias1"
+              },
+              "comment": {
+                "s": ""
+              }
+            }
+          },
+          {
+            "type": "parsed",
+            "line": "",
+            "fields": {
+              "ip": {
+                "s": "192.168.0.1"
+              },
+              "name": {
+                "s": "ipv4host"
+              },
+              "host_aliases": {
+                "s": "alias2 alias3"
+              },
+              "comment": {
+                "s": ""
+              }
+            }
+          },
+          {
+            "type": "blank",
+            "line": "",
+            "fields": {
+            }
+          },
+          {
+            "type": "comment",
+            "line": "# Testing inlinecomments now",
+            "fields": {
+            }
+          },
+          {
+            "type": "parsed",
+            "line": "",
+            "fields": {
+              "ip": {
+                "s": "192.168.0.2"
+              },
+              "name": {
+                "s": "host3"
+              },
+              "host_aliases": {
+                "absent": true
+              },
+              "comment": {
+                "s": "This is host3"
+              }
+            }
+          },
+          {
+            "type": "parsed",
+            "line": "",
+            "fields": {
+              "ip": {
+                "s": "192.168.0.3"
+              },
+              "name": {
+                "s": "host4"
+              },
+              "host_aliases": {
+                "s": "alias10"
+              },
+              "comment": {
+                "s": "This is host4"
+              }
+            }
+          },
+          {
+            "type": "parsed",
+            "line": "",
+            "fields": {
+              "ip": {
+                "s": "192.168.0.4"
+              },
+              "name": {
+                "s": "host5"
+              },
+              "host_aliases": {
+                "s": "alias11 alias12"
+              },
+              "comment": {
+                "s": "This is host5"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "host-parse-three-lines",
+      "grammar": "host",
+      "op": "parse",
+      "text": "1.2.3.4 h\n\n# c\nzzz\n5.6.7.8 g a",
+      "want": {
+        "records": [
+          {
+            "type": "incomplete",
+            "line": "1.2.3.4 h",
+            "fields": {
+            }
+          },
+          {
+            "type": "blank",
+            "line": "",
+            "fields": {
+            }
+          },
+          {
+            "type": "comment",
+            "line": "# c",
+            "fields": {
+            }
+          },
+          {
+            "type": "incomplete",
+            "line": "zzz",
+            "fields": {
+            }
+          },
+          {
+            "type": "incomplete",
+            "line": "5.6.7.8 g a",
+            "fields": {
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "host-parse-no-final-newline",
+      "grammar": "host",
+      "op": "parse",
+      "text": "1.2.3.4 h",
+      "want": {
+        "records": [
+          {
+            "type": "incomplete",
+            "line": "1.2.3.4 h",
+            "fields": {
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "host-parse-crlf-lines",
+      "grammar": "host",
+      "op": "parse",
+      "text": "1.2.3.4 h a\r\n5.6.7.8 g\r\n",
+      "want": {
+        "records": [
+          {
+            "type": "incomplete",
+            "line": "1.2.3.4 h a\r",
+            "fields": {
+            }
+          },
+          {
+            "type": "incomplete",
+            "line": "5.6.7.8 g\r",
+            "fields": {
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "host-to_line-simple",
+      "grammar": "host",
+      "op": "to_line",
+      "record": {
+        "type": "parsed",
+        "fields": {
+          "ip": {
+            "s": "127.0.0.1"
+          },
+          "name": {
+            "s": "localhost"
+          },
+          "host_aliases": {
+            "absent": true
+          },
+          "comment": {
+            "s": ""
+          }
+        }
+      },
+      "want": {
+        "line": "127.0.0.1\tlocalhost"
+      }
+    },
+    {
+      "name": "host-to_line-aliases",
+      "grammar": "host",
+      "op": "to_line",
+      "record": {
+        "type": "parsed",
+        "fields": {
+          "ip": {
+            "s": "127.0.0.1"
+          },
+          "name": {
+            "s": "h"
+          },
+          "host_aliases": {
+            "s": "a b"
+          },
+          "comment": {
+            "s": ""
+          }
+        }
+      },
+      "want": {
+        "line": "127.0.0.1\th\ta b"
+      }
+    },
+    {
+      "name": "host-to_line-comment",
+      "grammar": "host",
+      "op": "to_line",
+      "record": {
+        "type": "parsed",
+        "fields": {
+          "ip": {
+            "s": "127.0.0.1"
+          },
+          "name": {
+            "s": "h"
+          },
+          "host_aliases": {
+            "absent": true
+          },
+          "comment": {
+            "s": "Bazinga!"
+          }
+        }
+      },
+      "want": {
+        "line": "127.0.0.1\th\t# Bazinga!"
+      }
+    },
+    {
+      "name": "host-to_line-aliases-comment",
+      "grammar": "host",
+      "op": "to_line",
+      "record": {
+        "type": "parsed",
+        "fields": {
+          "ip": {
+            "s": "127.0.0.1"
+          },
+          "name": {
+            "s": "h"
+          },
+          "host_aliases": {
+            "s": "a1 a2"
+          },
+          "comment": {
+            "s": "Bazinga!"
+          }
+        }
+      },
+      "want": {
+        "line": "127.0.0.1\th\ta1 a2\t# Bazinga!"
+      }
+    },
+    {
+      "name": "host-to_line-empty-aliases",
+      "grammar": "host",
+      "op": "to_line",
+      "record": {
+        "type": "parsed",
+        "fields": {
+          "ip": {
+            "s": "127.0.0.1"
+          },
+          "name": {
+            "s": "h"
+          },
+          "host_aliases": {
+            "s": ""
+          },
+          "comment": {
+            "s": ""
+          }
+        }
+      },
+      "want": {
+        "line": "127.0.0.1\th\t"
+      }
+    },
+    {
+      "name": "host-to_line-empty-aliases-comment",
+      "grammar": "host",
+      "op": "to_line",
+      "record": {
+        "type": "parsed",
+        "fields": {
+          "ip": {
+            "s": "127.0.0.1"
+          },
+          "name": {
+            "s": "h"
+          },
+          "host_aliases": {
+            "s": ""
+          },
+          "comment": {
+            "s": "c"
+          }
+        }
+      },
+      "want": {
+        "line": "127.0.0.1\th\t\t# c"
+      }
+    },
+    {
+      "name": "host-to_line-nil-aliases",
+      "grammar": "host",
+      "op": "to_line",
+      "record": {
+        "type": "parsed",
+        "fields": {
+          "ip": {
+            "s": "127.0.0.1"
+          },
+          "name": {
+            "s": "h"
+          },
+          "host_aliases": null,
+          "comment": {
+            "s": ""
+          }
+        }
+      },
+      "want": {
+        "line": "127.0.0.1\th"
+      }
+    },
+    {
+      "name": "host-to_line-no-aliases-no-comment-keys",
+      "grammar": "host",
+      "op": "to_line",
+      "record": {
+        "type": "parsed",
+        "fields": {
+          "ip": {
+            "s": "127.0.0.1"
+          },
+          "name": {
+            "s": "h"
+          }
+        }
+      },
+      "want": {
+        "line": "127.0.0.1\th"
+      }
+    },
+    {
+      "name": "host-to_line-comment-absent",
+      "grammar": "host",
+      "op": "to_line",
+      "record": {
+        "type": "parsed",
+        "fields": {
+          "ip": {
+            "s": "127.0.0.1"
+          },
+          "name": {
+            "s": "h"
+          },
+          "comment": {
+            "absent": true
+          }
+        }
+      },
+      "want": {
+        "line": "127.0.0.1\th\t# absent"
+      }
+    },
+    {
+      "name": "host-to_line-empty-ip",
+      "grammar": "host",
+      "op": "to_line",
+      "record": {
+        "type": "parsed",
+        "fields": {
+          "ip": {
+            "s": ""
+          },
+          "name": {
+            "s": "h"
+          }
+        }
+      },
+      "want": {
+        "line": "\th"
+      }
+    },
+    {
+      "name": "host-to_line-empty-name",
+      "grammar": "host",
+      "op": "to_line",
+      "record": {
+        "type": "parsed",
+        "fields": {
+          "ip": {
+            "s": "1.2.3.4"
+          },
+          "name": {
+            "s": ""
+          }
+        }
+      },
+      "want": {
+        "line": "1.2.3.4\t"
+      }
+    },
+    {
+      "name": "host-to_line-no-ip",
+      "grammar": "host",
+      "op": "to_line",
+      "record": {
+        "type": "parsed",
+        "fields": {
+          "name": {
+            "s": "h"
+          }
+        }
+      },
+      "want": {
+        "error": "ip is a required attribute for hosts"
+      }
+    },
+    {
+      "name": "host-to_line-ip-absent",
+      "grammar": "host",
+      "op": "to_line",
+      "record": {
+        "type": "parsed",
+        "fields": {
+          "ip": {
+            "absent": true
+          },
+          "name": {
+            "s": "h"
+          }
+        }
+      },
+      "want": {
+        "error": "ip is a required attribute for hosts"
+      }
+    },
+    {
+      "name": "host-to_line-ip-nil",
+      "grammar": "host",
+      "op": "to_line",
+      "record": {
+        "type": "parsed",
+        "fields": {
+          "ip": null,
+          "name": {
+            "s": "h"
+          }
+        }
+      },
+      "want": {
+        "error": "ip is a required attribute for hosts"
+      }
+    },
+    {
+      "name": "host-to_line-no-name",
+      "grammar": "host",
+      "op": "to_line",
+      "record": {
+        "type": "parsed",
+        "fields": {
+          "ip": {
+            "s": "1.2.3.4"
+          }
+        }
+      },
+      "want": {
+        "error": "name is a required attribute for hosts"
+      }
+    },
+    {
+      "name": "host-to_line-name-absent",
+      "grammar": "host",
+      "op": "to_line",
+      "record": {
+        "type": "parsed",
+        "fields": {
+          "ip": {
+            "s": "1.2.3.4"
+          },
+          "name": {
+            "absent": true
+          }
+        }
+      },
+      "want": {
+        "error": "name is a required attribute for hosts"
+      }
+    },
+    {
+      "name": "host-to_line-name-nil",
+      "grammar": "host",
+      "op": "to_line",
+      "record": {
+        "type": "parsed",
+        "fields": {
+          "ip": {
+            "s": "1.2.3.4"
+          },
+          "name": null
+        }
+      },
+      "want": {
+        "error": "name is a required attribute for hosts"
+      }
+    },
+    {
+      "name": "host-to_line-neither",
+      "grammar": "host",
+      "op": "to_line",
+      "record": {
+        "type": "parsed",
+        "fields": {
+        }
+      },
+      "want": {
+        "error": "ip is a required attribute for hosts"
+      }
+    },
+    {
+      "name": "host-to_line-ip-nil-name-absent",
+      "grammar": "host",
+      "op": "to_line",
+      "record": {
+        "type": "parsed",
+        "fields": {
+          "ip": null,
+          "name": {
+            "absent": true
+          }
+        }
+      },
+      "want": {
+        "error": "ip is a required attribute for hosts"
+      }
+    },
+    {
+      "name": "host-to_line-line-ignored",
+      "grammar": "host",
+      "op": "to_line",
+      "record": {
+        "type": "parsed",
+        "fields": {
+          "ip": {
+            "s": "1.2.3.4"
+          },
+          "name": {
+            "s": "h"
+          }
+        },
+        "line": "9.9.9.9 old"
+      },
+      "want": {
+        "line": "1.2.3.4\th"
+      }
+    },
+    {
+      "name": "host-to_file-mixed",
+      "grammar": "host",
+      "op": "to_file",
+      "records": [
+        {
+          "type": "comment",
+          "line": "# keep",
+          "fields": {
+          }
+        },
+        {
+          "type": "parsed",
+          "fields": {
+            "ip": {
+              "s": "127.0.0.1"
+            },
+            "name": {
+              "s": "localhost"
+            },
+            "host_aliases": {
+              "s": "l"
+            },
+            "comment": {
+              "s": ""
+            }
+          }
+        },
+        {
+          "type": "blank",
+          "line": "",
+          "fields": {
+          }
+        },
+        {
+          "type": "incomplete",
+          "line": "192.0.2.3",
+          "fields": {
+          }
+        },
+        {
+          "type": "parsed",
+          "fields": {
+            "ip": {
+              "s": "::1"
+            },
+            "name": {
+              "s": "h"
+            },
+            "host_aliases": {
+              "s": ""
+            },
+            "comment": {
+              "s": "c"
+            }
+          }
+        }
+      ],
+      "want": {
+        "text": "# keep\n127.0.0.1\tlocalhost\tl\n\n192.0.2.3\n::1\th\t\t# c\n"
+      }
+    },
+    {
+      "name": "host-to_file-none",
+      "grammar": "host",
+      "op": "to_file",
+      "records": [
+
+      ],
+      "want": {
+        "text": "\n"
+      }
+    },
+    {
+      "name": "host-to_file-missing-ip",
+      "grammar": "host",
+      "op": "to_file",
+      "records": [
+        {
+          "type": "parsed",
+          "fields": {
+            "name": {
+              "s": "h"
+            }
+          }
+        }
+      ],
+      "want": {
+        "error": "ip is a required attribute for hosts"
+      }
+    },
+    {
+      "name": "host-parse-h1-alias-hash",
+      "grammar": "host",
+      "op": "parse",
+      "text": "1.2.3.4 h1 a#b",
+      "want": {
+        "records": [
+          {
+            "type": "parsed",
+            "line": "",
+            "fields": {
+              "ip": {
+                "s": "1.2.3.4"
+              },
+              "name": {
+                "s": "h1"
+              },
+              "host_aliases": {
+                "s": "a"
+              },
+              "comment": {
+                "s": "b"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "host-parse-h1-name-hash-comment",
+      "grammar": "host",
+      "op": "parse",
+      "text": "1.2.3.4 h1#c",
+      "want": {
+        "records": [
+          {
+            "type": "parsed",
+            "line": "",
+            "fields": {
+              "ip": {
+                "s": "1.2.3.4"
+              },
+              "name": {
+                "s": "h1#c"
+              },
+              "host_aliases": {
+                "absent": true
+              },
+              "comment": {
+                "s": ""
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "host-parse-h1-empty-comment",
+      "grammar": "host",
+      "op": "parse",
+      "text": "1.2.3.4 h1 #",
+      "want": {
+        "records": [
+          {
+            "type": "parsed",
+            "line": "",
+            "fields": {
+              "ip": {
+                "s": "1.2.3.4"
+              },
+              "name": {
+                "s": "h1"
+              },
+              "host_aliases": {
+                "absent": true
+              },
+              "comment": {
+                "s": ""
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "host-parse-h1-empty-comment-aliases",
+      "grammar": "host",
+      "op": "parse",
+      "text": "1.2.3.4 h1 a #",
+      "want": {
+        "records": [
+          {
+            "type": "parsed",
+            "line": "",
+            "fields": {
+              "ip": {
+                "s": "1.2.3.4"
+              },
+              "name": {
+                "s": "h1"
+              },
+              "host_aliases": {
+                "s": "a"
+              },
+              "comment": {
+                "s": ""
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "host-parse-h1-comment-no-space",
+      "grammar": "host",
+      "op": "parse",
+      "text": "1.2.3.4 h1 a#c",
+      "want": {
+        "records": [
+          {
+            "type": "parsed",
+            "line": "",
+            "fields": {
+              "ip": {
+                "s": "1.2.3.4"
+              },
+              "name": {
+                "s": "h1"
+              },
+              "host_aliases": {
+                "s": "a"
+              },
+              "comment": {
+                "s": "c"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "host-parse-h1-trailing-ws-aliases",
+      "grammar": "host",
+      "op": "parse",
+      "text": "1.2.3.4 h1 a  b \t",
+      "want": {
+        "records": [
+          {
+            "type": "parsed",
+            "line": "",
+            "fields": {
+              "ip": {
+                "s": "1.2.3.4"
+              },
+              "name": {
+                "s": "h1"
+              },
+              "host_aliases": {
+                "s": "a b "
+              },
+              "comment": {
+                "s": ""
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "host-parse-h1-tab-comment-trailing",
+      "grammar": "host",
+      "op": "parse",
+      "text": "1.2.3.4 h1 a\t# c \t",
+      "want": {
+        "records": [
+          {
+            "type": "parsed",
+            "line": "",
+            "fields": {
+              "ip": {
+                "s": "1.2.3.4"
+              },
+              "name": {
+                "s": "h1"
+              },
+              "host_aliases": {
+                "s": "a"
+              },
+              "comment": {
+                "s": "c \t"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "host-parse-h1-vtab-sep",
+      "grammar": "host",
+      "op": "parse",
+      "text": "1.2.3.4\u000bh1\u000ba\u000bb",
+      "want": {
+        "records": [
+          {
+            "type": "parsed",
+            "line": "",
+            "fields": {
+              "ip": {
+                "s": "1.2.3.4"
+              },
+              "name": {
+                "s": "h1"
+              },
+              "host_aliases": {
+                "s": "a b"
+              },
+              "comment": {
+                "s": ""
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "host-parse-h1-ff-sep",
+      "grammar": "host",
+      "op": "parse",
+      "text": "1.2.3.4\fh1\fa",
+      "want": {
+        "records": [
+          {
+            "type": "parsed",
+            "line": "",
+            "fields": {
+              "ip": {
+                "s": "1.2.3.4"
+              },
+              "name": {
+                "s": "h1"
+              },
+              "host_aliases": {
+                "s": "a"
+              },
+              "comment": {
+                "s": ""
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "host-parse-h1-cr-end",
+      "grammar": "host",
+      "op": "parse",
+      "text": "1.2.3.4 h1 a\r",
+      "want": {
+        "records": [
+          {
+            "type": "parsed",
+            "line": "",
+            "fields": {
+              "ip": {
+                "s": "1.2.3.4"
+              },
+              "name": {
+                "s": "h1"
+              },
+              "host_aliases": {
+                "s": "a "
+              },
+              "comment": {
+                "s": ""
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "host-parse-h1-cr-comment",
+      "grammar": "host",
+      "op": "parse",
+      "text": "1.2.3.4 h1 a # c\r",
+      "want": {
+        "records": [
+          {
+            "type": "parsed",
+            "line": "",
+            "fields": {
+              "ip": {
+                "s": "1.2.3.4"
+              },
+              "name": {
+                "s": "h1"
+              },
+              "host_aliases": {
+                "s": "a"
+              },
+              "comment": {
+                "s": "c\r"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "host-parse-h1-em-space-sep",
+      "grammar": "host",
+      "op": "parse",
+      "text": "1.2.3.4 h1",
+      "want": {
+        "records": [
+          {
+            "type": "incomplete",
+            "line": "1.2.3.4 h1",
+            "fields": {
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "host-parse-h1-nbsp-alias",
+      "grammar": "host",
+      "op": "parse",
+      "text": "1.2.3.4 h1 a b",
+      "want": {
+        "records": [
+          {
+            "type": "parsed",
+            "line": "",
+            "fields": {
+              "ip": {
+                "s": "1.2.3.4"
+              },
+              "name": {
+                "s": "h1"
+              },
+              "host_aliases": {
+                "s": "a b"
+              },
+              "comment": {
+                "s": ""
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "host-parse-h1-comment-in-comment",
+      "grammar": "host",
+      "op": "parse",
+      "text": "1.2.3.4 h1 # a # b",
+      "want": {
+        "records": [
+          {
+            "type": "parsed",
+            "line": "",
+            "fields": {
+              "ip": {
+                "s": "1.2.3.4"
+              },
+              "name": {
+                "s": "h1"
+              },
+              "host_aliases": {
+                "absent": true
+              },
+              "comment": {
+                "s": "a # b"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "host-parse-h1-indented",
+      "grammar": "host",
+      "op": "parse",
+      "text": "  1.2.3.4 h1",
+      "want": {
+        "records": [
+          {
+            "type": "incomplete",
+            "line": "  1.2.3.4 h1",
+            "fields": {
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "host-parse-h1-three-lines",
+      "grammar": "host",
+      "op": "parse",
+      "text": "1.2.3.4 h1\n\n# c\nzzz\n5.6.7.8 g1 a",
+      "want": {
+        "records": [
+          {
+            "type": "parsed",
+            "line": "",
+            "fields": {
+              "ip": {
+                "s": "1.2.3.4"
+              },
+              "name": {
+                "s": "h1"
+              },
+              "host_aliases": {
+                "absent": true
+              },
+              "comment": {
+                "s": ""
+              }
+            }
+          },
+          {
+            "type": "blank",
+            "line": "",
+            "fields": {
+            }
+          },
+          {
+            "type": "comment",
+            "line": "# c",
+            "fields": {
+            }
+          },
+          {
+            "type": "incomplete",
+            "line": "zzz",
+            "fields": {
+            }
+          },
+          {
+            "type": "parsed",
+            "line": "",
+            "fields": {
+              "ip": {
+                "s": "5.6.7.8"
+              },
+              "name": {
+                "s": "g1"
+              },
+              "host_aliases": {
+                "s": "a"
+              },
+              "comment": {
+                "s": ""
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "host-parse-h1-crlf-lines",
+      "grammar": "host",
+      "op": "parse",
+      "text": "1.2.3.4 h1 a\r\n5.6.7.8 g1\r\n",
+      "want": {
+        "records": [
+          {
+            "type": "parsed",
+            "line": "",
+            "fields": {
+              "ip": {
+                "s": "1.2.3.4"
+              },
+              "name": {
+                "s": "h1"
+              },
+              "host_aliases": {
+                "s": "a "
+              },
+              "comment": {
+                "s": ""
+              }
+            }
+          },
+          {
+            "type": "parsed",
+            "line": "",
+            "fields": {
+              "ip": {
+                "s": "5.6.7.8"
+              },
+              "name": {
+                "s": "g1"
+              },
+              "host_aliases": {
+                "absent": true
+              },
+              "comment": {
+                "s": ""
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "host-parse-h1-comment-only-spaces",
+      "grammar": "host",
+      "op": "parse",
+      "text": "1.2.3.4 h1 #   ",
+      "want": {
+        "records": [
+          {
+            "type": "parsed",
+            "line": "",
+            "fields": {
+              "ip": {
+                "s": "1.2.3.4"
+              },
+              "name": {
+                "s": "h1"
+              },
+              "host_aliases": {
+                "absent": true
+              },
+              "comment": {
+                "s": ""
+              }
+            }
+          }
+        ]
+      }
     }
   ]
 }

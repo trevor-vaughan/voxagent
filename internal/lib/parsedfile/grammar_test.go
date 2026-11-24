@@ -151,7 +151,7 @@ func TestParsedfileSimpleRoundTrip(t *testing.T) {
 func TestHooksMayWriteFlags(t *testing.T) {
 	g, err := NewGrammar(
 		LineType{Name: "t", Text: true, Match: RE2(regexp.MustCompile(`.`)),
-			PostParse: func(r *Record) bool { r.Flags["parsed"] = true; return true },
+			PostParse: func(r *Record) error { r.Flags["parsed"] = true; return nil },
 			PreGen:    func(r *Record) { r.Flags["gen"] = true; r.Fields["f"] = Value{Kind: Str, S: "x"} }},
 	)
 	if err != nil {
@@ -166,12 +166,12 @@ func TestHooksMayWriteFlags(t *testing.T) {
 	}
 }
 
-// TestPostParseRejectionIsAParseError: a PostParse that returns false fails
+// TestPostParseErrNoRecordIsParseError: a PostParse that returns ErrNoRecord fails
 // the parse for its line, as an error raised there would, without trying the
 // types after it.
-func TestPostParseRejectionIsAParseError(t *testing.T) {
+func TestPostParseErrNoRecordIsParseError(t *testing.T) {
 	g, err := NewGrammar(
-		LineType{Name: "t", Text: true, Match: RE2(regexp.MustCompile(`^bad`)), PostParse: func(*Record) bool { return false }},
+		LineType{Name: "t", Text: true, Match: RE2(regexp.MustCompile(`^bad`)), PostParse: func(*Record) error { return ErrNoRecord }},
 		LineType{Name: "any", Text: true, Match: RE2(regexp.MustCompile(`.`))},
 	)
 	if err != nil {
@@ -194,5 +194,23 @@ func TestListOfAbsentStringIsAValue(t *testing.T) {
 	got, err := g.ToLine(Record{Type: "r", Fields: map[string]Value{"a": {Kind: List, L: []string{"absent"}}}})
 	if err != nil || got != `["absent"]` {
 		t.Errorf("ToLine = %q, %v; want [\"absent\"]", got, err)
+	}
+}
+
+// TestPostParseErrorAbortsParse: any other PostParse error aborts the parse and
+// is returned as is, not as a ParseError.
+func TestPostParseErrorAbortsParse(t *testing.T) {
+	sentinel := errors.New("boom")
+	g, err := NewGrammar(
+		LineType{Name: "t", Text: true, Match: RE2(regexp.MustCompile(`^bad`)), PostParse: func(*Record) error { return sentinel }},
+		LineType{Name: "any", Text: true, Match: RE2(regexp.MustCompile(`.`))},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = g.Parse("ok\nbad line")
+	var pe *ParseError
+	if err != sentinel || errors.As(err, &pe) {
+		t.Errorf("err = %#v; want the sentinel itself, not a ParseError", err)
 	}
 }

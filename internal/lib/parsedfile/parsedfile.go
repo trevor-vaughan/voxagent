@@ -277,6 +277,26 @@ func (r *Run) MarkModified(rec *Record, shouldTarget string, hasShould bool) {
 // targets leave the modified set even on failure; the first failure stops the
 // writing and is returned, and later targets stay marked.
 func (r *Run) Flush(ctx context.Context, rec *Record, shouldTarget string, hasShould bool) error {
+	return r.flush(ctx, rec, shouldTarget, hasShould, nil)
+}
+
+// FlushTargets is Flush restricted to the record's own targets (divergence
+// D-102): after the same two first steps, only the modified targets in own or
+// equal to rec.Target are written, sorted and with the same failure handling;
+// every other modified target stays marked for a later flush. Ruby's flush
+// writes all of them, so a failed write of another resource's target would be
+// retried, and its half-made change written, by this record's flush.
+func (r *Run) FlushTargets(ctx context.Context, rec *Record, shouldTarget string, hasShould bool, own []string) error {
+	mine := make(map[string]bool, len(own)+1)
+	for _, t := range own {
+		mine[t] = true
+	}
+	return r.flush(ctx, rec, shouldTarget, hasShould, mine)
+}
+
+// flush is the body of Flush and FlushTargets; a nil own writes every
+// modified target, otherwise only those in own or equal to rec.Target.
+func (r *Run) flush(ctx context.Context, rec *Record, shouldTarget string, hasShould bool, own map[string]bool) error {
 	if !targetSet(rec) {
 		rec.Target = r.c.DefaultTarget
 		if hasShould {
@@ -291,7 +311,9 @@ func (r *Run) Flush(ctx context.Context, rec *Record, shouldTarget string, hasSh
 	}
 	targets := make([]string, 0, len(r.modified))
 	for t := range r.modified {
-		targets = append(targets, t)
+		if own == nil || own[t] || t == rec.Target {
+			targets = append(targets, t)
+		}
 	}
 	sort.Strings(targets)
 	for _, target := range targets {

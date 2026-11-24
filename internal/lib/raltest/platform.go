@@ -3,11 +3,13 @@ package raltest
 // FakePlatform is a ral.Platform answering from fixed data.
 type FakePlatform struct {
 	Exec    map[string]bool
+	Files   map[string]bool
 	Release string
 	Err     error
 }
 
 func (f FakePlatform) Executable(path string) bool { return f.Exec[path] }
+func (f FakePlatform) FileExists(path string) bool { return f.Files[path] }
 func (f FakePlatform) OSRelease() ([]byte, error) {
 	return []byte(f.Release), f.Err
 }

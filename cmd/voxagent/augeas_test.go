@@ -97,6 +97,7 @@ func (p *fakeAugeasProbe) Probe() (augeas.Lib, string, bool) {
 type augeasPlatform struct{}
 
 func (augeasPlatform) Executable(path string) bool { return path == "/usr/sbin/sysctl" }
+func (augeasPlatform) FileExists(string) bool      { return false }
 func (augeasPlatform) OSRelease() ([]byte, error) {
 	return []byte("ID=\"centos\"\nID_LIKE=\"rhel fedora\"\nVERSION_ID=\"10\"\n"), nil
 }

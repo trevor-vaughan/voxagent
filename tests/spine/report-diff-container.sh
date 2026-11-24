@@ -54,14 +54,20 @@
 # half runs after the augeas half, on an image derived from this one with
 # cronie, which this one lacks; tests/spine/cron/g5.sh holds it and says how.
 #
+# host is here because voxagent applies it natively over the ParsedFile
+# engine and its cases change /etc/hosts. That half runs after the cron half,
+# on an image derived from this one with openssh (for the ParsedFile types
+# that follow it), its containers started with --no-hosts so /etc/hosts is the
+# image's own file; tests/spine/host/g5.sh holds it and says how.
+#
 # The comparator and the allowlist are `gatekit compare-reports` and
 # tests/spine/allowlist.json, used unchanged. A second comparator would be a
 # second thing to keep in step with Ruby.
 #
 #   0  the reports agree outside the allowlist and the walk order agrees, for
 #      the live run, for the account cases' noop run, and for every concat,
-#      augeas and cron case's live, rerun and noop runs (or both agents refuse
-#      its catalog alike), and every compared end state agrees
+#      augeas, cron and host case's live, rerun and noop runs (or both agents
+#      refuse its catalog alike), and every compared end state agrees
 #   1  they diverge -- a result about voxagent
 #   2  the comparison could not run
 set -uo pipefail
@@ -227,6 +233,10 @@ require_fresh report-diff-container "$ROOT" "$VOXAGENT" "$GATEKIT"
 . "$HERE/cron/image.sh" || exit 2
 # shellcheck source=cron/g5.sh
 . "$HERE/cron/g5.sh" || exit 2
+# shellcheck source=parsedfile/image.sh
+. "$HERE/parsedfile/image.sh" || exit 2
+# shellcheck source=host/g5.sh
+. "$HERE/host/g5.sh" || exit 2
 
 got_puppet="$(podman run --rm "$IMAGE" /opt/puppetlabs/bin/puppet --version 2>/dev/null)" || {
   echo "report-diff-container: cannot read the image's puppet version" >&2
@@ -260,7 +270,8 @@ WORK="$(mktemp -d)" || exit 2
 trap 'rm -rf "$WORK"; podman rm -f -t 0 "$RUBY_SIDE" "$GO_SIDE" "$COMPILER" "$RUBY_NOOP" "$GO_NOOP" \
   concat-compile-$$ concat-{ruby,voxagent}-{live,noop}-$$ \
   augeas-compile-$$ augeas-{ruby,voxagent}-{live,noop}-$$ \
-  cron-compile-$$ cron-{ruby,voxagent}-{live,noop}-$$ >/dev/null 2>&1' EXIT
+  cron-compile-$$ cron-{ruby,voxagent}-{live,noop}-$$ \
+  host-compile-$$ host-{ruby,voxagent}-{live,noop}-$$ >/dev/null 2>&1' EXIT
 
 if ! podman run --rm "$IMAGE" sh -c "
   if ! $SEED_LATEST; then
@@ -999,4 +1010,8 @@ augeas_rc=$?
 cron_gate
 cron_rc=$?
 [ "$cron_rc" -gt "$rc" ] && rc=$cron_rc
+
+host_gate
+host_rc=$?
+[ "$host_rc" -gt "$rc" ] && rc=$host_rc
 exit "$rc"

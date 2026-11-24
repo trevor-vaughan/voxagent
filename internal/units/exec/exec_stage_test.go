@@ -427,22 +427,3 @@ func TestExecRestoreFailureIsStagingBroken(t *testing.T) {
 		t.Errorf("Apply: error %v, want ErrStagingBroken", err)
 	}
 }
-
-// D-78: every invalid-identity path of a marked user or group, including the
-// ids identityKey refuses before any lookup, shows [redacted].
-func TestExecUnknownSensitiveIdentityIsRedacted(t *testing.T) {
-	marked := func(string) bool { return true }
-	for _, tt := range []struct{ usr, group any }{
-		{"secretname", nil},
-		{"99999999999999999999", nil},
-		{float64(-1), nil},
-		{nil, "secretgroup"},
-		{"nobody", "99999999999999999999"},
-	} {
-		_, err := resolveIdentity(tt.usr, tt.group, marked)
-		var invalid invalidIdentityError
-		if !errors.As(err, &invalid) || invalid.name != "[redacted]" {
-			t.Errorf("user %v group %v: %v, want an invalid identity named [redacted]", tt.usr, tt.group, err)
-		}
-	}
-}

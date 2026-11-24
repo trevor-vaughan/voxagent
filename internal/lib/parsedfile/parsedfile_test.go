@@ -528,6 +528,88 @@ func TestFlushWritesModifiedTargetsSorted(t *testing.T) {
 	}
 }
 
+// writtenTargets lists the targets written so far, in order.
+func writtenTargets(e *env) []string {
+	var w []string
+	for _, ev := range e.log {
+		if strings.HasPrefix(ev, "write ") {
+			w = append(w, strings.TrimPrefix(ev, "write "))
+		}
+	}
+	return w
+}
+
+// markThree prefetches /a, /b and /c and marks all three modified.
+func markThree(e *env) (*Run, map[string]*Record) {
+	e.t.Helper()
+	r := e.run()
+	got, err := r.Prefetch(e.ctx, []Resource{resAt("a", "/a"), resAt("b", "/b"), resAt("c", "/c")})
+	if err != nil {
+		e.t.Fatal(err)
+	}
+	for _, rec := range got {
+		r.MarkModified(rec, "", false)
+	}
+	return r, got
+}
+
+func TestFlushTargetsWritesOnlyOwn(t *testing.T) {
+	e := newEnv(t, map[string]string{"/a": "a 1\n", "/b": "b 1\n", "/c": "c 1\n"})
+	r, got := markThree(e)
+	if err := r.FlushTargets(e.ctx, got["c"], "", false, []string{"/a"}); err != nil {
+		t.Fatal(err)
+	}
+	if want := []string{"/a", "/c"}; !slices.Equal(writtenTargets(e), want) {
+		t.Fatalf("writes %q, want %q", writtenTargets(e), want)
+	}
+	if want := []string{"Flushing thing provider target /a", "Flushing thing provider target /c"}; !slices.Equal(*logTexts(e), want) {
+		t.Fatalf("debug = %q", *logTexts(e))
+	}
+	// /b stayed marked: a later Flush writes it.
+	if err := r.Flush(e.ctx, got["a"], "", false); err != nil {
+		t.Fatal(err)
+	}
+	if want := []string{"/a", "/c", "/b"}; !slices.Equal(writtenTargets(e), want) {
+		t.Fatalf("writes %q, want %q", writtenTargets(e), want)
+	}
+}
+
+func TestFlushTargetsNewRecordTarget(t *testing.T) {
+	e := newEnv(t, map[string]string{"/b": "b 1\n"})
+	r := e.run()
+	if _, err := r.Prefetch(e.ctx, []Resource{resAt("b", "/b")}); err != nil {
+		t.Fatal(err)
+	}
+	r.modified["/b"] = true
+	if err := r.FlushTargets(e.ctx, record("n", "1"), "/new", true, nil); err != nil {
+		t.Fatal(err)
+	}
+	if want := []string{"/new"}; !slices.Equal(writtenTargets(e), want) {
+		t.Fatalf("writes %q, want %q", writtenTargets(e), want)
+	}
+	if !r.modified["/b"] {
+		t.Fatal("/b must stay marked")
+	}
+}
+
+func TestFlushTargetsFailureKeepsLaterMarked(t *testing.T) {
+	boom := errors.New("Failed to write to bad file")
+	e := newEnv(t, map[string]string{"/a": "a 1\n", "/b": "b 1\n", "/c": "c 1\n"})
+	e.files["/b"].writeErr = boom
+	r, got := markThree(e)
+	err := r.FlushTargets(e.ctx, got["a"], "", false, []string{"/b", "/c"})
+	if !errors.Is(err, boom) {
+		t.Fatalf("err = %v", err)
+	}
+	// /a written, /b attempted and failed, /c never reached.
+	if want := []string{"/a", "/b"}; !slices.Equal(writtenTargets(e), want) {
+		t.Fatalf("writes %q, want %q", writtenTargets(e), want)
+	}
+	if r.modified["/a"] || r.modified["/b"] || !r.modified["/c"] {
+		t.Fatalf("modified = %v; want only /c left", r.modified)
+	}
+}
+
 func TestMarkModifiedShouldTarget(t *testing.T) {
 	e := newEnv(t, map[string]string{"/def": "a 1\n"})
 	r := e.run()

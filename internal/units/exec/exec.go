@@ -22,6 +22,7 @@ import (
 	"github.com/voxagent/voxagent/internal/lib/command"
 	"github.com/voxagent/voxagent/internal/lib/rubyvalue"
 	"github.com/voxagent/voxagent/internal/lib/sources"
+	"github.com/voxagent/voxagent/internal/lib/suid"
 	"github.com/voxagent/voxagent/internal/ral"
 	"github.com/voxagent/voxagent/internal/runlog"
 )
@@ -863,8 +864,9 @@ func (e Exec) execute(ctx context.Context, r catalog.Resource, commandValue any,
 		as = " with" + as
 	}
 	runlog.Debugf(ctx, "Puppet", "Executing%s: '%s'", as, rubyvalue.RedactIf(redact, "%s", display))
-	id, err := resolveIdentity(p.User, p.Group, marked)
-	var invalid invalidIdentityError
+	cred, err := suid.Resolve(p.User, p.Group, marked)
+	id := identity{cred}
+	var invalid suid.InvalidIdentityError
 	if errors.As(err, &invalid) {
 		// Raised in Ruby's child, before exec: its rescue logs the error to
 		// the output and exits 1 (util/execution.rb:393-395, M6, M18).
