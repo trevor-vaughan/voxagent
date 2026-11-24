@@ -1,0 +1,20 @@
+docs/maintainers/runlog.md
+  s_2d651dbe751c6b::t_8cec92a42e5caf 37
+  s_2d651dbe751c6b::t_7891374f1b3fdd 11-36,38-51
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "d16f4bc188b3f785272c920f80ced7459c3daaa5",
+  "prompts": {},
+  "sessions": {
+    "s_2d651dbe751c6b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c2866c88-46bb-441b-992a-40b6f75d66b1",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "LLM (riotbox) <llm@riotbox>"
+    }
+  }
+}
