@@ -1,0 +1,19 @@
+docs/maintainers/fleet.md
+  s_41e2f875073486::t_da95d9d4c710ee 10-11,24-25,52-56,196-197,214-215,304-305,344-347,349-350,356-357,362-368,413
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "29d61116e85c8eaf42d9464655c03f9117389623",
+  "prompts": {},
+  "sessions": {
+    "s_41e2f875073486": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-ad0ecb3f6ed3a6064",
+        "model": "unknown"
+      },
+      "human_author": "LLM (riotbox) <llm@riotbox>"
+    }
+  }
+}
