@@ -1,0 +1,20 @@
+docs/maintainers/extension-host.md
+  s_2d651dbe751c6b::t_b06c190b2ed88a 45-91,248-278,436-480
+  s_2d651dbe751c6b::t_29b31b03a0190a 481
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "0903c03528fba81c464741d36931b411538211c5",
+  "prompts": {},
+  "sessions": {
+    "s_2d651dbe751c6b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c2866c88-46bb-441b-992a-40b6f75d66b1",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "LLM (riotbox) <llm@riotbox>"
+    }
+  }
+}
