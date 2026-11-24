@@ -1,0 +1,20 @@
+docs/dev/gates.md
+  s_87888b7b678da1::t_5327dd37c5e7ab 21-23,25-28,34,36-37,80-81
+  s_87888b7b678da1::t_1a2bd21e6cec2e 24
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "3489ae132074130e1f5896553b64f53174d8bfa7",
+  "prompts": {},
+  "sessions": {
+    "s_87888b7b678da1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "39cc1b4e-b00b-4987-9657-3212be8ef9f3",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "LLM (riotbox) <llm@riotbox>"
+    }
+  }
+}
