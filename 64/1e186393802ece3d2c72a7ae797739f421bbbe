@@ -1,0 +1,35 @@
+docs/maintainers/apply-spine.md
+  s_2d651dbe751c6b::t_6c37219ff977b7 1671
+  s_2d651dbe751c6b::t_a9423f32e88ca5 2138
+  s_2d651dbe751c6b::t_775c7bd3380c91 2113-2115
+  s_2d651dbe751c6b::t_56ec6b55ebed71 1147-1148
+  s_2d651dbe751c6b::t_359acc0cb22114 1044-1045
+  s_2d651dbe751c6b::t_1f5245705459b3 1303-1304
+  s_2d651dbe751c6b::t_c70dd42601d882 1171-1172
+  s_2d651dbe751c6b::t_60d203cf8a16c7 1209-1211
+  s_2d651dbe751c6b::t_3f747b44dc815d 510,558-560,643-645,940,959-960
+  s_2d651dbe751c6b::t_0af499ede5e018 1373
+  s_2d651dbe751c6b::t_b133e8e1e4d0cb 2678-2680
+  s_2d651dbe751c6b::t_7c8e048c2a0cb2 3466
+  s_2d651dbe751c6b::t_3103e6de2856bd 2122
+  s_2d651dbe751c6b::t_176c3ab31a9748 2174
+  s_2d651dbe751c6b::t_eadc9977b417e6 3041,3226,3365,3384-3387,3402-3403,3465
+  s_2d651dbe751c6b::t_047f7329a6ec37 1650
+  s_2d651dbe751c6b::t_a81fae1ee038f1 2291,2311-2312,2316,2449-2450,2867
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "641e186393802ece3d2c72a7ae797739f421bbbe",
+  "prompts": {},
+  "sessions": {
+    "s_2d651dbe751c6b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c2866c88-46bb-441b-992a-40b6f75d66b1",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "LLM (riotbox) <llm@riotbox>"
+    }
+  }
+}
