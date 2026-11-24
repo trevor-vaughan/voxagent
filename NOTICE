@@ -19,7 +19,7 @@ test fixtures under internal/units/concat/testdata; they remain under the Apache
 License, Version 2.0, a copy of which is in LICENSE.md.
 
 voxagent's native sysctl, ssh_config, sshd_config and sshd_config_subsystem
-(internal/ral/augeas*.go, sysctl*.go, ssh*_config.go, sshd_subsystem.go)
+(internal/units/augeas*/)
 likewise reproduce the behaviour and messages of Vox Pupuli's
 augeasproviders_core 4.2.0, augeasproviders_sysctl 4.1.0 and
 augeasproviders_ssh 7.0.0 ("Copyright (c) 2012 Dominic Cleal", "Copyright (c)

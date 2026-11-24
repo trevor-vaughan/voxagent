@@ -25,6 +25,45 @@ task build
 `voxagent agent --help` lists its flags; their defaults are Puppet's compiled-in
 settings (`puppet.conf` is not read).
 
+### Native units: `voxagent units`
+
+Every Puppet type voxagent applies itself is implemented by a unit. `voxagent units`
+prints one JSON array holding every unit's manifest, sorted by name: its version,
+the Ruby implementation it reproduces (`source`) and the one it was tested against
+(`oracle`), the types it serves, the units it requires, and, for module units, the
+file digests of each measured release (a module's type is native only when the
+`--libdir` plugin tree matches one of them).
+
+```bash
+./bin/voxagent units | jq -r '.[] | "\(.name) \(.version) \(.types | join(","))"'
+```
+
+A core unit's element, `jq '.[] | select(.name == "notify")'`:
+
+```json
+{
+  "name": "notify",
+  "version": "1.0.0",
+  "source": {
+    "implementation": "puppet",
+    "version": "8.10.0"
+  },
+  "oracle": {
+    "implementation": "openvox",
+    "version": "8.33.0"
+  },
+  "types": [
+    "notify"
+  ],
+  "requires": [],
+  "releases": []
+}
+```
+
+The command takes no arguments: one prints a usage line on stderr and exits 2.
+Otherwise it exits 0. It reads no file, so its output does not depend on the host,
+a catalog or `--libdir`.
+
 ### Log levels: `--verbose` and `--debug`
 
 Both subcommands take `--verbose` and `--debug`; `--debug` implies `--verbose`,
@@ -311,8 +350,9 @@ the validator by its full path.
 
 ### Ruby extension host
 
-A catalog may hold types voxagent does not implement: `User` and `Group`, types
-that modules ship, `file_line` from stdlib. If they are legacy
+A catalog may hold types voxagent does not apply natively on this run: `User` and
+`Group` off the platform they were measured on, module types whose plugin tree
+it does not recognise, other types that modules ship, `file_line` from stdlib. If they are legacy
 `Puppet::Type.newtype` types, voxagent starts one Ruby process, the extension
 host, which loads them and evaluates each with Puppet's own code. voxagent keeps
 the ordering, refresh propagation and the report. A catalog with only native

@@ -2,6 +2,8 @@ package group
 
 import (
 	"errors"
+	"maps"
+	"strings"
 	"testing"
 
 	"github.com/voxagent/voxagent/internal/catalog"
@@ -206,5 +208,80 @@ func TestNativeUserGroupIgnoresOtherTypes(t *testing.T) {
 func TestUserGroupMinimalProviders(t *testing.T) {
 	if *(Group{}).ProviderUsed() != "groupadd" {
 		t.Error("provider names")
+	}
+}
+
+// delegated returns the reasons the group unit sends its type to the host.
+func delegated(p ral.Platform, rs ...catalog.Resource) map[string]string {
+	return Unit.Route(&unit.Env{Catalog: &catalog.Catalog{Resources: rs}, Platform: p}).Delegated
+}
+
+// Each reason is the first failing condition, in Route's check order, and is
+// given only for a type the catalog holds (spec §6).
+func TestGroupDelegationReasons(t *testing.T) {
+	centos := raltest.FakePlatform{Release: raltest.CentOS10}
+	libuserHost := raltest.FakePlatform{Exec: map[string]bool{libuser: true, "/usr/sbin/lgroupadd": true}, Release: raltest.CentOS10}
+	cases := []struct {
+		name string
+		p    ral.Platform
+		rs   []catalog.Resource
+		want map[string]string
+	}{
+		{"libuser present", libuserHost, []catalog.Resource{ugRes("Group", nil)}, map[string]string{"group": "libuser present"}},
+		{"not the measured platform", raltest.FakePlatform{Release: "ID=debian\nVERSION_ID=\"12\"\n"},
+			[]catalog.Resource{ugRes("Group", nil)}, map[string]string{"group": "not the measured platform"}},
+		{"libuser wins over release", raltest.FakePlatform{Exec: map[string]bool{libuser: true, "/usr/sbin/lgroupadd": true}},
+			[]catalog.Resource{ugRes("Group", nil)}, map[string]string{"group": "libuser present"}},
+		{"provider", centos, []catalog.Resource{ugRes("Group", map[string]any{"provider": "ldap"})}, map[string]string{"group": "provider ldap"}},
+		{"non-string provider", centos, []catalog.Resource{ugRes("Group", map[string]any{"provider": 1.0})}, map[string]string{"group": "provider 1"}},
+		{"unimplemented value", centos, []catalog.Resource{ugRes("Group", map[string]any{"gid": []any{"a"}})},
+			map[string]string{"group": `Group[x]: gid => ["a"] is not implemented`}},
+		{"first failing resource wins", centos, []catalog.Resource{
+			ugRes("Group", map[string]any{"provider": "ldap"}), ugRes("Group", map[string]any{"provider": "pw"})},
+			map[string]string{"group": "provider ldap"}},
+		{"no group in the catalog", libuserHost, []catalog.Resource{ugRes("User", nil)}, nil},
+		{"native", centos, []catalog.Resource{ugRes("Group", nil)}, nil},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			if got := delegated(c.p, c.rs...); !maps.Equal(got, c.want) {
+				t.Fatalf("Delegated = %v, want %v", got, c.want)
+			}
+		})
+	}
+}
+
+// A Sensitive parameter's value never reaches a delegation reason or a
+// refusal: the reasons are logged at debug level, the refusals are reported.
+func TestGroupReasonsRedactSensitiveValues(t *testing.T) {
+	centos := raltest.FakePlatform{Release: raltest.CentOS10}
+	cases := []struct {
+		name   string
+		params map[string]any
+		attr   string
+		want   string
+	}{
+		{"gid", map[string]any{"gid": []any{"hunter2"}}, "gid", "Group[x]: gid => [redacted] is not implemented"},
+		{"members", map[string]any{"members": []any{"hunter2", 1.0}}, "members", "Group[x]: members => [redacted] is not implemented"},
+		{"provider", map[string]any{"provider": "hunter2"}, "provider", "provider [redacted]"},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			r := ugRes("Group", c.params)
+			r.SensitiveParameters = []string{c.attr}
+			if got := delegated(centos, r)["group"]; got != c.want {
+				t.Fatalf("reason = %q, want %q", got, c.want)
+			}
+		})
+	}
+	for _, attr := range []string{"ensure", "attribute_membership"} {
+		t.Run("refusal "+attr, func(t *testing.T) {
+			r := ugRes("Group", map[string]any{attr: "hunter2"})
+			r.SensitiveParameters = []string{attr}
+			err := Group{}.Validate(r)
+			if err == nil || strings.Contains(err.Error(), "hunter2") || !strings.Contains(err.Error(), "[redacted]") {
+				t.Fatalf("err = %v, want a refusal showing [redacted] only", err)
+			}
+		})
 	}
 }

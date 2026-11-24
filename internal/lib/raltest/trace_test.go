@@ -1,7 +1,11 @@
-package ral
+package raltest_test
 
 import (
+	"bytes"
 	"fmt"
+	"os"
+	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -9,8 +13,57 @@ import (
 	"github.com/voxagent/voxagent/internal/lib/raltest"
 )
 
+// unitTraces is every unit's committed trace, found under the repo root:
+// base name to the file's path. A trace several units commit counts once, and
+// the copies must be byte-identical.
+func unitTraces(t *testing.T) map[string]string {
+	t.Helper()
+	_, here, _, ok := runtime.Caller(0)
+	if !ok {
+		t.Fatal("runtime.Caller failed")
+	}
+	root := filepath.Join(filepath.Dir(here), "..", "..", "..")
+	paths, err := filepath.Glob(filepath.Join(root, "internal", "units", "*", "testdata", "augeas", "traces", "*.txt"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	found := map[string]string{}
+	for _, p := range paths {
+		base := filepath.Base(p)
+		first, seen := found[base]
+		if !seen {
+			found[base] = p
+			continue
+		}
+		a, errA := os.ReadFile(first)
+		b, errB := os.ReadFile(p)
+		if errA != nil || errB != nil {
+			t.Fatalf("read %s or %s: %v, %v", first, p, errA, errB)
+		}
+		if !bytes.Equal(a, b) {
+			t.Errorf("%s differs from its copy %s", p, first)
+		}
+	}
+	return found
+}
+
+// sysctl01a is the sysctl new-file-absent recording without the facts handle.
+func sysctl01a(t *testing.T) []raltest.TraceCall {
+	t.Helper()
+	const base = "01a-sysctl-new-file-absent.txt"
+	path, ok := unitTraces(t)[base]
+	if !ok {
+		t.Fatalf("no unit commits %s", base)
+	}
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return raltest.ParseTrace(t, base, string(raw))[len(raltest.FactsHandle):]
+}
+
 func TestLoadTraceParses01a(t *testing.T) {
-	calls := raltest.LoadTrace(t, "01a")
+	calls := sysctl01a(t)
 	if len(calls) != 44 {
 		t.Fatalf("calls = %d, want 44 (47 lines minus the facts handle's 3)", len(calls))
 	}
@@ -31,20 +84,34 @@ func TestLoadTraceParses01a(t *testing.T) {
 	}
 }
 
-// Every committed trace parses, round-trips byte for byte and starts with the
-// facts-resolution handle raltest.LoadTrace drops.
-func TestLoadTraceRoundTripsEveryCase(t *testing.T) {
-	for _, tc := range raltest.TraceCases(t) {
-		raw := raltest.ReadTraceFile(t, tc)
-		lines := strings.Split(strings.TrimSuffix(raw, "\n"), "\n")
-		calls := raltest.LoadTrace(t, tc)
-		if len(calls) != len(lines)-3 {
-			t.Errorf("%s: %d calls from %d lines", tc, len(calls), len(lines))
+// Every unit's committed trace parses, round-trips byte for byte and starts
+// with the facts-resolution handle raltest.LoadTrace drops. The count guards
+// the discovery: a glob that finds fewer traces would pass vacuously.
+func TestTracesRoundTripEveryUnitCase(t *testing.T) {
+	// internal/ral held 36 traces at 292dcfc (its 37th entry was a README).
+	const wantAtLeast = 36
+	traces := unitTraces(t)
+	if len(traces) < wantAtLeast {
+		t.Fatalf("found %d distinct traces under internal/units, want at least %d", len(traces), wantAtLeast)
+	}
+	for base, path := range traces {
+		raw, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		lines := strings.Split(strings.TrimSuffix(string(raw), "\n"), "\n")
+		if len(lines) < len(raltest.FactsHandle) || strings.Join(lines[:len(raltest.FactsHandle)], "\n") != strings.Join(raltest.FactsHandle, "\n") {
+			t.Errorf("%s: does not start with the facts handle", base)
+			continue
+		}
+		calls := raltest.ParseTrace(t, base, string(raw))
+		if len(calls) != len(lines) {
+			t.Errorf("%s: %d calls from %d lines", base, len(calls), len(lines))
 			continue
 		}
 		for i, c := range calls {
-			if c.String() != lines[i+3] {
-				t.Errorf("%s line %d: re-rendered %q, file has %q", tc, i+4, c.String(), lines[i+3])
+			if c.String() != lines[i] {
+				t.Errorf("%s line %d: re-rendered %q, file has %q", base, i+1, c.String(), lines[i])
 			}
 		}
 	}
@@ -139,7 +206,7 @@ func TestReplayUnconsumedFailsAutomatically(t *testing.T) {
 }
 
 func TestReplayFailsOnFirstDivergence(t *testing.T) {
-	calls := raltest.LoadTrace(t, "01a")
+	calls := sysctl01a(t)
 	ft := &fakeT{TB: t}
 	r := raltest.NewScriptLib(ft, calls)
 	a, err := augeas.Open(r, nil)
@@ -206,7 +273,7 @@ func TestReplayFailsOnExtraAndMissingCalls(t *testing.T) {
 // The whole 01a trace replays when driven by its own calls, returning the
 // recorded results.
 func TestReplayAnswersRecordedResults(t *testing.T) {
-	calls := raltest.LoadTrace(t, "01a")
+	calls := sysctl01a(t)
 	r := raltest.NewScriptLib(t, calls)
 	for _, c := range calls {
 		h := augeas.Handle(c.Handle)

@@ -1,5 +1,0 @@
-01a-sysctl-new-file-absent.txt is a copy of the augeasproviders_sysctl unit's
-recording (internal/units/augeasproviders_sysctl/testdata/augeas/traces), kept
-because augeas_api_test.go parses it as a sample trace. The recordings the
-native providers are asserted against live with their units; the line grammar
-is documented in internal/ral/augeas_replay_test.go. Do not edit the copy.

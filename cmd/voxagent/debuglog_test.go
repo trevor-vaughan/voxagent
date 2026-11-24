@@ -2,12 +2,17 @@ package main
 
 import (
 	"encoding/json"
+	"github.com/voxagent/voxagent/internal/extension"
+	"github.com/voxagent/voxagent/internal/extension/extensiontest"
+	"github.com/voxagent/voxagent/internal/ral"
+	"github.com/voxagent/voxagent/internal/runlog"
 	"os"
 	"path/filepath"
 	"regexp"
 	"slices"
 	"strings"
 	"testing"
+	"time"
 )
 
 const dur = `\d+(\.\d+)?m?s`
@@ -191,5 +196,72 @@ func TestApplyPassesTheLevelToTheHost(t *testing.T) {
 		if seen != tc.seen {
 			t.Errorf("%v: the provider's debug line in the report = %v, want %v", tc.flags, seen, tc.seen)
 		}
+	}
+}
+
+// libuserPlatform is CentOS Stream 10 with libuser's tools and sysctl present.
+type libuserPlatform struct{}
+
+func (libuserPlatform) Executable(path string) bool {
+	return path == "/usr/sbin/luseradd" || path == "/usr/sbin/lgroupadd" || path == "/usr/sbin/sysctl"
+}
+func (libuserPlatform) OSRelease() ([]byte, error) { return augeasPlatform{}.OSRelease() }
+
+// Every delegated type the catalog holds is reported at debug, sorted by type
+// name and each with its reason; at notice none is (spec §6).
+func TestDelegationReasonsSortedByType(t *testing.T) {
+	ruby := extensiontest.Ruby(t)
+	dir := t.TempDir()
+	raw, err := os.ReadFile(writeCatalog(t, dir, []map[string]any{
+		ext("User", "u", map[string]any{"ensure": "absent"}),
+		ext("Sysctl", "vm.swappiness", map[string]any{"value": "10"}),
+		ext("Concat_file", filepath.Join(dir, "c"), nil),
+	}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	old := ral.HostPlatform
+	ral.HostPlatform = libuserPlatform{}
+	t.Cleanup(func() { ral.HostPlatform = old })
+	// a changed byte leaves concat_file.rb unmeasured
+	tampered := func(b []byte) []byte { return append(b, '\n') }
+	libdir := concatLibdir(t, tampered, augeasLibdir(t, extensiontest.Libdir(t)))
+	const via = " applied via extension host: "
+	run := func(level string) []string {
+		o := applyOptions{noop: true, ruby: ruby, libdir: libdir, vardir: t.TempDir(),
+			level: level, logger: runlog.New(level, nil, nil), certname: "n.example",
+			timeouts:    extension.Timeouts{Evaluate: time.Minute, Other: time.Minute},
+			augeasProbe: &fakeAugeasProbe{lib: &fakeAugeasLib{}}, environ: environOf(map[string]string{"AUGEAS_ROOT": "/tmp"})}
+		_, rep := applyCatalog(raw, o)
+		if rep == nil {
+			t.Fatal("the run was refused")
+		}
+		var lines []string
+		for _, e := range rep.Logs {
+			if e.Source == "voxagent" && strings.Contains(e.Message, via) {
+				if e.Level != "debug" {
+					t.Errorf("%q logged at %s", e.Message, e.Level)
+				}
+				lines = append(lines, e.Message)
+			}
+		}
+		return lines
+	}
+	got := run("debug")
+	if len(got) != 3 {
+		t.Fatalf("debug lines = %q, want three", got)
+	}
+	// concat's reason carries the digests, so it is matched by shape
+	for i, re := range []string{
+		`^concat_file applied via extension host: puppet/type/concat_file\.rb has sha256 [0-9a-f]{64}, not the measured [0-9a-f]{64}$`,
+		`^sysctl applied via extension host: AUGEAS_ROOT is set$`,
+		`^user applied via extension host: libuser present$`,
+	} {
+		if !regexp.MustCompile(re).MatchString(got[i]) {
+			t.Errorf("line %d = %q, want it to match %s", i, got[i], re)
+		}
+	}
+	if got := run("notice"); len(got) != 0 {
+		t.Errorf("notice level reported %q", got)
 	}
 }

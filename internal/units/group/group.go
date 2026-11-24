@@ -23,7 +23,7 @@ import (
 )
 
 // Group is the native provider for the group type: groupadd on the platform
-// group.MeasuredPlatform describes, where openvox 8.33.0 gives it manages_members with
+// group.UnmeasuredReason describes, where openvox 8.33.0 gives it manages_members with
 // groupmod's -aU flag and system_groups (spec §6). The zero value reads the
 // host's NSS and runs the host's commands; tests set ns and runner.
 type Group struct {
@@ -108,7 +108,7 @@ func ParseGroup(r catalog.Resource) (groupParams, error) {
 	case "absent":
 		p.absent = true
 	default:
-		return p, rubyvalue.ParamFailure(r, "ensure", fmt.Sprintf("Invalid value %s. Valid values are present, absent.", rubyvalue.InspectValue(v)))
+		return p, rubyvalue.ParamFailure(r, "ensure", fmt.Sprintf("Invalid value %s. Valid values are present, absent.", rubyvalue.ShownValue(r, "ensure", v)))
 	}
 	switch v := r.Parameters["gid"].(type) {
 	case nil:
@@ -123,11 +123,11 @@ func ParseGroup(r catalog.Resource) (groupParams, error) {
 		p.GID, p.HasGID = n, true
 	case float64:
 		if v != math.Trunc(v) || math.Abs(v) >= 1<<53 {
-			return p, &rubyvalue.UnimplementedValue{Ref: r.Ref(), Attr: "gid", Shown: rubyvalue.InspectValue(v)}
+			return p, &rubyvalue.UnimplementedValue{Ref: r.Ref(), Attr: "gid", Shown: rubyvalue.ShownValue(r, "gid", v)}
 		}
 		p.GID, p.HasGID = int64(v), true
 	default:
-		return p, &rubyvalue.UnimplementedValue{Ref: r.Ref(), Attr: "gid", Shown: rubyvalue.InspectValue(v)}
+		return p, &rubyvalue.UnimplementedValue{Ref: r.Ref(), Attr: "gid", Shown: rubyvalue.ShownValue(r, "gid", v)}
 	}
 	switch v := r.Parameters["members"].(type) {
 	case nil:
@@ -138,12 +138,12 @@ func ParseGroup(r catalog.Resource) (groupParams, error) {
 		for i, e := range v {
 			s, ok := e.(string)
 			if !ok {
-				return p, &rubyvalue.UnimplementedValue{Ref: r.Ref(), Attr: "members", Shown: rubyvalue.InspectValue(v)}
+				return p, &rubyvalue.UnimplementedValue{Ref: r.Ref(), Attr: "members", Shown: rubyvalue.ShownValue(r, "members", v)}
 			}
 			p.members[i] = s
 		}
 	default:
-		return p, &rubyvalue.UnimplementedValue{Ref: r.Ref(), Attr: "members", Shown: rubyvalue.InspectValue(v)}
+		return p, &rubyvalue.UnimplementedValue{Ref: r.Ref(), Attr: "members", Shown: rubyvalue.ShownValue(r, "members", v)}
 	}
 	boolParam := func(name string, dst *bool) error {
 		v := r.Parameters[name]
@@ -164,7 +164,7 @@ func ParseGroup(r catalog.Resource) (groupParams, error) {
 		return p, err
 	}
 	if v := r.Parameters["attribute_membership"]; v != nil && v != "inclusive" && v != "minimum" {
-		return p, rubyvalue.ParamFailure(r, "attribute_membership", fmt.Sprintf("Invalid value %s. Valid values are inclusive, minimum.", rubyvalue.InspectValue(v)))
+		return p, rubyvalue.ParamFailure(r, "attribute_membership", fmt.Sprintf("Invalid value %s. Valid values are inclusive, minimum.", rubyvalue.ShownValue(r, "attribute_membership", v)))
 	}
 	if err := boolParam("system", &p.system); err != nil {
 		return p, err

@@ -3,8 +3,13 @@
 For maintainers. Operators want the README. This page says how the code that exists works. Ruby citations are against
 Puppet 8.10.0. Go citations are files in this repository.
 
-voxagent applies Tier 1 types (`notify`, `file`, `exec`, `package`, `service`)
-natively. Every other legacy `Puppet::Type.newtype` type, core or shipped by a
+voxagent applies the types its units serve natively: `augeas`, `concat_file`,
+`concat_fragment`, `exec`, `file`, `group`, `notify`, `package`, `service`,
+`ssh_config`, `sshd_config`, `sshd_config_subsystem`, `sysctl` and `user`
+(`voxagent units` lists them; see [units.md](units.md)). A unit serves a type
+natively only when its `Route` says so for the run, and delegates it here
+otherwise, with a reason (the module types are native only against a measured
+plugin tree, `user` and `group` only on the measured platform). Every other legacy `Puppet::Type.newtype` type, core or shipped by a
 module, is applied by a Ruby process, the host, that runs Puppet's own
 `ResourceHarness` on it. Evaluation, generation, Tier 3 name aliases and
 `loglevel => notice` are implemented (see "Generation").

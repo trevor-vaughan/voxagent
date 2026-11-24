@@ -46,15 +46,11 @@ type applyOptions struct {
 	environ                         ral.Environ           // nil -> os.Getenv; tests only
 }
 
-// augeasTypes are the types whose delegation reasons the debug output reports
-// (Concat's, for one, are not).
-var augeasTypes = []string{"augeas", "ssh_config", "sshd_config", "sshd_config_subsystem", "sysctl"}
-
 // nativeProviders lists the providers voxagent applies itself for cat: each
 // unit's providers (units.All), over one libaugeas probe the augeas units
-// share. augeasHost holds, per augeas type sent to the host, why; the other
-// units' delegations are not reported.
-func nativeProviders(cat *catalog.Catalog, o applyOptions, p ral.Platform) (natives []ral.Provider, augeasHost map[string]string) {
+// share. delegated holds, per type the catalog holds that goes to the
+// extension host, why.
+func nativeProviders(cat *catalog.Catalog, o applyOptions, p ral.Platform) (natives []ral.Provider, delegated map[string]string) {
 	environ := o.environ
 	if environ == nil {
 		environ = os.Getenv
@@ -63,13 +59,7 @@ func nativeProviders(cat *catalog.Catalog, o applyOptions, p ral.Platform) (nati
 	env := &unit.Env{Catalog: cat, Libdir: o.libdir, Tree: tree, Platform: p, Environ: environ, Command: o.command,
 		Vardir: o.vardir, Sources: o.sources, Augeas: session}
 	decision := unit.RouteAll(env, units.All())
-	augeasHost = map[string]string{}
-	for _, typ := range augeasTypes {
-		if why, ok := decision.Delegated[typ]; ok {
-			augeasHost[typ] = why
-		}
-	}
-	return append(decision.Providers, o.providers...), augeasHost
+	return append(decision.Providers, o.providers...), decision.Delegated
 }
 
 // applyCatalog applies raw (exact catalog bytes) and returns the run's status
@@ -96,7 +86,7 @@ func applyCatalog(raw []byte, o applyOptions) (report.Status, *report.Report) {
 		return report.Status{CouldNotRun: true}, nil
 	}
 
-	natives, augeasHost := nativeProviders(cat, o, ral.HostPlatform)
+	natives, delegated := nativeProviders(cat, o, ral.HostPlatform)
 	ext, errMsg := ingestExtensions(extensionConfig{ruby: o.ruby, libdir: o.libdir, vardir: o.vardir, level: o.level, disabled: o.noRuby,
 		timeouts: o.timeouts}, raw, cat, natives)
 	// done closes the host before the caller's outcome line, which must stay
@@ -239,8 +229,8 @@ func applyCatalog(raw []byte, o applyOptions) (report.Status, *report.Report) {
 				runlog.Debugf(ctx, "voxagent", "%s: container (kind %s)", r.Ref(), r.Kind)
 			}
 		}
-		for _, typ := range slices.Sorted(maps.Keys(augeasHost)) {
-			runlog.Debugf(ctx, "voxagent", "%s applied via extension host: %s", typ, augeasHost[typ])
+		for _, typ := range slices.Sorted(maps.Keys(delegated)) {
+			runlog.Debugf(ctx, "voxagent", "%s applied via extension host: %s", typ, delegated[typ])
 		}
 		if ext.host != nil {
 			runlog.Debugf(ctx, "voxagent", "extension host: started in %s", ext.host.Stats().Startup.Round(time.Millisecond))

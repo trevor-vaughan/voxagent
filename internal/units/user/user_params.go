@@ -78,7 +78,7 @@ func parseUserParams(r catalog.Resource) (userParams, error) {
 		p.Name = n
 	}
 	unsupported := func(name string, v any) error {
-		return &rubyvalue.UnimplementedValue{Ref: r.Ref(), Attr: name, Shown: rubyvalue.InspectValue(v)}
+		return &rubyvalue.UnimplementedValue{Ref: r.Ref(), Attr: name, Shown: rubyvalue.ShownValue(r, name, v)}
 	}
 
 	switch v := r.Parameters["ensure"]; v {
@@ -88,7 +88,7 @@ func parseUserParams(r catalog.Resource) (userParams, error) {
 	case "role":
 		return p, rubyvalue.ParamFailure(r, "ensure", "Provider useradd must have features 'manages_solaris_rbac' to set 'ensure' to 'role'")
 	default:
-		return p, rubyvalue.ParamFailure(r, "ensure", fmt.Sprintf("Invalid value %s. Valid values are present, absent, role.", rubyvalue.InspectValue(v)))
+		return p, rubyvalue.ParamFailure(r, "ensure", fmt.Sprintf("Invalid value %s. Valid values are present, absent, role.", rubyvalue.ShownValue(r, "ensure", v)))
 	}
 
 	text := func(name string, dst **string) error {
@@ -258,7 +258,7 @@ func parseUserParams(r catalog.Resource) (userParams, error) {
 				*inclusive = true
 			}
 		default:
-			return rubyvalue.ParamFailure(r, name, fmt.Sprintf("Invalid value %s. Valid values are inclusive, minimum.", rubyvalue.InspectValue(v)))
+			return rubyvalue.ParamFailure(r, name, fmt.Sprintf("Invalid value %s. Valid values are inclusive, minimum.", rubyvalue.ShownValue(r, name, v)))
 		}
 		return nil
 	}

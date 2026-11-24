@@ -47,7 +47,7 @@ runlog.Debugf -> Logger.Log (level filter, debug budget)
   `Logger.Entry`: the same level filter and debug budget as `Log`, keeping the
   entry's time, source, file and line. A context with no logger adds them to the
   report unchanged.
-- **Command output (D-80).** Not the logger's job: `internal/ral/fileoutput.go`
+- **Command output (D-80).** Not the logger's job: `internal/lib/command/command.go`
   caps every command at 64 MiB and logs the truncation warning through the same
   logger.
 

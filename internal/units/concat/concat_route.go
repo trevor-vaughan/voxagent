@@ -44,7 +44,7 @@ func nativeConcat(t ral.PluginTree, cat *catalog.Catalog, m unit.Manifest) (Conc
 			p, err = parseConcatFile(r)
 			if p.Path != "" {
 				if paths[p.Path] {
-					return 0, fmt.Sprintf("two concat_file resources share the path %s", p.Path), false
+					return 0, fmt.Sprintf("two concat_file resources manage %s", p.Path), false
 				}
 				paths[p.Path] = true
 			}
@@ -52,7 +52,7 @@ func nativeConcat(t ral.PluginTree, cat *catalog.Catalog, m unit.Manifest) (Conc
 			_, err = parseConcatFragment(r)
 		}
 		if errors.As(err, &uv) {
-			return 0, fmt.Sprintf("%s has a shape the native parser does not implement: %v", r.Ref(), err), false
+			return 0, err.Error(), false
 		}
 	}
 	return v, "", true

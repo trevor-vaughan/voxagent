@@ -126,14 +126,6 @@ func RunAugeasCase(t *testing.T, calls []raltest.TraceCall, present []string, pr
 	return out
 }
 
-// WantFailure checks that r failed in retrieve with msg (Could not evaluate).
-func WantFailure(t *testing.T, r CaseResult, msg string) {
-	t.Helper()
-	if r.Err == nil || r.Err.Error() != msg || len(r.Changes) != 0 {
-		t.Errorf("%s: changes %+v err %v, want failure %q", r.Ref, r.Changes, r.Err, msg)
-	}
-}
-
 // WantMessages fails unless the results' change messages are want, by
 // resource.
 func WantMessages(t *testing.T, got []CaseResult, want ...[]string) {

@@ -18,7 +18,7 @@ import (
 )
 
 // User is the native provider for the user type (useradd, on the platform
-// group.MeasuredPlatform describes).
+// group.UnmeasuredReason describes).
 //
 // Attrs lists every attribute type/user.rb declares, so pre-flight never
 // refuses one; Validate parses them (parseUserParams); Apply is in

@@ -38,19 +38,35 @@ func (unitImpl) Manifest() unit.Manifest { return Manifest }
 // anything but false, "false" or [] (it generates Ssh_authorized_key resources
 // only the host can apply), or has a value shape the native parser does not
 // implement (rubyvalue.UnimplementedValue), which the host applied before the
-// type was native; Ruby's own refusals stay native.
+// type was native; Ruby's own refusals stay native. Each delegation says why,
+// and only when the catalog holds a User.
 func (unitImpl) Route(env *unit.Env) unit.Decision {
-	if !group.MeasuredPlatform(env.Platform) {
-		return unit.Decision{}
+	var users []catalog.Resource
+	for _, r := range env.Catalog.Resources {
+		if strings.ToLower(r.Type) == "user" {
+			users = append(users, r)
+		}
+	}
+	delegate := func(why string) unit.Decision {
+		if len(users) == 0 {
+			return unit.Decision{}
+		}
+		return unit.Decision{Delegated: map[string]string{"user": why}}
+	}
+	if why := group.UnmeasuredReason(env.Platform); why != "" {
+		return delegate(why)
 	}
 	var uv *rubyvalue.UnimplementedValue
-	for _, r := range env.Catalog.Resources {
-		if strings.ToLower(r.Type) != "user" {
-			continue
-		}
+	for _, r := range users {
 		_, err := parseUserParams(r)
-		if !group.ProviderIs(r, "useradd") || !purgeKeepsNative(r) || errors.As(err, &uv) {
-			return unit.Decision{}
+		if why := group.ForeignProvider(r, "useradd"); why != "" {
+			return delegate(why)
+		}
+		if !purgeKeepsNative(r) {
+			return delegate("purge_ssh_keys generates Ssh_authorized_key resources")
+		}
+		if errors.As(err, &uv) {
+			return delegate(err.Error())
 		}
 	}
 	return unit.Decision{Providers: []ral.Provider{User{CatalogGroups: GroupGIDs(env.Catalog)}}}

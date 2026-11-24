@@ -2,6 +2,8 @@ package user
 
 import (
 	"errors"
+	"maps"
+	"strings"
 	"testing"
 
 	"github.com/voxagent/voxagent/internal/catalog"
@@ -218,5 +220,86 @@ func TestUserGroupMinimalProviders(t *testing.T) {
 	}
 	if *(User{}).ProviderUsed() != "useradd" {
 		t.Error("provider names")
+	}
+}
+
+// delegated returns the reasons the user unit sends its type to the host.
+func delegated(p ral.Platform, rs ...catalog.Resource) map[string]string {
+	return Unit.Route(&unit.Env{Catalog: &catalog.Catalog{Resources: rs}, Platform: p}).Delegated
+}
+
+// Each reason is the first failing condition, in Route's check order, and is
+// given only for a type the catalog holds (spec §6).
+func TestUserDelegationReasons(t *testing.T) {
+	centos := raltest.FakePlatform{Release: raltest.CentOS10}
+	libuserHost := raltest.FakePlatform{Exec: map[string]bool{libuser: true, "/usr/sbin/lgroupadd": true}, Release: raltest.CentOS10}
+	const purge = "purge_ssh_keys generates Ssh_authorized_key resources"
+	cases := []struct {
+		name string
+		p    ral.Platform
+		rs   []catalog.Resource
+		want map[string]string
+	}{
+		{"libuser present", libuserHost, []catalog.Resource{ugRes("User", nil)}, map[string]string{"user": "libuser present"}},
+		{"not the measured platform", raltest.FakePlatform{Release: "ID=debian\nVERSION_ID=\"12\"\n"},
+			[]catalog.Resource{ugRes("User", nil)}, map[string]string{"user": "not the measured platform"}},
+		{"libuser wins over release", raltest.FakePlatform{Exec: map[string]bool{libuser: true, "/usr/sbin/lgroupadd": true}},
+			[]catalog.Resource{ugRes("User", nil)}, map[string]string{"user": "libuser present"}},
+		{"provider", centos, []catalog.Resource{ugRes("User", map[string]any{"provider": "ldap"})}, map[string]string{"user": "provider ldap"}},
+		{"non-string provider", centos, []catalog.Resource{ugRes("User", map[string]any{"provider": 1.0})}, map[string]string{"user": "provider 1"}},
+		{"purge_ssh_keys", centos, []catalog.Resource{ugRes("User", map[string]any{"purge_ssh_keys": true})}, map[string]string{"user": purge}},
+		{"provider wins over purge", centos, []catalog.Resource{
+			ugRes("User", map[string]any{"provider": "pw", "purge_ssh_keys": true})}, map[string]string{"user": "provider pw"}},
+		{"purge wins over unimplemented", centos, []catalog.Resource{
+			ugRes("User", map[string]any{"purge_ssh_keys": true, "gid": []any{"a"}})}, map[string]string{"user": purge}},
+		{"unimplemented value", centos, []catalog.Resource{ugRes("User", map[string]any{"gid": []any{"a"}})},
+			map[string]string{"user": `User[x]: gid => ["a"] is not implemented`}},
+		{"first failing resource wins", centos, []catalog.Resource{
+			ugRes("User", map[string]any{"provider": "ldap"}), ugRes("User", map[string]any{"purge_ssh_keys": true})},
+			map[string]string{"user": "provider ldap"}},
+		{"no user in the catalog", libuserHost, []catalog.Resource{ugRes("Group", nil)}, nil},
+		{"native", centos, []catalog.Resource{ugRes("User", nil)}, nil},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			if got := delegated(c.p, c.rs...); !maps.Equal(got, c.want) {
+				t.Fatalf("Delegated = %v, want %v", got, c.want)
+			}
+		})
+	}
+}
+
+// A Sensitive parameter's value never reaches a delegation reason or a
+// refusal: the reasons are logged at debug level, the refusals are reported.
+func TestUserReasonsRedactSensitiveValues(t *testing.T) {
+	centos := raltest.FakePlatform{Release: raltest.CentOS10}
+	cases := []struct {
+		name   string
+		params map[string]any
+		attr   string
+		want   string
+	}{
+		{"comment", map[string]any{"comment": []any{"hunter2"}}, "comment", "User[x]: comment => [redacted] is not implemented"},
+		{"password_max_age", map[string]any{"password_max_age": []any{"hunter2"}}, "password_max_age", "User[x]: password_max_age => [redacted] is not implemented"},
+		{"provider", map[string]any{"provider": "hunter2"}, "provider", "provider [redacted]"},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			r := ugRes("User", c.params)
+			r.SensitiveParameters = []string{c.attr}
+			if got := delegated(centos, r)["user"]; got != c.want {
+				t.Fatalf("reason = %q, want %q", got, c.want)
+			}
+		})
+	}
+	for _, attr := range []string{"ensure", "membership", "role_membership"} {
+		t.Run("refusal "+attr, func(t *testing.T) {
+			r := ugRes("User", map[string]any{attr: "hunter2"})
+			r.SensitiveParameters = []string{attr}
+			err := User{}.Validate(r)
+			if err == nil || strings.Contains(err.Error(), "hunter2") || !strings.Contains(err.Error(), "[redacted]") {
+				t.Fatalf("err = %v, want a refusal showing [redacted] only", err)
+			}
+		})
 	}
 }

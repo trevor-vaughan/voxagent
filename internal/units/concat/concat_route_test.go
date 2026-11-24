@@ -292,3 +292,43 @@ func TestNativeConcatRealTrees(t *testing.T) {
 		}
 	}
 }
+
+// Each reason Route reports names the first condition that sent concat to the
+// host (spec §6).
+func TestConcatDelegationReasons(t *testing.T) {
+	m, fake := fakeFingerprints()
+	files := fake[Concat1001]
+	measured := fakeTree{concatTypeFiles[0]: files[0], concatTypeFiles[1]: files[1]}
+	frag := concatFragRes("f", map[string]any{"target": "/etc/a", "content": "x", "tag": map[string]any{}})
+	cases := []struct {
+		name string
+		tree fakeTree
+		rs   []catalog.Resource
+		want string
+	}{
+		{"unimplemented value", measured, []catalog.Resource{frag}, `Concat_fragment[f]: tag => map[] is not implemented`},
+		{"two share a path", measured, []catalog.Resource{
+			concatFileRes("/etc/a", nil), concatFileRes("b", map[string]any{"path": "/etc/a"}),
+		}, "two concat_file resources manage /etc/a"},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			_, reason, ok := nativeConcat(c.tree, &catalog.Catalog{Resources: c.rs}, m)
+			if ok || reason != c.want {
+				t.Fatalf("got %v %q, want false %q", ok, reason, c.want)
+			}
+		})
+	}
+}
+
+// With no measured release in the tree Route delegates both concat types with
+// MatchFiles' own reason, and only the types the catalog holds.
+func TestConcatRouteDelegatesWithMatchFilesReason(t *testing.T) {
+	tree := fakeTree{}
+	_, want, _ := unit.MatchFiles(tree, Manifest, "concat_file", nil)
+	rs := []catalog.Resource{concatFileRes("/etc/a", nil)}
+	d := Unit.Route(&unit.Env{Catalog: &catalog.Catalog{Resources: rs}, Tree: tree})
+	if want == "" || len(d.Delegated) != 1 || d.Delegated["concat_file"] != want {
+		t.Fatalf("Delegated = %v, want only concat_file: %q", d.Delegated, want)
+	}
+}

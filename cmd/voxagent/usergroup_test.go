@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -115,6 +116,71 @@ func TestUserIsAppliedAfterItsGroups(t *testing.T) {
 			g, u := strings.Index(stdout, "Group[voxg17]/"), strings.Index(stdout, "User[voxu17]/")
 			if g < 0 || u < 0 || g > u {
 				t.Errorf("want the group before the user; got\n%s", stdout)
+			}
+		})
+	}
+}
+
+// The delegation reasons are logged at --debug, to the console and the
+// report; a Sensitive value must reach neither, nor must a Sensitive provider.
+// Only shapes the host accepts are here: a bad provider or gid is refused by
+// the host's own Ruby validation before the line is logged (route_test.go
+// covers those reasons).
+func TestDebugDelegationReasonsRedactSensitiveValues(t *testing.T) {
+	bin := buildBinary(t)
+	cases := []struct {
+		name, typ, attr string
+		value           any
+		reason          string
+	}{
+		{"user comment", "User", "comment", []any{"D8SECRET-user-comment"}, "User[leak]: comment => [redacted] is not implemented"},
+		{"group members", "Group", "members", []any{"D8SECRET-group-members", 1.0}, "Group[leak]: members => [redacted] is not implemented"},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			dir := t.TempDir()
+			res := markedResource(c.typ, "leak", map[string]any{c.attr: c.value}, c.attr)
+			res["kind"] = "compilable_type"
+			cat := writeCatalog(t, dir, []map[string]any{res})
+			reports := filepath.Join(dir, "reports")
+			// --noop: the host must not create the account.
+			stdout, stderr, _ := run(t, bin, append([]string{"apply", "--catalog", cat, "--report-dir", reports, "--debug", "--noop"}, hostArgs(t)...)...)
+			want := "Debug: voxagent: " + strings.ToLower(c.typ) + " applied via extension host: " + c.reason + "\n"
+			if !strings.Contains(stdout, want) {
+				t.Errorf("console lacks %q:\n%s", want, stdout)
+			}
+			assertNoLeak(t, "console", stdout+stderr, nil)
+			rep := readReport(t, reports)
+			reportLines := debugReportLines(t, rep)
+			if !slices.Contains(reportLines, strings.TrimSuffix(strings.TrimPrefix(want, "Debug: voxagent: "), "\n")) {
+				t.Errorf("report lacks the redacted reason; has %q", reportLines)
+			}
+			raw, err := json.Marshal(rep)
+			if err != nil {
+				t.Fatal(err)
+			}
+			assertNoLeak(t, "report", string(raw), nil)
+		})
+	}
+}
+
+// Ruby's own refusal of a Sensitive value (Invalid value ...) reaches the
+// console as a pre-flight error; it must show [redacted], not the value.
+func TestInvalidSensitiveUserGroupValueIsRedactedInRefusal(t *testing.T) {
+	bin := buildBinary(t)
+	for _, typ := range []string{"User", "Group"} {
+		t.Run(typ, func(t *testing.T) {
+			dir := t.TempDir()
+			cat := writeCatalog(t, dir, []map[string]any{
+				markedResource(typ, "leak", map[string]any{"ensure": "D8SECRET-" + typ + "-ensure"}, "ensure"),
+			})
+			stdout, stderr, code := run(t, bin, "apply", "--catalog", cat, "--report-dir", filepath.Join(dir, "reports"), "--debug", "--noop")
+			if code == 0 {
+				t.Fatalf("an invalid ensure applied:\n%s%s", stdout, stderr)
+			}
+			assertNoLeak(t, "console", stdout+stderr, nil)
+			if !strings.Contains(stderr, "Invalid value [redacted]") {
+				t.Errorf("stderr lacks the redacted refusal:\n%s", stderr)
 			}
 		})
 	}

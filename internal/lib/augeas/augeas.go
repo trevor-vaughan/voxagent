@@ -15,7 +15,7 @@ type Handle uintptr
 // Lib is libaugeas 1.15.0's C API (spec §4.1 table), one method per
 // function the providers call; nil *string is NULL. The cgo binding implements
 // it; unit tests replay Ruby's recorded traces through it
-// (augeas_replay_test.go). Results are libaugeas' own: the ruby-augeas mapping
+// (internal/lib/raltest). Results are libaugeas' own: the ruby-augeas mapping
 // is Aug's job.
 type Lib interface {
 	Init(root, loadpath *string, flags uint) (Handle, bool) // false: aug_init returned NULL

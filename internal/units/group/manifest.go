@@ -4,6 +4,7 @@ import (
 	"errors"
 	"strings"
 
+	"github.com/voxagent/voxagent/internal/catalog"
 	"github.com/voxagent/voxagent/internal/lib/rubyvalue"
 	"github.com/voxagent/voxagent/internal/ral"
 	"github.com/voxagent/voxagent/internal/unit"
@@ -34,18 +35,31 @@ func (unitImpl) Manifest() unit.Manifest { return Manifest }
 // Group resource names a provider other than groupadd, or has a value shape
 // the native parser does not implement (rubyvalue.UnimplementedValue), which
 // the host applied before the type was native; Ruby's own refusals stay native.
+// Each delegation says why, and only when the catalog holds a Group.
 func (unitImpl) Route(env *unit.Env) unit.Decision {
-	if !MeasuredPlatform(env.Platform) {
-		return unit.Decision{}
+	var groups []catalog.Resource
+	for _, r := range env.Catalog.Resources {
+		if strings.ToLower(r.Type) == "group" {
+			groups = append(groups, r)
+		}
+	}
+	delegate := func(why string) unit.Decision {
+		if len(groups) == 0 {
+			return unit.Decision{}
+		}
+		return unit.Decision{Delegated: map[string]string{"group": why}}
+	}
+	if why := UnmeasuredReason(env.Platform); why != "" {
+		return delegate(why)
 	}
 	var uv *rubyvalue.UnimplementedValue
-	for _, r := range env.Catalog.Resources {
-		if strings.ToLower(r.Type) != "group" {
-			continue
-		}
+	for _, r := range groups {
 		_, err := ParseGroup(r)
-		if !ProviderIs(r, "groupadd") || errors.As(err, &uv) {
-			return unit.Decision{}
+		if why := ForeignProvider(r, "groupadd"); why != "" {
+			return delegate(why)
+		}
+		if errors.As(err, &uv) {
+			return delegate(err.Error())
 		}
 	}
 	return unit.Decision{Providers: []ral.Provider{Group{}}}

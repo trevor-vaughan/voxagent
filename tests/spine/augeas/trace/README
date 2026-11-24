@@ -12,7 +12,7 @@ libdir /tmp/lib holds augeasproviders' and augeas_core's lib trees and no
 fails when the trace has no `aug_init "/" "" 64` or `32`. It writes catalog.json and aug-trace.txt
 to .test-output/augeas-trace/<case>/. It calls openvox's real puppet binary,
 because the wrapper script unsets LD_PRELOAD. The grammar of a line is in
-internal/ral/augeas_replay_test.go.
+internal/lib/raltest/trace.go.
 
 1. Build the image: run `task dev:augeas-lib` (it builds
    localhost/augeas-measure-el from tests/spine/images/Containerfile.augeas
