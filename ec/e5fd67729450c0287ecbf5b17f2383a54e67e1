@@ -1,0 +1,20 @@
+docs/maintainers/harness.md
+  s_edec75bbf1b7b3::t_8786fed7d9a85a 50-52,55-57,61,87-90,188-189
+  s_edec75bbf1b7b3::t_35fc98f3c146b8 3-4
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "ece5fd67729450c0287ecbf5b17f2383a54e67e1",
+  "prompts": {},
+  "sessions": {
+    "s_edec75bbf1b7b3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f82cc920-c095-4025-9de4-ef70d9879282",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "LLM (riotbox) <llm@riotbox>"
+    }
+  }
+}
