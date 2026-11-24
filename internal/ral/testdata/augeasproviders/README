@@ -1,0 +1,19 @@
+Unmodified copies of the augeasproviders files whose digests identify the
+measured releases, used as test fixtures.
+Upstream (Vox Pupuli):
+  https://github.com/voxpupuli/puppet-augeasproviders_core   4.2.0
+  https://github.com/voxpupuli/puppet-augeasproviders_sysctl 4.1.0
+  https://github.com/voxpupuli/augeasproviders_ssh           7.0.0
+Copyright (c) 2012 Dominic Cleal; Copyright (c) 2012-2020 Raphaël Pinson.
+Licensed under the Apache License, Version 2.0 (see /LICENSE.md and /NOTICE).
+
+lib/puppet/feature/augeas.rb                          augeasproviders_core 4.2.0
+lib/puppet/provider/augeasprovider/default.rb         augeasproviders_core 4.2.0
+lib/puppet/type/augeasprovider.rb                     augeasproviders_core 4.2.0
+lib/puppet/{type/sysctl.rb,provider/sysctl/augeas.rb} augeasproviders_sysctl 4.1.0
+lib/puppet/type/{ssh_config,sshd_config,sshd_config_subsystem,sshd_config_match}.rb
+lib/puppet/provider/{ssh_config,sshd_config,sshd_config_subsystem}/augeas.rb
+                                                      augeasproviders_ssh 7.0.0
+
+Do not edit: TestAugeasFixturesMatchFingerprints requires each file's sha256
+to equal augeasFingerprints in internal/ral/augeas_route.go.

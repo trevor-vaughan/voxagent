@@ -1,0 +1,117 @@
+h1 aug_init NULL NULL 68
+h1 aug_get "/augeas/version" => 1 "1.15.0"
+h1 aug_close
+h1 aug_init NULL "/tmp/gatelib/augeas/lenses" 64
+h1 aug_match "/augeas/load/Ssh" => 0
+h1 aug_set "/augeas/load/Ssh/lens" "Ssh.lns" => 0
+h1 aug_set "/augeas/load/Ssh/incl[last()+1]" "/etc/ssh/ssh_config" => 0
+h1 aug_load => 0
+h1 aug_match "/files/etc/ssh/ssh_config" => 1 "/files/etc/ssh/ssh_config"
+h1 aug_set "/augeas/context" "/files/etc/ssh/ssh_config" => 0
+h1 aug_defnode "target" "/files/etc/ssh/ssh_config" NULL NULL => 1
+h1 aug_defvar "resource" "$target/Host[.='*']/*[label()=~regexp('Ciphers', 'i')]" => 1
+h1 aug_match "$resource" => 1 "/files/etc/ssh/ssh_config/Host/Ciphers"
+h1 aug_match "/augeas/load/Ssh" => 1 "/augeas/load/Ssh"
+h1 aug_match "/augeas/load/Ssh/incl[.='/etc/ssh/ssh_config']" => 1 "/augeas/load/Ssh/incl"
+h1 aug_match "/files/etc/ssh/ssh_config" => 1 "/files/etc/ssh/ssh_config"
+h1 aug_set "/augeas/context" "/files/etc/ssh/ssh_config" => 0
+h1 aug_defnode "target" "/files/etc/ssh/ssh_config" NULL NULL => 1
+h1 aug_defvar "resource" "$target/Host[.='*']/*[label()=~regexp('Ciphers', 'i')]" => 1
+h1 aug_match "$resource" => 1 "/files/etc/ssh/ssh_config/Host/Ciphers"
+h1 aug_match "/files/etc/ssh/ssh_config/Host/Ciphers/*[label()=~regexp('[0-9]*')]" => 1 "/files/etc/ssh/ssh_config/Host/Ciphers/1"
+h1 aug_match "/files/etc/ssh/ssh_config/Host/Ciphers/*" => 1 "/files/etc/ssh/ssh_config/Host/Ciphers/1"
+h1 aug_get "/files/etc/ssh/ssh_config/Host/Ciphers/1" => 1 "aes128-ctr"
+h1 aug_match "/augeas/load/Ssh" => 1 "/augeas/load/Ssh"
+h1 aug_match "/augeas/load/Ssh/incl[.='/etc/ssh/ssh_config']" => 1 "/augeas/load/Ssh/incl"
+h1 aug_match "/files/etc/ssh/ssh_config" => 1 "/files/etc/ssh/ssh_config"
+h1 aug_set "/augeas/context" "/files/etc/ssh/ssh_config" => 0
+h1 aug_defnode "target" "/files/etc/ssh/ssh_config" NULL NULL => 1
+h1 aug_defvar "resource" "$target/Host[.='*']/*[label()=~regexp('Ciphers', 'i')]" => 1
+h2 aug_init NULL NULL 64
+h2 aug_set "/input" "Ciphers FOO\n" => 0
+h2 aug_text_store "Ssh.lns" "/input" "/parsed" => 0
+h2 aug_match "/parsed/Ciphers/1" => 1 "/parsed/Ciphers/1"
+h2 aug_close
+h1 aug_rm "$target/Host[.='*']/*[label()=~regexp('Ciphers', 'i')]/*" => 1
+h1 aug_rm "$target/Host[.='*']/*[label()=~regexp('Ciphers', 'i')][position() != 1]" => 0
+h1 aug_set "$target/Host[.='*']/*[label()=~regexp('Ciphers', 'i')]/1" "aes256-ctr" => 0
+h1 aug_set "$target/Host[.='*']/*[label()=~regexp('Ciphers', 'i')]/2" "aes128-ctr" => 0
+h1 aug_save => 0
+h1 aug_load => 0
+h3 aug_init NULL NULL 64
+h3 aug_get "/augeas/version" => 1 "1.15.0"
+h3 aug_close
+h1 aug_load => 0
+h1 aug_match "/augeas/load/Ssh" => 1 "/augeas/load/Ssh"
+h1 aug_match "/augeas/load/Ssh/incl[.='/etc/ssh/ssh_config']" => 1 "/augeas/load/Ssh/incl"
+h1 aug_match "/files/etc/ssh/ssh_config" => 1 "/files/etc/ssh/ssh_config"
+h1 aug_set "/augeas/context" "/files/etc/ssh/ssh_config" => 0
+h1 aug_defnode "target" "/files/etc/ssh/ssh_config" NULL NULL => 1
+h1 aug_defvar "resource" "$target/Host[.='*']/*[label()=~regexp('MACs', 'i')]" => 1
+h1 aug_match "$resource" => 1 "/files/etc/ssh/ssh_config/Host/MACs"
+h1 aug_match "/augeas/load/Ssh" => 1 "/augeas/load/Ssh"
+h1 aug_match "/augeas/load/Ssh/incl[.='/etc/ssh/ssh_config']" => 1 "/augeas/load/Ssh/incl"
+h1 aug_match "/files/etc/ssh/ssh_config" => 1 "/files/etc/ssh/ssh_config"
+h1 aug_set "/augeas/context" "/files/etc/ssh/ssh_config" => 0
+h1 aug_defnode "target" "/files/etc/ssh/ssh_config" NULL NULL => 1
+h1 aug_defvar "resource" "$target/Host[.='*']/*[label()=~regexp('MACs', 'i')]" => 1
+h1 aug_match "$resource" => 1 "/files/etc/ssh/ssh_config/Host/MACs"
+h1 aug_match "/files/etc/ssh/ssh_config/Host/MACs/*[label()=~regexp('[0-9]*')]" => 3 "/files/etc/ssh/ssh_config/Host/MACs/1" "/files/etc/ssh/ssh_config/Host/MACs/2" "/files/etc/ssh/ssh_config/Host/MACs/3"
+h1 aug_match "/files/etc/ssh/ssh_config/Host/MACs/*" => 3 "/files/etc/ssh/ssh_config/Host/MACs/1" "/files/etc/ssh/ssh_config/Host/MACs/2" "/files/etc/ssh/ssh_config/Host/MACs/3"
+h1 aug_get "/files/etc/ssh/ssh_config/Host/MACs/1" => 1 "hmac-sha2-512"
+h1 aug_get "/files/etc/ssh/ssh_config/Host/MACs/2" => 1 "hmac-sha1"
+h1 aug_get "/files/etc/ssh/ssh_config/Host/MACs/3" => 1 "hmac-md5"
+h1 aug_match "/augeas/load/Ssh" => 1 "/augeas/load/Ssh"
+h1 aug_match "/augeas/load/Ssh/incl[.='/etc/ssh/ssh_config']" => 1 "/augeas/load/Ssh/incl"
+h1 aug_match "/files/etc/ssh/ssh_config" => 1 "/files/etc/ssh/ssh_config"
+h1 aug_set "/augeas/context" "/files/etc/ssh/ssh_config" => 0
+h1 aug_defnode "target" "/files/etc/ssh/ssh_config" NULL NULL => 1
+h1 aug_defvar "resource" "$target/Host[.='*']/*[label()=~regexp('MACs', 'i')]" => 1
+h4 aug_init NULL NULL 64
+h4 aug_set "/input" "MACs FOO\n" => 0
+h4 aug_text_store "Ssh.lns" "/input" "/parsed" => 0
+h4 aug_match "/parsed/MACs/1" => 1 "/parsed/MACs/1"
+h4 aug_close
+h1 aug_rm "$target/Host[.='*']/*[label()=~regexp('MACs', 'i')]/*" => 3
+h1 aug_rm "$target/Host[.='*']/*[label()=~regexp('MACs', 'i')][position() != 1]" => 0
+h1 aug_set "$target/Host[.='*']/*[label()=~regexp('MACs', 'i')]/1" "hmac-sha2-512" => 0
+h1 aug_set "$target/Host[.='*']/*[label()=~regexp('MACs', 'i')]/2" "hmac-sha2-256" => 0
+h1 aug_save => 0
+h1 aug_load => 0
+h1 aug_load => 0
+h1 aug_match "/augeas/load/Ssh" => 1 "/augeas/load/Ssh"
+h1 aug_match "/augeas/load/Ssh/incl[.='/etc/ssh/ssh_config']" => 1 "/augeas/load/Ssh/incl"
+h1 aug_match "/files/etc/ssh/ssh_config" => 1 "/files/etc/ssh/ssh_config"
+h1 aug_set "/augeas/context" "/files/etc/ssh/ssh_config" => 0
+h1 aug_defnode "target" "/files/etc/ssh/ssh_config" NULL NULL => 1
+h1 aug_defvar "resource" "$target/Host[.='*']/*[label()=~regexp('SendEnv', 'i')]" => 1
+h1 aug_match "$resource" => 1 "/files/etc/ssh/ssh_config/Host/SendEnv"
+h1 aug_match "/augeas/load/Ssh" => 1 "/augeas/load/Ssh"
+h1 aug_match "/augeas/load/Ssh/incl[.='/etc/ssh/ssh_config']" => 1 "/augeas/load/Ssh/incl"
+h1 aug_match "/files/etc/ssh/ssh_config" => 1 "/files/etc/ssh/ssh_config"
+h1 aug_set "/augeas/context" "/files/etc/ssh/ssh_config" => 0
+h1 aug_defnode "target" "/files/etc/ssh/ssh_config" NULL NULL => 1
+h1 aug_defvar "resource" "$target/Host[.='*']/*[label()=~regexp('SendEnv', 'i')]" => 1
+h1 aug_match "$resource" => 1 "/files/etc/ssh/ssh_config/Host/SendEnv"
+h1 aug_match "/files/etc/ssh/ssh_config/Host/SendEnv/*[label()=~regexp('[0-9]*')]" => 1 "/files/etc/ssh/ssh_config/Host/SendEnv/1"
+h1 aug_match "/files/etc/ssh/ssh_config/Host/SendEnv/*" => 1 "/files/etc/ssh/ssh_config/Host/SendEnv/1"
+h1 aug_get "/files/etc/ssh/ssh_config/Host/SendEnv/1" => 1 "LANG"
+h1 aug_match "/augeas/load/Ssh" => 1 "/augeas/load/Ssh"
+h1 aug_match "/augeas/load/Ssh/incl[.='/etc/ssh/ssh_config']" => 1 "/augeas/load/Ssh/incl"
+h1 aug_match "/files/etc/ssh/ssh_config" => 1 "/files/etc/ssh/ssh_config"
+h1 aug_set "/augeas/context" "/files/etc/ssh/ssh_config" => 0
+h1 aug_defnode "target" "/files/etc/ssh/ssh_config" NULL NULL => 1
+h1 aug_defvar "resource" "$target/Host[.='*']/*[label()=~regexp('SendEnv', 'i')]" => 1
+h5 aug_init NULL NULL 64
+h5 aug_set "/input" "SendEnv FOO\n" => 0
+h5 aug_text_store "Ssh.lns" "/input" "/parsed" => 0
+h5 aug_match "/parsed/SendEnv/1" => 1 "/parsed/SendEnv/1"
+h5 aug_close
+h1 aug_rm "$target/Host[.='*']/*[label()=~regexp('SendEnv', 'i')]/*" => 1
+h1 aug_rm "$target/Host[.='*']/*[label()=~regexp('SendEnv', 'i')][position() != 1]" => 0
+h1 aug_set "$target/Host[.='*']/*[label()=~regexp('SendEnv', 'i')]/1" "LANG" => 0
+h1 aug_set "$target/Host[.='*']/*[label()=~regexp('SendEnv', 'i')]/2" "LC_*" => 0
+h1 aug_save => 0
+h1 aug_load => 0
+h1 aug_load => 0
+h1 aug_close

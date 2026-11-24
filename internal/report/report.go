@@ -370,7 +370,7 @@ func (r *Report) Finalize() { r.finalize(true) }
 func (r *Report) FinalizeIncomplete() { r.finalize(false) }
 
 func (r *Report) finalize(completed bool) {
-	var changes, outOfSyncCount, failed, restarts, restarted, skipped, changed, outOfSync, corrective int
+	var changes, failed, restarts, restarted, skipped, changed, outOfSync, corrective int
 	var events, evFailure, evSuccess, evNoop int
 	byType := map[string]float64{}
 	for _, rs := range r.ResourceStatuses {
@@ -378,7 +378,6 @@ func (r *Report) finalize(completed bool) {
 			byType[rs.ResourceType] += rs.EvaluationTime
 		}
 		changes += rs.ChangeCount
-		outOfSyncCount += rs.OutOfSyncCount
 		if rs.Failed {
 			failed++
 		}
@@ -531,11 +530,13 @@ func (r *Report) finalize(completed bool) {
 	}
 
 	r.CorrectiveChange = corrective > 0
-	// out_of_sync_count, NOT change_count: under --noop, ChangeCount is always
-	// zero by construction (resource/status.rb:122-133 only credits 'success'
-	// events), so gating this on changes would make noop_pending permanently
-	// false and silently drop the one channel would-be changes travel in.
-	r.NoopPending = r.Noop && outOfSyncCount > 0
+	// Any noop event, as transaction/report.rb:223 has it (has_noop_events?,
+	// :203-205): NOT change_count, which only 'success' events credit
+	// (resource/status.rb:122-133), and not out_of_sync_count, which a
+	// failure event also raises. Not gated on --noop either, as Ruby's is not;
+	// a live run's resource-level noop is unreachable while a per-resource noop
+	// stays a pre-flight gap, so there it is false.
+	r.NoopPending = evNoop > 0
 	r.TransactionCompleted = completed
 	r.finalized = true
 }

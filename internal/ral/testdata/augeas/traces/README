@@ -1,0 +1,16 @@
+Ruby's libaugeas calls, one file per measured case: every call openvox 8.33.0
+(ruby-augeas, augeasproviders_core 4.2.0, _sysctl 4.1.0, _ssh 7.0.0) made to
+libaugeas 1.15.0 while applying that case's catalog, recorded by an LD_PRELOAD
+interposer (aug-trace.c). voxagent-generated measurement output; the line
+grammar is documented in internal/ral/augeas_replay_test.go.
+
+Do not edit: the native providers' call sequences are asserted equal to these
+files (spec §0, §10). Re-record a case rather than changing a line.
+
+The generic augeas type's traces (06a-06r, augeas-runtime-errors,
+augeas-notified, augeas-apply-ignores-libdir-lens) were recorded from the G5
+case dirs of the same names with trace.sh (tests/spine/augeas/trace/): applied
+as G5's Ruby side applies, with augeas_core 2.1.0 in the libdir and no
+--environmentpath. The type's own handle starts `aug_init "/" "" 64`
+(AUG_NO_MODL_AUTOLOAD, when the resource has a lens) or `... 32` (AUG_NO_LOAD,
+when it has none: the resolv cases), where the 3a types' is `NULL NULL 64`.

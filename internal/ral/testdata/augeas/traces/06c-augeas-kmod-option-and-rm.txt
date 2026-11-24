@@ -1,0 +1,23 @@
+h1 aug_init NULL NULL 68
+h1 aug_get "/augeas/version" => 1 "1.15.0"
+h1 aug_close
+h1 aug_init "/" "" 64
+h1 aug_get "/augeas/version" => 1 "1.15.0"
+h1 aug_get "/augeas/version" => 1 "1.15.0"
+h1 aug_match "/augeas/version/pathx/functions/glob" => 1 "/augeas/version/pathx/functions/glob"
+h1 aug_set "/augeas/load/Xfm/lens" "Modprobe.lns" => 0
+h1 aug_set "/augeas/load/Xfm/incl" "/etc/modprobe.d/blacklist.conf" => 0
+h1 aug_load => 0
+h1 aug_match "/augeas//error" => 0
+h1 aug_get "/augeas/version" => 1 "1.15.0"
+h1 aug_set "/augeas/save" "newfile" => 0
+h1 aug_set "/files/etc/modprobe.d/blacklist.conf/blacklist[. = 'cramfs']" "cramfs" => 0
+h1 aug_set "/files/etc/modprobe.d/blacklist.conf/options[. = 'tipc']/foo" "bar" => 0
+h1 aug_save => -1
+h1 aug_match "/augeas//error[. = 'put_failed']" => 1 "/augeas/files/etc/modprobe.d/blacklist.conf/error"
+h1 aug_get "/augeas/files/etc/modprobe.d/blacklist.conf/error" => 1 "put_failed"
+h1 aug_match "/augeas/files/etc/modprobe.d/blacklist.conf/error/*" => 3 "/augeas/files/etc/modprobe.d/blacklist.conf/error/path" "/augeas/files/etc/modprobe.d/blacklist.conf/error/lens" "/augeas/files/etc/modprobe.d/blacklist.conf/error/message"
+h1 aug_get "/augeas/files/etc/modprobe.d/blacklist.conf/error/path" => 1 "/files/etc/modprobe.d/blacklist.conf/"
+h1 aug_get "/augeas/files/etc/modprobe.d/blacklist.conf/error/lens" => 1 "/opt/puppetlabs/puppet/share/augeas/lenses/dist/modprobe.aug:103.10-.32:"
+h1 aug_get "/augeas/files/etc/modprobe.d/blacklist.conf/error/message" => 1 "Unexpected node '/files/etc/modprobe.d/blacklist.conf/options': can not match tree\n\n     { \"options\" }\n\n with pattern\n   (    { /#comment/ = /[^\\t\\n\\r ].*[^\\t\\n\\r ]|[^\\t\\n\\r ]/ }\n      | { }\n      | { /alias/ = /[^\\t\\n #\\\\]+/ }\n      | { /options/ = /[^\\t\\n #\\\\]+/ }\n      | { /install|remove/ = /[^\\t\\n #\\\\]+/ }\n      | { /blacklist/ = /[^\\t\\n #\\\\]+/ }\n      | { /config/ = /binary_indexes|yes|no/ }\n      | { /softdep/ = /[^\\t\\n #:\\\\]+/ })*\n"
+h1 aug_close

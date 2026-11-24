@@ -40,8 +40,14 @@
 #
 # puppetlabs-concat's concat_file and concat_fragment are here because
 # voxagent applies them natively: their validate_cmd forks, and their cases
-# change /etc. That half runs last, case by case in fresh containers of its own;
+# change /etc. That half runs case by case in fresh containers of its own;
 # tests/spine/concat/g5.sh holds it and says how.
+#
+# sysctl, ssh_config, sshd_config and sshd_config_subsystem are here for the
+# same reasons: voxagent applies them natively over openvox's libaugeas, sysctl
+# shells out, and their cases change /etc. That half runs last, on an image
+# derived from this one with the packages the four manage; tests/spine/augeas/
+# g5.sh holds it and says how. It alone returns 2 under rootful podman.
 #
 # The comparator and the allowlist are `gatekit compare-reports` and
 # tests/spine/allowlist.json, used unchanged. A second comparator would be a
@@ -49,8 +55,8 @@
 #
 #   0  the reports agree outside the allowlist and the walk order agrees, for
 #      the live run, for the account cases' noop run, and for every concat
-#      case's live, rerun and noop runs (or both agents refuse its catalog
-#      alike)
+#      and augeas case's live, rerun and noop runs (or both agents refuse its
+#      catalog alike), and every compared end state agrees
 #   1  they diverge -- a result about voxagent
 #   2  the comparison could not run
 set -uo pipefail
@@ -201,8 +207,16 @@ podman image exists "$IMAGE" || {
 require_fresh report-diff-container "$ROOT" "$VOXAGENT" "$GATEKIT"
 # shellcheck source=simp/lib.sh
 . "$HERE/simp/lib.sh" || exit 2
+# shellcheck source=g5-case.sh
+. "$HERE/g5-case.sh" || exit 2
 # shellcheck source=concat/g5.sh
 . "$HERE/concat/g5.sh" || exit 2
+# shellcheck source=build-image.sh
+. "$HERE/build-image.sh" || exit 2
+# shellcheck source=augeas/image.sh
+. "$HERE/augeas/image.sh" || exit 2
+# shellcheck source=augeas/g5.sh
+. "$HERE/augeas/g5.sh" || exit 2
 
 got_puppet="$(podman run --rm "$IMAGE" /opt/puppetlabs/bin/puppet --version 2>/dev/null)" || {
   echo "report-diff-container: cannot read the image's puppet version" >&2
@@ -234,7 +248,8 @@ fi
 # the plain successful one.
 WORK="$(mktemp -d)" || exit 2
 trap 'rm -rf "$WORK"; podman rm -f -t 0 "$RUBY_SIDE" "$GO_SIDE" "$COMPILER" "$RUBY_NOOP" "$GO_NOOP" \
-  concat-compile-$$ concat-{ruby,voxagent}-{live,noop}-$$ >/dev/null 2>&1' EXIT
+  concat-compile-$$ concat-{ruby,voxagent}-{live,noop}-$$ \
+  augeas-compile-$$ augeas-{ruby,voxagent}-{live,noop}-$$ >/dev/null 2>&1' EXIT
 
 if ! podman run --rm "$IMAGE" sh -c "
   if ! $SEED_LATEST; then
@@ -961,4 +976,8 @@ esac
 concat_gate
 concat_rc=$?
 [ "$concat_rc" -gt "$rc" ] && rc=$concat_rc
+
+augeas_gate
+augeas_rc=$?
+[ "$augeas_rc" -gt "$rc" ] && rc=$augeas_rc
 exit "$rc"

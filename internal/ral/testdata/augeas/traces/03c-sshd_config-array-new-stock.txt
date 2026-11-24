@@ -1,0 +1,91 @@
+h1 aug_init NULL NULL 68
+h1 aug_get "/augeas/version" => 1 "1.15.0"
+h1 aug_close
+h1 aug_init NULL NULL 64
+h1 aug_match "/augeas/load/Sshd" => 0
+h1 aug_set "/augeas/load/Sshd/lens" "Sshd.lns" => 0
+h1 aug_set "/augeas/load/Sshd/incl[last()+1]" "/etc/ssh/sshd_config" => 0
+h1 aug_load => 0
+h1 aug_match "/files/etc/ssh/sshd_config" => 1 "/files/etc/ssh/sshd_config"
+h1 aug_set "/augeas/context" "/files/etc/ssh/sshd_config" => 0
+h1 aug_defnode "target" "/files/etc/ssh/sshd_config" NULL NULL => 1
+h1 aug_defvar "resource" "$target/*[label()=~regexp('AllowUsers', 'i')]" => 0
+h1 aug_match "$resource" => 0
+h1 aug_match "/augeas/load/Sshd" => 1 "/augeas/load/Sshd"
+h1 aug_match "/augeas/load/Sshd/incl[.='/etc/ssh/sshd_config']" => 1 "/augeas/load/Sshd/incl"
+h1 aug_match "/files/etc/ssh/sshd_config" => 1 "/files/etc/ssh/sshd_config"
+h1 aug_set "/augeas/context" "/files/etc/ssh/sshd_config" => 0
+h1 aug_defnode "target" "/files/etc/ssh/sshd_config" NULL NULL => 1
+h1 aug_defvar "resource" "$target/*[label()=~regexp('AllowUsers', 'i')]" => 0
+h2 aug_init NULL NULL 64
+h2 aug_set "/input" "AllowUsers FOO\n" => 0
+h2 aug_text_store "Sshd.lns" "/input" "/parsed" => 0
+h2 aug_match "/parsed/AllowUsers/1" => 1 "/parsed/AllowUsers/1"
+h2 aug_close
+h1 aug_match "$target/Match" => 0
+h1 aug_insert "$target/*" "AllowUsers" 0 => -1
+h1 aug_rm "$target/AllowUsers/*" => 0
+h1 aug_rm "$target/AllowUsers[position() != 1]" => 0
+h1 aug_set "$target/AllowUsers/1" "alice" => 0
+h1 aug_set "$target/AllowUsers/2" "bob" => 0
+h1 aug_save => 0
+h1 aug_load => 0
+h3 aug_init NULL NULL 64
+h3 aug_get "/augeas/version" => 1 "1.15.0"
+h3 aug_close
+h1 aug_load => 0
+h1 aug_match "/augeas/load/Sshd" => 1 "/augeas/load/Sshd"
+h1 aug_match "/augeas/load/Sshd/incl[.='/etc/ssh/sshd_config']" => 1 "/augeas/load/Sshd/incl"
+h1 aug_match "/files/etc/ssh/sshd_config" => 1 "/files/etc/ssh/sshd_config"
+h1 aug_set "/augeas/context" "/files/etc/ssh/sshd_config" => 0
+h1 aug_defnode "target" "/files/etc/ssh/sshd_config" NULL NULL => 1
+h1 aug_defvar "resource" "$target/*[label()=~regexp('Ciphers', 'i')]" => 0
+h1 aug_match "$resource" => 0
+h1 aug_match "/augeas/load/Sshd" => 1 "/augeas/load/Sshd"
+h1 aug_match "/augeas/load/Sshd/incl[.='/etc/ssh/sshd_config']" => 1 "/augeas/load/Sshd/incl"
+h1 aug_match "/files/etc/ssh/sshd_config" => 1 "/files/etc/ssh/sshd_config"
+h1 aug_set "/augeas/context" "/files/etc/ssh/sshd_config" => 0
+h1 aug_defnode "target" "/files/etc/ssh/sshd_config" NULL NULL => 1
+h1 aug_defvar "resource" "$target/*[label()=~regexp('Ciphers', 'i')]" => 0
+h4 aug_init NULL NULL 64
+h4 aug_set "/input" "Ciphers FOO\n" => 0
+h4 aug_text_store "Sshd.lns" "/input" "/parsed" => 0
+h4 aug_match "/parsed/Ciphers/1" => 1 "/parsed/Ciphers/1"
+h4 aug_close
+h1 aug_match "$target/Match" => 0
+h1 aug_insert "$target/*" "Ciphers" 0 => -1
+h1 aug_rm "$target/Ciphers/*" => 0
+h1 aug_rm "$target/Ciphers[position() != 1]" => 0
+h1 aug_set "$target/Ciphers/1" "aes256-ctr" => 0
+h1 aug_set "$target/Ciphers/2" "aes128-ctr" => 0
+h1 aug_save => 0
+h1 aug_load => 0
+h1 aug_load => 0
+h1 aug_match "/augeas/load/Sshd" => 1 "/augeas/load/Sshd"
+h1 aug_match "/augeas/load/Sshd/incl[.='/etc/ssh/sshd_config']" => 1 "/augeas/load/Sshd/incl"
+h1 aug_match "/files/etc/ssh/sshd_config" => 1 "/files/etc/ssh/sshd_config"
+h1 aug_set "/augeas/context" "/files/etc/ssh/sshd_config" => 0
+h1 aug_defnode "target" "/files/etc/ssh/sshd_config" NULL NULL => 1
+h1 aug_defvar "resource" "$target/*[label()=~regexp('AcceptEnv', 'i')]" => 0
+h1 aug_match "$resource" => 0
+h1 aug_match "/augeas/load/Sshd" => 1 "/augeas/load/Sshd"
+h1 aug_match "/augeas/load/Sshd/incl[.='/etc/ssh/sshd_config']" => 1 "/augeas/load/Sshd/incl"
+h1 aug_match "/files/etc/ssh/sshd_config" => 1 "/files/etc/ssh/sshd_config"
+h1 aug_set "/augeas/context" "/files/etc/ssh/sshd_config" => 0
+h1 aug_defnode "target" "/files/etc/ssh/sshd_config" NULL NULL => 1
+h1 aug_defvar "resource" "$target/*[label()=~regexp('AcceptEnv', 'i')]" => 0
+h5 aug_init NULL NULL 64
+h5 aug_set "/input" "AcceptEnv FOO\n" => 0
+h5 aug_text_store "Sshd.lns" "/input" "/parsed" => 0
+h5 aug_match "/parsed/AcceptEnv/1" => 1 "/parsed/AcceptEnv/1"
+h5 aug_close
+h1 aug_match "$target/Match" => 0
+h1 aug_insert "$target/*" "AcceptEnv" 0 => -1
+h1 aug_rm "$target/AcceptEnv/*" => 0
+h1 aug_rm "$target/AcceptEnv[position() != 1]" => 0
+h1 aug_set "$target/AcceptEnv/1" "LANG" => 0
+h1 aug_set "$target/AcceptEnv/2" "LC_*" => 0
+h1 aug_save => 0
+h1 aug_load => 0
+h1 aug_load => 0
+h1 aug_close

@@ -1,0 +1,72 @@
+h1 aug_init NULL NULL 68
+h1 aug_get "/augeas/version" => 1 "1.15.0"
+h1 aug_close
+h1 aug_init NULL NULL 64
+h1 aug_match "/augeas/load/Sshd" => 0
+h1 aug_set "/augeas/load/Sshd/lens" "Sshd.lns" => 0
+h1 aug_set "/augeas/load/Sshd/incl[last()+1]" "/etc/ssh/sshd_config" => 0
+h1 aug_load => 0
+h1 aug_match "/files/etc/ssh/sshd_config" => 1 "/files/etc/ssh/sshd_config"
+h1 aug_set "/augeas/context" "/files/etc/ssh/sshd_config" => 0
+h1 aug_defnode "target" "/files/etc/ssh/sshd_config" NULL NULL => 1
+h1 aug_defvar "resource" "$target/*[label()=~regexp('AllowUsers', 'i')]" => 1
+h1 aug_match "$resource" => 1 "/files/etc/ssh/sshd_config/AllowUsers"
+h1 aug_match "/augeas/load/Sshd" => 1 "/augeas/load/Sshd"
+h1 aug_match "/augeas/load/Sshd/incl[.='/etc/ssh/sshd_config']" => 1 "/augeas/load/Sshd/incl"
+h1 aug_match "/files/etc/ssh/sshd_config" => 1 "/files/etc/ssh/sshd_config"
+h1 aug_set "/augeas/context" "/files/etc/ssh/sshd_config" => 0
+h1 aug_defnode "target" "/files/etc/ssh/sshd_config" NULL NULL => 1
+h1 aug_defvar "resource" "$target/*[label()=~regexp('AllowUsers', 'i')]" => 1
+h1 aug_match "$resource" => 1 "/files/etc/ssh/sshd_config/AllowUsers"
+h1 aug_match "/files/etc/ssh/sshd_config/AllowUsers/*[label()=~regexp('[0-9]*')]" => 2 "/files/etc/ssh/sshd_config/AllowUsers/1" "/files/etc/ssh/sshd_config/AllowUsers/2"
+h1 aug_match "/files/etc/ssh/sshd_config/AllowUsers/*" => 2 "/files/etc/ssh/sshd_config/AllowUsers/1" "/files/etc/ssh/sshd_config/AllowUsers/2"
+h1 aug_get "/files/etc/ssh/sshd_config/AllowUsers/1" => 1 "root"
+h1 aug_get "/files/etc/ssh/sshd_config/AllowUsers/2" => 1 "alice"
+h1 aug_match "/augeas/load/Sshd" => 1 "/augeas/load/Sshd"
+h1 aug_match "/augeas/load/Sshd/incl[.='/etc/ssh/sshd_config']" => 1 "/augeas/load/Sshd/incl"
+h1 aug_match "/files/etc/ssh/sshd_config" => 1 "/files/etc/ssh/sshd_config"
+h1 aug_set "/augeas/context" "/files/etc/ssh/sshd_config" => 0
+h1 aug_defnode "target" "/files/etc/ssh/sshd_config" NULL NULL => 1
+h1 aug_defvar "resource" "$target/*[label()=~regexp('AllowUsers', 'i')]" => 1
+h1 aug_match "$resource" => 1 "/files/etc/ssh/sshd_config/AllowUsers"
+h1 aug_match "/files/etc/ssh/sshd_config/AllowUsers/*[label()=~regexp('[0-9]*')]" => 2 "/files/etc/ssh/sshd_config/AllowUsers/1" "/files/etc/ssh/sshd_config/AllowUsers/2"
+h1 aug_match "/files/etc/ssh/sshd_config/AllowUsers/*" => 2 "/files/etc/ssh/sshd_config/AllowUsers/1" "/files/etc/ssh/sshd_config/AllowUsers/2"
+h1 aug_get "/files/etc/ssh/sshd_config/AllowUsers/1" => 1 "root"
+h1 aug_get "/files/etc/ssh/sshd_config/AllowUsers/2" => 1 "alice"
+h1 aug_match "/augeas/load/Sshd" => 1 "/augeas/load/Sshd"
+h1 aug_match "/augeas/load/Sshd/incl[.='/etc/ssh/sshd_config']" => 1 "/augeas/load/Sshd/incl"
+h1 aug_match "/files/etc/ssh/sshd_config" => 1 "/files/etc/ssh/sshd_config"
+h1 aug_set "/augeas/context" "/files/etc/ssh/sshd_config" => 0
+h1 aug_defnode "target" "/files/etc/ssh/sshd_config" NULL NULL => 1
+h1 aug_defvar "resource" "$target/*[label()=~regexp('AllowUsers', 'i')]" => 1
+h2 aug_init NULL NULL 64
+h2 aug_set "/input" "AllowUsers FOO\n" => 0
+h2 aug_text_store "Sshd.lns" "/input" "/parsed" => 0
+h2 aug_match "/parsed/AllowUsers/1" => 1 "/parsed/AllowUsers/1"
+h2 aug_close
+h1 aug_match "$target/Match" => 0
+h1 aug_insert "$target/*" "AllowUsers" 0 => -1
+h1 aug_rm "$target/*[label()=~regexp('AllowUsers', 'i')]/*" => 2
+h1 aug_rm "$target/*[label()=~regexp('AllowUsers', 'i')][position() != 1]" => 0
+h1 aug_set "$target/*[label()=~regexp('AllowUsers', 'i')]/1" "root" => 0
+h1 aug_set "$target/*[label()=~regexp('AllowUsers', 'i')]/2" "alice" => 0
+h1 aug_set "$target/*[label()=~regexp('AllowUsers', 'i')]/3" "bob" => 0
+h1 aug_match "/augeas/load/Sshd" => 1 "/augeas/load/Sshd"
+h1 aug_match "/augeas/load/Sshd/incl[.='/etc/ssh/sshd_config']" => 1 "/augeas/load/Sshd/incl"
+h1 aug_match "/files/etc/ssh/sshd_config" => 1 "/files/etc/ssh/sshd_config"
+h1 aug_set "/augeas/context" "/files/etc/ssh/sshd_config" => 0
+h1 aug_defnode "target" "/files/etc/ssh/sshd_config" NULL NULL => 1
+h1 aug_defvar "resource" "$target/*[label()=~regexp('AllowUsers', 'i')]" => 1
+h1 aug_match "$resource" => 1 "/files/etc/ssh/sshd_config/AllowUsers"
+h1 aug_match "/files/etc/ssh/sshd_config/AllowUsers/*[label()=~regexp('[0-9]*')]" => 3 "/files/etc/ssh/sshd_config/AllowUsers/1" "/files/etc/ssh/sshd_config/AllowUsers/2" "/files/etc/ssh/sshd_config/AllowUsers/3"
+h1 aug_match "/files/etc/ssh/sshd_config/AllowUsers/*" => 3 "/files/etc/ssh/sshd_config/AllowUsers/1" "/files/etc/ssh/sshd_config/AllowUsers/2" "/files/etc/ssh/sshd_config/AllowUsers/3"
+h1 aug_get "/files/etc/ssh/sshd_config/AllowUsers/1" => 1 "root"
+h1 aug_get "/files/etc/ssh/sshd_config/AllowUsers/2" => 1 "alice"
+h1 aug_get "/files/etc/ssh/sshd_config/AllowUsers/3" => 1 "bob"
+h1 aug_save => 0
+h1 aug_load => 0
+h3 aug_init NULL NULL 64
+h3 aug_get "/augeas/version" => 1 "1.15.0"
+h3 aug_close
+h1 aug_load => 0
+h1 aug_close

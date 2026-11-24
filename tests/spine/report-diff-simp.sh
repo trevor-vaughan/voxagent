@@ -15,7 +15,16 @@
 # which proves the rich-data path is exercised. The merged libdir's concat type
 # files must carry puppetlabs-concat 9.1.0's fingerprints, and voxagent must
 # not name concat_file or concat_fragment among the types it applies via the
-# extension host: both are native on this catalog (concat design §1).
+# extension host: both are native on this catalog (concat design §1). The
+# same holds for sysctl, ssh_config, sshd_config, sshd_config_subsystem and
+# augeas, against the fifteen augeas fingerprints (augeas design §1 item 5;
+# augeas generic design §1 item 4).
+# The merged libdir holds SIMP's ssh.aug and resolv.aug in augeas/lenses, so
+# the 49 Ssh_config resources take the custom-lens path. Its Sysctl coverage
+# is mostly the failure path: rootless, the real `sysctl -w` is refused for 62
+# of the 63, and the one `silent => true` resource ignores the refusal; G5's
+# shim cases gate the success paths. Rootful podman exits 2: a rootful
+# `sysctl -w` would change the host kernel.
 #
 # TWO FRESH CONTAINERS, ONE PER AGENT, booted and applied in parallel, for the
 # reason report-diff-systemd.sh gives: an apply mutates the machine. Each gets
@@ -24,10 +33,14 @@
 # both agents. Named with this script's PID so the cleanup trap cannot destroy
 # anyone else's container.
 #
-# Besides the reports, three end states are compared, because two reports can
+# Besides the reports, end states are compared, because two reports can
 # agree while the machines differ: `systemctl
-# is-enabled tmp.mount`, the mode of /etc/audit, and the reboot notifications
-# simplib's reboot_notify records.
+# is-enabled tmp.mount`, the mode of /etc/audit, the reboot notifications
+# simplib's reboot_notify records, and /etc/sysctl.conf, /etc/ssh/ssh_config,
+# /etc/ssh/sshd_config and /etc/modprobe.d/blacklist.conf (mode, owner and
+# content). /etc/resolv.conf is not among them: it is a mount in the
+# container, so the Augeas resource that edits it fails its save on both
+# sides and the reports carry the comparison.
 #
 # NETWORK: needed only on a cold run, to fetch the 77 module releases from the
 # forge and to build the image from the CentOS Stream mirrors. The catalog
@@ -91,6 +104,12 @@ command -v podman >/dev/null 2>&1 || {
   echo "report-diff-simp: podman is not available" >&2
   exit 2
 }
+# The catalog's Sysctl resources run `sysctl -w`, which rootless is refused on
+# both sides alike and rootful would change the host kernel.
+if [ "$(podman info --format '{{.Host.Security.Rootless}}' 2>/dev/null)" != true ]; then
+  echo "report-diff-simp: podman is not rootless, and a rootful sysctl -w would change the host kernel" >&2
+  exit 2
+fi
 podman image exists "$BASE_IMAGE" || {
   echo "report-diff-simp: $BASE_IMAGE is not built; run 'task fleet:images'" >&2
   exit 2
@@ -185,6 +204,10 @@ cp -R "$HERE/lib/." "$WORK/libdir/" || {
 # concat_file and concat_fragment natively (concat design §1 item 5). A cache
 # holding anything else would send both to the extension host, unnoticed.
 concat_fingerprints report-diff-simp "$WORK/libdir" 9.1.0 || exit 2
+# Likewise augeasproviders_core 4.2.0, _sysctl 4.1.0, _ssh 7.0.0 and
+# augeas_core 2.1.0, whose fifteen files route sysctl, ssh_config, sshd_config,
+# sshd_config_subsystem and augeas natively (augeas design §1 item 5).
+augeasproviders_fingerprints report-diff-simp "$WORK/libdir" || exit 2
 
 mkdir -p "$WORK/compile" || exit 2
 simp_boot "$COMPILER" "$IMAGE" || exit 2
@@ -304,6 +327,20 @@ for label in "$LABEL_A" "$LABEL_B"; do
     exit 2
   fi
   sed 's/^/reboot notification|/' "$WORK/$label.reboot" >>"$WORK/$label.state" || exit 2
+  # The three files the augeasproviders types edit and the one the Augeas
+  # resources save: mode, owner and every byte (cat -A), each line prefixed
+  # with the path.
+  for f in /etc/sysctl.conf /etc/ssh/ssh_config /etc/ssh/sshd_config /etc/modprobe.d/blacklist.conf; do
+    if ! podman exec "$side" sh -c 'stat -c "mode=%a owner=%U group=%G" "$1" && cat -A "$1"' sh "$f" \
+      >"$WORK/$label.file" 2>/dev/null; then
+      if [ "$label" = "$LABEL_A" ]; then
+        echo "report-diff-simp: could not read $f in $side" >&2
+        exit 2
+      fi
+      echo "unreadable" >"$WORK/$label.file"
+    fi
+    sed "s#^#$f|#" "$WORK/$label.file" >>"$WORK/$label.state" || exit 2
+  done
 done
 diff "$WORK/$LABEL_A.state" "$WORK/$LABEL_B.state" >"$WORK/state.diff"
 case $? in
@@ -324,6 +361,17 @@ esac
 if grep -E '^voxagent: [0-9]+ concat_(file|fragment) resource\(s\) applied via extension host' \
   "$WORK/$LABEL_B/apply.out" >&2; then
   echo "report-diff-simp: voxagent applied concat through the extension host, not natively" >&2
+  rc=1
+fi
+
+# Native augeasproviders types and augeas: none of the five may be among them
+# either.
+# The catalog's Sysctl coverage is mostly of the failure path: rootless, the
+# real `sysctl -w` is refused, so the success paths (`-w` succeeding, then the
+# save) are gated only by G5's shim cases.
+if grep -E '^voxagent: [0-9]+ (sysctl|ssh_config|sshd_config|sshd_config_subsystem|augeas) resource\(s\) applied via extension host' \
+  "$WORK/$LABEL_B/apply.out" >&2; then
+  echo "report-diff-simp: voxagent applied an augeasproviders type or augeas through the extension host, not natively" >&2
   rc=1
 fi
 

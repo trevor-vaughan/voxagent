@@ -14,13 +14,16 @@ import (
 	"github.com/voxagent/voxagent/internal/catalog"
 )
 
-// PluginTree is the plugin tree NativeConcat fingerprints: the libdir the
-// extension host would load types from. It is an interface so tests do not
-// depend on the machine they run on.
+// PluginTree is the plugin tree NativeConcat and NativeAugeas fingerprint:
+// the libdir the extension host would load types from. It is an interface so
+// tests do not depend on the machine they run on.
 type PluginTree interface {
 	// Read returns the file at rel, a slash-separated path under the tree,
 	// following symlinks; a file over maxPluginFile bytes is an error.
 	Read(rel string) ([]byte, error)
+	// List returns the names of the entries of the directory at rel, a
+	// slash-separated path under the tree, following symlinks.
+	List(rel string) ([]string, error)
 }
 
 // maxPluginFile bounds a fingerprinted file (spec §0 row 2).
@@ -53,6 +56,18 @@ func (l LibdirTree) Read(rel string) ([]byte, error) {
 		return nil, fmt.Errorf("%s is over %d bytes", at, maxPluginFile)
 	}
 	return b, nil
+}
+
+func (l LibdirTree) List(rel string) ([]string, error) {
+	entries, err := os.ReadDir(filepath.Join(string(l), filepath.FromSlash(rel)))
+	if err != nil {
+		return nil, err
+	}
+	names := make([]string, len(entries))
+	for i, e := range entries {
+		names[i] = e.Name()
+	}
+	return names, nil
 }
 
 // concatTypeFiles are the files whose digests identify a concat release, in

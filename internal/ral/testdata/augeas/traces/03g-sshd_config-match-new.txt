@@ -1,0 +1,71 @@
+h1 aug_init NULL NULL 68
+h1 aug_get "/augeas/version" => 1 "1.15.0"
+h1 aug_close
+h1 aug_init NULL NULL 64
+h1 aug_match "/augeas/load/Sshd" => 0
+h1 aug_set "/augeas/load/Sshd/lens" "Sshd.lns" => 0
+h1 aug_set "/augeas/load/Sshd/incl[last()+1]" "/etc/ssh/sshd_config" => 0
+h1 aug_load => 0
+h1 aug_match "/files/etc/ssh/sshd_config" => 1 "/files/etc/ssh/sshd_config"
+h1 aug_set "/augeas/context" "/files/etc/ssh/sshd_config" => 0
+h1 aug_defnode "target" "/files/etc/ssh/sshd_config" NULL NULL => 1
+h1 aug_defvar "resource" "$target/Match[count(Condition/*)=2][Condition/Host=\"example.net\"][Condition/User=\"root\"]/Settings/*[label()=~regexp('PasswordAuthentication', 'i')]" => 0
+h1 aug_match "$resource" => 0
+h1 aug_match "/augeas/load/Sshd" => 1 "/augeas/load/Sshd"
+h1 aug_match "/augeas/load/Sshd/incl[.='/etc/ssh/sshd_config']" => 1 "/augeas/load/Sshd/incl"
+h1 aug_match "/files/etc/ssh/sshd_config" => 1 "/files/etc/ssh/sshd_config"
+h1 aug_set "/augeas/context" "/files/etc/ssh/sshd_config" => 0
+h1 aug_defnode "target" "/files/etc/ssh/sshd_config" NULL NULL => 1
+h1 aug_defvar "resource" "$target/Match[count(Condition/*)=2][Condition/Host=\"example.net\"][Condition/User=\"root\"]/Settings/*[label()=~regexp('PasswordAuthentication', 'i')]" => 0
+h1 aug_match "$target/Match[count(Condition/*)=2][Condition/Host=\"example.net\"][Condition/User=\"root\"]" => 0
+h1 aug_insert "$target/*[last()]" "Match" 0 => 0
+h1 aug_set "$target/Match[last()]/Condition/Host" "example.net" => 0
+h1 aug_set "$target/Match[last()]/Condition/User" "root" => 0
+h2 aug_init NULL NULL 64
+h2 aug_set "/input" "PasswordAuthentication FOO\n" => 0
+h2 aug_text_store "Sshd.lns" "/input" "/parsed" => 0
+h2 aug_match "/parsed/PasswordAuthentication/1" => 0
+h2 aug_close
+h1 aug_match "$target/Match[count(Condition/*)=2][Condition/Host=\"example.net\"][Condition/User=\"root\"]/Settings/PasswordAuthentication" => 0
+h1 aug_match "$target/Match[count(Condition/*)=2][Condition/Host=\"example.net\"][Condition/User=\"root\"]/Settings/#comment[.=~regexp('PasswordAuthentication([^a-z.].*)?', 'i')]" => 0
+h1 aug_match "$target/Match[count(Condition/*)=2][Condition/Host=\"example.net\"][Condition/User=\"root\"]/Settings/Match" => 0
+h1 aug_insert "$target/Match[count(Condition/*)=2][Condition/Host=\"example.net\"][Condition/User=\"root\"]/Settings/*" "PasswordAuthentication" 0 => -1
+h1 aug_set "$target/Match[count(Condition/*)=2][Condition/Host=\"example.net\"][Condition/User=\"root\"]/Settings/PasswordAuthentication[last()]" "no" => 0
+h1 aug_match "$target/Match[count(Condition/*)=2][Condition/Host=\"example.net\"][Condition/User=\"root\"]/Settings/PasswordAuthentication[last()]" => 1 "/files/etc/ssh/sshd_config/Match/Settings/PasswordAuthentication"
+h1 aug_save => 0
+h1 aug_load => 0
+h3 aug_init NULL NULL 64
+h3 aug_get "/augeas/version" => 1 "1.15.0"
+h3 aug_close
+h1 aug_load => 0
+h1 aug_match "/augeas/load/Sshd" => 1 "/augeas/load/Sshd"
+h1 aug_match "/augeas/load/Sshd/incl[.='/etc/ssh/sshd_config']" => 1 "/augeas/load/Sshd/incl"
+h1 aug_match "/files/etc/ssh/sshd_config" => 1 "/files/etc/ssh/sshd_config"
+h1 aug_set "/augeas/context" "/files/etc/ssh/sshd_config" => 0
+h1 aug_defnode "target" "/files/etc/ssh/sshd_config" NULL NULL => 1
+h1 aug_defvar "resource" "$target/Match[count(Condition/*)=1][Condition/User=\"carol\"]/Settings/*[label()=~regexp('AllowUsers', 'i')]" => 0
+h1 aug_match "$resource" => 0
+h1 aug_match "/augeas/load/Sshd" => 1 "/augeas/load/Sshd"
+h1 aug_match "/augeas/load/Sshd/incl[.='/etc/ssh/sshd_config']" => 1 "/augeas/load/Sshd/incl"
+h1 aug_match "/files/etc/ssh/sshd_config" => 1 "/files/etc/ssh/sshd_config"
+h1 aug_set "/augeas/context" "/files/etc/ssh/sshd_config" => 0
+h1 aug_defnode "target" "/files/etc/ssh/sshd_config" NULL NULL => 1
+h1 aug_defvar "resource" "$target/Match[count(Condition/*)=1][Condition/User=\"carol\"]/Settings/*[label()=~regexp('AllowUsers', 'i')]" => 0
+h1 aug_match "$target/Match[count(Condition/*)=1][Condition/User=\"carol\"]" => 0
+h1 aug_insert "$target/*[last()]" "Match" 0 => 0
+h1 aug_set "$target/Match[last()]/Condition/User" "carol" => 0
+h4 aug_init NULL NULL 64
+h4 aug_set "/input" "AllowUsers FOO\n" => 0
+h4 aug_text_store "Sshd.lns" "/input" "/parsed" => 0
+h4 aug_match "/parsed/AllowUsers/1" => 1 "/parsed/AllowUsers/1"
+h4 aug_close
+h1 aug_match "$target/Match[count(Condition/*)=1][Condition/User=\"carol\"]/Settings/Match" => 0
+h1 aug_insert "$target/Match[count(Condition/*)=1][Condition/User=\"carol\"]/Settings/*" "AllowUsers" 0 => -1
+h1 aug_rm "$target/Match[count(Condition/*)=1][Condition/User=\"carol\"]/Settings/AllowUsers/*" => 0
+h1 aug_rm "$target/Match[count(Condition/*)=1][Condition/User=\"carol\"]/Settings/AllowUsers[position() != 1]" => 0
+h1 aug_set "$target/Match[count(Condition/*)=1][Condition/User=\"carol\"]/Settings/AllowUsers/1" "alice" => 0
+h1 aug_set "$target/Match[count(Condition/*)=1][Condition/User=\"carol\"]/Settings/AllowUsers/2" "bob" => 0
+h1 aug_save => 0
+h1 aug_load => 0
+h1 aug_load => 0
+h1 aug_close

@@ -582,6 +582,38 @@ func TestEventsMetricCountsNoopEvents(t *testing.T) {
 	}
 }
 
+// noop_pending is whether any status holds a noop event
+// (transaction/report.rb:223, has_noop_events? at :203-205), whatever the run's
+// mode and out_of_sync_count. Measured by G5's sysctl-prefetch-load-error:
+// under --noop, resources out of sync only through a prefetch failure's
+// failure event leave Ruby's noop_pending false.
+func TestNoopPendingIsAnyNoopEvent(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		noop   bool
+		events []Event
+		want   bool
+	}{
+		{"noop run, noop event", true, []Event{{Property: "ensure", Status: "noop"}}, true},
+		{"noop run, failure event only", true, []Event{{Status: "failure"}}, false},
+		{"noop run, no event", true, nil, false},
+		// The report's rule alone: no live run reaches this today, a
+		// per-resource noop being a pre-flight gap.
+		{"live run, a resource's own noop", false, []Event{{Property: "ensure", Status: "noop"}}, true},
+		{"live run, success event", false, []Event{{Property: "ensure", Status: "success"}}, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			r := New("n", "production", tc.noop)
+			r.AddResource(ResourceStatus{Resource: "Sysctl[a]", ResourceType: "Sysctl",
+				OutOfSyncCount: len(tc.events), OutOfSync: len(tc.events) > 0, Events: tc.events})
+			r.Finalize()
+			if r.NoopPending != tc.want {
+				t.Errorf("noop_pending = %t, want %t", r.NoopPending, tc.want)
+			}
+		})
+	}
+}
+
 // restarted counts refreshes that SUCCEEDED, and is a different field from
 // failed_to_restart. Conflating them would report every successful
 // notify-triggered reload as a failure.

@@ -52,7 +52,7 @@ tasks:
       #
       # tests/spine/*.sh is suffix-filtered for the same reason as fleet/tests:
       # the directory also holds the allowlist, which is JSON.
-      - shellcheck -x -P SCRIPTDIR {{.ROOT_DIR}}/fleet/bin/* {{.ROOT_DIR}}/fleet/tests/*.sh {{.ROOT_DIR}}/scripts/*.sh {{.ROOT_DIR}}/tests/spine/*.sh {{.ROOT_DIR}}/tests/agent/*.sh
+      - shellcheck -x -P SCRIPTDIR {{.ROOT_DIR}}/fleet/bin/* {{.ROOT_DIR}}/fleet/tests/*.sh {{.ROOT_DIR}}/scripts/*.sh {{.ROOT_DIR}}/tests/spine/*.sh {{.ROOT_DIR}}/tests/spine/augeas/trace/*.sh {{.ROOT_DIR}}/tests/agent/*.sh
 
   adjudication:
     desc: Prove the two negative controls still judge each half before reading the other's log
@@ -196,6 +196,17 @@ tasks:
     # node and a stale binary is a false green.
     deps: [build]
     cmd: bash "{{.ROOT_DIR}}/tests/agent/run.sh"
+
+  augeas-lib:
+    desc: Run the libaugeas binding's tests against openvox's real library, in a container — MODE=human (default) or MODE=llm
+    # Not in `check`: it needs localhost/augeas-measure-el (openvox 8.33.0 and
+    # its libaugeas 1.15.0), which the host lacks. The script first builds that
+    # image from tests/spine/images/Containerfile.augeas through build_image
+    # when it is missing or no longer carries fleet-node-el's openvox and
+    # libaugeas (a cold build needs the network). The test binary is built on
+    # the host and run as root in a fresh container; exit 2 means it could not
+    # run, never a pass. Output lands in .test-output/augeas-lib/.
+    cmd: bash "{{.ROOT_DIR}}/scripts/augeas-lib-test.sh" "{{.MODE}}" "{{.ABS_TEST_DIR}}"
 
   fmt:
     desc: Format all Go source

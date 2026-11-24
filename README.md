@@ -12,7 +12,9 @@ implement, applies the rest, and writes a `report_format 12` report.
 
 voxagent is built with cgo (`CGO_ENABLED=1`, Go's default where a C compiler
 is installed): `user` and `group` read accounts through libc's name service,
-as Puppet does, so a `CGO_ENABLED=0` build fails.
+as Puppet does, and `sysctl`, `ssh_config`, `sshd_config`,
+`sshd_config_subsystem` and `augeas` load openvox's libaugeas with `dlopen` (the build links
+no Augeas library), so a `CGO_ENABLED=0` build fails.
 
 ```bash
 task build
@@ -104,6 +106,45 @@ both types stay with the Ruby extension host, and `--no-ruby` refuses a catalog
 that has them. A fragment `order => 2.0` is accepted natively as `2`, but
 refused as Ruby does when the host is loaded for another type in the same
 run.
+`sysctl`, `ssh_config`, `sshd_config` and `sshd_config_subsystem`
+(augeasproviders_sysctl and augeasproviders_ssh) are applied natively, through
+the libaugeas 1.15.0 that openvox bundles
+(`/opt/puppetlabs/puppet/lib/libaugeas.so.0`), when all of these hold: openvox
+8.33.0 is installed with that library; the synced modules under `--libdir` are
+augeasproviders_core 4.2.0 with augeasproviders_sysctl 4.1.0 and
+augeasproviders_ssh 7.0.0 (voxagent identifies them by the digests of their
+type and provider files); none of `AUGEAS_ROOT`, `AUGEAS_LENS_LIB`,
+`AUGEAS_DEBUG`, `AUGEAS_DEBUG_DIR`, `LD_PRELOAD` and `LD_LIBRARY_PATH` is set
+in voxagent's environment; `--libdir` is an absolute, clean path; and every
+resource of the type stays inside the supported shapes (no `comment`, no
+`Sensitive` value, and for `sysctl` no `val`, `persist => false` or `ensure =>
+absent`; the names, hosts, conditions and targets are plain strings of the
+usual characters). `sysctl` also needs a RHEL-family host of major release 10
+or later that is not Fedora, with `sysctl` on `PATH`, `/usr/sbin` or `/sbin`.
+Each type is decided on its own; a type that is not native is applied by the
+Ruby extension host, which is then required, and `--no-ruby` refuses a catalog
+that has one. `--debug` logs why a type was delegated. Custom lenses in
+`<libdir>/augeas/lenses` are used as Puppet uses them.
+The generic `augeas` type (augeas_core 2.1.0) is applied natively under the
+same library, environment and `--libdir` conditions, when `--libdir` holds
+augeas_core 2.1.0 (identified by the digests of its type, provider and parser
+files; augeasproviders_core is not needed) and every `augeas` resource has a
+supported shape: `changes` of `set`, `rm`/`remove`, `clear`, `touch`,
+`ins`/`insert`, `defvar`, `defnode` or `mv`/`move`, at least one command, all of
+printable ASCII, `onlyif` unset or `''`, `force` unset or `false`, `root` unset
+or `/`, `load_path` unset or `''`, `type_check` unset, `false` or `'false'`,
+`returns` unset or `0`, `show_diff` a valid boolean, `provider` unset or
+`augeas`, and `lens` and `incl` given together or not at all. Anything else (`onlyif`, `force`, `setm`,
+`clearm`, `rename`, a `changes` that does not parse, non-ASCII text) sends the
+type to the Ruby extension host, and `--no-ruby` refuses it. `augeas` is decided
+apart from the other four. It never prints a diff (`show_diff` has no effect).
+`voxagent agent` loads `<libdir>/augeas/lenses` for `augeas` as Puppet's agent
+does; `voxagent apply` does not, and does not read modulepath lenses. The
+extension host never sets a run mode (Puppet defaults to `user`), so an `augeas`
+resource it applies gets lens path `""` under both commands. Two changes follow:
+an `agent` run whose libdir ships lenses (SIMP's `resolv.aug`) now uses them,
+which voxagent did not before this slice, and the lens path changes when the
+type is routed to the host (for example by one resource with `onlyif`).
 Of the metaparameters, `loglevel` is accepted on any resource only as `notice`,
 Puppet's default, which `concat` copies onto every file it generates.
 Any other type is applied by the Ruby extension host if it is a legacy
@@ -487,13 +528,19 @@ task dev:state-diff          # both agents, two containers, same resulting state
 task dev:report-diff-container  # the report comparison for package, exec, user and group, in a container
 task dev:report-diff-systemd    # the report comparison for service, in a systemd container
 task dev:report-diff-simp       # both agents apply the public SIMP catalog, in systemd containers
+task dev:augeas-lib             # the libaugeas binding against openvox's real library, in a container
 ```
 
 `dev:report-diff`, `dev:report-diff-extension` and `dev:idempotence` run inside
 `task check`; `dev:report-diff-extension` needs `puppet` and `ruby` on `PATH` and
 the vendored stdlib (`task fleet:vendor`). `dev:state-diff` and
 `dev:report-diff-container` need a built container image and take minutes, so
-they are run explicitly, the way `task fleet:gate` is. The container report
+they are run explicitly, the way `task fleet:gate` is. Run the
+gates one at a time: concurrent runs coincided with flakes in the SIMP gate's
+polkit start and systemd boot. `dev:report-diff-container` also runs the Augeas types' half, on an
+image derived from the same base (`tests/spine/images/Containerfile.augeas`,
+built on first use; a cold build needs the network), and that half, like
+`dev:report-diff-simp`, refuses to run under a rootful podman. The container report
 differential exists because the host is not a valid oracle for `package` or for
 `exec`, and for one underlying reason: the host's Ruby cannot fork under Puppet.
 So Puppet's `dnf` provider confines itself out and falls back to `dnfmodule`,

@@ -1,12 +1,14 @@
 # shellcheck shell=bash
 # Sourced by report-diff-container.sh: G5's concat half (concat design §10).
 # Uses that script's HERE, ROOT, IMAGE, VOXAGENT, GATEKIT, EVIDENCE and WORK,
-# and simp/lib.sh's simp_modules and concat_fingerprints.
+# simp/lib.sh's simp_modules and concat_fingerprints, and g5-case.sh's
+# g5_judge and g5_refusal.
 #
-# Every case is a measured one (docs/superpowers/plans/2026-11-20-concat-
-# measurements, README M1-M23 and v10-*), reusing its site.pp and seed.sh, or
-# one of the three beside this file. Each is compiled on its own, by the
-# image's openvox, and applied in FRESH containers, one per agent and mode, as
+# Every case is a directory under cases/ beside this file: a measured one
+# (concat measurements M1-M23 and v10-*, 2026-11-20: its site.pp, seed.sh and,
+# for a state case, files, verbatim) or one of the three this gate adds. A
+# missing case stops the half with 2 before anything runs. Each is compiled
+# on its own, by the image's openvox, and applied in FRESH containers, one per agent and mode, as
 # it was measured: the cases share paths (/etc/c01.conf, /etc/c13.conf), and a
 # case seeded on top of another's result would compare a different start. Per
 # case: live, then a rerun in the same container; then --noop, without
@@ -28,7 +30,6 @@
 # `applied via extension host` naming concat_file or concat_fragment, so a
 # delegated run, Ruby against Ruby, cannot pass as native.
 
-CONCAT_MEASURED="$ROOT/docs/superpowers/plans/2026-11-20-concat-measurements"
 CONCAT_V9_CASES="01-basic 02-rerun 03a-order-numeric 03b-order-alpha 03c-order-mixed-error
   03d-order-default-and-number-str 04-ensure-newline 05-existing-differs 06-replace-false
   07-create-empty-file 08-fragment-targeting 09-owner-group-mode 10-validate-cmd 12-sensitive
@@ -50,13 +51,29 @@ CONCAT_V10_CASES="v10-07-create-empty-file v10-08-tag-list v10-12-sensitive
   v10-12b-sensitive-tag-list v10-12c-sensitive-newfile v10-14-declared-file
   v10-18-ensure-absent"
 
-# concat_case_dir CASE: the directory holding CASE's site.pp and seed.sh.
+# concat_case_dir CASE: the directory holding CASE's site.pp and seed.sh;
+# 2, naming CASE, when it has no site.pp.
 concat_case_dir() {
-  if [ -d "$HERE/concat/$1" ]; then
-    echo "$HERE/concat/$1"
-  else
-    echo "$CONCAT_MEASURED/$1"
+  local dir="$HERE/concat/cases/$1"
+  if [ ! -f "$dir/site.pp" ]; then
+    echo "report-diff-container: concat: case $1 is missing: no $dir/site.pp" >&2
+    return 2
   fi
+  echo "$dir"
+}
+
+# concat_check_cases: 2 unless every case's directory and site.pp exist, and
+# every state case's files.
+concat_check_cases() {
+  local c dir rc=0
+  for c in $CONCAT_V9_CASES $CONCAT_V9_REFUSED $CONCAT_V10_CASES; do
+    dir="$(concat_case_dir "$c")" || { rc=2; continue; }
+    if concat_has_state "$c" && [ ! -f "$dir/files" ]; then
+      echo "report-diff-container: concat: case $c is missing: no $dir/files" >&2
+      rc=2
+    fi
+  done
+  return "$rc"
 }
 
 # concat_compile VERSION MODULES...: compiles every case of VERSION into
@@ -218,47 +235,6 @@ concat_judge_state() {
   echo "report-diff-container: concat $1 $2 live: end state agrees"
 }
 
-# concat_judge VERSION CASE RUN: compares the two reports of RUN. Prints one
-# line; returns 0 agree, 1 diverge, 2 could not run.
-concat_judge() {
-  local out="$WORK/concat/$1/$2" run="$3" rc order_rc
-  if [ ! -s "$out/ruby-$run.json" ]; then
-    echo "report-diff-container: concat $1 $2 $run: Ruby wrote no report:" >&2
-    sed -n '1,10p' "$out/ruby-$run.out" >&2
-    return 2
-  fi
-  if [ ! -s "$out/voxagent-$run.json" ]; then
-    echo "report-diff-container: concat $1 $2 $run: voxagent wrote no report:" >&2
-    sed -n '1,10p' "$out/voxagent-$run.out" >&2
-    return 1
-  fi
-  "$GATEKIT" compare-reports "$out/ruby-$run.json" "$out/voxagent-$run.json" \
-    "$HERE/allowlist.json" >"$out/compare-$run.txt" 2>&1
-  rc=$?
-  "$GATEKIT" compare-order "$out/ruby-$run.json" "$out/voxagent-$run.json" >"$out/order-$run.txt" 2>&1
-  order_rc=$?
-  # A clean rerun logs at no resource on either side: no order to compare.
-  if [ "$order_rc" -eq 2 ] && grep -q '^gatekit compare-order: compared 0 of 0 logging resources; nothing to compare$' \
-    "$out/order-$run.txt"; then
-    order_rc=0
-  fi
-  [ "$rc" -le 2 ] || rc=2
-  [ "$order_rc" -le 2 ] || order_rc=2
-  [ "$order_rc" -gt "$rc" ] && rc=$order_rc
-  case "$rc" in
-    0) echo "report-diff-container: concat $1 $2 $run: agree" ;;
-    1)
-      echo "report-diff-container: concat $1 $2 $run: DIVERGE" >&2
-      sed -n '1,30p' "$out/compare-$run.txt" "$out/order-$run.txt" >&2
-      ;;
-    *)
-      echo "report-diff-container: concat $1 $2 $run: could not compare" >&2
-      sed -n '1,10p' "$out/compare-$run.txt" "$out/order-$run.txt" >&2
-      ;;
-  esac
-  return "$rc"
-}
-
 # concat_native VERSION CASE RUN: 1 when voxagent sent a concat type to the
 # extension host.
 concat_native() {
@@ -271,31 +247,10 @@ concat_native() {
   fi
 }
 
-# concat_refusal VERSION CASE: compares a catalog Ruby refuses at conversion.
-concat_refusal() {
-  local out="$WORK/concat/$1/$2" want got
-  want="$(sed -n 's/^Error: Could not run: \(.*\) (file: [^)]*, line: [0-9]*)$/\1/p' "$out/ruby-live.out")"
-  if [ -z "$want" ] || [ -s "$out/ruby-live.json" ]; then
-    echo "report-diff-container: concat $1 $2: Ruby did not refuse the catalog:" >&2
-    sed -n '1,10p' "$out/ruby-live.out" >&2
-    return 2
-  fi
-  got="$(grep '^voxagent: ' "$out/voxagent-live.out" |
-    grep -Ev '^voxagent: ([0-9]+ invalid resource\(s\); nothing applied|outcome=.*)$' |
-    sed -n '1s/^voxagent: //p')"
-  if [ "$got" != "$want" ] || [ -s "$out/voxagent-live.json" ] || [ "$(cat "$out/voxagent-live.rc")" != 2 ]; then
-    echo "report-diff-container: concat $1 $2: DIVERGE: Ruby refuses with" >&2
-    echo "  $want" >&2
-    echo "report-diff-container: voxagent (exit $(cat "$out/voxagent-live.rc")) printed:" >&2
-    sed -n '1,10p' "$out/voxagent-live.out" >&2
-    return 1
-  fi
-  echo "report-diff-container: concat $1 $2: both refuse: $want"
-}
-
 # concat_gate: the whole concat half. Returns the worst result.
 concat_gate() {
   local pin_hash modules version c mode run rc=0 r pa pb
+  concat_check_cases || return 2
   pin_hash="$(sha256sum "$HERE/simp/modules.pin")" || return 2
   modules="$ROOT/.test-output/simp/modules-${pin_hash:0:12}"
   mkdir -p "${modules%/*}" || return 2
@@ -333,13 +288,13 @@ concat_gate() {
         fi
       done
       if concat_is_refused "$version" "$c"; then
-        concat_refusal "$version" "$c"
+        g5_refusal "$WORK/concat/$version/$c" "concat $version $c"
         r=$?
         [ "$r" -gt "$rc" ] && rc=$r
         continue
       fi
       for run in live rerun noop; do
-        concat_judge "$version" "$c" "$run"
+        g5_judge "$WORK/concat/$version/$c" "concat $version $c" "$run"
         r=$?
         [ "$r" -gt "$rc" ] && rc=$r
         concat_native "$version" "$c" "$run" || { [ "$rc" -ge 1 ] || rc=1; }

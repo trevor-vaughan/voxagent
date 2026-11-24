@@ -10,8 +10,8 @@ import (
 	"github.com/voxagent/voxagent/internal/catalog"
 )
 
-// Platform is what NativeUserGroup learns from the host. It is an interface so
-// tests do not depend on the machine they run on.
+// Platform is what NativeUserGroup and NativeAugeas learn from the host. It is
+// an interface so tests do not depend on the machine they run on.
 type Platform interface {
 	Executable(path string) bool
 	OSRelease() ([]byte, error)
@@ -22,10 +22,8 @@ var HostPlatform Platform = realPlatform{}
 
 type realPlatform struct{}
 
-func (realPlatform) Executable(path string) bool {
-	fi, err := os.Stat(path)
-	return err == nil && fi.Mode().IsRegular() && fi.Mode().Perm()&0o111 != 0
-}
+// Executable is FileTest.file? && FileTest.executable?, following symlinks.
+func (realPlatform) Executable(path string) bool { return executableFile(path) }
 
 func (realPlatform) OSRelease() ([]byte, error) { return os.ReadFile("/etc/os-release") }
 
@@ -75,6 +73,12 @@ func measuredPlatform(p Platform) bool {
 	if p.Executable("/usr/sbin/luseradd") && p.Executable("/usr/sbin/lgroupadd") {
 		return false
 	}
+	return measuredRelease(p)
+}
+
+// measuredRelease reports whether /etc/os-release names RHEL family major >=
+// 10, not Fedora. An unreadable or unparsable os-release does not.
+func measuredRelease(p Platform) bool {
 	data, err := p.OSRelease()
 	if err != nil {
 		return false

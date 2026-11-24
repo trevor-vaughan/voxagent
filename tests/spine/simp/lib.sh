@@ -1,9 +1,10 @@
 # shellcheck shell=bash
 # Sourced by report-diff-simp.sh (and report-diff-container.sh, for
-# simp_modules and concat_fingerprints): the steps of the SIMP acceptance gate that
-# touch podman, one function per step. Every function returns 2 on any failure,
-# with a message naming the cause, because each failure means the comparison
-# could not run, never that the agents disagree.
+# simp_modules, concat_fingerprints and augeasproviders_fingerprints): the
+# steps of the SIMP acceptance gate that touch podman, one function per step.
+# Every function returns 2 on any failure, with a message naming the cause,
+# because each failure means the comparison could not run, never that the
+# agents disagree.
 
 # The longest each container's systemd is given to finish booting.
 SIMP_BOOT_TIMEOUT=180
@@ -254,6 +255,48 @@ concat_fingerprints() {
     got="${got%% *}"
     if [ "$got" != "$want" ]; then
       echo "$gate: $libdir/puppet/type/$file is not puppetlabs-concat $version's (sha256 ${got:-unreadable}, want $want)" >&2
+      return 2
+    fi
+  done
+}
+
+# augeasproviders_fingerprints GATE LIBDIR
+#
+# Returns 0 when LIBDIR carries the fifteen files voxagent routes sysctl,
+# ssh_config, sshd_config, sshd_config_subsystem and augeas on, with their
+# sha256 (internal/ral/augeas_route.go's augeasFingerprints; augeas design §0):
+# augeasproviders_core 4.2.0's three, then each type's type and provider file
+# from augeasproviders_sysctl 4.1.0 and augeasproviders_ssh 7.0.0, _ssh's
+# sshd_config_match type, which sshd_config's autorequire depends on, and
+# augeas_core 2.1.0's type, provider and parser files (its feature file is the
+# byte-identical puppet/feature/augeas.rb above), which route the generic augeas
+# type. Otherwise it names the file and returns 2: a wrong module cache would
+# send the five types to the extension host, and the gate would compare Ruby
+# with Ruby while looking green. GATE prefixes the messages.
+augeasproviders_fingerprints() {
+  local gate="$1" libdir="$2" file got
+  local -A sums=(
+    [puppet/provider/augeasprovider/default.rb]=3900c7e789d651b9f5271087ef3a3b3a9b08cfef2b725d30b559bfff280af42a
+    [puppet/type/augeasprovider.rb]=0cd37a04489790a03adcae071cf3ee62a81ba238c4ce4959314092d1ab69e795
+    [puppet/feature/augeas.rb]=d98e8ef39433632b9e835bbb3e85a75f90a8d17a33c2540f2e14f851ca2791b3
+    [puppet/type/sysctl.rb]=e3e75816ce52ca14acbf78252e2dc0ae98867e5d3b81637a5d4e29fe2803d863
+    [puppet/provider/sysctl/augeas.rb]=25ca6b921df6408d69107cba0dcc807c0ff996f8d2e6f2d7b381fa0ef285031d
+    [puppet/type/ssh_config.rb]=d1486d319d5b8f036d5d0f308503f2e5cb46ae45527371a7637585a58b582884
+    [puppet/provider/ssh_config/augeas.rb]=9df8e00affdfe326090333b578eb91235e4a011c72d4cd3547601fd9d15c7221
+    [puppet/type/sshd_config.rb]=5b7cf51863c22995039d6db35e67f43c7e273c886a668ec1365428ed5baa1350
+    [puppet/provider/sshd_config/augeas.rb]=322463ac709f044adcbfd6ff5b20216490c928e31d26a8622fc9266bafd4374f
+    [puppet/type/sshd_config_subsystem.rb]=e5d4c56466d580bdf5943ae89d312916b8d8de3fc473a8a3012bb8240e5fc58b
+    [puppet/provider/sshd_config_subsystem/augeas.rb]=237148d020f7c3b53d8414863afc7c76dc85f4e3241b685d04af1cf791f13c9c
+    [puppet/type/sshd_config_match.rb]=dedfb3f7e0cf6250fe1454c247c5b3d7968c80b673f6e704b5314da34a33ccd7
+    [puppet/type/augeas.rb]=1b8fe183607c21efb9a3a6431a8644d1dbb7e061a83b03bdd6744c1d9549b071
+    [puppet/provider/augeas/augeas.rb]=4eedaf2d530bc89909b97f36f552cf820bfbe9808040e6c9caa748a10df31c93
+    [puppet_x/augeas/util/parser.rb]=586daa7ddf5a741286f805c90c5e9fc464bb91f184c0c746231bbc5ca0374a7a
+  )
+  for file in "${!sums[@]}"; do
+    got="$(sha256sum "$libdir/$file" 2>/dev/null)"
+    got="${got%% *}"
+    if [ "$got" != "${sums[$file]}" ]; then
+      echo "$gate: $libdir/$file is not the measured augeasproviders file (sha256 ${got:-unreadable}, want ${sums[$file]})" >&2
       return 2
     fi
   done

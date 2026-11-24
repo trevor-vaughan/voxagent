@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"os"
 	"path/filepath"
+	"strings"
 	"syscall"
 	"testing"
 	"time"
@@ -171,6 +172,20 @@ func (f fakeTree) Read(rel string) ([]byte, error) {
 		return nil, os.ErrNotExist
 	}
 	return b, nil
+}
+
+// List names the entries directly under rel.
+func (f fakeTree) List(rel string) ([]string, error) {
+	var names []string
+	for p := range f {
+		if name, ok := strings.CutPrefix(p, rel+"/"); ok && !strings.Contains(name, "/") {
+			names = append(names, name)
+		}
+	}
+	if names == nil {
+		return nil, os.ErrNotExist
+	}
+	return names, nil
 }
 
 func TestNativeConcatShapes(t *testing.T) {

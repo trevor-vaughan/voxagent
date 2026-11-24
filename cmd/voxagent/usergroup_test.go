@@ -30,7 +30,8 @@ func TestUserGroupAreNativeOnlyOnTheMeasuredPlatform(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			claimed := map[string]struct{}{}
-			for _, p := range nativeProviders(cat, applyOptions{}, fakePlatform{tc.release}) {
+			natives, _ := nativeProviders(cat, applyOptions{}, fakePlatform{tc.release})
+			for _, p := range natives {
 				claimed[strings.ToLower(p.Type())] = struct{}{}
 			}
 			needed := nonNativeTypes(cat, claimed)

@@ -251,8 +251,9 @@ func TestConcatGenerationHostAndNativeAgree(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	hostNatives, _ := nativeProviders(host, o, ral.HostPlatform)
 	in, msg := ingestExtensions(extensionConfig{ruby: o.ruby, libdir: o.libdir, vardir: o.vardir, level: o.level,
-		timeouts: extension.Timeouts{Evaluate: time.Minute, Other: time.Minute}}, raw, host, nativeProviders(host, o, ral.HostPlatform))
+		timeouts: extension.Timeouts{Evaluate: time.Minute, Other: time.Minute}}, raw, host, hostNatives)
 	if in.host != nil {
 		defer in.host.Close()
 	}
@@ -264,7 +265,7 @@ func TestConcatGenerationHostAndNativeAgree(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	natives := nativeProviders(native, o, ral.HostPlatform)
+	natives, _ := nativeProviders(native, o, ral.HostPlatform)
 	if !slices.ContainsFunc(natives, func(p ral.Provider) bool { return p.Type() == "concat_file" }) {
 		t.Fatal("concat_file is not native with a measured tree")
 	}

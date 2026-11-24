@@ -3,9 +3,11 @@ package main
 import (
 	"context"
 	"fmt"
+	"maps"
 	"os"
 	"runtime"
 	"runtime/debug"
+	"slices"
 	"sort"
 	"strconv"
 	"time"
@@ -36,16 +38,20 @@ type applyOptions struct {
 	phases                          []agent.Phase         // an agent run's phases timed before applying
 	console                         func(report.LogEntry) // prints a Puppet console line; nil prints none
 	providers                       []ral.Provider        // joins the native providers; tests only
+	augeasProbe                     ral.AugeasProbe       // nil -> ral.HostAugeasProbe; tests only
+	environ                         ral.Environ           // nil -> os.Getenv; tests only
 }
 
 // nativeProviders lists the providers voxagent applies itself for cat. User
 // and Group join them where p is the platform their contract was measured on
 // (spec §2), each decided on its own; concat_file and concat_fragment where
-// o.libdir holds a measured concat release (ral.NativeConcat).
-func nativeProviders(cat *catalog.Catalog, o applyOptions, p ral.Platform) []ral.Provider {
+// o.libdir holds a measured concat release (ral.NativeConcat); and each
+// augeasproviders type ral.NativeAugeas proves native, all sharing one run's
+// libaugeas state. augeasHost holds, per augeas type sent to the host, why.
+func nativeProviders(cat *catalog.Catalog, o applyOptions, p ral.Platform) (natives []ral.Provider, augeasHost map[string]string) {
 	// File names the catalog's environment in a missing source's message
 	// (type/file/source.rb:208).
-	natives := []ral.Provider{ral.Notify{}, ral.File{Environment: cat.Environment, Sources: o.sources, Vardir: o.vardir}, ral.Exec{}, ral.Package{}, ral.Service{}}
+	natives = []ral.Provider{ral.Notify{}, ral.File{Environment: cat.Environment, Sources: o.sources, Vardir: o.vardir}, ral.Exec{}, ral.Package{}, ral.Service{}}
 	user, group := ral.NativeUserGroup(p, cat)
 	if user {
 		natives = append(natives, ral.User{CatalogGroups: ral.GroupGIDs(cat)})
@@ -58,7 +64,16 @@ func nativeProviders(cat *catalog.Catalog, o applyOptions, p ral.Platform) []ral
 	if v, ok := ral.NativeConcat(ral.LibdirTree(o.libdir), cat); ok {
 		natives = append(natives, ral.ConcatFile{Version: v, Catalog: cat}, ral.ConcatFragment{Version: v})
 	}
-	return append(natives, o.providers...)
+	probe, environ := o.augeasProbe, o.environ
+	if probe == nil {
+		probe = ral.HostAugeasProbe
+	}
+	if environ == nil {
+		environ = os.Getenv
+	}
+	augeas := ral.NativeAugeas(ral.LibdirTree(o.libdir), p, probe, environ, o.libdir, o.command, cat)
+	natives = append(natives, augeas.Providers()...)
+	return append(natives, o.providers...), augeas.Reasons
 }
 
 // applyCatalog applies raw (exact catalog bytes) and returns the run's status
@@ -85,7 +100,7 @@ func applyCatalog(raw []byte, o applyOptions) (report.Status, *report.Report) {
 		return report.Status{CouldNotRun: true}, nil
 	}
 
-	natives := nativeProviders(cat, o, ral.HostPlatform)
+	natives, augeasHost := nativeProviders(cat, o, ral.HostPlatform)
 	ext, errMsg := ingestExtensions(extensionConfig{ruby: o.ruby, libdir: o.libdir, vardir: o.vardir, level: o.level, disabled: o.noRuby,
 		timeouts: o.timeouts}, raw, cat, natives)
 	// done closes the host before the caller's outcome line, which must stay
@@ -227,6 +242,9 @@ func applyCatalog(raw []byte, o applyOptions) (report.Status, *report.Report) {
 			} else if ral.IsContainerResource(r) {
 				runlog.Debugf(ctx, "voxagent", "%s: container (kind %s)", r.Ref(), r.Kind)
 			}
+		}
+		for _, typ := range slices.Sorted(maps.Keys(augeasHost)) {
+			runlog.Debugf(ctx, "voxagent", "%s applied via extension host: %s", typ, augeasHost[typ])
 		}
 		if ext.host != nil {
 			runlog.Debugf(ctx, "voxagent", "extension host: started in %s", ext.host.Stats().Startup.Round(time.Millisecond))

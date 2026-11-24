@@ -181,6 +181,9 @@ and the number is retired rather than reused:
 | D-88 | Under `--debug`, voxagent does not emit Ruby's provider-suitability lines for `useradd` and `groupadd`, nor `Puppet::Util::POSIX`'s fallback lines `Falling back to Puppet::Etc.group: can't find user for <u>` and `Removing any duplicate group entries` (`util/posix.rb:20,30`). A member of the D-82 family | voxagent performs neither act: it chooses no provider, and it reads a user's groups with `getgrouplist` or, for a user that does not exist, one group scan, without Ruby's exception-driven fallback. The scan's result is the same (M2, M43) | Nothing pins an absence. The gates do not compare debug lines |
 | D-89 | `concat_file` and `concat_fragment` are native only when the libdir's plugin tree is a measured one and the catalog stays inside the measured shapes; otherwise both go to the extension host, so with `--no-ruby` such a catalog is refused where Ruby applies it. The tree is measured when `puppet/type/concat_file.rb` and `puppet/type/concat_fragment.rb` both match the sha256 of the same release, 9.1.0 or 10.0.1; a missing, unreadable, non-regular or over-1 MiB file, an unknown digest or a mixed pair delegates. The shapes that delegate are a `format` other than `plain`, a fragment `source`, `backup => true`, a path that is not absolute and clean (a trailing `/`, `//`, a `.` or `..` segment), two `Concat_file`s sharing a path, a rich value (`Deferred`, `Binary` and the like) in a parameter, and a value shape the native parser does not implement (a `tag` that is not a String or an Array of Strings, an Array or Hash `owner` or `group`, a Hash where a Boolean belongs). A value Ruby itself refuses stays native and is refused with Ruby's text. The two types move together, so one delegated resource of either sends every one of both to the host | Behaviour is measured only at these two trees, and the host is Ruby itself, so delegating is never a regression (the argument of D-87). Routing is decided per run from the libdir and the catalog; when the host is loaded for another type it converts native-claimed concat resources too (D-84). On the SIMP gate's catalog (concat 9.1.0) what is measured is native routing plus the gate's assertion that neither type is named in the `applied via extension host` lines; no count is printed, and the 26 resources (20 `concat_fragment`, 6 `concat_file`) leaving the host list is derived from the by-type list | `internal/ral/concat_route_test.go:TestNativeConcatFingerprints`, `TestNativeConcatFIFO`, `TestLibdirTreeReadLimit`, `TestNativeConcatShapes`, `TestNativeConcatRealTrees`; `cmd/voxagent/concat_test.go:TestConcatIsNativeOnlyWithAMeasuredTree`, `TestConcatAppliesNativelyEndToEnd`. Gates: G5's concat half (99 comparisons, 14 refusals), the extension gate's concat cases (host path), and the SIMP gate (a fingerprint assertion, and a failure if concat is named in `applied via extension host`) |
 | D-90 | Fragments whose sort keys compare equal keep catalog order; Ruby's order for them is its `sort`'s and is not reproduced | Ruby's block `sort` and Array-keyed `sort_by` are not stable in general, but with glibc's `qsort_r` (a merge sort) and a Ruby built with `HAVE_GNU_QSORT_R` they keep input order on equal keys (read from source and checked on Ruby 3.4.9, glibc 2.39), so voxagent's stable sort agrees on that platform. The tie order is libc-dependent, so on another libc Ruby's may differ. Reachable in both order modes. Unmeasured | `internal/ral/concat_content_test.go:TestConcatSortTiesKeepCatalogOrder` |
+| D-91 | `sysctl`, `ssh_config`, `sshd_config`, `sshd_config_subsystem` and `augeas` are native only when all of these hold, each type decided on its own; otherwise it goes to the extension host, so with `--no-ruby` such a catalog is refused where Ruby applies it. *Plugin tree:* the libdir holds augeasproviders_core 4.2.0 (three files), and the type's own type and provider file, at the sha256 of _sysctl 4.1.0 or _ssh 7.0.0 (`augeasFingerprints`, fifteen digests; `augeas` instead needs augeas_core 2.1.0's `puppet/type/augeas.rb`, `puppet/provider/augeas/augeas.rb` and `puppet_x/augeas/util/parser.rb`, plus the `puppet/feature/augeas.rb` that both modules ship byte for byte, and not augeasproviders_core's three; `sshd_config` also needs _ssh 7.0.0's `puppet/type/sshd_config_match.rb`, whose key attributes decide which names its autorequire can match), and the type's `puppet/provider/<type>/` holds no `.rb` but `augeas.rb`. *Library:* openvox's own `/opt/puppetlabs/puppet/lib/libaugeas.so.0` loads through `dlopen`, resolves every symbol voxagent binds, opens a handle and reads `/augeas/version` as `1.15.0`, and openvox 8.33.0's three ruby-augeas files (`augeas.rb`, `augeas/facade.rb`, `_augeas.so`) match their digests; the system `augeas-libs` is never used. *Environment:* `AUGEAS_ROOT`, `AUGEAS_LENS_LIB`, `AUGEAS_DEBUG`, `AUGEAS_DEBUG_DIR`, `LD_PRELOAD` and `LD_LIBRARY_PATH` unset or empty, and `--libdir` absolute and clean; the library is probed only after these hold. *Shapes:* every catalog string a provider puts in an Augeas path expression or passes as a value has the shape the native parser admits, and no resource sets `comment`, sysctl's `val`, `persist => false`, `ensure => absent` on a `sysctl`, a `provider` other than `augeas` or a `name` different from its title, or a `Sensitive` attribute (the rest of the shapes are in `augeas_params.go`; the generic `augeas` type's are in "The generic `augeas` type" below). An `sshd_config` `condition` with any number of distinct keys stays native: Ruby's autorequire names every permutation of the keys as a `Sshd_config_match` title, bare and followed by ` in <target>`, while the native one matches each `Sshd_config_match` title and `alias` string of the catalog the graph is built from (so after load-time generation, which can add matches) against the condition in linear time, and emits the same edges in Ruby's order (permutation order, bare before suffixed). That the title and `alias` strings are every name a match is known by rests on the fingerprinted `sshd_config_match` type: its uniqueness key has three attributes, so Puppet adds no single-key alias. *`sysctl` only:* RHEL family 10 or later, not Fedora, and a `sysctl` executable found on Puppet's search path (`PATH`, then `/usr/sbin` and `/sbin` each appended when absent, the first regular executable file winning). A `PATH` entry beginning with `~` reached before a hit delegates, because Ruby expands it against `HOME` and raises when `HOME` is unset. The path found at routing is used for the whole run, where Ruby resolves it per command. Only the libdir is fingerprinted: Ruby's autoloader searches the environment's module directories (`/opt/puppetlabs/puppet/vendor_modules` among them) before `$LOAD_PATH`, so a different copy of these provider or type files in a module there changes Ruby's behaviour and not voxagent's. A condition that sends a type to the host is logged once at debug, `<type> applied via extension host: <condition>` | Behaviour is measured only at these versions, on this library, and the providers' code is reimplemented, so that code is what must be the measured version. The library and the lenses run in voxagent's process as in Ruby's, so lens behaviour, node formatting and error texts agree by construction; a different library, or an override that changes which files libaugeas reads or which code loads, makes the two processes disagree. The host is Ruby itself, so delegating is never a regression (the argument of D-87). The modulepath shadowing above is not detected, and nothing pins its absence | `internal/ral/augeas_route_test.go:TestNativeAugeasFingerprints`, `TestNativeAugeasOnlyTypesPresent`, `TestNativeAugeasEnvironment`, `TestNativeAugeasLibdirClean`, `TestNativeAugeasProbe`, `TestNativeAugeasNameShapes`, `TestNativeAugeasShapes`, `TestNativeAugeasSysctlPlatform`; `internal/ral/sysctl_prefetch_test.go:TestResolveSysctl`; `internal/ral/augeas_params_test.go:TestConditionKeysUnbounded`, `TestAugeasAutoRequires`; `internal/ral/sshd_match_test.go:TestSshdAutoRequiresMatchesPermutations` (against the permutation oracle), `TestSshdAutoRequiresTwelveKeys`; `internal/ral/augeas_route_test.go:TestSshdMatchNames`; `cmd/voxagent/augeas_test.go:TestAugeasIsNativeOnlyWithAMeasuredTree`, `TestAugeasNoRuby`, `TestAugeasDelegationIsLoggedAtDebug`, `TestSshdConfigRequiresItsMatchByTitleOrAlias`, `TestSshdConfigRequiresAGeneratedMatch`; for `augeas`, `internal/ral/augeas_generic_route_test.go:TestNativeAugeasGenericFiles`, `TestNativeAugeasGenericAndProvidersAreIndependent`, `TestNativeAugeasGenericEnvironmentAndProbe`, `TestNativeAugeasGenericShape`. Gates: G5's augeas half (63 native cases, 4 that must stay on the host and 4 refusals), `task dev:augeas-lib` for the real library, and the SIMP gate (the fingerprint assertion, and a failure if any of the five types is named in `applied via extension host`) |
+| D-92 | A member of the D-82 family. Under `--debug`, `sysctl`'s `Executing: '<sysctl> -w <key>=<value>'` line and, for a `silent` key whose `-w` fails, the `augeasprovider_sysctl ignoring failed attempt to set <key> due to :silent mode` line are logged before the property's change notice. Ruby logs the notice first, because it logs it when the property syncs and runs `flush`, which holds `sysctl -w`, afterwards. Nothing at `info` or above moves. Separately, the run's teardown closes only the handles the run opened: Ruby opens and closes one handle for a class it traversed but never opened, which is observable only when that `aug_init` fails; and the handles close in a different order: Ruby's is the first-traversal order of the provider classes (`post_evalable_providers` is a Set filled in `pre_process`, `transaction.rb:110-113`), voxagent's is the order the handles were opened (`augeasRun.opened`) | The change comes back from `Apply` together with the `FlushError` (D-91's engine support, "The provider boundary"), and the transaction logs notices when it assembles the status, after `Apply` returned, so a line `Apply` itself logs precedes them. Reordering it would mean logging from the transaction what the provider did. The gates compare no debug lines (D-82), and the replay traces are of libaugeas calls, which the two differences do not change except for the failed `aug_init` named | `internal/ral/sysctl_apply_test.go:TestSysctlReplays01e` pins the silent-mode line's text and source. The order itself is unpinned: no test asserts it, and the teardown's behaviour is `internal/ral/augeas_mixin_test.go:TestAugeasRunEndRunClosesEveryHandleOnce` |
+| D-93 | The `augeas` type's lens path follows the voxagent command. Under `agent` it is Ruby's agent branch: `<libdir>/augeas/lenses` when that path exists, else `""`. Under `apply` it is `""` always, because voxagent has no modulepath, so a module on the node's modulepath that ships lenses is not on the path, where Ruby's `puppet apply` would add it. `aug_init` always receives `"/"` and this string, never NULL | Ruby's provider branches on `Puppet.run_mode` (`provider/augeas/augeas.rb:362-387`); SIMP's libdir ships `augeas/lenses/resolv.aug`, so under `agent` it changes which `Resolv.lns` SIMP's resolv.conf resource uses, as it does under a real openvox agent. The G5 and SIMP gates compare against `puppet apply`, whose modulepath in the gate images holds no module with lenses, so both sides pass `""`. The agent branch is derived from source and unmeasured (it needs a server); a custom lens under an agent run is the exposure, and a server-backed measurement would close it | `internal/ral/augeas_generic_route_test.go:TestNativeAugeasLensPath`, `internal/ral/augeas_generic_test.go:TestAugeasReplaysApplyIgnoresLibdirLens`; G5's `augeas-apply-ignores-libdir-lens`, where a broken `modprobe.aug` in the libdir must not matter under `apply` on either side. The `agent` branch has a unit test only. The extension host never sets a run mode (`internal/extension/host.rb:193-196`; Puppet defaults to `user`), so a host-applied `augeas` resource gets lens path `""` under both commands; native under `agent` uses `<libdir>/augeas/lenses`, so an agent run whose libdir ships lenses (SIMP's `resolv.aug`) differs from what voxagent did before the native `augeas` type, and the lens path changes when the type is routed to the host (one resource with `onlyif`, say) |
 
 Two differences are not numbered divergences but `cross_implementation` entries
 in `tests/spine/allowlist.json`, because each is dropped from the **Ruby side
@@ -536,6 +539,173 @@ remember whether it already has; it is stateless and could not. Reaching Ruby's
 check-update warning it took resolving once in `Prefetch` as well, because a log
 key cannot unspawn a subprocess (D-16).
 
+### Failed flushes, per-run state and prefetch at a type's first turn
+
+The augeasproviders types (below) needed four things of the engine that no
+earlier type did. All four are optional: a provider that implements none of
+them behaves as before.
+
+- **A failed flush keeps its changes.** `Apply` may return its changes **and** a
+  `*ral.FlushError` (`internal/ral/ral.go`), the one exception to "a non-nil
+  error discards the change list" above. Ruby's `resource_harness.rb:23-31`
+  calls `flush` after the properties synced and fails the resource on its
+  exception, so the property's `success` event is already recorded. The
+  transaction records the changes (lines and events), then the `resource_error`
+  event and `Could not evaluate: <message>`, marks the resource failed, queues
+  none of its events (no refresh) and blocks its dependents. The status is
+  `changed: true`, `failed: true`, `change_count` 1 and `out_of_sync_count` 2
+  (measured: M5, M8). I-35 records that this is a report that claims a change
+  the failure undid. `internal/transaction/transaction_test.go:TestFlushErrorKeepsChangesThenFails`,
+  `TestFlushErrorQueuesNoRefresh`, `TestFlushErrorBlocksDependents`.
+- **Per-run state and its teardown.** `Prefetch` still returns the primed
+  provider, and the contract still says it does not change during the walk, with
+  one amendment: a primed provider may hold a pointer to per-run mutable state
+  that the unprimed value created (the augeas handles, sysctl's prefetch table).
+  Only the walk goroutine mutates it. A provider that holds such state
+  implements `ral.RunEnding`, and the transaction calls its `EndRun` once after
+  the walk, whether the walk finished, was cancelled or a prefetch failed
+  (`Transaction.endRun`). `EndRun` must be idempotent, because primed copies
+  share the state. `TestEndRunCalledOnceAfterWalk`,
+  `TestEndRunAfterPrefetchFailureAndCancel`, `TestEndRunNotRequiredOfOtherProviders`.
+- **Prefetch at a type's first traversed resource.** A provider that implements
+  `ral.TurnPrefetching` is not prefetched before the walk. The walk calls its
+  `Prefetch` at the first resource of that type it traverses, whether that
+  resource is then evaluated or skipped (failed dependency, tag, schedule), as
+  Puppet's `pre_process` does (`transaction.rb:110-115`). The code is the lazy
+  path `generatedProvider` already used. A prefetch that fails fails every
+  resource of the type, as for any other type. This matters for `sysctl`:
+  prefetching before an earlier resource that writes `/etc/sysctl.conf` would
+  leave a stale tree that the first save writes back over that resource's
+  content. `TestTurnPrefetchSeesEarlierResourcesChanges`,
+  `TestTurnPrefetchRunsForSkippedResource`, `TestTurnPrefetchFailureFailsEveryResource`,
+  `TestTurnPrefetchNotEager`.
+- **Two report fixes the type's gate found, which hold for every type.** A
+  resource skipped because its type's prefetch failed was never evaluated, so
+  Ruby writes a null `evaluation_time` and `calculate_time_metrics` skips it:
+  such a type has no `metrics.time` entry, where voxagent wrote the type with 0
+  (`TestPrefetchFailedTypeHasNoTimeMetric`, commit 601e9b7). And `noop_pending`
+  is true when any resource status holds a `noop` event
+  (`transaction/report.rb:203-205, :223`), not when the run is `--noop` and a
+  resource is out of sync, which a failure event also makes true
+  (`internal/report/report_test.go:TestNoopPendingIsAnyNoopEvent`, commit
+  d89c82f). In Ruby a resource's own `noop => true` makes a live run record noop
+  events too; that path is unreachable here, because a per-resource `noop`
+  stays a pre-flight gap (`internal/ral/ral.go`, the engine attributes), so in
+  a live run `noop_pending` is false.
+
+### The augeasproviders types
+
+`sysctl`, `ssh_config`, `sshd_config` and `sshd_config_subsystem`
+(augeasproviders_core 4.2.0, _sysctl 4.1.0, _ssh 7.0.0) are applied by
+`internal/ral` (`sysctl_*.go`, `ssh_config.go`, `sshd_config.go`,
+`sshd_subsystem.go`, over the shared mixin in `augeas_*.go`) through a cgo
+`dlopen` of openvox's own libaugeas 1.15.0, never linked and never the system
+`augeas-libs`. Ruby links that same library, so running it on the same files
+gives the same lens behaviour, node formatting and error texts by construction;
+what voxagent reimplements is the provider code and ruby-augeas' return-value
+mapping, so both are fingerprinted (D-91).
+
+- **Routing.** `ral.NativeAugeas` (`augeas_route.go`) answers per type, in this
+  order: the fingerprints and provider directory, then the environment and the
+  libdir's form, then the library probe (only after the environment is known
+  clean, so libaugeas never reads an `AUGEAS_*` override), then the value
+  shapes, then for `sysctl` the platform and the command. D-91 lists the
+  conditions. `nativeProviders` (`cmd/voxagent/apply.go`) appends the providers
+  of the native types; the probe runs at most once per process and only when the
+  catalog holds one of the five types. A type that is not native is delegated
+  as before, with the debug line naming the first condition that failed.
+- **Handles.** One handle per provider class per run, opened at the class's
+  first use with `aug_init(NULL, <loadpath>, AUG_NO_MODL_AUTOLOAD)`. The
+  loadpath is Ruby's: `<libdir>/augeas/lenses` when that path exists, else
+  NULL, so SIMP's `ssh.aug` is reproduced by libaugeas itself, never read by
+  voxagent. `parsed_as?` opens its own short-lived handle with a NULL loadpath.
+  `sshd_config` and `sshd_config_subsystem` therefore edit one file through two
+  handles with independent trees, as Ruby does. Every call is made from the walk
+  goroutine; every handle is registered with the run's `EndRun`.
+- **Lazy prefetch.** `sysctl` implements `TurnPrefetching`: at its
+  first `Sysctl` it reads every title from the first resource's target through
+  the shared handle and runs `sysctl -e` over cumulative slices of the titles;
+  `sysctl -n` runs per resource at apply. The other three prefetch nothing.
+- **Trace replay is the contract.** The native code must make the same libaugeas
+  calls as Ruby, reads included, in the same order with the same arguments and
+  handles. `internal/ral/testdata/augeas/traces/<case>.txt` holds Ruby's calls
+  for 36 recorded cases, one call per line (`h<N> <function> <args>
+  [=> <rc> <results>]`, the grammar is in `augeas_replay_test.go`), and a fake
+  library replays each trace against the native provider and fails on any
+  call that differs, and on a trace not fully consumed (`TestSysctlReplays01a`,
+  `TestSshConfigReplays07b`, `TestSshdConfigReplays03f`, `TestSubsystemReplays04d`
+  and the rest of the `Test*Replays*` family; `TestAugopenReplays01aFirstResource`
+  and `TestFlushReplays01a` for the mixin). Treat a trace file as read-only: when
+  Ruby's behaviour is in question, re-record it. A trace is recorded by an
+  `LD_PRELOAD` interposer that wraps the thirteen `aug_*` functions and appends one
+  line per call to the file named by `AUGTRACE`. Run the real
+  `/opt/puppetlabs/puppet/bin/puppet apply --catalog <case>/catalog.json
+  --libdir <libdir>` with `LD_PRELOAD` set, once, live, in a fresh container of
+  the augeas image ("G5's augeas half", below) set up as the gate sets the case
+  up (modules, libdir, seed). Call `puppet` itself, not the `puppet` wrapper
+  script, which unsets `LD_PRELOAD`. The interposer and the recording script are
+  `tests/spine/augeas/trace/aug-trace.c` and `trace.sh`; its README says how to
+  rebuild the image and re-record a case into the traces directory.
+- **Value semantics worth knowing.** A native `sysctl -w` runs before the save,
+  so a new key whose live apply fails is not persisted, while an existing key's
+  edit stays pending in the shared handle and the next `Sysctl`'s save writes it
+  (I-36). Prefetch reads every title from the first resource's target (I-37).
+  A failed flush reports a success event beside the failure (I-35). All three
+  are Ruby's behaviour, kept because parity is the contract. D-92 records the two
+  places the order of observable output differs.
+
+### The generic `augeas` type
+
+`augeas` (augeas_core 2.1.0) is applied by `internal/ral/augeas_generic.go` and
+`augeas_generic_params.go`, through the same libaugeas and the same trace-replay
+contract as the types above. It is a fifth entry of `augeasRouted`
+(`augeas_route.go`) and is decided on its own: the four augeasproviders types
+can be native with `augeas` on the host and the reverse.
+
+- **Routing.** Same order and probe as the four. Its fingerprints are augeas_core's
+  type, provider and `puppet_x/augeas/util/parser.rb` plus the shared
+  `puppet/feature/augeas.rb` (D-91), and `puppet/provider/augeas/` may hold
+  nothing but `augeas.rb`; augeasproviders_core is not required. Absent from
+  the libdir, the host cannot load the type either, so pre-flight refuses it as
+  before. `parseAugeas` is the shape check; routing and the run share it, so a
+  native run never meets a parse error.
+- **Lens path by command.** `NativeAugeas` takes the voxagent command
+  (`cmd/voxagent/apply.go`). `aug_init` gets `"/"`, the lens path, and flags 64
+  (`NO_MODL_AUTOLOAD`) with `incl`, else 32 (`NO_LOAD`). The path is
+  `<libdir>/augeas/lenses` for `agent` when it exists, else `""` (D-93).
+- **Run contract.** One handle per resource evaluation, opened in retrieve and
+  closed by a `defer` in `Apply` where Ruby closes it: in retrieve when nothing
+  needs to run, under `--noop` or on any failure, else after sync. Retrieve
+  is Ruby's dry run: `Set /augeas/save newfile`, the commands, `Save`, then
+  `/augeas/events/saved` decides whether anything changed, and each
+  `<file>.augnew` is deleted (a failure carries libc's `strerror` text, as Ruby's
+  `Errno` does). Sync is `Set /augeas/save overwrite`, `Load`, the commands,
+  `Save`. A failed `aug_match` raises Ruby's `Matching path expression` error
+  wherever it occurs. `Refreshable()` is false: the type has no `refresh`, and
+  Ruby's event manager skips such a target. `show_diff` never prints a diff, as in
+  `file` (below). The binding gained `aug_mv`, the 13th symbol, for `mv` and `move`.
+- **Stays on the host.** The type goes to the extension host when any resource
+  has a shape native does not reproduce, each for a reason measured or
+  unreproducible: `onlyif` (Ruby's Onigmo `=~` and encoding comparisons),
+  `force` (always crashes Ruby), `setm`, `clearm` and `rename` (unmeasured, and
+  ruby-augeas maps their failures to silence), `get`, `values`, `match`, `size`,
+  `include`, `not_include` and the comparators, a `changes` parse error (Ruby's
+  stray `puts` is not reproduced), `changes` that parse to zero commands
+  (unmeasured), a `root` other than `/`, a non-empty `load_path`, a `type_check`
+  other than `false`, a non-zero `returns`, `lens` without `incl` or the
+  reverse, and any byte outside printable ASCII in a command argument, `context`,
+  `incl` or `lens` (so no NUL reaches C and Ruby's `Array#inspect` in messages is
+  exact). An empty argument is printable ASCII and stays native. `incl => ''`
+  counts as set, as Ruby's truthiness test treats the empty string
+  (`TestAugeasEmptyInclIsSet`); `context => ''` stays `''` even with `incl`.
+- **Gates.** G5's augeas half runs the 06 cases (the kmod and resolv.conf
+  shapes, SIMP's among them), the run-time failure subset of 06h as
+  `augeas-runtime-errors`, `augeas-notified` (no refresh line) and four
+  `refuse-augeas-*` cases that must be applied by the host on both sides. The
+  SIMP gate asserts `augeas` is not among the hosted types and compares
+  `/etc/modprobe.d/blacklist.conf` byte for byte; `/etc/resolv.conf` is a mount
+  there, so its resource fails the save on both sides and the reports carry that.
+
 ## Writing files
 
 Content replacement is atomic: a temp file in the same directory, `fsync`,
@@ -787,9 +957,10 @@ repeated within a group, and two leaves that flatten to one path.
 | `dev:idempotence` | A second apply changes nothing | Anything about agreement with Ruby. A consistently wrong provider is perfectly idempotent |
 | `dev:state-diff` | Both agents leave the same filesystem state, including `exec` and `owner`/`group`, and — since `package` shipped — the same installed package set, compared with `rpm -qa` | Anything outside the paths the fixture names, and anything about the report: `rpm -qa` cannot see an event name, a `desired_value`, or which property a failure was attributed to |
 | `dev:derive-run-to-run` | `report-diff`'s allowlist still covers exactly what varies between two Ruby runs | Anything about voxagent. It measures Ruby against itself |
-| `dev:report-diff-container` | voxagent's report matches Ruby's from identical catalog bytes for the two types the host cannot measure at all — `package` and `exec` — with both agents inside `fleet-node-el`, against a catalog the image's own Puppet compiled. It also holds `File`'s `validate_cmd`, which forks: a passing and a failing validator, one with no `validate_replacement` token, one that cannot be executed, and `visudo` on a good and a bad `sudoers` file. It also holds the `Sensitive` cases (a marked `File` content, mode and `ensure`, a marked `Exec` command and `unless`, a marked `Notify`) and `Exec`'s `logoutput` (`true`, `false`, `on_failure`, a marked command's `[output redacted]`, a failing command's output, a refresh). The comparison reports `3677 leaves compared, 0 divergent` live and `1500` under `--noop` (the counts from the 2026-11-20 run, openvox 8.33.0); `1668` on 2026-11-17 (`WANT_PUPPET=8.33.0`), `815`, `314` before the five `exec` resources were added, `448` before `validate_cmd`, and `650` before the argv-array `exec` fixtures. The walk order agrees over `49` resources | Anything about the disk, exactly as G1 does not. G5 compares `--noop` for the account and concat cases, so only `service`'s noop is unmeasured (D-10). Nothing about the *text inside* a failure detail, which the comparator masks. And nothing about the *host*: the oracle inside the image is openvox, so a leaf where openvox and the gem differ — `package`'s install command line is one — is settled in openvox's favour by this gate and would diverge against the gem by design |
+| `dev:report-diff-container` | voxagent's report matches Ruby's from identical catalog bytes for the two types the host cannot measure at all — `package` and `exec` — with both agents inside `fleet-node-el`, against a catalog the image's own Puppet compiled. It also holds `File`'s `validate_cmd`, which forks: a passing and a failing validator, one with no `validate_replacement` token, one that cannot be executed, and `visudo` on a good and a bad `sudoers` file. It also holds the `Sensitive` cases (a marked `File` content, mode and `ensure`, a marked `Exec` command and `unless`, a marked `Notify`) and `Exec`'s `logoutput` (`true`, `false`, `on_failure`, a marked command's `[output redacted]`, a failing command's output, a refresh). The comparison reports `3677 leaves compared, 0 divergent` live and `1500` under `--noop` (the counts from the 2026-11-20 run, openvox 8.33.0); `1668` on 2026-11-17 (`WANT_PUPPET=8.33.0`), `815`, `314` before the five `exec` resources were added, `448` before `validate_cmd`, and `650` before the argv-array `exec` fixtures. The walk order agrees over `49` resources. Its augeas half compares 52 cases, 4 refusals agreeing too: live `7854` leaves, rerun `3214`, `--noop` `7934`, 0 divergent (measured 2026-11-21, openvox 8.33.0; the leaf totals are from the run just before `sysctl-prefetch-load-error` was fixed and that case re-run, which is why the figures are "as of" that run) | Anything about the disk, exactly as G1 does not. G5 compares `--noop` for the account and concat cases, so only `service`'s noop is unmeasured (D-10). Nothing about the *text inside* a failure detail, which the comparator masks. And nothing about the *host*: the oracle inside the image is openvox, so a leaf where openvox and the gem differ — `package`'s install command line is one — is settled in openvox's favour by this gate and would diverge against the gem by design |
 | `dev:report-diff-systemd` | voxagent's report for `service` matches Ruby's from identical catalog bytes, with each agent in its own container booted with systemd as PID 1, and both leave every fixture unit in the same `is-active`/`is-enabled` state. The comparison reports `315 leaves compared, 0 divergent`, and the walk order agrees over `8` resources | Anything under `--noop` (D-10). A failing start: its journal text varies between any two containers, so the fixture has none and `TestServiceStartFailureCarriesTheJournal` pins it. The built-in commands' locale, which no report shows. And any init system other than systemd, which voxagent refuses (D-22) |
-| `dev:report-diff-simp` | voxagent applies the public SIMP catalog (737 resources, 63 `Sysctl`, 16 `Binary` values, compiled in the container it is applied to) as Ruby does, each agent in its own systemd-booted container: the reports agree outside the allowlist (`12782 leaves compared, 0 divergent`), the walk order agrees over `340` resources, and both leave the same `tmp.mount` enablement, `/etc/audit` mode and reboot notifications | Anything about auditd's daemon or about polkit's start path: the image stubs the one and boots with the other running ("The SIMP gate"). `haveged`, which is in EPEL and fails to install on both sides, so only its failure attribution is compared. Any catalog but this one, and any SIMP release but the pinned one |
+| `dev:report-diff-simp` | voxagent applies the public SIMP catalog (737 resources, 63 `Sysctl`, 16 `Binary` values, compiled in the container it is applied to) as Ruby does, each agent in its own systemd-booted container: the reports agree outside the allowlist (`12782 leaves compared, 0 divergent`), the walk order agrees over `340` resources (measured 2026-11-21 with the four augeasproviders types native), and both leave the same `tmp.mount` enablement, `/etc/audit` mode and reboot notifications | Anything about auditd's daemon or about polkit's start path: the image stubs the one and boots with the other running ("The SIMP gate"). `haveged`, which is in EPEL and fails to install on both sides, so only its failure attribution is compared. Any catalog but this one, and any SIMP release but the pinned one |
+| `dev:augeas-lib` | The libaugeas binding (`augeas_lib_linux.go`) against openvox's real library 1.15.0 in the augeas image: the probe accepts it and refuses a changed ruby-augeas file, `aug_set` on an empty variable fails as Ruby's does, an empty file loads as a node, `aug_match` frees zero and many results without a double free (no leak check), a borrowed value is copied, an embedded NUL is refused, `parsed_as?` is true for ciphers and false for compression, and a save keeps the file's mode and owner (the `Test(ProbeRealLibrary\|Real)` tests, built with `-tags augeaslib`). Not part of `task check` | The providers on the real library (G5's augeas half does that), and any other libaugeas: the tests carry the `augeaslib` build tag, so a host's `go test ./...` never builds them, and no host run counts as a pass. Exits 2, not 1, when it cannot run (no podman, no base image, a failed build) |
 | `dev:agent-gate` | `voxagent agent` enrols against a real OpenVox server (CA, autosign), refuses a wrong `--ca-fingerprint`, pluginsyncs, applies, and PUTs a report whose run-2 form matches `puppet agent -t`'s from the same server under `gatekit compare-reports` (the spine allowlist merged with `tests/agent/allowlist.json`); run 2 sends no certificate request; with the server stopped the agent exits could-not-run. Not part of `task check` | Anything about catalogs beyond the fixture's; the first-contact TOFU window (it is accepted by design); CA rotation, renewal, or a server that answers differently from the pinned OpenVox image. See `agent-transport.md` |
 | `gatekit compare-order`, inside every report gate (`dev:report-diff`, `-extension`, `-container`, `-systemd`, `-selinux`, `-simp`) | Each resource that logs is evaluated in the same order relative to the others as in Ruby's run: each report's resource statuses, ordered by their first log line (a log belongs to the status whose containment path is the longest prefix of its source), compared over the resources both logged for. A status only one report has diverges, and so does a status both report that only one logged for. A comparison that cannot attribute a log (the side without it has a log source no status owns that the other side does not also leave unowned, as both leave `Puppet`), or that compares nothing, cannot run (exit 2), so it never agrees vacuously. Counts are in each gate's row and in D-44 | The position of a resource that logs nothing: one that changes nothing has no place in either order, so most of an idempotent run is not compared. Whits, which have no status. Anything between two log lines of one resource |
 
@@ -1266,6 +1437,21 @@ takes about a minute. One run is not a benchmark: the five-run medians, 28.68 s
 and 25.10 s, are in `docs/maintainers/performance.md`, "Public SIMP catalog
 applied".
 
+For the augeasproviders types the gate checks, before anything runs, that the
+merged libdir carries the fifteen fingerprints (`augeasproviders_fingerprints`
+in `tests/spine/simp/lib.sh`, beside `concat_fingerprints`), and after the run
+that voxagent's `applied via extension host` lines name none of `sysctl`,
+`ssh_config`, `sshd_config`, `sshd_config_subsystem` and `augeas`, and that
+`/etc/sysctl.conf`, `/etc/ssh/ssh_config`, `/etc/ssh/sshd_config` and
+`/etc/modprobe.d/blacklist.conf` have equal
+content, mode and owner on both sides. The merged libdir holds SIMP's `ssh.aug`
+and `resolv.aug` in `augeas/lenses`, so the 49 `Ssh_config` resources take the
+loadpath branch. The `Sysctl` coverage is mostly the failure path: rootless, the
+real `sysctl -w` is refused for 62 of the 63 and the one `silent => true`
+resource ignores its refusal, so the success paths are gated only by G5's
+shim cases. The gate exits 2 under a rootful podman, where `sysctl -w` would
+change the host kernel and the second agent would read the first one's value.
+
 **Every exception is measured.**
 
 - **Run to run.** The eighteen `metrics.time.values.<type>.value` entries for
@@ -1317,6 +1503,62 @@ Stopping it would mean changing tuned, which is itself a resource of the catalog
 The catalog also refreshes `Service[tuned]` during the run, which would
 re-activate a stopped polkit mid-run. So neither agent's start path for polkit
 is exercised here.
+
+### G5's augeas half and `task dev:augeas-lib`
+
+`dev:report-diff-container` ends with an augeas half (`tests/spine/augeas/g5.sh`,
+sourced by `report-diff-container.sh`) that runs on `localhost/augeas-measure-el`:
+the G5 base plus `procps-ng`, `openssh-clients`, `openssh-server`,
+`grub2-tools` and `strace` (`tests/spine/images/Containerfile.augeas`;
+`fleet-node-el` has none of the files or commands the five types edit or run).
+`tests/spine/augeas/image.sh` builds it when it is missing or when its openvox
+or libaugeas differs from the base's, and a cold build needs the network (the
+CentOS Stream mirrors). Remove the image (`podman rmi
+localhost/augeas-measure-el:latest`) after editing the Containerfile, as for
+the SIMP image.
+
+- **Cases.** 63 live native cases, 4 live cases the host must apply (`refuse-augeas-*`) and 4
+  refusals, one directory each under `tests/spine/augeas/cases/`. 51 of the
+  native ones are the measured ones (numbered), their `site.pp`, seed,
+  `files` and lenses committed verbatim from the measurements; 12 are the
+  gate's own (`sysctl-existing-w-fails`, `sysctl-save-fails`, `sysctl-prefetch-load-error`,
+  `sysctl-stale-invalid-key`, `sysctl-file-before`, `sshd-two-handles`,
+  `sshd-mode-preserved`, `lens-dir-known-hosts-only`, `sysctl-delegated`,
+  `augeas-runtime-errors`, `augeas-notified`, `augeas-apply-ignores-libdir-lens`). A case
+  with a `podman-args` file (06d and 06e need `--cap-add SYS_ADMIN` to unmount
+  `/etc/resolv.conf`) gets those arguments on both sides. Each
+  is compiled alone by the image's openvox and applied in fresh containers, one
+  per agent and mode (live with a rerun, then `--noop`); every pair goes
+  through `gatekit compare-reports` and `compare-order` against the unchanged
+  allowlist, and the state of every path the case lists (mode, owner, group,
+  size, content) is compared after the live run. A `refuse-*` case is one Ruby
+  refuses at catalog conversion; both agents must refuse it with the same
+  detail.
+- **Both loadpath branches.** Cases without a `lenses` file run libaugeas's
+  NULL-loadpath branch; the ones with it (M62-M64, M66-M69,
+  `lens-dir-known-hosts-only`) run the `<libdir>/augeas/lenses` branch, with the
+  libdir holding exactly the lenses the file lists.
+- **The sysctl shim, both sides.** Rootless, the real `sysctl -w` is refused,
+  so the success paths run through the measurement shim
+  (`tests/spine/augeas/sysctl-shim.sh`) on both agents, and the shim's log of
+  the commands run is compared, since no report shows it. The failure cases run
+  the real binary on both sides.
+- **Native, not delegated.** The libdir is checked against the fifteen
+  fingerprints, and voxagent's output must not name a native type among those
+  `applied via extension host`, so a delegated run, Ruby against Ruby, cannot
+  pass as native. `sysctl-delegated` is the inverse: its `comment` is outside the
+  native shapes, so voxagent must name `sysctl` there; each `refuse-augeas-*` case
+  likewise must name `augeas`.
+- **Rootful refuses.** Under a rootful podman the half returns 2 and runs no
+  case, because a rootful `sysctl -w` would change the host kernel.
+
+`task dev:augeas-lib` is the unit tests that need the real library, run in that
+image (the row above); it needs the same image and is not part of `task check`.
+
+**Run the gates one at a time.** Concurrent gate runs on one machine
+coincided with flakes in the SIMP gate's polkit start and systemd boot. The
+cause was not isolated; the gates may contend for podman's storage, the
+delegated cgroup and the image tags, and none takes a lock.
 
 ### Debug logging's memory cost
 
@@ -1591,7 +1833,7 @@ declares, with `provider` recognised **only** so that a value other than `dnf`
 can be refused. `service` is bounded to `ensure`, `enable`, `hasstatus`,
 `hasrestart`, `start`, `stop`, `status`, `restart`, `name` and `provider`.
 Everything else — and every resource type other than `notify`, `file`, `exec`,
-`package` and `service`, and `user`, `group`, `concat_file` and `concat_fragment` where they are native (below) —
+`package` and `service`, and `user`, `group`, `concat_file`, `concat_fragment`, `sysctl`, `ssh_config`, `sshd_config`, `sshd_config_subsystem` and `augeas` where they are native (below, and D-91) —
 is a pre-flight refusal or a resource for the extension host, not a silent omission,
 and the refusal covers the **whole catalog**: a partially applied node produces
 state-diff divergences that are artifacts of coverage rather than defects.
@@ -1670,8 +1912,32 @@ there, 239 remain. `concat` is now native there too (concat 9.1.0): the SIMP gat
 asserts the 9.1.0 fingerprint and fails if either type is named in
 `applied via extension host`, but prints no count. The 26 concat resources
 (20 `concat_fragment`, 6 `concat_file`) leaving the host list is derived from
-the by-type list above, so 213 remain (239 - 26); the order after it is the
-Augeas family.
+the by-type list above, so 213 remain (239 - 26). `sysctl`, `ssh_config`,
+`sshd_config` and `sshd_config_subsystem` are native there too (augeasproviders
+core 4.2.0, sysctl 4.1.0, ssh 7.0.0, openvox's libaugeas 1.15.0): the SIMP gate
+asserts the twelve fingerprints of these four types (fifteen once `augeas`'s three files are added, below) and fails if any of the four is named in
+`applied via extension host`, but prints no count. The 149 resources leaving
+the host list (63 `sysctl`, 49 `ssh_config`, 36 `sshd_config`, 1
+`sshd_config_subsystem`) are counted from the catalog the gate compiles, by
+`type`, and the 64 that remain (213 - 149) are derived, not measured: `ini_setting` 20,
+`augeas` 18, `mount` 5, `anchor`, `cron` and `reboot_notify` 4 each,
+`kernel_parameter` 2, and one each of `host`, `init_ulimit`, `runlevel`,
+`selinux_state`, `simp_file_line`, `svckill` and `tidy`. `augeas` is native there
+too (augeas_core 2.1.0): the gate adds it to the fingerprint and `applied via
+extension host` assertions and prints no count. Its 18 resources leaving the
+host list are counted from the same catalog by `type`, so 46 remain (64 - 18,
+derived): `ini_setting` 20, `mount` 5, `anchor`, `cron` and `reboot_notify` 4
+each, `kernel_parameter` 2, and one each of the seven singletons above. The
+Augeas family's remainder is `kernel_parameter` (2 of the 46), which stays
+with the extension host by decision (2026-11-22): it saves `/etc/default/grub`
+and then runs `grub2-mkconfig --update-bls-cmdline`, which rewrites the boot
+configuration, and real `grub2-mkconfig` cannot run in the rootless gate
+containers (`grub2-probe` fails on fuse-overlayfs), so Ruby's behaviour was
+measured only against a shim that prints a stub cfg
+(`2026-11-21-augeas-measurements` M36–M41). A native port could be gated only
+on the `/etc/default/grub` edit and the command line, never on the boot
+configuration it produces; for two resources that is not worth an ungated
+boot-config writer. Revisit with a VM gate that runs real grub.
 
 ### `user` and `group`
 
@@ -1814,7 +2080,7 @@ Unit tests use the real parsers with a fake `PluginTree`; the two release trees
 themselves are committed under `internal/ral/testdata/concat` (the two type
 files of each, unmodified; `TestConcatTestdataMatchesFingerprints` ties them to
 `concatFingerprints`), so the tests that read them never skip. G5's concat half (`tests/spine/concat/g5.sh`) compares 33 measured
-cases (live, rerun and `--noop`) against Ruby and the on-disk state of the
+cases (inputs committed under `tests/spine/concat/cases/`; live, rerun and `--noop`) against Ruby and the on-disk state of the
 backup case, and the 14 refusals; the extension gate holds the host path
 (every concat there is delegated); the SIMP gate applies its 26 concat resources
 natively. D-89, D-90, D-43, D-78 and D-84 are theirs.
@@ -1945,7 +2211,8 @@ measured on Puppet 8.10.0. The path is read as `links` says, so under `follow`
 a dangling link counts as absent. A missing path is created as usual.
 
 **`show_diff`** is accepted and has no effect: Puppet prints a diff only when
-the global `show_diff` setting is on, and voxagent has no such setting.
+the global `show_diff` setting is on, and voxagent has no such setting. The
+`augeas` type's `show_diff` is the same (`provider/augeas/augeas.rb:466`).
 
 G2 (`tests/spine/idempotence.sh`) holds the cases that converge. The ones it
 leaves out cannot: `keepdir` (I-1), `ensure => file` with a `target` over an

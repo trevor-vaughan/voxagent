@@ -1,0 +1,49 @@
+h1 aug_init NULL NULL 68
+h1 aug_get "/augeas/version" => 1 "1.15.0"
+h1 aug_close
+h1 aug_init "/" "" 64
+h1 aug_get "/augeas/version" => 1 "1.15.0"
+h1 aug_get "/augeas/version" => 1 "1.15.0"
+h1 aug_match "/augeas/version/pathx/functions/glob" => 1 "/augeas/version/pathx/functions/glob"
+h1 aug_set "/augeas/load/Xfm/lens" "Modprobe.lns" => 0
+h1 aug_set "/augeas/load/Xfm/incl" "/etc/modprobe.d/blacklist.conf" => 0
+h1 aug_load => 0
+h1 aug_match "/augeas//error" => 0
+h1 aug_get "/augeas/version" => 1 "1.15.0"
+h1 aug_set "/augeas/save" "newfile" => 0
+h1 aug_set "/files/etc/modprobe.d/blacklist.conf/blacklist[. = 'cramfs']" "cramfs" => 0
+h1 aug_save => 0
+h1 aug_match "/augeas/events/saved" => 1 "/augeas/events/saved"
+h1 aug_get "/augeas/events/saved" => 1 "/files/etc/modprobe.d/blacklist.conf"
+h1 aug_match "/augeas/events/saved" => 1 "/augeas/events/saved"
+h1 aug_get "/augeas/events/saved" => 1 "/files/etc/modprobe.d/blacklist.conf"
+h1 aug_rm "/augeas/files/etc/modprobe.d/blacklist.conf/mtime" => 1
+h1 aug_get "/augeas/version" => 1 "1.15.0"
+h1 aug_set "/augeas/save" "overwrite" => 0
+h1 aug_load => 0
+h1 aug_set "/files/etc/modprobe.d/blacklist.conf/blacklist[. = 'cramfs']" "cramfs" => 0
+h1 aug_save => 0
+h1 aug_close
+h2 aug_init "/" "" 64
+h2 aug_get "/augeas/version" => 1 "1.15.0"
+h2 aug_get "/augeas/version" => 1 "1.15.0"
+h2 aug_match "/augeas/version/pathx/functions/glob" => 1 "/augeas/version/pathx/functions/glob"
+h2 aug_set "/augeas/load/Xfm/lens" "Modprobe.lns" => 0
+h2 aug_set "/augeas/load/Xfm/incl" "/etc/modprobe.d/blacklist.conf" => 0
+h2 aug_load => 0
+h2 aug_match "/augeas//error" => 0
+h2 aug_get "/augeas/version" => 1 "1.15.0"
+h2 aug_set "/augeas/save" "newfile" => 0
+h2 aug_set "/files/etc/modprobe.d/blacklist.conf/blacklist[. = 'udf']" "udf" => 0
+h2 aug_save => 0
+h2 aug_match "/augeas/events/saved" => 1 "/augeas/events/saved"
+h2 aug_get "/augeas/events/saved" => 1 "/files/etc/modprobe.d/blacklist.conf"
+h2 aug_match "/augeas/events/saved" => 1 "/augeas/events/saved"
+h2 aug_get "/augeas/events/saved" => 1 "/files/etc/modprobe.d/blacklist.conf"
+h2 aug_rm "/augeas/files/etc/modprobe.d/blacklist.conf/mtime" => 1
+h2 aug_get "/augeas/version" => 1 "1.15.0"
+h2 aug_set "/augeas/save" "overwrite" => 0
+h2 aug_load => 0
+h2 aug_set "/files/etc/modprobe.d/blacklist.conf/blacklist[. = 'udf']" "udf" => 0
+h2 aug_save => 0
+h2 aug_close

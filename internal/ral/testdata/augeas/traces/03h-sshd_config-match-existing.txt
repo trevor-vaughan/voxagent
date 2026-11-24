@@ -1,0 +1,102 @@
+h1 aug_init NULL NULL 68
+h1 aug_get "/augeas/version" => 1 "1.15.0"
+h1 aug_close
+h1 aug_init NULL NULL 64
+h1 aug_match "/augeas/load/Sshd" => 0
+h1 aug_set "/augeas/load/Sshd/lens" "Sshd.lns" => 0
+h1 aug_set "/augeas/load/Sshd/incl[last()+1]" "/etc/ssh/sshd_config" => 0
+h1 aug_load => 0
+h1 aug_match "/files/etc/ssh/sshd_config" => 1 "/files/etc/ssh/sshd_config"
+h1 aug_set "/augeas/context" "/files/etc/ssh/sshd_config" => 0
+h1 aug_defnode "target" "/files/etc/ssh/sshd_config" NULL NULL => 1
+h1 aug_defvar "resource" "$target/Match[count(Condition/*)=2][Condition/Host=\"example.net\"][Condition/User=\"root\"]/Settings/*[label()=~regexp('PasswordAuthentication', 'i')]" => 1
+h1 aug_match "$resource" => 1 "/files/etc/ssh/sshd_config/Match[2]/Settings/PasswordAuthentication"
+h1 aug_match "/augeas/load/Sshd" => 1 "/augeas/load/Sshd"
+h1 aug_match "/augeas/load/Sshd/incl[.='/etc/ssh/sshd_config']" => 1 "/augeas/load/Sshd/incl"
+h1 aug_match "/files/etc/ssh/sshd_config" => 1 "/files/etc/ssh/sshd_config"
+h1 aug_set "/augeas/context" "/files/etc/ssh/sshd_config" => 0
+h1 aug_defnode "target" "/files/etc/ssh/sshd_config" NULL NULL => 1
+h1 aug_defvar "resource" "$target/Match[count(Condition/*)=2][Condition/Host=\"example.net\"][Condition/User=\"root\"]/Settings/*[label()=~regexp('PasswordAuthentication', 'i')]" => 1
+h1 aug_match "$resource" => 1 "/files/etc/ssh/sshd_config/Match[2]/Settings/PasswordAuthentication"
+h1 aug_match "/files/etc/ssh/sshd_config/Match[2]/Settings/PasswordAuthentication/*[label()=~regexp('[0-9]*')]" => 0
+h1 aug_get "/files/etc/ssh/sshd_config/Match[2]/Settings/PasswordAuthentication" => 1 "yes"
+h1 aug_match "/augeas/load/Sshd" => 1 "/augeas/load/Sshd"
+h1 aug_match "/augeas/load/Sshd/incl[.='/etc/ssh/sshd_config']" => 1 "/augeas/load/Sshd/incl"
+h1 aug_match "/files/etc/ssh/sshd_config" => 1 "/files/etc/ssh/sshd_config"
+h1 aug_set "/augeas/context" "/files/etc/ssh/sshd_config" => 0
+h1 aug_defnode "target" "/files/etc/ssh/sshd_config" NULL NULL => 1
+h1 aug_defvar "resource" "$target/Match[count(Condition/*)=2][Condition/Host=\"example.net\"][Condition/User=\"root\"]/Settings/*[label()=~regexp('PasswordAuthentication', 'i')]" => 1
+h2 aug_init NULL NULL 64
+h2 aug_set "/input" "PasswordAuthentication FOO\n" => 0
+h2 aug_text_store "Sshd.lns" "/input" "/parsed" => 0
+h2 aug_match "/parsed/PasswordAuthentication/1" => 0
+h2 aug_close
+h1 aug_match "$target/Match[count(Condition/*)=2][Condition/Host=\"example.net\"][Condition/User=\"root\"]/Settings/*[label()=~regexp('PasswordAuthentication', 'i')]" => 1 "/files/etc/ssh/sshd_config/Match[2]/Settings/PasswordAuthentication"
+h1 aug_set "/files/etc/ssh/sshd_config/Match[2]/Settings/PasswordAuthentication" "no" => 0
+h1 aug_save => 0
+h1 aug_load => 0
+h3 aug_init NULL NULL 64
+h3 aug_get "/augeas/version" => 1 "1.15.0"
+h3 aug_close
+h1 aug_load => 0
+h1 aug_match "/augeas/load/Sshd" => 1 "/augeas/load/Sshd"
+h1 aug_match "/augeas/load/Sshd/incl[.='/etc/ssh/sshd_config']" => 1 "/augeas/load/Sshd/incl"
+h1 aug_match "/files/etc/ssh/sshd_config" => 1 "/files/etc/ssh/sshd_config"
+h1 aug_set "/augeas/context" "/files/etc/ssh/sshd_config" => 0
+h1 aug_defnode "target" "/files/etc/ssh/sshd_config" NULL NULL => 1
+h1 aug_defvar "resource" "$target/Match[count(Condition/*)=1][Condition/User=\"bob\"]/Settings/*[label()=~regexp('X11Forwarding', 'i')]" => 1
+h1 aug_match "$resource" => 1 "/files/etc/ssh/sshd_config/Match[1]/Settings/X11Forwarding"
+h1 aug_match "/augeas/load/Sshd" => 1 "/augeas/load/Sshd"
+h1 aug_match "/augeas/load/Sshd/incl[.='/etc/ssh/sshd_config']" => 1 "/augeas/load/Sshd/incl"
+h1 aug_match "/files/etc/ssh/sshd_config" => 1 "/files/etc/ssh/sshd_config"
+h1 aug_set "/augeas/context" "/files/etc/ssh/sshd_config" => 0
+h1 aug_defnode "target" "/files/etc/ssh/sshd_config" NULL NULL => 1
+h1 aug_defvar "resource" "$target/Match[count(Condition/*)=1][Condition/User=\"bob\"]/Settings/*[label()=~regexp('X11Forwarding', 'i')]" => 1
+h1 aug_match "$resource" => 1 "/files/etc/ssh/sshd_config/Match[1]/Settings/X11Forwarding"
+h1 aug_match "/files/etc/ssh/sshd_config/Match[1]/Settings/X11Forwarding/*[label()=~regexp('[0-9]*')]" => 0
+h1 aug_get "/files/etc/ssh/sshd_config/Match[1]/Settings/X11Forwarding" => 1 "no"
+h1 aug_match "/augeas/load/Sshd" => 1 "/augeas/load/Sshd"
+h1 aug_match "/augeas/load/Sshd/incl[.='/etc/ssh/sshd_config']" => 1 "/augeas/load/Sshd/incl"
+h1 aug_match "/files/etc/ssh/sshd_config" => 1 "/files/etc/ssh/sshd_config"
+h1 aug_set "/augeas/context" "/files/etc/ssh/sshd_config" => 0
+h1 aug_defnode "target" "/files/etc/ssh/sshd_config" NULL NULL => 1
+h1 aug_defvar "resource" "$target/Match[count(Condition/*)=1][Condition/User=\"bob\"]/Settings/*[label()=~regexp('X11Forwarding', 'i')]" => 1
+h4 aug_init NULL NULL 64
+h4 aug_set "/input" "X11Forwarding FOO\n" => 0
+h4 aug_text_store "Sshd.lns" "/input" "/parsed" => 0
+h4 aug_match "/parsed/X11Forwarding/1" => 0
+h4 aug_close
+h1 aug_match "$target/Match[count(Condition/*)=1][Condition/User=\"bob\"]/Settings/*[label()=~regexp('X11Forwarding', 'i')]" => 1 "/files/etc/ssh/sshd_config/Match[1]/Settings/X11Forwarding"
+h1 aug_set "/files/etc/ssh/sshd_config/Match[1]/Settings/X11Forwarding" "yes" => 0
+h1 aug_save => 0
+h1 aug_load => 0
+h1 aug_load => 0
+h1 aug_match "/augeas/load/Sshd" => 1 "/augeas/load/Sshd"
+h1 aug_match "/augeas/load/Sshd/incl[.='/etc/ssh/sshd_config']" => 1 "/augeas/load/Sshd/incl"
+h1 aug_match "/files/etc/ssh/sshd_config" => 1 "/files/etc/ssh/sshd_config"
+h1 aug_set "/augeas/context" "/files/etc/ssh/sshd_config" => 0
+h1 aug_defnode "target" "/files/etc/ssh/sshd_config" NULL NULL => 1
+h1 aug_defvar "resource" "$target/Match[count(Condition/*)=1][Condition/User=\"bob\"]/Settings/*[label()=~regexp('Banner', 'i')]" => 0
+h1 aug_match "$resource" => 0
+h1 aug_match "/augeas/load/Sshd" => 1 "/augeas/load/Sshd"
+h1 aug_match "/augeas/load/Sshd/incl[.='/etc/ssh/sshd_config']" => 1 "/augeas/load/Sshd/incl"
+h1 aug_match "/files/etc/ssh/sshd_config" => 1 "/files/etc/ssh/sshd_config"
+h1 aug_set "/augeas/context" "/files/etc/ssh/sshd_config" => 0
+h1 aug_defnode "target" "/files/etc/ssh/sshd_config" NULL NULL => 1
+h1 aug_defvar "resource" "$target/Match[count(Condition/*)=1][Condition/User=\"bob\"]/Settings/*[label()=~regexp('Banner', 'i')]" => 0
+h1 aug_match "$target/Match[count(Condition/*)=1][Condition/User=\"bob\"]" => 1 "/files/etc/ssh/sshd_config/Match[1]"
+h5 aug_init NULL NULL 64
+h5 aug_set "/input" "Banner FOO\n" => 0
+h5 aug_text_store "Sshd.lns" "/input" "/parsed" => 0
+h5 aug_match "/parsed/Banner/1" => 0
+h5 aug_close
+h1 aug_match "$target/Match[count(Condition/*)=1][Condition/User=\"bob\"]/Settings/Banner" => 0
+h1 aug_match "$target/Match[count(Condition/*)=1][Condition/User=\"bob\"]/Settings/#comment[.=~regexp('Banner([^a-z.].*)?', 'i')]" => 0
+h1 aug_match "$target/Match[count(Condition/*)=1][Condition/User=\"bob\"]/Settings/Match" => 0
+h1 aug_insert "$target/Match[count(Condition/*)=1][Condition/User=\"bob\"]/Settings/*" "Banner" 0 => 0
+h1 aug_set "$target/Match[count(Condition/*)=1][Condition/User=\"bob\"]/Settings/Banner[last()]" "/etc/issue" => 0
+h1 aug_match "$target/Match[count(Condition/*)=1][Condition/User=\"bob\"]/Settings/Banner[last()]" => 1 "/files/etc/ssh/sshd_config/Match[1]/Settings/Banner"
+h1 aug_save => 0
+h1 aug_load => 0
+h1 aug_load => 0
+h1 aug_close

@@ -1,0 +1,131 @@
+h1 aug_init NULL NULL 68
+h1 aug_get "/augeas/version" => 1 "1.15.0"
+h1 aug_close
+h1 aug_init "/" "" 64
+h1 aug_get "/augeas/version" => 1 "1.15.0"
+h1 aug_get "/augeas/version" => 1 "1.15.0"
+h1 aug_match "/augeas/version/pathx/functions/glob" => 1 "/augeas/version/pathx/functions/glob"
+h1 aug_set "/augeas/load/Xfm/lens" "Modprobe.lns" => 0
+h1 aug_set "/augeas/load/Xfm/incl" "/etc/modprobe.d/blacklist.conf" => 0
+h1 aug_load => 0
+h1 aug_match "/augeas//error" => 0
+h1 aug_get "/augeas/version" => 1 "1.15.0"
+h1 aug_set "/augeas/save" "newfile" => 0
+h1 aug_rm "/files/etc/modprobe.d/blacklist.conf/blacklist[. =" => -1
+h1 aug_close
+h2 aug_init "/" "" 64
+h2 aug_get "/augeas/version" => 1 "1.15.0"
+h2 aug_get "/augeas/version" => 1 "1.15.0"
+h2 aug_match "/augeas/version/pathx/functions/glob" => 1 "/augeas/version/pathx/functions/glob"
+h2 aug_set "/augeas/load/Xfm/lens" "Modprobe.lns" => 0
+h2 aug_set "/augeas/load/Xfm/incl" "/etc/modprobe.d/blacklist.conf" => 0
+h2 aug_load => 0
+h2 aug_match "/augeas//error" => 0
+h2 aug_get "/augeas/version" => 1 "1.15.0"
+h2 aug_set "/augeas/save" "newfile" => 0
+h2 aug_rm "/files/etc/modprobe.d/blacklist.conf/" => -1
+h2 aug_close
+h3 aug_init "/" "" 64
+h3 aug_get "/augeas/version" => 1 "1.15.0"
+h3 aug_get "/augeas/version" => 1 "1.15.0"
+h3 aug_match "/augeas/version/pathx/functions/glob" => 1 "/augeas/version/pathx/functions/glob"
+h3 aug_set "/augeas/load/Xfm/lens" "Modprobe.lns" => 0
+h3 aug_set "/augeas/load/Xfm/incl" "/etc/modprobe.d/blacklist.conf" => 0
+h3 aug_load => 0
+h3 aug_match "/augeas//error" => 0
+h3 aug_get "/augeas/version" => 1 "1.15.0"
+h3 aug_set "/augeas/save" "newfile" => 0
+h3 aug_close
+h4 aug_init "/" "" 64
+h4 aug_get "/augeas/version" => 1 "1.15.0"
+h4 aug_get "/augeas/version" => 1 "1.15.0"
+h4 aug_match "/augeas/version/pathx/functions/glob" => 1 "/augeas/version/pathx/functions/glob"
+h4 aug_set "/augeas/load/Xfm/lens" "Modprobe.lns" => 0
+h4 aug_set "/augeas/load/Xfm/incl" "/etc/modprobe.d/blacklist.conf" => 0
+h4 aug_load => 0
+h4 aug_match "/augeas//error" => 0
+h4 aug_get "/augeas/version" => 1 "1.15.0"
+h4 aug_set "/augeas/save" "newfile" => 0
+h4 aug_rm "/files/etc/modprobe.d/blacklist.conf/nothere" => 0
+h4 aug_save => 0
+h4 aug_match "/augeas/events/saved" => 0
+h4 aug_close
+h5 aug_init "/" "" 64
+h5 aug_get "/augeas/version" => 1 "1.15.0"
+h5 aug_get "/augeas/version" => 1 "1.15.0"
+h5 aug_match "/augeas/version/pathx/functions/glob" => 1 "/augeas/version/pathx/functions/glob"
+h5 aug_set "/augeas/load/Xfm/lens" "Modprobe.lns" => 0
+h5 aug_set "/augeas/load/Xfm/incl" "/etc/modprobe.d/blacklist.conf" => 0
+h5 aug_load => 0
+h5 aug_match "/augeas//error" => 0
+h5 aug_get "/augeas/version" => 1 "1.15.0"
+h5 aug_set "/augeas/save" "newfile" => 0
+h5 aug_set "/files/etc/modprobe.d/blacklist.conf/blacklist" "x" => -1
+h5 aug_save => 0
+h5 aug_match "/augeas/events/saved" => 0
+h5 aug_close
+h6 aug_init "/" "" 64
+h6 aug_get "/augeas/version" => 1 "1.15.0"
+h6 aug_get "/augeas/version" => 1 "1.15.0"
+h6 aug_match "/augeas/version/pathx/functions/glob" => 1 "/augeas/version/pathx/functions/glob"
+h6 aug_set "/augeas/load/Xfm/lens" "Modprobe.lns" => 0
+h6 aug_set "/augeas/load/Xfm/incl" "/etc/modprobe.d/blacklist.conf" => 0
+h6 aug_load => 0
+h6 aug_match "/augeas//error" => 0
+h6 aug_get "/augeas/version" => 1 "1.15.0"
+h6 aug_set "/augeas/save" "newfile" => 0
+h6 aug_rm "/files/etc/modprobe.d/blacklist.conf/blacklist[position() = ]" => -1
+h6 aug_close
+h7 aug_init "/" "" 64
+h7 aug_get "/augeas/version" => 1 "1.15.0"
+h7 aug_get "/augeas/version" => 1 "1.15.0"
+h7 aug_match "/augeas/version/pathx/functions/glob" => 1 "/augeas/version/pathx/functions/glob"
+h7 aug_set "/augeas/load/Xfm/lens" "Nonesuch.lns" => 0
+h7 aug_set "/augeas/load/Xfm/incl" "/etc/modprobe.d/blacklist.conf" => 0
+h7 aug_load => 0
+h7 aug_match "/augeas//error" => 1 "/augeas/load/Xfm/error"
+h7 aug_match "/augeas//error" => 1 "/augeas/load/Xfm/error"
+h7 aug_get "/augeas/load/Xfm/error" => 1 "Can not find lens Nonesuch.lns"
+h7 aug_match "/augeas/load/Xfm/error/*" => 0
+h7 aug_get "/augeas/version" => 1 "1.15.0"
+h7 aug_set "/augeas/save" "newfile" => 0
+h7 aug_set "/files/etc/modprobe.d/blacklist.conf/foo" "bar" => 0
+h7 aug_save => -1
+h7 aug_match "/augeas//error[. = 'put_failed']" => 0
+h7 aug_close
+h8 aug_init "/" "" 64
+h8 aug_get "/augeas/version" => 1 "1.15.0"
+h8 aug_get "/augeas/version" => 1 "1.15.0"
+h8 aug_match "/augeas/version/pathx/functions/glob" => 1 "/augeas/version/pathx/functions/glob"
+h8 aug_set "/augeas/load/Xfm/lens" "Modprobe.lns" => 0
+h8 aug_set "/augeas/load/Xfm/incl" "/etc/modprobe.d/blacklist.conf" => 0
+h8 aug_load => 0
+h8 aug_match "/augeas//error" => 0
+h8 aug_get "/augeas/version" => 1 "1.15.0"
+h8 aug_set "/augeas/save" "newfile" => 0
+h8 aug_mv "/files/etc/modprobe.d/blacklist.conf/nothere" "/files/etc/modprobe.d/blacklist.conf/other" => -1
+h8 aug_close
+h9 aug_init "/" "" 64
+h9 aug_get "/augeas/version" => 1 "1.15.0"
+h9 aug_get "/augeas/version" => 1 "1.15.0"
+h9 aug_match "/augeas/version/pathx/functions/glob" => 1 "/augeas/version/pathx/functions/glob"
+h9 aug_set "/augeas/load/Xfm/lens" "Modprobe.lns" => 0
+h9 aug_set "/augeas/load/Xfm/incl" "/etc/modprobe.d/blacklist.conf" => 0
+h9 aug_load => 0
+h9 aug_match "/augeas//error" => 0
+h9 aug_get "/augeas/version" => 1 "1.15.0"
+h9 aug_set "/augeas/save" "newfile" => 0
+h9 aug_insert "/files/etc/modprobe.d/blacklist.conf/nothere" "foo" 0 => -1
+h9 aug_close
+h10 aug_init "/" "" 64
+h10 aug_get "/augeas/version" => 1 "1.15.0"
+h10 aug_get "/augeas/version" => 1 "1.15.0"
+h10 aug_match "/augeas/version/pathx/functions/glob" => 1 "/augeas/version/pathx/functions/glob"
+h10 aug_set "/augeas/load/Xfm/lens" "Modprobe.lns" => 0
+h10 aug_set "/augeas/load/Xfm/incl" "/etc/modprobe.d/blacklist.conf" => 0
+h10 aug_load => 0
+h10 aug_match "/augeas//error" => 0
+h10 aug_get "/augeas/version" => 1 "1.15.0"
+h10 aug_set "/augeas/save" "newfile" => 0
+h10 aug_rm "/files/etc/modprobe.d/blacklist.conf/blacklist[" => -1
+h10 aug_close

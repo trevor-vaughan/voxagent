@@ -1,0 +1,9 @@
+# The node G5's augeas half (tests/spine/augeas/g5.sh) and `task
+# dev:augeas-lib` run on: the G5 base plus the package set the augeas
+# measurements (2026-11-21) were taken with. fleet-node-el has no sysctl,
+# sshd_config, ssh_config, grub2-mkconfig or strace; the providers shell out to
+# or edit the files of the first three. openvox, its libaugeas 1.15.0 and the lenses are the
+# base's own, which tests/spine/augeas/image.sh checks after every build.
+# Building it needs the CentOS Stream mirrors.
+FROM localhost/fleet-node-el:latest
+RUN dnf -y install procps-ng openssh-clients openssh-server grub2-tools strace && dnf clean all

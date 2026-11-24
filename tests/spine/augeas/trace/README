@@ -1,0 +1,33 @@
+Recording Ruby's libaugeas calls for a case (aug-trace.c, trace.sh).
+
+aug-trace.c is an LD_PRELOAD interposer that appends one line per aug_* call
+that ruby-augeas makes, to the file named by $AUGTRACE. trace.sh compiles a
+case's site.pp into catalog.json as G5's augeas half does, then applies it
+once, live, with the interposer loaded, in a fresh container of
+localhost/augeas-measure-el staged as the gate stages Ruby's side (the sysctl
+shim at /tmp/sysctl-shim.sh, /tmp/papply, the case's lenses, seed and
+podman-args; the header of trace.sh lists the setup). The apply is G5's: the
+libdir /tmp/lib holds augeasproviders' and augeas_core's lib trees and no
+--environmentpath is given, so aug_init receives "" as its loadpath; trace.sh
+fails when the trace has no `aug_init "/" "" 64` or `32`. It writes catalog.json and aug-trace.txt
+to .test-output/augeas-trace/<case>/. It calls openvox's real puppet binary,
+because the wrapper script unsets LD_PRELOAD. The grammar of a line is in
+internal/ral/augeas_replay_test.go.
+
+1. Build the image: run `task dev:augeas-lib` (it builds
+   localhost/augeas-measure-el from tests/spine/images/Containerfile.augeas
+   when missing; a cold build needs the network), or run the G5 augeas half.
+2. Build the interposer on a glibc-compatible host:
+     gcc -shared -fPIC -O1 -o aug-trace.so aug-trace.c -ldl
+3. Fill the SIMP module cache (`task dev:report-diff-simp` or the G5 augeas
+   half does it): trace.sh builds the libdir from the augeasproviders modules
+   and augeas_core in .test-output/simp/modules-*.
+4. Record: bash trace.sh ./aug-trace.so <case-dir>...
+   A case dir is one of tests/spine/augeas/cases/<case>/: site.pp and,
+   optionally, seed.sh, lenses (a list of cache lens paths, or a directory of
+   lens files) and podman-args. No compiled catalog is needed; G5 keeps
+   its own catalogs only in a temporary directory.
+5. Copy .test-output/augeas-trace/<case>/aug-trace.txt to
+   internal/ral/testdata/augeas/traces/<case>.txt, replacing the old file.
+   Those files are read-only otherwise: the native providers' calls are
+   asserted equal to them.

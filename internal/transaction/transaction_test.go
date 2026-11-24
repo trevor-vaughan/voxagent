@@ -1886,6 +1886,32 @@ func TestPrefetchFailureFailsEveryResourceOfTheTypeAndAppliesNone(t *testing.T) 
 	}
 }
 
+// A type whose every resource was skipped for a failed prefetch has no
+// metrics.time entry: their evaluation_time is null, and
+// calculate_time_metrics (transaction/report.rb:499-503) adds only non-null
+// ones. Measured by G5's sysctl-prefetch-load-error, where Ruby's report has
+// no "sysctl" time and voxagent's had "Sysctl" 0.
+func TestPrefetchFailedTypeHasNoTimeMetric(t *testing.T) {
+	var applied, refreshed []string
+	tx := txWithPrefetch(&applied, &refreshed, prefetchProbe{
+		prefetchErr: map[string]error{"file": errors.New("unparsable")},
+	})
+	rep := runCatalog(t, tx, &catalog.Catalog{Resources: []catalog.Resource{
+		res("File", "/one", nil), res("Notify", "hi", nil),
+	}})
+	rep.Finalize()
+	var names []any
+	for _, v := range rep.Metrics["time"].Values {
+		names = append(names, v[0])
+	}
+	if slices.Contains(names, any("file")) {
+		t.Errorf("metrics.time names %v; a prefetch-failed type was never evaluated", names)
+	}
+	if !slices.Contains(names, any("notify")) {
+		t.Errorf("metrics.time names %v; the applied notify must stay", names)
+	}
+}
+
 // The CAUSE is logged once for the run, at source "Puppet"; the SKIP is logged
 // once per resource, at that resource's own path.
 //

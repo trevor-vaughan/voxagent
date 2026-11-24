@@ -1,0 +1,147 @@
+h1 aug_init NULL NULL 68
+h1 aug_get "/augeas/version" => 1 "1.15.0"
+h1 aug_close
+h1 aug_init NULL NULL 64
+h1 aug_match "/augeas/load/Ssh" => 0
+h1 aug_set "/augeas/load/Ssh/lens" "Ssh.lns" => 0
+h1 aug_set "/augeas/load/Ssh/incl[last()+1]" "/etc/ssh/ssh_config" => 0
+h1 aug_load => 0
+h1 aug_match "/files/etc/ssh/ssh_config" => 1 "/files/etc/ssh/ssh_config"
+h1 aug_set "/augeas/context" "/files/etc/ssh/ssh_config" => 0
+h1 aug_defnode "target" "/files/etc/ssh/ssh_config" NULL NULL => 1
+h1 aug_defvar "resource" "$target/Host[.='*']/*[label()=~regexp('Compression', 'i')]" => 1
+h1 aug_match "$resource" => 1 "/files/etc/ssh/ssh_config/Host/Compression"
+h1 aug_match "/augeas/load/Ssh" => 1 "/augeas/load/Ssh"
+h1 aug_match "/augeas/load/Ssh/incl[.='/etc/ssh/ssh_config']" => 1 "/augeas/load/Ssh/incl"
+h1 aug_match "/files/etc/ssh/ssh_config" => 1 "/files/etc/ssh/ssh_config"
+h1 aug_set "/augeas/context" "/files/etc/ssh/ssh_config" => 0
+h1 aug_defnode "target" "/files/etc/ssh/ssh_config" NULL NULL => 1
+h1 aug_defvar "resource" "$target/Host[.='*']/*[label()=~regexp('Compression', 'i')]" => 1
+h1 aug_match "$resource" => 1 "/files/etc/ssh/ssh_config/Host/Compression"
+h1 aug_match "/files/etc/ssh/ssh_config/Host/Compression/*[label()=~regexp('[0-9]*')]" => 0
+h1 aug_get "/files/etc/ssh/ssh_config/Host/Compression" => 1 "yes"
+h1 aug_match "/augeas/load/Ssh" => 1 "/augeas/load/Ssh"
+h1 aug_match "/augeas/load/Ssh/incl[.='/etc/ssh/ssh_config']" => 1 "/augeas/load/Ssh/incl"
+h1 aug_match "/files/etc/ssh/ssh_config" => 1 "/files/etc/ssh/ssh_config"
+h1 aug_set "/augeas/context" "/files/etc/ssh/ssh_config" => 0
+h1 aug_defnode "target" "/files/etc/ssh/ssh_config" NULL NULL => 1
+h1 aug_defvar "resource" "$target/Host[.='*']/*[label()=~regexp('Compression', 'i')]" => 1
+h2 aug_init NULL NULL 64
+h2 aug_set "/input" "Compression FOO\n" => 0
+h2 aug_text_store "Ssh.lns" "/input" "/parsed" => 0
+h2 aug_match "/parsed/Compression/1" => 0
+h2 aug_close
+h1 aug_match "$target/Host[.='*']/*[label()=~regexp('Compression', 'i')]" => 1 "/files/etc/ssh/ssh_config/Host/Compression"
+h1 aug_set "/files/etc/ssh/ssh_config/Host/Compression" "no" => 0
+h1 aug_defvar "resource" "$target/Host[.='*']/*[label()=~regexp('Compression', 'i')]" => 1
+h1 aug_save => 0
+h1 aug_load => 0
+h3 aug_init NULL NULL 64
+h3 aug_get "/augeas/version" => 1 "1.15.0"
+h3 aug_close
+h1 aug_load => 0
+h1 aug_match "/augeas/load/Ssh" => 1 "/augeas/load/Ssh"
+h1 aug_match "/augeas/load/Ssh/incl[.='/etc/ssh/ssh_config']" => 1 "/augeas/load/Ssh/incl"
+h1 aug_match "/files/etc/ssh/ssh_config" => 1 "/files/etc/ssh/ssh_config"
+h1 aug_set "/augeas/context" "/files/etc/ssh/ssh_config" => 0
+h1 aug_defnode "target" "/files/etc/ssh/ssh_config" NULL NULL => 1
+h1 aug_defvar "resource" "$target/Host[.='*']/*[label()=~regexp('Ciphers', 'i')]" => 0
+h1 aug_match "$resource" => 0
+h1 aug_match "/augeas/load/Ssh" => 1 "/augeas/load/Ssh"
+h1 aug_match "/augeas/load/Ssh/incl[.='/etc/ssh/ssh_config']" => 1 "/augeas/load/Ssh/incl"
+h1 aug_match "/files/etc/ssh/ssh_config" => 1 "/files/etc/ssh/ssh_config"
+h1 aug_set "/augeas/context" "/files/etc/ssh/ssh_config" => 0
+h1 aug_defnode "target" "/files/etc/ssh/ssh_config" NULL NULL => 1
+h1 aug_defvar "resource" "$target/Host[.='*']/*[label()=~regexp('Ciphers', 'i')]" => 0
+h1 aug_set "$target/Host[.='*']" "*" => 0
+h4 aug_init NULL NULL 64
+h4 aug_set "/input" "Ciphers FOO\n" => 0
+h4 aug_text_store "Ssh.lns" "/input" "/parsed" => 0
+h4 aug_match "/parsed/Ciphers/1" => 1 "/parsed/Ciphers/1"
+h4 aug_close
+h1 aug_rm "$target/Host[.='*']/Ciphers/*" => 0
+h1 aug_rm "$target/Host[.='*']/Ciphers[position() != 1]" => 0
+h1 aug_set "$target/Host[.='*']/Ciphers/1" "aes256-ctr" => 0
+h1 aug_set "$target/Host[.='*']/Ciphers/2" "aes128-ctr" => 0
+h1 aug_save => 0
+h1 aug_load => 0
+h1 aug_load => 0
+h5 aug_init NULL NULL 64
+h5 aug_match "/augeas/load/Sshd" => 0
+h5 aug_set "/augeas/load/Sshd/lens" "Sshd.lns" => 0
+h5 aug_set "/augeas/load/Sshd/incl[last()+1]" "/etc/ssh/sshd_config" => 0
+h5 aug_load => 0
+h5 aug_match "/files/etc/ssh/sshd_config" => 1 "/files/etc/ssh/sshd_config"
+h5 aug_set "/augeas/context" "/files/etc/ssh/sshd_config" => 0
+h5 aug_defnode "target" "/files/etc/ssh/sshd_config" NULL NULL => 1
+h5 aug_defvar "resource" "$target/*[label()=~regexp('PermitRootLogin', 'i')]" => 0
+h5 aug_match "$resource" => 0
+h5 aug_match "/augeas/load/Sshd" => 1 "/augeas/load/Sshd"
+h5 aug_match "/augeas/load/Sshd/incl[.='/etc/ssh/sshd_config']" => 1 "/augeas/load/Sshd/incl"
+h5 aug_match "/files/etc/ssh/sshd_config" => 1 "/files/etc/ssh/sshd_config"
+h5 aug_set "/augeas/context" "/files/etc/ssh/sshd_config" => 0
+h5 aug_defnode "target" "/files/etc/ssh/sshd_config" NULL NULL => 1
+h5 aug_defvar "resource" "$target/*[label()=~regexp('PermitRootLogin', 'i')]" => 0
+h6 aug_init NULL NULL 64
+h6 aug_set "/input" "PermitRootLogin FOO\n" => 0
+h6 aug_text_store "Sshd.lns" "/input" "/parsed" => 0
+h6 aug_match "/parsed/PermitRootLogin/1" => 0
+h6 aug_close
+h5 aug_match "$target/PermitRootLogin" => 0
+h5 aug_match "$target/#comment[.=~regexp('PermitRootLogin([^a-z.].*)?', 'i')]" => 1 "/files/etc/ssh/sshd_config/#comment[28]"
+h5 aug_insert "/files/etc/ssh/sshd_config/#comment[28]" "PermitRootLogin" 0 => 0
+h5 aug_set "$target/PermitRootLogin[last()]" "no" => 0
+h5 aug_match "$target/PermitRootLogin[last()]" => 1 "/files/etc/ssh/sshd_config/PermitRootLogin"
+h5 aug_save => 0
+h5 aug_load => 0
+h7 aug_init NULL NULL 64
+h7 aug_get "/augeas/version" => 1 "1.15.0"
+h7 aug_close
+h5 aug_load => 0
+h5 aug_match "/augeas/load/Sshd" => 1 "/augeas/load/Sshd"
+h5 aug_match "/augeas/load/Sshd/incl[.='/etc/ssh/sshd_config']" => 1 "/augeas/load/Sshd/incl"
+h5 aug_match "/files/etc/ssh/sshd_config" => 1 "/files/etc/ssh/sshd_config"
+h5 aug_set "/augeas/context" "/files/etc/ssh/sshd_config" => 0
+h5 aug_defnode "target" "/files/etc/ssh/sshd_config" NULL NULL => 1
+h5 aug_defvar "resource" "$target/*[label()=~regexp('AllowUsers', 'i')]" => 0
+h5 aug_match "$resource" => 0
+h5 aug_match "/augeas/load/Sshd" => 1 "/augeas/load/Sshd"
+h5 aug_match "/augeas/load/Sshd/incl[.='/etc/ssh/sshd_config']" => 1 "/augeas/load/Sshd/incl"
+h5 aug_match "/files/etc/ssh/sshd_config" => 1 "/files/etc/ssh/sshd_config"
+h5 aug_set "/augeas/context" "/files/etc/ssh/sshd_config" => 0
+h5 aug_defnode "target" "/files/etc/ssh/sshd_config" NULL NULL => 1
+h5 aug_defvar "resource" "$target/*[label()=~regexp('AllowUsers', 'i')]" => 0
+h8 aug_init NULL NULL 64
+h8 aug_set "/input" "AllowUsers FOO\n" => 0
+h8 aug_text_store "Sshd.lns" "/input" "/parsed" => 0
+h8 aug_match "/parsed/AllowUsers/1" => 1 "/parsed/AllowUsers/1"
+h8 aug_close
+h5 aug_match "$target/Match" => 0
+h5 aug_insert "$target/*" "AllowUsers" 0 => -1
+h5 aug_rm "$target/AllowUsers/*" => 0
+h5 aug_rm "$target/AllowUsers[position() != 1]" => 0
+h5 aug_set "$target/AllowUsers/1" "alice" => 0
+h5 aug_set "$target/AllowUsers/2" "bob" => 0
+h5 aug_save => 0
+h5 aug_load => 0
+h5 aug_load => 0
+h9 aug_init NULL NULL 64
+h9 aug_match "/augeas/load/Sshd" => 0
+h9 aug_set "/augeas/load/Sshd/lens" "Sshd.lns" => 0
+h9 aug_set "/augeas/load/Sshd/incl[last()+1]" "/etc/ssh/sshd_config" => 0
+h9 aug_load => 0
+h9 aug_match "/files/etc/ssh/sshd_config" => 1 "/files/etc/ssh/sshd_config"
+h9 aug_set "/augeas/context" "/files/etc/ssh/sshd_config" => 0
+h9 aug_defnode "target" "/files/etc/ssh/sshd_config" NULL NULL => 1
+h9 aug_defvar "resource" "$target/*[label()=~regexp('Subsystem', 'i')]/sftp" => 1
+h9 aug_match "$resource" => 1 "/files/etc/ssh/sshd_config/Subsystem/sftp"
+h9 aug_match "/augeas/load/Sshd" => 1 "/augeas/load/Sshd"
+h9 aug_match "/augeas/load/Sshd/incl[.='/etc/ssh/sshd_config']" => 1 "/augeas/load/Sshd/incl"
+h9 aug_match "/files/etc/ssh/sshd_config" => 1 "/files/etc/ssh/sshd_config"
+h9 aug_set "/augeas/context" "/files/etc/ssh/sshd_config" => 0
+h9 aug_defnode "target" "/files/etc/ssh/sshd_config" NULL NULL => 1
+h9 aug_defvar "resource" "$target/*[label()=~regexp('Subsystem', 'i')]/sftp" => 1
+h9 aug_get "$resource" => 1 "/usr/libexec/openssh/sftp-server"
+h1 aug_close
+h5 aug_close
+h9 aug_close

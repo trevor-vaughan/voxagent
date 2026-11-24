@@ -1,0 +1,3 @@
+ssh/lib/augeas/lenses/ssh.aug
+resolv/lib/augeas/lenses/resolv.aug
+augeasproviders_ssh/lib/augeas/lenses/known_hosts.aug

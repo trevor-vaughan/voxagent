@@ -1,0 +1,97 @@
+h1 aug_init NULL NULL 68
+h1 aug_get "/augeas/version" => 1 "1.15.0"
+h1 aug_close
+h1 aug_init NULL NULL 64
+h1 aug_match "/augeas/load/Sysctl" => 0
+h1 aug_set "/augeas/load/Sysctl/lens" "Sysctl.lns" => 0
+h1 aug_set "/augeas/load/Sysctl/incl[last()+1]" "/etc/sysctl.conf" => 0
+h1 aug_load => 0
+h1 aug_match "/files/etc/sysctl.conf" => 1 "/files/etc/sysctl.conf"
+h1 aug_set "/augeas/context" "/files/etc/sysctl.conf" => 0
+h1 aug_defnode "target" "/files/etc/sysctl.conf" NULL NULL => 1
+h1 aug_defvar "resource" "$target/vm.swappiness" => 1
+h1 aug_match "$target/vm.swappiness" => 1 "/files/etc/sysctl.conf/vm.swappiness"
+h1 aug_get "/files/etc/sysctl.conf/vm.swappiness" => 1 "5"
+h1 aug_match "$target/#comment[following-sibling::*[1][self::vm.swappiness]]" => 0
+h1 aug_match "$target/net.ipv4.ip_forward" => 1 "/files/etc/sysctl.conf/net.ipv4.ip_forward"
+h1 aug_get "/files/etc/sysctl.conf/net.ipv4.ip_forward" => 1 "1"
+h1 aug_match "$target/#comment[following-sibling::*[1][self::net.ipv4.ip_forward]]" => 0
+h1 aug_match "$target/net.ipv4.conf.all.rp_filter" => 1 "/files/etc/sysctl.conf/net.ipv4.conf.all.rp_filter"
+h1 aug_get "/files/etc/sysctl.conf/net.ipv4.conf.all.rp_filter" => 1 "0"
+h1 aug_match "$target/#comment[following-sibling::*[1][self::net.ipv4.conf.all.rp_filter]]" => 0
+h1 aug_match "/augeas/load/Sysctl" => 1 "/augeas/load/Sysctl"
+h1 aug_match "/augeas/load/Sysctl/incl[.='/etc/sysctl.conf']" => 1 "/augeas/load/Sysctl/incl"
+h1 aug_match "/files/etc/sysctl.conf" => 1 "/files/etc/sysctl.conf"
+h1 aug_set "/augeas/context" "/files/etc/sysctl.conf" => 0
+h1 aug_defnode "target" "/files/etc/sysctl.conf" NULL NULL => 1
+h1 aug_defvar "resource" "$target/vm.swappiness" => 1
+h1 aug_get "$resource" => 1 "5"
+h1 aug_match "/augeas/load/Sysctl" => 1 "/augeas/load/Sysctl"
+h1 aug_match "/augeas/load/Sysctl/incl[.='/etc/sysctl.conf']" => 1 "/augeas/load/Sysctl/incl"
+h1 aug_match "/files/etc/sysctl.conf" => 1 "/files/etc/sysctl.conf"
+h1 aug_set "/augeas/context" "/files/etc/sysctl.conf" => 0
+h1 aug_defnode "target" "/files/etc/sysctl.conf" NULL NULL => 1
+h1 aug_defvar "resource" "$target/vm.swappiness" => 1
+h1 aug_set "$resource" "20" => 0
+h1 aug_match "/augeas/load/Sysctl" => 1 "/augeas/load/Sysctl"
+h1 aug_match "/augeas/load/Sysctl/incl[.='/etc/sysctl.conf']" => 1 "/augeas/load/Sysctl/incl"
+h1 aug_match "/files/etc/sysctl.conf" => 1 "/files/etc/sysctl.conf"
+h1 aug_set "/augeas/context" "/files/etc/sysctl.conf" => 0
+h1 aug_defnode "target" "/files/etc/sysctl.conf" NULL NULL => 1
+h1 aug_defvar "resource" "$target/vm.swappiness" => 1
+h1 aug_match "$target/vm.swappiness" => 1 "/files/etc/sysctl.conf/vm.swappiness"
+h1 aug_save => 0
+h1 aug_load => 0
+h2 aug_init NULL NULL 64
+h2 aug_get "/augeas/version" => 1 "1.15.0"
+h2 aug_close
+h1 aug_load => 0
+h1 aug_match "/augeas/load/Sysctl" => 1 "/augeas/load/Sysctl"
+h1 aug_match "/augeas/load/Sysctl/incl[.='/etc/sysctl.conf']" => 1 "/augeas/load/Sysctl/incl"
+h1 aug_match "/files/etc/sysctl.conf" => 1 "/files/etc/sysctl.conf"
+h1 aug_set "/augeas/context" "/files/etc/sysctl.conf" => 0
+h1 aug_defnode "target" "/files/etc/sysctl.conf" NULL NULL => 1
+h1 aug_defvar "resource" "$target/net.ipv4.ip_forward" => 1
+h1 aug_get "$resource" => 1 "1"
+h1 aug_match "/augeas/load/Sysctl" => 1 "/augeas/load/Sysctl"
+h1 aug_match "/augeas/load/Sysctl/incl[.='/etc/sysctl.conf']" => 1 "/augeas/load/Sysctl/incl"
+h1 aug_match "/files/etc/sysctl.conf" => 1 "/files/etc/sysctl.conf"
+h1 aug_set "/augeas/context" "/files/etc/sysctl.conf" => 0
+h1 aug_defnode "target" "/files/etc/sysctl.conf" NULL NULL => 1
+h1 aug_defvar "resource" "$target/net.ipv4.ip_forward" => 1
+h1 aug_set "$resource" "1" => 0
+h1 aug_match "/augeas/load/Sysctl" => 1 "/augeas/load/Sysctl"
+h1 aug_match "/augeas/load/Sysctl/incl[.='/etc/sysctl.conf']" => 1 "/augeas/load/Sysctl/incl"
+h1 aug_match "/files/etc/sysctl.conf" => 1 "/files/etc/sysctl.conf"
+h1 aug_set "/augeas/context" "/files/etc/sysctl.conf" => 0
+h1 aug_defnode "target" "/files/etc/sysctl.conf" NULL NULL => 1
+h1 aug_defvar "resource" "$target/net.ipv4.ip_forward" => 1
+h1 aug_match "$target/net.ipv4.ip_forward" => 1 "/files/etc/sysctl.conf/net.ipv4.ip_forward"
+h1 aug_save => 0
+h1 aug_load => 0
+h1 aug_load => 0
+h1 aug_match "/augeas/load/Sysctl" => 1 "/augeas/load/Sysctl"
+h1 aug_match "/augeas/load/Sysctl/incl[.='/etc/sysctl.conf']" => 1 "/augeas/load/Sysctl/incl"
+h1 aug_match "/files/etc/sysctl.conf" => 1 "/files/etc/sysctl.conf"
+h1 aug_set "/augeas/context" "/files/etc/sysctl.conf" => 0
+h1 aug_defnode "target" "/files/etc/sysctl.conf" NULL NULL => 1
+h1 aug_defvar "resource" "$target/net.ipv4.conf.all.rp_filter" => 1
+h1 aug_get "$resource" => 1 "0"
+h1 aug_match "/augeas/load/Sysctl" => 1 "/augeas/load/Sysctl"
+h1 aug_match "/augeas/load/Sysctl/incl[.='/etc/sysctl.conf']" => 1 "/augeas/load/Sysctl/incl"
+h1 aug_match "/files/etc/sysctl.conf" => 1 "/files/etc/sysctl.conf"
+h1 aug_set "/augeas/context" "/files/etc/sysctl.conf" => 0
+h1 aug_defnode "target" "/files/etc/sysctl.conf" NULL NULL => 1
+h1 aug_defvar "resource" "$target/net.ipv4.conf.all.rp_filter" => 1
+h1 aug_set "$resource" "1" => 0
+h1 aug_match "/augeas/load/Sysctl" => 1 "/augeas/load/Sysctl"
+h1 aug_match "/augeas/load/Sysctl/incl[.='/etc/sysctl.conf']" => 1 "/augeas/load/Sysctl/incl"
+h1 aug_match "/files/etc/sysctl.conf" => 1 "/files/etc/sysctl.conf"
+h1 aug_set "/augeas/context" "/files/etc/sysctl.conf" => 0
+h1 aug_defnode "target" "/files/etc/sysctl.conf" NULL NULL => 1
+h1 aug_defvar "resource" "$target/net.ipv4.conf.all.rp_filter" => 1
+h1 aug_match "$target/net.ipv4.conf.all.rp_filter" => 1 "/files/etc/sysctl.conf/net.ipv4.conf.all.rp_filter"
+h1 aug_save => 0
+h1 aug_load => 0
+h1 aug_load => 0
+h1 aug_close

@@ -1,0 +1,34 @@
+h1 aug_init NULL NULL 68
+h1 aug_get "/augeas/version" => 1 "1.15.0"
+h1 aug_close
+h1 aug_init NULL NULL 64
+h1 aug_match "/augeas/load/Sshd" => 0
+h1 aug_set "/augeas/load/Sshd/lens" "Sshd.lns" => 0
+h1 aug_set "/augeas/load/Sshd/incl[last()+1]" "/etc/ssh/sshd_config" => 0
+h1 aug_load => 0
+h1 aug_match "/files/etc/ssh/sshd_config" => 1 "/files/etc/ssh/sshd_config"
+h1 aug_set "/augeas/context" "/files/etc/ssh/sshd_config" => 0
+h1 aug_defnode "target" "/files/etc/ssh/sshd_config" NULL NULL => 1
+h1 aug_defvar "resource" "$target/*[label()=~regexp('Subsystem', 'i')]/sftp" => 1
+h1 aug_match "$resource" => 1 "/files/etc/ssh/sshd_config/Subsystem/sftp"
+h1 aug_match "/augeas/load/Sshd" => 1 "/augeas/load/Sshd"
+h1 aug_match "/augeas/load/Sshd/incl[.='/etc/ssh/sshd_config']" => 1 "/augeas/load/Sshd/incl"
+h1 aug_match "/files/etc/ssh/sshd_config" => 1 "/files/etc/ssh/sshd_config"
+h1 aug_set "/augeas/context" "/files/etc/ssh/sshd_config" => 0
+h1 aug_defnode "target" "/files/etc/ssh/sshd_config" NULL NULL => 1
+h1 aug_defvar "resource" "$target/*[label()=~regexp('Subsystem', 'i')]/sftp" => 1
+h1 aug_get "$resource" => 1 "/usr/libexec/openssh/sftp-server"
+h1 aug_match "/augeas/load/Sshd" => 1 "/augeas/load/Sshd"
+h1 aug_match "/augeas/load/Sshd/incl[.='/etc/ssh/sshd_config']" => 1 "/augeas/load/Sshd/incl"
+h1 aug_match "/files/etc/ssh/sshd_config" => 1 "/files/etc/ssh/sshd_config"
+h1 aug_set "/augeas/context" "/files/etc/ssh/sshd_config" => 0
+h1 aug_defnode "target" "/files/etc/ssh/sshd_config" NULL NULL => 1
+h1 aug_defvar "resource" "$target/*[label()=~regexp('Subsystem', 'i')]/sftp" => 1
+h1 aug_set "$resource" "internal-sftp -l INFO" => 0
+h1 aug_save => 0
+h1 aug_load => 0
+h2 aug_init NULL NULL 64
+h2 aug_get "/augeas/version" => 1 "1.15.0"
+h2 aug_close
+h1 aug_load => 0
+h1 aug_close

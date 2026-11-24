@@ -405,8 +405,9 @@ func (w *walk) failPrefetched(s subject, failure prefetchFailure) {
 		// EvaluationTime is deliberately left at zero. Ruby writes null:
 		// the resource was never evaluated, so there is no span. The
 		// leaf is declared volatile in tests/spine/allowlist.json, so
-		// the two spellings of "no time was spent" never meet.
-		Failed: true, Skipped: true,
+		// the two spellings of "no time was spent" never meet. Untimed
+		// keeps it out of metrics.time, as the null does in Ruby.
+		Failed: true, Skipped: true, Untimed: true,
 		// One non-audit event, so out_of_sync_count is 1 and
 		// change_count stays 0 -- resource/status.rb add_event's rule,
 		// and measured on every one of the six.
