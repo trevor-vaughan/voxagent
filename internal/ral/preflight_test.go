@@ -2,6 +2,8 @@ package ral
 
 import (
 	"context"
+	"encoding/json"
+	"slices"
 	"strings"
 	"testing"
 
@@ -191,7 +193,7 @@ func TestPreflightReportsUnimplementedType(t *testing.T) {
 func TestPreflightReportsEveryGap(t *testing.T) {
 	c := &catalog.Catalog{Resources: []catalog.Resource{
 		res("File", "/etc/app", map[string]any{
-			"ensure": "directory", "recurse": true, "source": "puppet:///m/app",
+			"ensure": "directory", "recurselimit": 2, "links": "follow",
 		}),
 		res("Service", "nginx", nil),
 	}}
@@ -209,8 +211,8 @@ func TestPreflightReportsEveryGap(t *testing.T) {
 		t.Fatalf("got %d attribute gaps, want 2: %v", len(attrs), attrs)
 	}
 	// Sorted, so the message is stable run to run.
-	if attrs[0] != "recurse" || attrs[1] != "source" {
-		t.Errorf("attribute gaps = %v, want [recurse source]", attrs)
+	if attrs[0] != "links" || attrs[1] != "recurselimit" {
+		t.Errorf("attribute gaps = %v, want [links recurselimit]", attrs)
 	}
 }
 
@@ -302,5 +304,240 @@ func TestValueBoundedProviderPrefetchesToItself(t *testing.T) {
 	}
 	if _, ok := got.(ValueBounded); !ok {
 		t.Error("the prefetched provider is no longer ValueBounded")
+	}
+}
+
+// A defined type's instance applies nothing itself, so neither it nor its
+// parameters are provider work. Before the kind rule, every catalog that used
+// a defined type was refused whole.
+func TestPreflightSkipsDefinedTypeInstances(t *testing.T) {
+	c := &catalog.Catalog{Resources: []catalog.Resource{
+		{Type: "Bench_profile::Site", Title: "s1", Kind: "defined_type",
+			Parameters: map[string]any{"idx": 1, "port": 1025}},
+		{Type: "File", Title: "/tmp/a", Kind: "compilable_type",
+			Parameters: map[string]any{"ensure": "file"}},
+	}}
+	if gaps := Preflight(testRegistry(), c); len(gaps) != 0 {
+		t.Errorf("Preflight = %v, want no gaps", gaps)
+	}
+}
+
+// listStub is a value-bounded provider that declares "source" list-valued and
+// refuses any puppet: element; ensure keeps stubValueProvider's present|absent.
+type listStub struct{ stubValueProvider }
+
+func (listStub) SupportsValue(attr, value string) bool {
+	if attr == "source" {
+		return !strings.HasPrefix(value, "puppet:")
+	}
+	return stubValueProvider{}.SupportsValue(attr, value)
+}
+
+func (listStub) ListAttrs() Attrs { return NewAttrs("source") }
+
+// See stubValueProvider.Prefetch: a promoted Prefetch would drop ListAttrs.
+func (s listStub) Prefetch(context.Context, []catalog.Resource) (Provider, error) { return s, nil }
+
+// A list-valued attribute is bounded element by element, so the gap names the
+// element an operator has to change. Every other attribute still judges a list
+// whole: ensure => ["present"] passing as "present" would fail at apply, after
+// the rest of the catalog had run.
+func TestPreflightBoundsEachElementOfAListValuedAttribute(t *testing.T) {
+	reg := NewRegistry(listStub{stubValueProvider{stub{typ: "liststub", attrs: NewAttrs("ensure", "source")}}})
+	c := &catalog.Catalog{Resources: []catalog.Resource{
+		res("Liststub", "a", map[string]any{"source": []any{"/ok", "puppet:///b", "puppet:///a"}}),
+		res("Liststub", "b", map[string]any{"source": []any{"/ok", "file:///ok"}}),
+		res("Liststub", "c", map[string]any{"source": "puppet:///c"}),
+		res("Liststub", "d", map[string]any{"ensure": []any{"present"}}),
+	}}
+	var got []string
+	for _, g := range Preflight(reg, c) {
+		got = append(got, g.String())
+	}
+	want := []string{
+		`Liststub[a]: source => "puppet:///a" is not implemented`,
+		`Liststub[a]: source => "puppet:///b" is not implemented`,
+		`Liststub[c]: source => "puppet:///c" is not implemented`,
+		`Liststub[d]: ensure => "[present]" is not implemented`,
+	}
+	if strings.Join(got, "\n") != strings.Join(want, "\n") {
+		t.Errorf("gaps =\n%s\nwant\n%s", strings.Join(got, "\n"), strings.Join(want, "\n"))
+	}
+}
+
+// loglevel => notice is Puppet's default and changes nothing; concat copies it
+// onto every File it makes. Any other loglevel would change what is logged.
+func TestPreflightAcceptsLoglevelNoticeOnly(t *testing.T) {
+	c := &catalog.Catalog{Resources: []catalog.Resource{
+		res("File", "/a", map[string]any{"loglevel": "notice"}),
+	}}
+	if gaps := Preflight(testRegistry(), c); len(gaps) != 0 {
+		t.Errorf("loglevel => notice is a gap: %v", gaps)
+	}
+	c = &catalog.Catalog{Resources: []catalog.Resource{
+		res("File", "/a", map[string]any{"loglevel": "debug"}),
+	}}
+	gaps := Preflight(testRegistry(), c)
+	if len(gaps) != 1 || gaps[0].Attribute != "loglevel" {
+		t.Errorf("gaps = %v, want one loglevel gap", gaps)
+	}
+}
+
+// ResourceGaps is Preflight's per-resource judgement, extracted so the walk
+// can re-judge a resource a generator changed. For a one-resource catalog the
+// two must agree exactly, whatever kind of gap the resource has.
+func TestResourceGapsMatchesPreflightForOneResource(t *testing.T) {
+	reg := NewRegistry(
+		stub{typ: "file", attrs: NewAttrs("ensure", "content", "mode")},
+		stubValueProvider{stub{typ: "stub", attrs: NewAttrs("ensure", "name")}},
+		listStub{stubValueProvider{stub{typ: "liststub", attrs: NewAttrs("source", "ensure")}}},
+	)
+	for _, r := range []catalog.Resource{
+		res("File", "/ok", map[string]any{"ensure": "file", "require": "File[/x]", "loglevel": "notice"}),
+		res("File", "/gaps", map[string]any{"links": "follow", "recurselimit": 2, "loglevel": "info"}),
+		res("Stub", "v", map[string]any{"ensure": "purged", "name": "n"}),
+		res("Liststub", "l", map[string]any{"source": []any{"good", "puppet:///bad"}, "ensure": []any{"present"}}),
+		res("Service", "nginx", map[string]any{"ensure": "running"}),
+	} {
+		want := Preflight(reg, &catalog.Catalog{Resources: []catalog.Resource{r}})
+		p, _ := reg.Provider(r.Type)
+		got := ResourceGaps(p, r)
+		if len(got) != len(want) {
+			t.Errorf("%s: ResourceGaps = %v, Preflight = %v", r.Ref(), got, want)
+			continue
+		}
+		for i := range got {
+			if got[i] != want[i] {
+				t.Errorf("%s: ResourceGaps = %v, Preflight = %v", r.Ref(), got, want)
+				break
+			}
+		}
+	}
+}
+
+// A declared filebucket is refused even when a provider claims the type --
+// the extension host can apply one -- because native File's backup knows only
+// the default puppet bucket: a File backing up into the declared bucket would
+// fail, and a declared 'puppet' bucket would be silently bypassed.
+func TestPreflightRefusesADeclaredFilebucket(t *testing.T) {
+	reg := NewRegistry(
+		stub{typ: "file", attrs: NewAttrs("ensure", "content", "backup")},
+		stub{typ: "filebucket", attrs: NewAttrs("path", "server")},
+	)
+	for _, title := range []string{"main", "puppet"} {
+		r := res("Filebucket", title, map[string]any{"path": "/x"})
+		c := &catalog.Catalog{Resources: []catalog.Resource{
+			r, res("File", "/f", map[string]any{"content": "new", "backup": title}),
+		}}
+		gaps := Preflight(reg, c)
+		if len(gaps) != 1 || gaps[0].Ref != r.Ref() {
+			t.Fatalf("%s: Preflight = %v, want one gap for the filebucket", title, gaps)
+		}
+		want := r.Ref() + ": resource type Filebucket is not implemented: native File's backup does not implement named filebuckets"
+		if got := gaps[0].String(); got != want {
+			t.Errorf("%s: gap = %q, want %q", title, got, want)
+		}
+		p, _ := reg.Provider(r.Type)
+		if got := ResourceGaps(p, r); len(got) != 1 || got[0] != gaps[0] {
+			t.Errorf("%s: ResourceGaps = %v, want %v", title, got, gaps)
+		}
+	}
+}
+
+// richSamples are three rich values Decode leaves in place, each with the gap
+// line a native provider gives it.
+var richSamples = []struct {
+	value any
+	want  string
+}{
+	{map[string]any{"__ptype": "Regexp", "__pvalue": "ab+c"},
+		"Notify[n]: parameter message holds a rich Regexp value, which voxagent does not support"},
+	{map[string]any{"__ptype": "Binary", "__pvalue": "w6k="},
+		"Notify[n]: parameter message holds a Binary value that is not ASCII, which voxagent does not support on a native resource"},
+	{map[string]any{"__ptype": "Sensitive", "__pvalue": "s"},
+		"Notify[n]: parameter message holds a rich Sensitive value, which voxagent does not support"},
+}
+
+func TestResourceGapsRefuseRichValuesOnNativeResources(t *testing.T) {
+	for _, s := range richSamples {
+		gaps := ResourceGaps(Notify{}, res("Notify", "n", map[string]any{"message": s.value}))
+		if len(gaps) != 1 || gaps[0].String() != s.want {
+			t.Errorf("gaps = %v, want exactly %q", gaps, s.want)
+		}
+	}
+	// An unimplemented attribute stays the attribute's one gap.
+	gaps := ResourceGaps(Notify{}, res("Notify", "n", map[string]any{"nope": richSamples[0].value}))
+	if len(gaps) != 1 || gaps[0].String() != `Notify[n]: attribute "nope" is not implemented` {
+		t.Errorf("unimplemented attribute gaps = %v", gaps)
+	}
+}
+
+// The host decodes the raw catalog bytes itself, so a Tier 3 resource keeps
+// every rich value.
+func TestResourceGapsLeaveRichValuesToTheHost(t *testing.T) {
+	for _, s := range richSamples {
+		params := map[string]any{"value": s.value}
+		e := NewExtension("vox_value", &fakeHost{}, load, nil, cat(params))
+		if gaps := ResourceGaps(e, res("Vox_value", "a", params)); len(gaps) != 0 {
+			t.Errorf("%v: gaps = %v, want none", s.value, gaps)
+		}
+	}
+}
+
+func TestDeferredGapsSkipContainers(t *testing.T) {
+	deferred := map[string]any{"__ptype": "Deferred", "name": "join", "arguments": []any{[]any{"a", "b"}, "-"}}
+	c := &catalog.Catalog{Resources: []catalog.Resource{
+		{Type: "Class", Title: "x", Kind: "class", Parameters: map[string]any{"p": deferred}},
+		{Type: "Notify", Title: "n", Kind: "compilable_type", Parameters: map[string]any{"message": deferred,
+			"withpath": map[string]any{"__ptype": "Regexp", "__pvalue": "a"}}},
+	}}
+	gaps := DeferredGaps(c)
+	const want = "Notify[n]: parameter message is Deferred; voxagent does not resolve Deferred values"
+	if len(gaps) != 1 || gaps[0].String() != want {
+		t.Errorf("DeferredGaps = %v, want exactly %q", gaps, want)
+	}
+}
+
+// Puppet's DeferredResolver finds a Deferred at any depth, so DeferredGaps
+// does too: one gap per parameter holding one.
+func TestDeferredGapsFindNestedDeferred(t *testing.T) {
+	deferred := map[string]any{"__ptype": "Deferred", "name": "join", "arguments": []any{[]any{"a", "b"}, "-"}}
+	c := &catalog.Catalog{Resources: []catalog.Resource{{Type: "Vox_value", Title: "a", Kind: "compilable_type",
+		Parameters: map[string]any{
+			"array":     []any{"x", map[string]any{"k": deferred}},
+			"hash":      map[string]any{"__ptype": "Hash", "__pvalue": []any{json.Number("1"), deferred}},
+			"object":    map[string]any{"__ptype": map[string]any{"__ptype": "Pcore::IntegerType"}, "from": deferred},
+			"plain":     "x",
+			"sensitive": map[string]any{"__ptype": "Sensitive", "__pvalue": deferred},
+			"twice":     []any{deferred, deferred},
+		}}}}
+	var got []string
+	for _, g := range DeferredGaps(c) {
+		got = append(got, g.String())
+	}
+	var want []string
+	for _, p := range []string{"array", "hash", "object", "sensitive", "twice"} {
+		want = append(want, "Vox_value[a]: parameter "+p+" is Deferred; voxagent does not resolve Deferred values")
+	}
+	if !slices.Equal(got, want) {
+		t.Errorf("DeferredGaps =\n%s\nwant\n%s", strings.Join(got, "\n"), strings.Join(want, "\n"))
+	}
+}
+
+// A marked attribute's unsupported value is shown as [redacted] (D-78).
+func TestPreflightRedactsAMarkedValue(t *testing.T) {
+	r := res("Stub", "a", map[string]any{"ensure": "purged"})
+	for _, tc := range []struct {
+		marked []string
+		want   string
+	}{
+		{[]string{"ensure"}, `Stub[a]: ensure => [redacted] is not implemented`},
+		{nil, `Stub[a]: ensure => "purged" is not implemented`},
+	} {
+		r.SensitiveParameters = tc.marked
+		gaps := Preflight(valueRegistry(), &catalog.Catalog{Resources: []catalog.Resource{r}})
+		if len(gaps) != 1 || gaps[0].String() != tc.want {
+			t.Errorf("marked=%v: gaps = %v, want %q", tc.marked, gaps, tc.want)
+		}
 	}
 }

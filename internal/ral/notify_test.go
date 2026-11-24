@@ -169,3 +169,37 @@ func TestNotifyEchoesItsMessageToTheRunLog(t *testing.T) {
 		t.Errorf("Notice = %q, want %q", changes[0].Notice, "constant text")
 	}
 }
+
+// type/notify.rb defines no refresh, so event_manager.rb:73 queues no event
+// for a Notify a changed resource notifies.
+func TestNotifyIsNotRefreshable(t *testing.T) {
+	if (Notify{}).Refreshable(catalog.Resource{Type: "Notify", Title: "n"}) {
+		t.Error("Notify is refreshable; Puppet's notify type has no refresh")
+	}
+}
+
+// A marked message is logged as Ruby does (type/notify.rb:15): the bare
+// notice is "Sensitive [value redacted]". An unmarked one keeps the message.
+func TestNotifyMarkedMessage(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		marked []string
+		want   string
+	}{
+		{"marked", []string{"message"}, "Sensitive [value redacted]"},
+		{"unmarked", nil, "hush-secret"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			r := catalog.Resource{Type: "Notify", Title: "n",
+				Parameters:          map[string]any{"message": "hush-secret"},
+				SensitiveParameters: tc.marked}
+			changes, _, err := Notify{}.Apply(context.Background(), r, false)
+			if err != nil {
+				t.Fatalf("Apply returned error: %v", err)
+			}
+			if got := changes[0].Notice; got != tc.want {
+				t.Errorf("Notice = %q, want %q", got, tc.want)
+			}
+		})
+	}
+}

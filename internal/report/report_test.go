@@ -5,6 +5,7 @@ import (
 	"regexp"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestReportMarshalsRequiredFields(t *testing.T) {
@@ -418,6 +419,10 @@ func TestTimeMetricMatchesPuppetShape(t *testing.T) {
 		Resource: "File[c]", ResourceType: "File", ChangeCount: 1,
 		EvaluationTime: 0.25,
 	})
+	r.AddResource(ResourceStatus{
+		Resource: "File_line[d]", ResourceType: "File_line", ChangeCount: 1,
+		EvaluationTime: 0.25,
+	})
 	r.Finalize()
 
 	labels := map[string]string{}
@@ -432,9 +437,11 @@ func TestTimeMetricMatchesPuppetShape(t *testing.T) {
 		values[name] = v[2]
 	}
 
+	// util/metric.rb's labelize: capitalized, underscores to spaces.
 	for name, want := range map[string]string{
 		"notify":                 "Notify",
 		"file":                   "File",
+		"file_line":              "File line",
 		"config_retrieval":       "Config retrieval",
 		"transaction_evaluation": "Transaction evaluation",
 		"catalog_application":    "Catalog application",
@@ -460,6 +467,53 @@ func TestTimeMetricMatchesPuppetShape(t *testing.T) {
 	}
 	if got := values["notify"]; got != 0.25 {
 		t.Errorf("time.notify = %v, want 0.25", got)
+	}
+}
+
+// An agent run adds the phases configurer.rb times with report.add_times,
+// measured from a live OpenVox 8 agent report: each under its own name,
+// labelled as util/metric.rb labelizes it. A recorded config_retrieval replaces
+// the --catalog path's 0, a phase recorded twice accumulates (report.rb:163),
+// and total runs from the start StartedAt set, not from New.
+func TestTimeMetricCarriesAgentPhases(t *testing.T) {
+	start := time.Now().Add(-time.Hour)
+	r := New("n", "production", false)
+	r.StartedAt(start)
+	r.AddTime("startup_time", 2*time.Second)
+	r.AddTime("plugin_sync", time.Second)
+	r.AddTime("plugin_sync", time.Second/2)
+	r.AddTime("config_retrieval", 3*time.Second)
+	r.Finalize()
+
+	labels := map[string]string{}
+	values := map[string]float64{}
+	counts := map[string]int{}
+	for _, v := range r.Metrics["time"].Values {
+		name := v[0].(string)
+		labels[name] = v[1].(string)
+		values[name] = v[2].(float64)
+		counts[name]++
+	}
+	for name, want := range map[string]string{
+		"startup_time": "Startup time", "plugin_sync": "Plugin sync", "config_retrieval": "Config retrieval",
+	} {
+		if labels[name] != want || counts[name] != 1 {
+			t.Errorf("time.%s: label %q, %d entries; want %q once", name, labels[name], counts[name], want)
+		}
+	}
+	for name, want := range map[string]float64{"startup_time": 2, "plugin_sync": 1.5, "config_retrieval": 3} {
+		if values[name] != want {
+			t.Errorf("time.%s = %v, want %v", name, values[name], want)
+		}
+	}
+	if values["total"] < 3600 {
+		t.Errorf("total = %v, want at least the hour since StartedAt", values["total"])
+	}
+	if values["catalog_application"] >= 3600 {
+		t.Errorf("catalog_application = %v, want it measured from New, not from StartedAt", values["catalog_application"])
+	}
+	if want := start.UTC().Format(time.RFC3339Nano); r.Time != want {
+		t.Errorf("report time = %q, want the run's start %q", r.Time, want)
 	}
 }
 
@@ -545,5 +599,111 @@ func TestFinalizeLogsTheAppliedCatalogLine(t *testing.T) {
 	// Two decimal places, as Ruby's "%0.2f" produces -- "0.01", never "0.0105".
 	if !regexp.MustCompile(`^Applied catalog in \d+\.\d{2} seconds$`).MatchString(found.Message) {
 		t.Errorf("message = %q, want 'Applied catalog in N.NN seconds'", found.Message)
+	}
+}
+
+// Measured on Puppet 8.10.0: a generated child's status has file: null and
+// line: null. A catalog resource keeps its location, and "" and 0 when it has
+// none, exactly as before.
+func TestGeneratedResourceStatusHasNullFileAndLine(t *testing.T) {
+	r := New("n", "production", false)
+	r.AddResource(ResourceStatus{Resource: "File[/d/a]", ResourceType: "File", Title: "/d/a",
+		Generated: true, ChangeCount: 1})
+	r.AddResource(ResourceStatus{Resource: "File[/d]", ResourceType: "File", Title: "/d",
+		File: "/etc/site.pp", Line: 4, ChangeCount: 1})
+	r.AddResource(ResourceStatus{Resource: "File[/x]", ResourceType: "File", Title: "/x", ChangeCount: 1})
+	r.Finalize()
+	b, err := json.Marshal(r)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var doc struct {
+		ResourceStatuses map[string]map[string]json.RawMessage `json:"resource_statuses"`
+	}
+	if err := json.Unmarshal(b, &doc); err != nil {
+		t.Fatal(err)
+	}
+	for ref, want := range map[string][2]string{
+		"File[/d/a]": {"null", "null"},
+		"File[/d]":   {`"/etc/site.pp"`, "4"},
+		"File[/x]":   {`""`, "0"},
+	} {
+		rs := doc.ResourceStatuses[ref]
+		if string(rs["file"]) != want[0] || string(rs["line"]) != want[1] {
+			t.Errorf("%s file/line = %s/%s, want %s/%s", ref, rs["file"], rs["line"], want[0], want[1])
+		}
+	}
+	if len(doc.ResourceStatuses["File[/d/a]"]) != len(doc.ResourceStatuses["File[/d]"]) {
+		t.Errorf("a generated status has %d keys and a declared one %d; the key set must not change",
+			len(doc.ResourceStatuses["File[/d/a]"]), len(doc.ResourceStatuses["File[/d]"]))
+	}
+}
+
+// compute_status (transaction/report.rb:189-200) fails the run when a
+// generator failed; exit_status (:440-452) ignores it.
+func TestFailedToGenerateFailsTheReportButNotTheExitStatus(t *testing.T) {
+	r := New("n", "production", false)
+	r.AddResource(ResourceStatus{Resource: "File[/d]", ResourceType: "File", Title: "/d", ChangeCount: 1})
+	r.FailedToGenerate = true
+	r.Finalize()
+	if r.Status != "failed" {
+		t.Errorf("Status = %q, want failed", r.Status)
+	}
+	if s := r.RunStatus(); s.Failures != 0 || s.Changes != 1 {
+		t.Errorf("RunStatus = %+v, want one change and no failures", s)
+	}
+}
+
+func TestAddLogKeepsFieldsAndStampsTime(t *testing.T) {
+	r := New("n", "production", false)
+	r.AddLog(LogEntry{Level: "notice", Source: "/S/x", Message: "m", File: "/f.pp", Line: 3},
+		LogEntry{Level: "err", Source: "Puppet", Message: "e", Time: "2026-01-01T00:00:00Z"})
+	if len(r.Logs) != 2 || r.Logs[0].File != "/f.pp" || r.Logs[0].Line != 3 || r.Logs[0].Time == "" ||
+		r.Logs[1].Time != "2026-01-01T00:00:00Z" {
+		t.Errorf("Logs = %+v", r.Logs)
+	}
+}
+
+// A transaction that raised leaves transaction_completed false, which
+// compute_status (transaction/report.rb:189-200) reports as failed; configurer
+// never reaches the "Applied catalog" benchmark line.
+func TestFinalizeIncompleteFailsTheReport(t *testing.T) {
+	r := New("n", "production", false)
+	r.AddResource(ResourceStatus{Resource: "File[/d]", ResourceType: "File", Title: "/d", ChangeCount: 1})
+	r.FinalizeIncomplete()
+	if r.Status != "failed" || r.TransactionCompleted {
+		t.Errorf("Status = %q, TransactionCompleted = %v; want failed, false", r.Status, r.TransactionCompleted)
+	}
+	if _, ok := r.Metrics["resources"]; !ok {
+		t.Errorf("no resources metric: %v", r.Metrics)
+	}
+	for _, e := range r.Logs {
+		if strings.HasPrefix(e.Message, "Applied catalog in ") {
+			t.Errorf("an incomplete run logged %q", e.Message)
+		}
+	}
+}
+
+// The observer sees every entry Log and AddLog append, in order, with the time
+// AddLog stamped; nil removes it.
+func TestObserveSeesEveryEntryInOrder(t *testing.T) {
+	r := New("n", "production", false)
+	var seen []LogEntry
+	r.Observe(func(e LogEntry) { seen = append(seen, e) })
+	r.Log("notice", "Puppet", "a")
+	r.AddLog(LogEntry{Level: "info", Source: "S", Message: "b"}, LogEntry{Level: "err", Source: "S", Message: "c"})
+	r.Log("debug", "voxagent", "d")
+	if len(seen) != 4 || len(r.Logs) != 4 {
+		t.Fatalf("seen %d, appended %d; want 4 each", len(seen), len(r.Logs))
+	}
+	for i, want := range []string{"a", "b", "c", "d"} {
+		if seen[i].Message != want || seen[i] != r.Logs[i] {
+			t.Errorf("seen[%d] = %+v, want message %q equal to Logs[%d] = %+v", i, seen[i], want, i, r.Logs[i])
+		}
+	}
+	r.Observe(nil)
+	r.Log("notice", "Puppet", "e")
+	if len(seen) != 4 {
+		t.Errorf("an observer set to nil still saw an entry: %+v", seen)
 	}
 }

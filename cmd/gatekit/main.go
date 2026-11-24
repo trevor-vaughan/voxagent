@@ -3,6 +3,7 @@
 //
 //	gatekit compare-reports RUBY VOXAGENT ALLOWLIST   compare two reports (G1, G5)
 //	gatekit run-to-run RUN1 RUN2 ALLOWLIST            check the run_to_run allowlist
+//	gatekit compare-order RUBY VOXAGENT               compare the order two reports walked resources in
 //	gatekit g5-reference REPORT CATALOG INSTALL REMOVE LATEST MISSING
 //	                                                  check G5's reference run exercised its fixture
 //	gatekit fleet-axes RAW MESSAGE TIER PACKAGES      check a node's catalog carries its hiera axes
@@ -40,6 +41,7 @@ const usage = `gatekit — parsing and judging for the gate scripts
 
   gatekit compare-reports RUBY VOXAGENT ALLOWLIST
   gatekit run-to-run RUN1 RUN2 ALLOWLIST
+  gatekit compare-order RUBY VOXAGENT
   gatekit g5-reference REPORT CATALOG INSTALL REMOVE LATEST MISSING
   gatekit fleet-axes RAW MESSAGE TIER PACKAGES
   gatekit fleet-compliance RAW EXPECTED
@@ -62,6 +64,7 @@ var subcommands = map[string]struct {
 }{
 	"compare-reports":  {3, compareReports},
 	"run-to-run":       {3, runToRun},
+	"compare-order":    {2, compareOrder},
 	"g5-reference":     {6, g5Reference},
 	"fleet-axes":       {4, fleetAxes},
 	"fleet-compliance": {2, fleetCompliance},
@@ -138,6 +141,23 @@ func runToRun(args []string, stdout io.Writer) (int, error) {
 	if !clean {
 		return exitFinding, nil
 	}
+	return exitExpected, nil
+}
+
+func compareOrder(args []string, stdout io.Writer) (int, error) {
+	docs, err := decodeAll(args...)
+	if err != nil {
+		return 0, err
+	}
+	agree, compared, detail, err := reportcmp.CompareOrder(docs[0], docs[1])
+	if err != nil {
+		return 0, err
+	}
+	if !agree {
+		fmt.Fprintln(stdout, detail)
+		return exitFinding, nil
+	}
+	fmt.Fprintf(stdout, "walk order agrees over %d resources\n", compared)
 	return exitExpected, nil
 }
 

@@ -1,0 +1,1 @@
+Default context: system_u:object_r:shadow_t:s0

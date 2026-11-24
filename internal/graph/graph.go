@@ -1,7 +1,7 @@
 // Package graph builds the directed acyclic graph a catalog implies and walks
 // it in a deterministic order.
 //
-// It takes reference strings and edges rather than a catalog, and imports
+// It takes vertices and edges rather than a catalog, and imports
 // nothing else from this repository. That is deliberate: it means the graph can
 // be fuzzed against pathological topologies -- cycles, self-edges, deep chains,
 // wide fans -- without first constructing a valid catalog to carry them.
@@ -14,6 +14,20 @@ import (
 	"sort"
 	"strings"
 )
+
+// Vertex is one vertex of the walk.
+type Vertex struct {
+	Ref string
+	// Key is Puppet's priority (graph/sequential_prioritizer.rb:17-24): the
+	// resource's index in the catalog's resources array. The walk takes the
+	// smallest Key among ready vertices; equal Keys, which a valid graph never
+	// makes ready together, break by Ref.
+	Key int
+	// Whit marks a container's admissible or completed anchor: walked, never applied.
+	Whit bool
+	// Label is how messages name the vertex; empty means Ref.
+	Label string
+}
 
 // Edge is a directed ordering constraint: Source is applied before Target.
 //
@@ -38,6 +52,10 @@ type CycleError struct {
 	// Cycle: a resource that merely depends on a cycle is unorderable too, but
 	// it is not itself cyclic and must not be named as though it were.
 	Stuck []string
+	// labels names the vertices that carry a Label. Puppet prints a whit as
+	// its container (type/whit.rb:26), so a message names a container, not
+	// either of its whits.
+	labels map[string]string
 }
 
 // maxNamed caps how many references a message enumerates.
@@ -62,11 +80,22 @@ func (e *CycleError) Error() string {
 		// acyclic graph fell in here and reported "0 resources could not be
 		// ordered: " -- a refusal that named nothing. New now rejects
 		// duplicates, which is what makes this genuinely unreachable.
+		stuck := e.named(e.Stuck, nil)
 		return fmt.Sprintf("%s could not be ordered: %s",
-			plural(len(e.Stuck), "resource"), namedList(e.Stuck))
+			plural(len(stuck), "resource"), namedList(stuck))
 	}
-	msg := fmt.Sprintf("dependency cycle: %s", strings.Join(e.Cycle, " -> "))
-	others := e.others()
+	// A container's two whits are often adjacent in a loop, and both print
+	// as the container: it is named once. A self-edge still reads X -> X.
+	var cycle []string
+	for i, r := range e.Cycle {
+		l := e.label(r)
+		if i > 0 && e.Cycle[i-1] != r && cycle[len(cycle)-1] == l {
+			continue
+		}
+		cycle = append(cycle, l)
+	}
+	msg := fmt.Sprintf("dependency cycle: %s", strings.Join(cycle, " -> "))
+	others := e.named(e.Stuck, cycle)
 	if len(others) == 0 {
 		return msg
 	}
@@ -102,18 +131,30 @@ func namedList(refs []string) string {
 		strings.Join(refs[:maxNamed], ", "), len(refs)-maxNamed)
 }
 
-// others returns the stuck references that are not in the reported cycle. They
-// may be downstream of it, or in a different cycle entirely -- this function
-// does not distinguish, and the message must not either.
-func (e *CycleError) others() []string {
-	inCycle := make(map[string]struct{}, len(e.Cycle))
-	for _, r := range e.Cycle {
-		inCycle[r] = struct{}{}
+// label is how the message names ref.
+func (e *CycleError) label(ref string) string {
+	if l, ok := e.labels[ref]; ok {
+		return l
+	}
+	return ref
+}
+
+// named returns the labels of refs, each once and in order, leaving out those
+// in exclude. Called with the reported cycle, it is the stuck vertices that
+// are not in it. They may be downstream of it, or in a different cycle
+// entirely -- this function does not distinguish, and the message must not
+// either.
+func (e *CycleError) named(refs, exclude []string) []string {
+	seen := make(map[string]struct{}, len(exclude))
+	for _, l := range exclude {
+		seen[l] = struct{}{}
 	}
 	var out []string
-	for _, r := range e.Stuck {
-		if _, ok := inCycle[r]; !ok {
-			out = append(out, r)
+	for _, r := range refs {
+		l := e.label(r)
+		if _, dup := seen[l]; !dup {
+			seen[l] = struct{}{}
+			out = append(out, l)
 		}
 	}
 	return out
@@ -121,31 +162,38 @@ func (e *CycleError) others() []string {
 
 // Graph is a DAG over resource references.
 type Graph struct {
-	refs     []string            // sorted
+	refs     []string // sorted
+	vertex   map[string]Vertex
 	out      map[string][]string // deduplicated, sorted
 	refresh  map[string][]string // deduplicated, sorted
 	indegree map[string]int
-	order    []string
 }
 
-// New builds a graph and returns an error if any edge names an undeclared
-// resource or if the result is cyclic.
+// New builds the graph. vertices keep their Keys; the walk does not sort by name.
 //
-// Both are could-not-run conditions for the caller: a catalog that cannot be
+// It returns an error if a Ref repeats, if any edge names an undeclared
+// resource, or if the result is cyclic.
+//
+// All three are could-not-run conditions for the caller: a catalog that cannot be
 // ordered cannot be applied at all, and applying the part that happens to sort
 // first would leave a node in a state no agent would produce.
-func New(refs []string, edges []Edge) (*Graph, error) {
+func New(vertices []Vertex, edges []Edge) (*Graph, error) {
 	g := &Graph{
-		refs:     append([]string(nil), refs...),
-		out:      make(map[string][]string, len(refs)),
+		refs:     make([]string, 0, len(vertices)),
+		vertex:   make(map[string]Vertex, len(vertices)),
+		out:      make(map[string][]string, len(vertices)),
 		refresh:  make(map[string][]string),
-		indegree: make(map[string]int, len(refs)),
+		indegree: make(map[string]int, len(vertices)),
+	}
+	for _, v := range vertices {
+		g.refs = append(g.refs, v.Ref)
+		g.vertex[v.Ref] = v
 	}
 	sort.Strings(g.refs)
 
 	// Duplicates are refused, not deduplicated.
 	//
-	// refs is a slice and the bookkeeping below is maps, so a repeat used to
+	// The refs are a slice and the bookkeeping below is maps, so a repeat used to
 	// desynchronise the two. Measured before this check existed:
 	//
 	//	New(["A","A"], nil)        -> Order() == ["A","A"], no error
@@ -201,22 +249,25 @@ func New(refs []string, edges []Edge) (*Graph, error) {
 		sort.Strings(g.refresh[k])
 	}
 
-	order, err := g.topological()
-	if err != nil {
+	if err := g.topological(); err != nil {
 		return nil, err
 	}
-	g.order = order
 	return g, nil
 }
 
-// readyQueue is a min-heap of references, so the ready set can be kept ordered
-// without re-sorting it on every step.
-type readyQueue []string
+// readyQueue is a min-heap of vertices on (Key, Ref), so the ready set can be
+// kept ordered without re-sorting it on every step.
+type readyQueue []Vertex
 
-func (q readyQueue) Len() int           { return len(q) }
-func (q readyQueue) Less(i, j int) bool { return q[i] < q[j] }
-func (q readyQueue) Swap(i, j int)      { q[i], q[j] = q[j], q[i] }
-func (q *readyQueue) Push(x any)        { *q = append(*q, x.(string)) }
+func (q readyQueue) Len() int { return len(q) }
+func (q readyQueue) Less(i, j int) bool {
+	if q[i].Key != q[j].Key {
+		return q[i].Key < q[j].Key
+	}
+	return q[i].Ref < q[j].Ref
+}
+func (q readyQueue) Swap(i, j int) { q[i], q[j] = q[j], q[i] }
+func (q *readyQueue) Push(x any)   { *q = append(*q, x.(Vertex)) }
 func (q *readyQueue) Pop() any {
 	old := *q
 	n := len(old)
@@ -225,8 +276,18 @@ func (q *readyQueue) Pop() any {
 	return x
 }
 
-// topological runs Kahn's algorithm, taking the lexicographically smallest
-// ready reference at each step.
+// Walker is one traversal (relationship_graph.rb:114-145): Kahn's algorithm
+// over a min-heap on (Key, Ref), Puppet's priority order, not lexicographic.
+// At each step it takes the ready vertex with the smallest Key -- the earliest
+// in the catalog's resources array -- and re-evaluates after every vertex, so
+// a vertex released late with a small Key overtakes one that has been ready
+// longer (relationship_graph.rb:61-99).
+//
+// The caller may set a vertex aside (Defer), as traverse sets aside a
+// resource that is not suitable?. When the ready set drains, the deferred
+// vertices are offered again if anything was placed since the last drain, and
+// otherwise handed back overly deferred, for the caller to fail; Puppet's
+// overly_deferred_resource_handler.
 //
 // Ordering the ready set is what makes the walk deterministic rather than
 // merely stable: without it the order would depend on map iteration, and two
@@ -240,44 +301,114 @@ func (q *readyQueue) Pop() any {
 // on the sort-every-step version: 225 ms at 10,000 resources, 719 ms at 20,000,
 // and 3.4 s at 40,000. The heap gives the identical order for the same cost
 // class as the walk itself.
-func (g *Graph) topological() ([]string, error) {
-	indegree := make(map[string]int, len(g.indegree))
-	maps.Copy(indegree, g.indegree)
+type Walker struct {
+	g         *Graph
+	remaining map[string]int // predecessors not yet Done
+	ready     readyQueue
+	// deferred is what the caller set aside since the last drain, in
+	// deferral order.
+	deferred []string
+	// overly is what a drain without progress hands back; failing holds it
+	// until Done, which then does not count as progress.
+	overly   []string
+	failing  map[string]struct{}
+	progress bool
+}
 
-	ready := &readyQueue{}
+// Walk starts a traversal of g.
+func (g *Graph) Walk() *Walker {
+	w := &Walker{g: g, remaining: maps.Clone(g.indegree), failing: map[string]struct{}{}}
 	for _, r := range g.refs {
-		if indegree[r] == 0 {
-			*ready = append(*ready, r)
+		if w.remaining[r] == 0 {
+			w.ready = append(w.ready, g.vertex[r])
 		}
 	}
-	heap.Init(ready)
+	heap.Init(&w.ready)
+	return w
+}
 
-	order := make([]string, 0, len(g.refs))
-	for ready.Len() > 0 {
-		next := heap.Pop(ready).(string)
-		order = append(order, next)
-		for _, t := range g.out[next] {
-			indegree[t]--
-			if indegree[t] == 0 {
-				heap.Push(ready, t)
+// Next returns the next vertex. overlyDeferred marks a vertex that was
+// deferred and that a whole drain could not place: the caller fails it and
+// calls Done. ok is false when the walk is complete.
+//
+// Every vertex a drain hands back comes before anything their Done releases:
+// traverse finishes the whole deferred list before it takes the next ready
+// resource (relationship_graph.rb:130-139).
+func (w *Walker) Next() (ref string, overlyDeferred, ok bool) {
+	if w.ready.Len() == 0 && len(w.overly) == 0 && len(w.deferred) > 0 {
+		if w.progress {
+			for _, r := range w.deferred {
+				heap.Push(&w.ready, w.g.vertex[r])
+			}
+		} else {
+			w.overly = w.deferred
+			for _, r := range w.overly {
+				w.failing[r] = struct{}{}
 			}
 		}
+		w.deferred = nil
+		w.progress = false
+	}
+	if len(w.overly) > 0 {
+		ref, w.overly = w.overly[0], w.overly[1:]
+		return ref, true, true
+	}
+	if w.ready.Len() == 0 {
+		return "", false, false
+	}
+	return heap.Pop(&w.ready).(Vertex).Ref, false, true
+}
+
+// Done finishes ref and releases each dependent whose last predecessor it was.
+func (w *Walker) Done(ref string) {
+	if _, failed := w.failing[ref]; failed {
+		delete(w.failing, ref)
+	} else {
+		w.progress = true
+	}
+	for _, t := range w.g.out[ref] {
+		w.remaining[t]--
+		if w.remaining[t] == 0 {
+			heap.Push(&w.ready, w.g.vertex[t])
+		}
+	}
+}
+
+// Defer sets ref aside until the ready set drains.
+func (w *Walker) Defer(ref string) {
+	w.deferred = append(w.deferred, ref)
+}
+
+// topological refuses a cyclic graph: the walk with nothing deferred places
+// every vertex unless the graph has a cycle.
+func (g *Graph) topological() error {
+	w := g.Walk()
+	placed := make(map[string]struct{}, len(g.refs))
+	for {
+		next, _, ok := w.Next()
+		if !ok {
+			break
+		}
+		placed[next] = struct{}{}
+		w.Done(next)
 	}
 
-	if len(order) != len(g.refs) {
-		placed := make(map[string]struct{}, len(order))
-		for _, r := range order {
-			placed[r] = struct{}{}
-		}
+	if len(placed) != len(g.refs) {
 		var stuck []string
 		for _, r := range g.refs {
 			if _, ok := placed[r]; !ok {
 				stuck = append(stuck, r)
 			}
 		}
-		return nil, &CycleError{Cycle: g.traceCycle(stuck), Stuck: stuck}
+		labels := map[string]string{}
+		for _, r := range stuck {
+			if v := g.vertex[r]; v.Label != "" {
+				labels[r] = v.Label
+			}
+		}
+		return &CycleError{Cycle: g.traceCycle(stuck), Stuck: stuck, labels: labels}
 	}
-	return order, nil
+	return nil
 }
 
 // traceCycle finds one genuine closed loop among the unplaced references.
@@ -352,9 +483,17 @@ func (g *Graph) traceCycle(stuck []string) []string {
 	return nil
 }
 
-// Order returns the deterministic topological order.
-func (g *Graph) Order() []string {
-	return append([]string(nil), g.order...)
+// IsWhit reports whether ref is a container's whit (Vertex.Whit).
+func (g *Graph) IsWhit(ref string) bool {
+	return g.vertex[ref].Whit
+}
+
+// Label is how messages name ref: its Vertex.Label, or ref itself.
+func (g *Graph) Label(ref string) string {
+	if l := g.vertex[ref].Label; l != "" {
+		return l
+	}
+	return ref
 }
 
 // RefreshTargets returns the references a refresh from ref propagates to.

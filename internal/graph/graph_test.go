@@ -3,14 +3,80 @@ package graph
 import (
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 	"testing"
 	"time"
 )
 
+func vertices(refs ...string) []Vertex {
+	out := make([]Vertex, len(refs))
+	for i, r := range refs {
+		out[i] = Vertex{Ref: r, Key: i}
+	}
+	return out
+}
+
+// walked is the order a Walker places g's vertices in when nothing is
+// deferred: each vertex is Done as soon as it is taken, as the transaction
+// does for a resource that is suitable.
+func walked(g *Graph) []string {
+	var order []string
+	w := g.Walk()
+	for ref, _, ok := w.Next(); ok; ref, _, ok = w.Next() {
+		order = append(order, ref)
+		w.Done(ref)
+	}
+	return order
+}
+
+func orderOf(t *testing.T, refs []string, edges []Edge) string {
+	t.Helper()
+	g, err := New(vertices(refs...), edges)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return strings.Join(walked(g), " ")
+}
+
+// The smallest catalog index among the ready set, recomputed after every
+// vertex.
+func TestOrderTakesTheSmallestReadyKey(t *testing.T) {
+	e := func(s, t string) Edge { return Edge{Source: s, Target: t} }
+	for _, tt := range []struct {
+		name  string
+		refs  []string
+		edges []Edge
+		want  string
+	}{
+		{"1", []string{"zeta", "alpha", "mid", "T", "beta"}, nil, "zeta alpha mid T beta"},
+		{"1b", []string{"beta", "T", "mid", "alpha", "zeta"}, nil, "beta T mid alpha zeta"},
+		{"2a", []string{"a", "b", "c", "d"}, []Edge{e("c", "a")}, "b c a d"},
+		{"2b", []string{"g", "f", "e", "free"}, []Edge{e("e", "f"), e("f", "g")}, "e f g free"},
+		{"2c", []string{"p", "q", "r", "h", "s", "t"}, []Edge{e("h", "p"), e("h", "q"), e("h", "s")}, "r h p q s t"},
+		{"2d", []string{"n1", "n2", "n3", "n4", "n0", "n5"},
+			[]Edge{e("n2", "n0"), e("n4", "n3"), e("n1", "n5")}, "n1 n2 n4 n3 n0 n5"},
+	} {
+		if got := orderOf(t, tt.refs, tt.edges); got != tt.want {
+			t.Errorf("case %s: walk = %q, want %q", tt.name, got, tt.want)
+		}
+	}
+}
+
+// Equal Keys never tie at random.
+func TestOrderBreaksEqualKeysByRef(t *testing.T) {
+	g, err := New([]Vertex{{Ref: "b", Key: 0}, {Ref: "a", Key: 0}}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := strings.Join(walked(g), " "); got != "a b" {
+		t.Errorf("walk = %q, want %q", got, "a b")
+	}
+}
+
 func TestNewOrdersDependenciesFirst(t *testing.T) {
 	g, err := New(
-		[]string{"File[a]", "Exec[b]", "Notify[c]"},
+		vertices("File[a]", "Exec[b]", "Notify[c]"),
 		[]Edge{
 			{Source: "File[a]", Target: "Exec[b]"},
 			{Source: "Exec[b]", Target: "Notify[c]"},
@@ -19,47 +85,50 @@ func TestNewOrdersDependenciesFirst(t *testing.T) {
 	if err != nil {
 		t.Fatalf("New returned error: %v", err)
 	}
-	got := g.Order()
+	got := walked(g)
 	want := []string{"File[a]", "Exec[b]", "Notify[c]"}
 	if len(got) != len(want) {
-		t.Fatalf("Order() = %v, want %v", got, want)
+		t.Fatalf("walk = %v, want %v", got, want)
 	}
 	for i := range want {
 		if got[i] != want[i] {
-			t.Fatalf("Order() = %v, want %v", got, want)
+			t.Fatalf("walk = %v, want %v", got, want)
 		}
 	}
 }
 
-// Two runs over the same inputs must produce the same order, and the order must
-// not depend on the order the references were given. Puppet's own apply order
-// is one valid topological order among many; the spine picks its own, but it
-// must pick the SAME one every time or the state-diff compares two different
-// experiments.
-func TestOrderIsDeterministicRegardlessOfInputOrder(t *testing.T) {
+// The same vertices must produce the same order however the slice holding them
+// is arranged: the walk is decided by Keys, not by the position of a vertex in
+// the input. Puppet's own apply order is one topological order among many; the
+// walk must pick the SAME one every time or the state-diff compares two
+// different experiments.
+func TestOrderIsDeterministicForTheSameKeys(t *testing.T) {
 	edges := []Edge{{Source: "File[root]", Target: "Notify[z]"}}
-	forward, err := New([]string{"File[root]", "Notify[a]", "Notify[m]", "Notify[z]"}, edges)
+	forward := vertices("Notify[z]", "Notify[m]", "Notify[a]", "File[root]")
+	reversed := slices.Clone(forward)
+	slices.Reverse(reversed)
+	a, err := New(forward, edges)
 	if err != nil {
 		t.Fatalf("New returned error: %v", err)
 	}
-	reversed, err := New([]string{"Notify[z]", "Notify[m]", "Notify[a]", "File[root]"}, edges)
+	b, err := New(reversed, edges)
 	if err != nil {
 		t.Fatalf("New returned error: %v", err)
 	}
-	a, b := forward.Order(), reversed.Order()
-	if strings.Join(a, ",") != strings.Join(b, ",") {
-		t.Errorf("order depends on input order:\n  %v\n  %v", a, b)
+	got, again := strings.Join(walked(a), " "), strings.Join(walked(b), " ")
+	if got != again {
+		t.Errorf("order depends on the arrangement of the input:\n  %v\n  %v", got, again)
 	}
-	// Independent resources sort by reference, so the order is predictable
-	// rather than merely stable.
-	if a[0] != "File[root]" {
-		t.Errorf("Order()[0] = %q, want File[root] (it has a dependent)", a[0])
+	// Notify[z] waits for File[root] (Key 3), then runs
+	// last; the others follow their Keys.
+	if want := "Notify[m] Notify[a] File[root] Notify[z]"; got != want {
+		t.Errorf("walk = %q, want %q", got, want)
 	}
 }
 
 func TestNewDetectsCycle(t *testing.T) {
 	_, err := New(
-		[]string{"File[a]", "File[b]", "File[c]"},
+		vertices("File[a]", "File[b]", "File[c]"),
 		[]Edge{
 			{Source: "File[a]", Target: "File[b]"},
 			{Source: "File[b]", Target: "File[c]"},
@@ -84,7 +153,7 @@ func TestNewDetectsCycle(t *testing.T) {
 }
 
 func TestNewDetectsSelfEdge(t *testing.T) {
-	_, err := New([]string{"File[a]"}, []Edge{{Source: "File[a]", Target: "File[a]"}})
+	_, err := New(vertices("File[a]"), []Edge{{Source: "File[a]", Target: "File[a]"}})
 	var ce *CycleError
 	if !errors.As(err, &ce) {
 		t.Fatalf("New returned %v, want *CycleError for a self-edge", err)
@@ -92,7 +161,7 @@ func TestNewDetectsSelfEdge(t *testing.T) {
 }
 
 func TestNewRejectsUnknownReference(t *testing.T) {
-	_, err := New([]string{"File[a]"}, []Edge{{Source: "File[a]", Target: "File[ghost]"}})
+	_, err := New(vertices("File[a]"), []Edge{{Source: "File[a]", Target: "File[ghost]"}})
 	if err == nil {
 		t.Fatal("New accepted an edge to an undeclared resource; want an error")
 	}
@@ -105,7 +174,7 @@ func TestNewRejectsUnknownReference(t *testing.T) {
 // same ordering twice, via `before` on one resource and `require` on the other.
 func TestDuplicateEdgesAreAccepted(t *testing.T) {
 	g, err := New(
-		[]string{"File[a]", "File[b]"},
+		vertices("File[a]", "File[b]"),
 		[]Edge{
 			{Source: "File[a]", Target: "File[b]"},
 			{Source: "File[a]", Target: "File[b]"},
@@ -114,14 +183,14 @@ func TestDuplicateEdgesAreAccepted(t *testing.T) {
 	if err != nil {
 		t.Fatalf("New returned error on duplicate edges: %v", err)
 	}
-	if got := g.Order(); got[0] != "File[a]" {
-		t.Errorf("Order() = %v, want File[a] first", got)
+	if got := walked(g); got[0] != "File[a]" {
+		t.Errorf("walk = %v, want File[a] first", got)
 	}
 }
 
 func TestRefreshTargets(t *testing.T) {
 	g, err := New(
-		[]string{"File[conf]", "Exec[reload]", "Notify[quiet]"},
+		vertices("File[conf]", "Exec[reload]", "Notify[quiet]"),
 		[]Edge{
 			{Source: "File[conf]", Target: "Exec[reload]", Refresh: true},
 			{Source: "File[conf]", Target: "Notify[quiet]"},
@@ -141,7 +210,7 @@ func TestRefreshTargets(t *testing.T) {
 
 func TestDependentsAreTransitive(t *testing.T) {
 	g, err := New(
-		[]string{"File[a]", "File[b]", "File[c]", "File[loner]"},
+		vertices("File[a]", "File[b]", "File[c]", "File[loner]"),
 		[]Edge{
 			{Source: "File[a]", Target: "File[b]"},
 			{Source: "File[b]", Target: "File[c]"},
@@ -192,18 +261,18 @@ func FuzzNew(f *testing.F) {
 				Target: fmt.Sprintf("Notify[%d]", b),
 			})
 		}
-		g, err := New(refs, edges)
+		g, err := New(vertices(refs...), edges)
 		if err != nil {
 			return // a cycle is a legitimate answer, not a failure
 		}
-		order := g.Order()
+		order := walked(g)
 		if len(order) != n {
-			t.Fatalf("Order() has %d entries, want %d", len(order), n)
+			t.Fatalf("walk has %d entries, want %d", len(order), n)
 		}
 		pos := make(map[string]int, n)
 		for i, r := range order {
 			if _, dup := pos[r]; dup {
-				t.Fatalf("Order() contains %s twice", r)
+				t.Fatalf("walk contains %s twice", r)
 			}
 			pos[r] = i
 		}
@@ -226,7 +295,7 @@ func FuzzNew(f *testing.F) {
 // wrong with it.
 func TestCycleErrorNamesOnlyResourcesActuallyInTheCycle(t *testing.T) {
 	_, err := New(
-		[]string{"File[a]", "File[b]", "File[c]"},
+		vertices("File[a]", "File[b]", "File[c]"),
 		[]Edge{
 			{Source: "File[b]", Target: "File[a]"}, // a is downstream, not cyclic
 			{Source: "File[b]", Target: "File[c]"},
@@ -272,7 +341,7 @@ func TestCycleErrorNamesOnlyResourcesActuallyInTheCycle(t *testing.T) {
 // itself written to close.
 func TestCycleErrorDoesNotClaimDisjointCyclesAreBlocked(t *testing.T) {
 	_, err := New(
-		[]string{"File[a]", "File[b]", "File[c]", "File[d]"},
+		vertices("File[a]", "File[b]", "File[c]", "File[d]"),
 		[]Edge{
 			{Source: "File[a]", Target: "File[b]"},
 			{Source: "File[b]", Target: "File[a]"},
@@ -298,7 +367,7 @@ func TestCycleErrorDoesNotClaimDisjointCyclesAreBlocked(t *testing.T) {
 // A self-edge is a cycle of one, reported as [X, X]. The leftover count must be
 // zero rather than negative or off by one.
 func TestCycleErrorOnSelfEdgeMentionsNoOthers(t *testing.T) {
-	_, err := New([]string{"File[a]"}, []Edge{{Source: "File[a]", Target: "File[a]"}})
+	_, err := New(vertices("File[a]"), []Edge{{Source: "File[a]", Target: "File[a]"}})
 	if strings.Contains(err.Error(), "could not be ordered either") {
 		t.Errorf("error %q mentions other resources; there are none", err.Error())
 	}
@@ -312,7 +381,7 @@ func TestCycleErrorOnSelfEdgeMentionsNoOthers(t *testing.T) {
 // would read as a loop.
 func TestCycleErrorReportsAClosedLoop(t *testing.T) {
 	_, err := New(
-		[]string{"File[a]", "File[b]", "File[c]"},
+		vertices("File[a]", "File[b]", "File[c]"),
 		[]Edge{
 			{Source: "File[a]", Target: "File[b]"},
 			{Source: "File[b]", Target: "File[c]"},
@@ -381,7 +450,7 @@ func TestNewRejectsDuplicateReferences(t *testing.T) {
 			[]Edge{{Source: "File[a]", Target: "File[b]"}}},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := New(tt.refs, tt.edges)
+			_, err := New(vertices(tt.refs...), tt.edges)
 			if err == nil {
 				t.Fatal("New accepted a duplicate reference; want an error")
 			}
@@ -402,7 +471,7 @@ func TestNewRejectsDuplicateReferences(t *testing.T) {
 // "1 resource could not be ordered: N[a]" -- a false cycle report for what is
 // really a dangling edge.
 func TestNewRejectsUnknownSourceReference(t *testing.T) {
-	_, err := New([]string{"File[a]"}, []Edge{{Source: "File[ghost]", Target: "File[a]"}})
+	_, err := New(vertices("File[a]"), []Edge{{Source: "File[ghost]", Target: "File[a]"}})
 	if err == nil {
 		t.Fatal("New accepted an edge FROM an undeclared resource; want an error")
 	}
@@ -415,26 +484,27 @@ func TestNewRejectsUnknownSourceReference(t *testing.T) {
 	}
 }
 
-// The documented rule is "lexicographically smallest READY reference at each
-// step", which is stronger than "deterministic". Dropping the ordering of the
-// ready set leaves the walk deterministic -- so the determinism test cannot see
-// it -- while silently changing apply order, which would make the state-diff
-// compare two different experiments between versions.
+// The documented rule is "smallest ready Key at each step", which is stronger
+// than "deterministic". Dropping the ordering of the ready set leaves the walk
+// deterministic -- so the determinism test cannot see it -- while silently
+// changing apply order, which would make the state-diff compare two different
+// experiments between versions.
 func TestOrderTakesTheSmallestReadyReference(t *testing.T) {
-	// m has no dependencies; a and z become ready only after m is applied.
-	// A FIFO ready set yields [m z a]; smallest-ready yields [m a z].
+	// m has no dependencies; z and a become ready only after m is applied.
+	// Adjacency is sorted by Ref, so a FIFO ready set, like a heap on Ref,
+	// yields [m a z]; the smallest ready Key yields [m z a].
 	g, err := New(
-		[]string{"N[m]", "N[a]", "N[z]"},
+		vertices("N[m]", "N[z]", "N[a]"),
 		[]Edge{{Source: "N[m]", Target: "N[z]"}, {Source: "N[m]", Target: "N[a]"}},
 	)
 	if err != nil {
 		t.Fatalf("New returned error: %v", err)
 	}
-	got := g.Order()
-	want := []string{"N[m]", "N[a]", "N[z]"}
+	got := walked(g)
+	want := []string{"N[m]", "N[z]", "N[a]"}
 	for i := range want {
 		if got[i] != want[i] {
-			t.Fatalf("Order() = %v, want %v -- the ready set is not ordered", got, want)
+			t.Fatalf("walk = %v, want %v -- the ready set is not ordered", got, want)
 		}
 	}
 }
@@ -444,10 +514,10 @@ func TestOrderTakesTheSmallestReadyReference(t *testing.T) {
 // of refs left every other test passing.
 func TestCycleErrorStuckIsSorted(t *testing.T) {
 	edges := []Edge{{Source: "File[y]", Target: "File[z]"}, {Source: "File[z]", Target: "File[y]"}}
-	forward, _ := New([]string{"File[y]", "File[z]"}, edges)
+	forward, _ := New(vertices("File[y]", "File[z]"), edges)
 	_ = forward
-	a, errA := New([]string{"File[y]", "File[z]"}, edges)
-	b, errB := New([]string{"File[z]", "File[y]"}, edges)
+	a, errA := New(vertices("File[y]", "File[z]"), edges)
+	b, errB := New(vertices("File[z]", "File[y]"), edges)
 	if a != nil || b != nil {
 		t.Fatal("New returned a graph for a cyclic input")
 	}
@@ -462,7 +532,7 @@ func TestCycleErrorStuckIsSorted(t *testing.T) {
 // event is a visible, wrong side effect.
 func TestRefreshTargetsAreDeduplicated(t *testing.T) {
 	g, err := New(
-		[]string{"File[conf]", "Exec[reload]"},
+		vertices("File[conf]", "Exec[reload]"),
 		[]Edge{
 			{Source: "File[conf]", Target: "Exec[reload]", Refresh: true},
 			{Source: "File[conf]", Target: "Exec[reload]", Refresh: true},
@@ -481,7 +551,7 @@ func TestRefreshTargetsAreDeduplicated(t *testing.T) {
 // change the graph for every later caller.
 func TestAccessorsReturnCopies(t *testing.T) {
 	g, err := New(
-		[]string{"File[a]", "File[b]", "File[c]"},
+		vertices("File[a]", "File[b]", "File[c]"),
 		[]Edge{
 			{Source: "File[a]", Target: "File[b]", Refresh: true},
 			{Source: "File[a]", Target: "File[c]", Refresh: true},
@@ -489,12 +559,6 @@ func TestAccessorsReturnCopies(t *testing.T) {
 	)
 	if err != nil {
 		t.Fatalf("New returned error: %v", err)
-	}
-
-	first := g.Order()
-	first[0] = "MUTATED"
-	if again := g.Order(); again[0] == "MUTATED" {
-		t.Error("Order() returns the graph's own slice; a caller can reorder the walk")
 	}
 
 	targets := g.RefreshTargets("File[a]")
@@ -521,7 +585,7 @@ func TestCycleErrorCapsTheEnumeration(t *testing.T) {
 		refs = append(refs, ref)
 		edges = append(edges, Edge{Source: "File[cyc-a]", Target: ref})
 	}
-	_, err := New(refs, edges)
+	_, err := New(vertices(refs...), edges)
 	var ce *CycleError
 	if !errors.As(err, &ce) {
 		t.Fatalf("New returned %v, want *CycleError", err)
@@ -543,23 +607,24 @@ func TestCycleErrorCapsTheEnumeration(t *testing.T) {
 	}
 }
 
-// Independent resources must come out in lexicographic order.
+// Independent resources must come out in Key order: unrelated
+// resources apply in catalog array order, not by title.
 //
 // TestOrderTakesTheSmallestReadyReference does not catch a broken ready-set
-// ordering on its own: adjacency lists are already sorted, so pushes from a
-// single node arrive sorted and an unordered heap happens to pop them back in
-// the same order. With several resources ready at once and no edges to impose
-// an order, an unordered ready set scrambles them visibly.
-func TestOrderIsLexicographicForIndependentResources(t *testing.T) {
-	got, err := New([]string{"N[e]", "N[d]", "N[c]", "N[b]", "N[a]"}, nil)
+// ordering on its own: pushes from a single node arrive in adjacency order and
+// an unordered heap can pop them back in the same order. With several
+// resources ready at once and no edges to impose an order, an unordered ready
+// set scrambles them visibly.
+func TestOrderFollowsKeysForIndependentResources(t *testing.T) {
+	got, err := New(vertices("N[e]", "N[d]", "N[c]", "N[b]", "N[a]"), nil)
 	if err != nil {
 		t.Fatalf("New returned error: %v", err)
 	}
-	want := []string{"N[a]", "N[b]", "N[c]", "N[d]", "N[e]"}
-	order := got.Order()
+	want := []string{"N[e]", "N[d]", "N[c]", "N[b]", "N[a]"}
+	order := walked(got)
 	for i := range want {
 		if order[i] != want[i] {
-			t.Fatalf("Order() = %v, want %v -- the ready set is not ordered", order, want)
+			t.Fatalf("walk = %v, want %v -- the ready set is not ordered", order, want)
 		}
 	}
 }
@@ -602,7 +667,7 @@ func TestTraceCycleDoesNotRevisitExploredReferences(t *testing.T) {
 
 	done := make(chan error, 1)
 	go func() {
-		_, err := New(refs, edges)
+		_, err := New(vertices(refs...), edges)
 		done <- err
 	}()
 
@@ -617,5 +682,166 @@ func TestTraceCycleDoesNotRevisitExploredReferences(t *testing.T) {
 		}
 	case <-time.After(10 * time.Second):
 		t.Fatal("New did not finish in 10s: traceCycle is re-exploring references it has already cleared")
+	}
+}
+
+// walkTrace walks g, deferring every offer of a ref for which deferFor returns
+// true, and returns what happened at each step.
+func walkTrace(g *Graph, deferFor func(ref string, offer int) bool) string {
+	w := g.Walk()
+	offers := map[string]int{}
+	var trace []string
+	for {
+		ref, overly, ok := w.Next()
+		if !ok {
+			break
+		}
+		offers[ref]++
+		switch {
+		case overly:
+			trace = append(trace, "fail:"+ref)
+			w.Done(ref)
+		case deferFor(ref, offers[ref]):
+			trace = append(trace, "defer:"+ref)
+			w.Defer(ref)
+		default:
+			trace = append(trace, ref)
+			w.Done(ref)
+		}
+	}
+	return strings.Join(trace, " ")
+}
+
+// A deferred vertex is re-offered once the ready set drains after
+// progress, and handed back overly deferred when a drain makes none; its
+// dependents wait for it.
+func TestWalkerDefersToTheEndOfADrain(t *testing.T) {
+	g, err := New(vertices("a", "pkg", "b", "c"), []Edge{{Source: "pkg", Target: "b"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	w := g.Walk()
+	var trace []string
+	for {
+		ref, overly, ok := w.Next()
+		if !ok {
+			break
+		}
+		switch {
+		case overly:
+			trace = append(trace, "fail:"+ref)
+			w.Done(ref)
+		case ref == "pkg":
+			trace = append(trace, "defer:"+ref)
+			w.Defer(ref)
+		default:
+			trace = append(trace, ref)
+			w.Done(ref)
+		}
+	}
+	if got, want := strings.Join(trace, " "), "a defer:pkg c defer:pkg fail:pkg b"; got != want {
+		t.Errorf("trace = %q, want %q", got, want)
+	}
+}
+
+// A deferred vertex that is placed on its second offer is an ordinary vertex
+// from then on: it counts as progress, and its dependent follows it.
+func TestWalkerReofferedVertexThatBecomesSuitable(t *testing.T) {
+	g, err := New(vertices("a", "pkg", "b", "c"), []Edge{{Source: "pkg", Target: "b"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := walkTrace(g, func(ref string, offer int) bool { return ref == "pkg" && offer == 1 })
+	if want := "a defer:pkg c pkg b"; got != want {
+		t.Errorf("trace = %q, want %q", got, want)
+	}
+}
+
+// Every overly deferred vertex is handed back, in deferral order, before
+// anything their Done released: relationship_graph.rb:136-139 finishes the
+// whole deferred list before it takes the next ready vertex.
+func TestWalkerHandsBackEveryOverlyDeferredVertexFirst(t *testing.T) {
+	g, err := New(vertices("q", "p", "a", "x"), []Edge{{Source: "q", Target: "x"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := walkTrace(g, func(ref string, _ int) bool { return ref == "p" || ref == "q" })
+	if want := "defer:q defer:p a defer:q defer:p fail:q fail:p x"; got != want {
+		t.Errorf("trace = %q, want %q", got, want)
+	}
+}
+
+// Nothing has progressed before the first vertex is placed, so a vertex
+// deferred while it is the only one ready is failed at once, as Puppet's
+// made_progress starts unset.
+func TestWalkerFailsAtOnceWithoutProgress(t *testing.T) {
+	g, err := New(vertices("pkg", "b"), []Edge{{Source: "pkg", Target: "b"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := walkTrace(g, func(ref string, _ int) bool { return ref == "pkg" })
+	if want := "defer:pkg fail:pkg b"; got != want {
+		t.Errorf("trace = %q, want %q", got, want)
+	}
+}
+
+// A whit is walked like any vertex; IsWhit and Label let the caller tell it
+// apart and name it.
+func TestWhitVerticesAreWalkedAndNamedByLabel(t *testing.T) {
+	g, err := New([]Vertex{
+		{Ref: "Whit[admissible_Class[x]]", Key: 0, Whit: true, Label: "Class[X]"},
+		{Ref: "Notify[m]", Key: 1},
+		{Ref: "Whit[completed_Class[x]]", Key: 0, Whit: true, Label: "Class[X]"},
+	}, []Edge{
+		{Source: "Whit[admissible_Class[x]]", Target: "Notify[m]"},
+		{Source: "Notify[m]", Target: "Whit[completed_Class[x]]"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, want := strings.Join(walked(g), " "),
+		"Whit[admissible_Class[x]] Notify[m] Whit[completed_Class[x]]"; got != want {
+		t.Errorf("walk = %q, want %q", got, want)
+	}
+	for ref, want := range map[string]bool{"Whit[admissible_Class[x]]": true, "Notify[m]": false, "absent": false} {
+		if got := g.IsWhit(ref); got != want {
+			t.Errorf("IsWhit(%s) = %v, want %v", ref, got, want)
+		}
+	}
+	for ref, want := range map[string]string{"Whit[completed_Class[x]]": "Class[X]", "Notify[m]": "Notify[m]"} {
+		if got := g.Label(ref); got != want {
+			t.Errorf("Label(%s) = %q, want %q", ref, got, want)
+		}
+	}
+}
+
+// Puppet prints a whit as its container, so a cycle through one names the
+// container by its label, once where its two whits are adjacent, and the
+// leftovers count each container once.
+func TestCycleErrorNamesVerticesByLabel(t *testing.T) {
+	_, err := New([]Vertex{
+		{Ref: "Whit[admissible_Class[a]]", Key: 0, Whit: true, Label: "Class[A]"},
+		{Ref: "Whit[completed_Class[a]]", Key: 0, Whit: true, Label: "Class[A]"},
+		{Ref: "Notify[n]", Key: 1},
+		{Ref: "Whit[admissible_Class[b]]", Key: 2, Whit: true, Label: "Class[B]"},
+		{Ref: "Whit[completed_Class[b]]", Key: 2, Whit: true, Label: "Class[B]"},
+	}, []Edge{
+		{Source: "Whit[admissible_Class[a]]", Target: "Whit[completed_Class[a]]"},
+		{Source: "Whit[completed_Class[a]]", Target: "Notify[n]"},
+		{Source: "Notify[n]", Target: "Whit[admissible_Class[a]]"},
+		{Source: "Notify[n]", Target: "Whit[admissible_Class[b]]"},
+		{Source: "Whit[admissible_Class[b]]", Target: "Whit[completed_Class[b]]"},
+	})
+	var ce *CycleError
+	if !errors.As(err, &ce) {
+		t.Fatalf("New returned %v, want *CycleError", err)
+	}
+	const want = "dependency cycle: Notify[n] -> Class[A] -> Notify[n]; " +
+		"1 other resource could not be ordered either: Class[B]"
+	if err.Error() != want {
+		t.Errorf("error = %q\nwant    %q", err.Error(), want)
+	}
+	if !slices.Contains(ce.Cycle, "Whit[admissible_Class[a]]") {
+		t.Errorf("Cycle = %v, want the vertices' refs; only the message uses labels", ce.Cycle)
 	}
 }

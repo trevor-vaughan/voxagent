@@ -12,9 +12,8 @@ import (
 // the process group has been killed.
 //
 // Killing the group is what actually stops the work; this is the second line of
-// defence for a descendant that somehow survives the signal while still holding
-// the output pipe open. Without it, Wait blocks until every writer closes,
-// however long that takes.
+// defence for a shell that somehow survives the signal. Exec's output is a
+// temporary file rather than a pipe, so no descendant can hold Wait open.
 const cancelGrace = time.Second
 
 // setupProcessGroup makes a cancelled context kill the whole process tree, not

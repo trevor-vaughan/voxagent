@@ -6,11 +6,14 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strconv"
 	"strings"
+	"syscall"
 	"testing"
 	"time"
 
 	"github.com/voxagent/voxagent/internal/catalog"
+	"github.com/voxagent/voxagent/internal/report"
 )
 
 func execRes(title string, params map[string]any) catalog.Resource {
@@ -430,13 +433,6 @@ func TestExecCreatesArrayAllMissingRuns(t *testing.T) {
 	}
 }
 
-func TestExecCommandArrayIsRefused(t *testing.T) {
-	if _, _, err := (Exec{}).Apply(context.Background(),
-		execRes("c", map[string]any{"command": []any{"/bin/echo", "hi"}}), false); err == nil {
-		t.Error("Apply accepted an array command; want an error naming the type")
-	}
-}
-
 func TestExecCwdArrayIsRefused(t *testing.T) {
 	if _, _, err := (Exec{}).Apply(context.Background(),
 		execRes("c", map[string]any{"command": "/bin/true", "cwd": []any{"/tmp"}}), false); err == nil {
@@ -444,23 +440,42 @@ func TestExecCwdArrayIsRefused(t *testing.T) {
 	}
 }
 
-// --- Refresh must not assert a refresh that never happened ---
+// --- A refresh a guard blocks still happened ---
+//
+// type/exec.rb:690-699's refresh is `if check_all_attributes(true) ... end`:
+// it returns normally whether or not a check passed, and process_callback
+// counts any normal return as a refresh. Measured on a direct edge for
+// unless, unless with refreshonly, and onlyif: `Triggered 'refresh' from 1 event`, a refresh event, restarted, and
+// the command not run.
 
-func TestExecRefreshSkippedByGuardReportsNoRefresh(t *testing.T) {
-	marker := filepath.Join(t.TempDir(), "ran")
-	r := execRes("c", map[string]any{
-		"command": "/usr/bin/touch " + marker,
-		"onlyif":  "/bin/false",
-	})
-	refreshed, err := Exec{}.Refresh(context.Background(), r, false)
-	if err != nil {
-		t.Fatalf("Refresh returned error: %v", err)
-	}
-	if refreshed {
-		t.Error("Refresh reported a refresh though the onlyif guard skipped the command")
-	}
-	if _, err := os.Stat(marker); err == nil {
-		t.Error("command ran though the onlyif guard should have skipped it")
+func TestExecRefreshBlockedByAGuardStillTriggers(t *testing.T) {
+	dir := t.TempDir()
+	for _, tc := range []struct {
+		name  string
+		guard map[string]any
+	}{
+		{"onlyif", map[string]any{"onlyif": "/bin/false"}},
+		{"unless", map[string]any{"unless": "/bin/true"}},
+		{"unless refreshonly", map[string]any{"unless": "/bin/true", "refreshonly": true}},
+		{"creates", map[string]any{"creates": dir}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			marker := filepath.Join(dir, "ran")
+			params := map[string]any{"command": "/usr/bin/touch " + marker}
+			for k, v := range tc.guard {
+				params[k] = v
+			}
+			refreshed, err := Exec{}.Refresh(context.Background(), execRes("c", params), false)
+			if err != nil {
+				t.Fatalf("Refresh returned error: %v", err)
+			}
+			if !refreshed {
+				t.Error("Refresh reported no refresh; Puppet triggers one when a guard blocks the command")
+			}
+			if _, err := os.Stat(marker); err == nil {
+				t.Error("command ran though the guard should have blocked it")
+			}
+		})
 	}
 }
 
@@ -619,7 +634,7 @@ func TestExecResourceLevelFailuresStayBareErrors(t *testing.T) {
 		params map[string]any
 	}{
 		{"no command", nil},
-		{"command is not a string", map[string]any{"command": []any{"/bin/echo", "hi"}}},
+		{"command is not a string or an array", map[string]any{"command": float64(5)}},
 		{"command is empty", map[string]any{"command": ""}},
 		{"returns is unparseable", map[string]any{"command": "/bin/true", "returns": "abc"}},
 		{"returns is an empty list", map[string]any{"command": "/bin/true", "returns": []any{}}},
@@ -731,6 +746,45 @@ func TestExecContextCancellationStopsCommand(t *testing.T) {
 	}
 }
 
+// `command => '/opt/app/run &'` leaves a child holding the command's stdout.
+// Puppet returns when the shell it started exits (util/execution.rb:236-258)
+// and the exec succeeds. Measured before the fix: the output pipe stayed open,
+// WaitDelay expired after a second and the command -- which had exited 0 --
+// failed with "exec: WaitDelay expired before I/O complete". The same holds
+// for a guard, which then made the whole resource fail.
+func TestExecReturnsWhenABackgroundedChildInheritsStdout(t *testing.T) {
+	dir := t.TempDir()
+	pidFile := filepath.Join(dir, "sleep.pid")
+	t.Cleanup(func() {
+		b, err := os.ReadFile(pidFile)
+		if err != nil {
+			return
+		}
+		for _, field := range strings.Fields(string(b)) {
+			if pid, err := strconv.Atoi(field); err == nil {
+				_ = syscall.Kill(pid, syscall.SIGKILL)
+			}
+		}
+	})
+	background := fmt.Sprintf(`sleep 30 & echo $! >> %s`, pidFile)
+
+	for name, params := range map[string]map[string]any{
+		"command": {"command": background},
+		"onlyif":  {"command": "/bin/true", "onlyif": background},
+	} {
+		t.Run(name, func(t *testing.T) {
+			start := time.Now()
+			change := execChange(t, execRes("c", params))
+			if elapsed := time.Since(start); elapsed > 500*time.Millisecond {
+				t.Errorf("Apply took %v; want it to return when the shell exits", elapsed)
+			}
+			if change.Err != nil {
+				t.Errorf("returns change failed: %v", change.Err)
+			}
+		})
+	}
+}
+
 // --- noop must not fabricate an exit code for a command that never ran ---
 
 func TestExecNoopChangeDoesNotFabricateExitCode(t *testing.T) {
@@ -762,11 +816,12 @@ func TestExecNoopChangeDoesNotFabricateExitCode(t *testing.T) {
 
 // An exec autorequires the managed files its command names.
 //
-// Measured against Puppet 8.10.0, type/exec.rb autorequire(:file): cwd if set,
-// plus every absolute path found by scanning command, onlyif and unless with
-// /^(\/\S+)/ and /^"([^"]+)"/. Only managed paths become edges -- autorequire is
-// soft, and a reference to a file the catalog does not manage is silently no
-// edge rather than an error.
+// Read from Puppet 8.10.0, type/exec.rb:593-640 autorequire(:file): cwd if set,
+// every path /^(\/\S+)/ and /^"([^"]+)"/ find in the command, and every path
+// /^(\/\S+)/ alone finds in each onlyif and unless command. The quoted pattern
+// is the command's only, measured. Only
+// managed paths become edges -- autorequire is soft, and a reference to a file
+// the catalog does not manage is silently no edge rather than an error.
 func TestExecAutoRequiresTheFilesItNames(t *testing.T) {
 	for _, tt := range []struct {
 		name    string
@@ -800,6 +855,12 @@ func TestExecAutoRequiresTheFilesItNames(t *testing.T) {
 			},
 			managed: []string{"File[/usr/bin/test]", "File[/usr/bin/false]"},
 			want:    []string{"File[/usr/bin/test]", "File[/usr/bin/false]"},
+		},
+		{
+			name:    "a guard's quoted path is no edge",
+			params:  map[string]any{"command": "make", "onlyif": `"/opt/q" x`},
+			managed: []string{"File[/opt/q]"},
+			want:    nil,
 		},
 		{
 			name:    "an unmanaged path is no edge",
@@ -897,6 +958,27 @@ func TestExecValidate(t *testing.T) {
 			"Parameter cwd failed on Exec[x]: cwd must be a fully qualified path"},
 		{"creates before command", "x", map[string]any{"command": "touch m", "creates": "m"},
 			"Parameter creates failed on Exec[x]: creates must be a fully qualified path"},
+
+		// onlyif and unless are check parameters whose validate block runs
+		// validatecmd on each command (type/exec.rb:497, :560), so the failure
+		// carries the Parameter wrapper, not the type-level one. creates sets
+		// accept_arrays (:448), so the array rows above are accepted.
+		{"unqualified onlyif, no path", "x", map[string]any{"command": "/bin/true", "onlyif": "test -f /x"},
+			"Parameter onlyif failed on Exec[x]: 'test' is not qualified and no path was specified. Please qualify the command or specify a path."},
+		{"unqualified unless in array, no path", "x", map[string]any{"command": "/bin/true", "unless": []any{"/bin/true", "grep x /y"}},
+			"Parameter unless failed on Exec[x]: 'grep' is not qualified and no path was specified. Please qualify the command or specify a path."},
+		{"unqualified onlyif as nested array", "x", map[string]any{"command": "/bin/true", "onlyif": []any{[]any{"test", "-f", "/x"}}},
+			"Parameter onlyif failed on Exec[x]: 'test' is not qualified and no path was specified. Please qualify the command or specify a path."},
+		{"qualified onlyif as nested array", "x", map[string]any{"command": "/bin/true", "onlyif": []any{[]any{"/usr/bin/test", "-f", "/x"}}}, ""},
+		{"unqualified onlyif with path", "x", map[string]any{"command": "/bin/true", "onlyif": "test -f /x", "path": "/usr/bin"}, ""},
+		{"qualified onlyif", "x", map[string]any{"command": "/bin/true", "onlyif": "/usr/bin/test -f /x"}, ""},
+		// Declaration order is creates, unless, onlyif; the command goes last.
+		{"creates before unless", "x", map[string]any{"command": "/bin/true", "creates": "m", "unless": "test -f /x"},
+			"Parameter creates failed on Exec[x]: creates must be a fully qualified path"},
+		{"unless before onlyif", "x", map[string]any{"command": "/bin/true", "unless": "grep x", "onlyif": "test -f /x"},
+			"Parameter unless failed on Exec[x]: 'grep' is not qualified and no path was specified. Please qualify the command or specify a path."},
+		{"onlyif before command", "x", map[string]any{"command": "touch m", "onlyif": "test -f /x"},
+			"Parameter onlyif failed on Exec[x]: 'test' is not qualified and no path was specified. Please qualify the command or specify a path."},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			err := Exec{}.Validate(execRes(tc.title, tc.params))
@@ -909,5 +991,874 @@ func TestExecValidate(t *testing.T) {
 				t.Errorf("Validate =\n %q\nwant\n %q", err.Error(), tc.want)
 			}
 		})
+	}
+}
+
+// --- argv-array commands ---
+
+// Every element is one argument and no shell sees any of them.
+func TestExecArgvNeverUsesAShell(t *testing.T) {
+	dir := t.TempDir()
+	weird := []string{"a b;c", "$(id)", "`id`", `"q"`, "it's", ">x"}
+	argv := []any{"/usr/bin/touch"}
+	for _, w := range weird {
+		argv = append(argv, filepath.Join(dir, w))
+	}
+	changes, _, err := Exec{}.Apply(context.Background(), execRes("t", map[string]any{"command": argv}), false)
+	if err != nil || len(changes) != 1 || changes[0].Err != nil || changes[0].Message != "executed successfully" {
+		t.Fatalf("Apply = %+v, %v", changes, err)
+	}
+	for _, w := range weird {
+		if _, err := os.Stat(filepath.Join(dir, w)); err != nil {
+			t.Errorf("%q was not passed as one literal argument: %v", w, err)
+		}
+	}
+	if _, err := os.Stat(filepath.Join(dir, "x")); err == nil {
+		t.Error("a redirection ran: a shell saw the argv")
+	}
+	out := filepath.Join(dir, "empty")
+	if _, _, err := (Exec{}).Apply(context.Background(), execRes("e", map[string]any{"command": []any{
+		"/bin/sh", "-c", `printf '[%s]' "$1" > "$2"`, "sh", "", out}}), false); err != nil {
+		t.Fatal(err)
+	}
+	if b, _ := os.ReadFile(out); string(b) != "[]" {
+		t.Errorf("empty argument arrived as %q, want []", b)
+	}
+}
+
+// The failure names the command as Array#inspect of the original value.
+func TestExecArgvFailureRendersArrayInspect(t *testing.T) {
+	for _, tt := range []struct {
+		command []any
+		want    string
+	}{
+		{[]any{"/bin/sh", "-c", "echo out; exit 3"},
+			`'["/bin/sh", "-c", "echo out; exit 3"]' returned 3 instead of one of [0]`},
+		{[]any{"/bin/sh", "-c", "exit 9", float64(1), true},
+			`'["/bin/sh", "-c", "exit 9", 1, true]' returned 9 instead of one of [0]`},
+		{[]any{"/bin/sh", []any{"-c", "exit 9"}},
+			`'["/bin/sh", ["-c", "exit 9"]]' returned 9 instead of one of [0]`},
+	} {
+		changes, _, err := Exec{}.Apply(context.Background(), execRes("f", map[string]any{"command": tt.command}), false)
+		if err != nil || len(changes) != 1 || changes[0].Err == nil || changes[0].Err.Error() != tt.want {
+			t.Errorf("%v: %+v, %v; want Err %q", tt.command, changes, err, tt.want)
+		}
+	}
+}
+
+// checkexe's three texts, and its measured corners: File.ftype is an lstat,
+// so a link to a directory is a "link", and a path File.expand_path changes
+// is not absolute, so with a path it is which's, and without one it is not
+// found.
+func TestExecArgvCheckExe(t *testing.T) {
+	dir := t.TempDir()
+	noexec := filepath.Join(dir, "noexec")
+	if err := os.WriteFile(noexec, nil, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	link := filepath.Join(dir, "link")
+	if err := os.Symlink(dir, link); err != nil {
+		t.Fatal(err)
+	}
+	for _, tt := range []struct {
+		params map[string]any
+		want   string
+	}{
+		{map[string]any{"command": []any{"nosuchcmd", "x"}, "path": "/usr/bin"}, "Could not find command 'nosuchcmd'"},
+		{map[string]any{"command": []any{"/no/such", "x"}}, "Could not find command '/no/such'"},
+		{map[string]any{"command": []any{dir, "x"}}, "'" + dir + "' is a directory, not a file"},
+		{map[string]any{"command": []any{noexec}}, "'" + noexec + "' is not executable"},
+		{map[string]any{"command": []any{"/bin/echo hi"}}, "Could not find command '/bin/echo hi'"},
+		{map[string]any{"command": []any{link, "x"}}, "'" + link + "' is a link, not a file"},
+		{map[string]any{"command": []any{"/dev/null"}}, "'/dev/null' is a characterSpecial, not a file"},
+		{map[string]any{"command": []any{"/bin//true"}}, "Could not find command '/bin//true'"},
+		{map[string]any{"command": []any{"/bin//true"}, "path": "/nowhere"}, ""},
+		{map[string]any{"command": []any{"//bin/true"}}, ""},
+	} {
+		changes, _, err := Exec{}.Apply(context.Background(), execRes("c", tt.params), false)
+		if tt.want == "" {
+			if err != nil || len(changes) != 1 || changes[0].Err != nil {
+				t.Errorf("%v: %+v, %v; want success", tt.params, changes, err)
+			}
+			continue
+		}
+		if err != nil || len(changes) != 1 || changes[0].Property != "returns" ||
+			changes[0].Name != "executed_command" || changes[0].Was != "notrun" ||
+			!slices.Equal(changes[0].Is.([]string), []string{"0"}) ||
+			changes[0].Err == nil || changes[0].Err.Error() != tt.want {
+			t.Errorf("%v: %+v, %v; want %q", tt.params, changes, err, tt.want)
+		}
+	}
+}
+
+// A slash-less argv[0] is found through the resource's path.
+func TestExecArgvRelativeWithPath(t *testing.T) {
+	ch := execChange(t, execRes("r", map[string]any{"command": []any{"true"}, "path": "/usr/bin:/bin"}))
+	if ch.Err != nil || ch.Message != "executed successfully" {
+		t.Errorf("change = %+v, want executed successfully", ch)
+	}
+}
+
+// Measured: checkexe's which resolves a
+// "." entry against the AGENT's working directory and an empty one as "/"
+// (File.join("", f) is "/f"), while the child, after its chdir to cwd, runs
+// the file a "." or empty entry finds in the RESOURCE's cwd (I-26).
+func TestExecArgvRelativePathEntries(t *testing.T) {
+	agent, resource := t.TempDir(), t.TempDir()
+	for _, d := range []string{agent, resource} {
+		script := "#!/bin/sh\ntouch " + filepath.Join(d, "marker") + "\n"
+		if err := os.WriteFile(filepath.Join(d, "run.sh"), []byte(script), 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	elsewhere := t.TempDir()
+	apply := func(path string) Change {
+		return execChange(t, execRes("p", map[string]any{"command": []any{"run.sh"}, "cwd": resource, "path": path}))
+	}
+
+	t.Chdir(elsewhere)
+	for _, path := range []string{":/usr/bin", ".:/usr/bin"} {
+		if ch := apply(path); ch.Err == nil || ch.Err.Error() != "Could not find command 'run.sh'" {
+			t.Errorf("path %q from an agent cwd without run.sh: %+v, want Could not find command 'run.sh'", path, ch)
+		}
+	}
+
+	t.Chdir(agent)
+	if ch := apply(".:/usr/bin"); ch.Err != nil {
+		t.Fatalf("path .:/usr/bin: %+v, want success", ch)
+	}
+	if _, err := os.Stat(filepath.Join(resource, "marker")); err != nil {
+		t.Errorf("the resource cwd's run.sh did not run: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(agent, "marker")); err == nil {
+		t.Error("the agent cwd's run.sh ran; Puppet's child runs the one in cwd")
+	}
+}
+
+// Returns applies to an argv as to a string.
+func TestExecArgvReturnsList(t *testing.T) {
+	ch := execChange(t, execRes("r", map[string]any{
+		"command": []any{"/usr/bin/test", "-d", "/nonexist"}, "returns": []any{float64(0), float64(1)}}))
+	if ch.Err != nil || !slices.Equal(ch.Is.([]string), []string{"0", "1"}) {
+		t.Errorf("change = %+v, want success with Is [0 1]", ch)
+	}
+}
+
+// A nested array in onlyif or unless is one argv check.
+func TestExecArgvGuards(t *testing.T) {
+	argvCheck := []any{[]any{"/usr/bin/test", "-d", "/tmp"}}
+	for _, tt := range []struct {
+		name    string
+		params  map[string]any
+		changes int
+	}{
+		{"unless passing", map[string]any{"unless": argvCheck}, 0},
+		{"onlyif passing", map[string]any{"onlyif": argvCheck}, 1},
+		{"onlyif mixed", map[string]any{"onlyif": []any{[]any{"/usr/bin/test", "-d", "/tmp"}, "/usr/bin/test -d /nope"}}, 0},
+	} {
+		tt.params["command"] = []any{"/bin/true"}
+		changes, _, err := Exec{}.Apply(context.Background(), execRes("g", tt.params), false)
+		if err != nil || len(changes) != tt.changes {
+			t.Errorf("%s: %+v, %v; want %d changes", tt.name, changes, err, tt.changes)
+		}
+	}
+	_, _, err := Exec{}.Apply(context.Background(), execRes("g", map[string]any{
+		"command": []any{"/bin/true"}, "onlyif": []any{[]any{"/no/such"}}}), false)
+	if err == nil || err.Error() != `guard '["/no/such"]': Could not find command '/no/such'` {
+		t.Errorf("unexecutable argv guard: %v", err)
+	}
+}
+
+// A failing refreshonly argv fails the refresh with the inspect rendering.
+func TestExecArgvRefreshFailure(t *testing.T) {
+	_, err := Exec{}.Refresh(context.Background(), execRes("rf", map[string]any{
+		"command": []any{"/bin/sh", "-c", "exit 4"}, "refreshonly": true}), false)
+	if err == nil || err.Error() != `'["/bin/sh", "-c", "exit 4"]' returned 4 instead of one of [0]` {
+		t.Errorf("Refresh error = %v", err)
+	}
+}
+
+func TestExecArgvNoopMessage(t *testing.T) {
+	changes, _, err := Exec{}.Apply(context.Background(), execRes("n", map[string]any{"command": []any{"/bin/echo", "n"}}), true)
+	if err != nil || len(changes) != 1 || changes[0].Message != `would execute '["/bin/echo", "n"]'` {
+		t.Errorf("noop = %+v, %v", changes, err)
+	}
+}
+
+// A Kernel.exec that raises in Puppet's child exits 1 (util/execution.rb:396),
+// and a file with no #! line is retried as a /bin/sh script, as Ruby's exec
+// does.
+func TestExecArgvStartFailures(t *testing.T) {
+	dir := t.TempDir()
+	script := filepath.Join(dir, "noshebang")
+	marker := filepath.Join(dir, "marker")
+	if err := os.WriteFile(script, []byte("touch \"$1\"\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if ch := execChange(t, execRes("s", map[string]any{"command": []any{script, marker}})); ch.Err != nil {
+		t.Fatalf("no #! line: %+v", ch)
+	}
+	if _, err := os.Stat(marker); err != nil {
+		t.Errorf("the #!-less script did not run as a shell script: %v", err)
+	}
+	ch := execChange(t, execRes("c", map[string]any{"command": []any{"/bin/true"}, "cwd": filepath.Join(dir, "gone")}))
+	if ch.Err == nil || ch.Err.Error() != `'["/bin/true"]' returned 1 instead of one of [0]` {
+		t.Errorf("missing cwd: %+v, want returned 1", ch)
+	}
+	ch = execChange(t, execRes("e", map[string]any{"command": []any{}, "path": "/bin/true"}))
+	if ch.Err == nil || ch.Err.Error() != `'[]' returned 1 instead of one of [0]` {
+		t.Errorf("empty argv: %+v, want returned 1", ch)
+	}
+}
+
+func TestExecValidateCommandType(t *testing.T) {
+	const unqualified = "'%s' is not qualified and no path was specified. Please qualify the command or specify a path."
+	for _, tt := range []struct {
+		params map[string]any
+		want   string
+	}{
+		{map[string]any{"command": 5.0},
+			"Parameter command failed on Exec[v]: Command must be a String or Array<String>, got value of class Integer"},
+		{map[string]any{"command": map[string]any{"a": "b"}},
+			"Parameter command failed on Exec[v]: Command must be a String or Array<String>, got value of class Hash"},
+		{map[string]any{"command": []any{"/bin/echo", []any{map[string]any{"a": "b"}}}},
+			"Exec[v]: command => an argv element of class Hash is not implemented"},
+		{map[string]any{"command": "/bin/true", "unless": []any{[]any{"/bin/echo", map[string]any{"a": "b"}}}},
+			"Exec[v]: unless => an argv element of class Hash is not implemented"},
+		{map[string]any{"command": []any{"echo", "rel"}},
+			"Validation of Exec[v] failed: " + fmt.Sprintf(unqualified, "echo")},
+		{map[string]any{"command": "/bin/true", "unless": []any{"/usr/bin/test", "-d", "/tmp"}},
+			"Parameter unless failed on Exec[v]: " + fmt.Sprintf(unqualified, "-d")},
+		// Read: extractexe is argv.first, to_s'd by the message (nil is "").
+		{map[string]any{"command": []any{}}, "Validation of Exec[v] failed: " + fmt.Sprintf(unqualified, "")},
+		{map[string]any{"command": []any{float64(5)}}, "Validation of Exec[v] failed: " + fmt.Sprintf(unqualified, "5")},
+		// Measured: with a path, Puppet fails the whole catalog in
+		// autorequire, scanning a first element that is not a String.
+		{map[string]any{"command": []any{}, "path": "/bin/true"},
+			"Exec[v]: command => an empty argv is not implemented"},
+		{map[string]any{"command": []any{[]any{"/bin/echo", "a"}, "b"}, "path": "/usr/bin"},
+			"Exec[v]: command => an argv whose first element is of class Array is not implemented"},
+		{map[string]any{"command": "/bin/true", "onlyif": []any{[]any{true}}, "path": "/usr/bin"},
+			"Exec[v]: onlyif => an argv whose first element is of class TrueClass is not implemented"},
+		{map[string]any{"command": []any{"/bin/echo", float64(1), true, nil, []any{"x"}}}, ""},
+	} {
+		err := Exec{}.Validate(execRes("v", tt.params))
+		got := ""
+		if err != nil {
+			got = err.Error()
+		}
+		if got != tt.want {
+			t.Errorf("%v:\n got %q\nwant %q", tt.params, got, tt.want)
+		}
+	}
+}
+
+// type/exec.rb:593-640: the command's first argv element is scanned with both
+// patterns, and each guard's (or the guard itself) with ^(/\S+) only.
+func TestExecAutoRequiresFollowPuppet(t *testing.T) {
+	managed := func(string) bool { return true }
+	for _, tt := range []struct {
+		params map[string]any
+		want   []string
+	}{
+		{map[string]any{"command": []any{"/opt/tool", "x"}}, []string{"File[/opt/tool]"}},
+		{map[string]any{"command": []any{`"/opt/q x"`, "x"}}, []string{"File[/opt/q x]"}},
+		{map[string]any{"command": "make", "unless": []any{[]any{"/opt/check", "-q"}}}, []string{"File[/opt/check]"}},
+		{map[string]any{"command": "make", "onlyif": []any{"/opt/a x", "/opt/b"}}, []string{"File[/opt/a]", "File[/opt/b]"}},
+	} {
+		got := Exec{}.AutoRequires(execRes("a", tt.params), managed)
+		if !slices.Equal(got, tt.want) {
+			t.Errorf("%v: AutoRequires = %v, want %v", tt.params, got, tt.want)
+		}
+	}
+}
+
+// A string command runs before its returns is read, as it always has; an
+// argv's returns is read first, because a checkexe failure carries the list.
+func TestExecReturnsIsReadAfterAStringRunsAndBeforeAnArgv(t *testing.T) {
+	dir := t.TempDir()
+	for _, tt := range []struct {
+		command any
+		marker  string
+		ran     bool
+	}{
+		{"/usr/bin/touch " + filepath.Join(dir, "string"), filepath.Join(dir, "string"), true},
+		{[]any{"/usr/bin/touch", filepath.Join(dir, "argv")}, filepath.Join(dir, "argv"), false},
+	} {
+		changes, _, err := Exec{}.Apply(context.Background(), execRes("r", map[string]any{
+			"command": tt.command, "returns": "abc"}), false)
+		if err == nil || changes != nil {
+			t.Errorf("%v: %+v, %v; want a bare returns error", tt.command, changes, err)
+		}
+		if _, statErr := os.Stat(tt.marker); (statErr == nil) != tt.ran {
+			t.Errorf("%v: ran = %v, want %v", tt.command, statErr == nil, tt.ran)
+		}
+	}
+}
+
+// markedExec marks the named parameters sensitive on an Exec resource.
+func markedExec(params map[string]any, marked ...string) catalog.Resource {
+	r := execRes("m", params)
+	r.SensitiveParameters = marked
+	return r
+}
+
+// assertRedacted fails unless text shows the command as [command redacted] and
+// leaks no part of secret (voxagent redacts where Ruby leaks, D-78).
+func assertRedacted(t *testing.T, text, secret string) {
+	t.Helper()
+	if strings.Contains(text, secret) {
+		t.Errorf("%q leaks %q", text, secret)
+	}
+	if !strings.Contains(text, "[command redacted]") {
+		t.Errorf("%q lacks [command redacted]", text)
+	}
+}
+
+// A marked command is replaced, quotes included, in the bad-return detail.
+func TestExecMarkedBadReturn(t *testing.T) {
+	marked := execChange(t, markedExec(map[string]any{"command": `/bin/sh -c "exit 3"`}, "command"))
+	if got, want := marked.Err.Error(), "[command redacted] returned 3 instead of one of [0]"; got != want {
+		t.Errorf("marked Err = %q, want %q", got, want)
+	}
+	unmarked := execChange(t, markedExec(map[string]any{"command": `/bin/sh -c "exit 3"`}))
+	if got, want := unmarked.Err.Error(), `'/bin/sh -c "exit 3"' returned 3 instead of one of [0]`; got != want {
+		t.Errorf("unmarked Err = %q, want %q", got, want)
+	}
+}
+
+// Marking any of command, unless and onlyif marks the others given (Ruby's
+// override), so a marked unless redacts the command in the noop message.
+func TestExecOnlyUnlessMarkedRedactsCommand(t *testing.T) {
+	params := map[string]any{"command": "/bin/echo secret-cmd", "unless": "/bin/false"}
+	for _, tc := range []struct {
+		name   string
+		marked []string
+		want   string
+	}{
+		{"marked", []string{"unless"}, "would execute [command redacted]"},
+		{"unmarked", nil, "would execute '/bin/echo secret-cmd'"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			changes, _, err := Exec{}.Apply(context.Background(), markedExec(params, tc.marked...), true)
+			if err != nil || len(changes) != 1 || changes[0].Message != tc.want {
+				t.Errorf("noop = %+v, %v; want message %q", changes, err, tc.want)
+			}
+		})
+	}
+}
+
+func TestExecMarkedGuardErrors(t *testing.T) {
+	argvGuard := map[string]any{"command": []any{"/bin/true"}, "onlyif": []any{[]any{"/no/such-secret"}}}
+	_, _, err := Exec{}.Apply(context.Background(), markedExec(argvGuard, "onlyif"), false)
+	if err == nil {
+		t.Fatal("marked argv guard that cannot run: no error")
+	}
+	assertRedacted(t, err.Error(), "such-secret")
+	_, _, err = Exec{}.Apply(context.Background(), markedExec(argvGuard), false)
+	if err == nil || !strings.Contains(err.Error(), "'/no/such-secret'") {
+		t.Errorf("unmarked guard error = %v, want the command named", err)
+	}
+
+	// A guard that cannot start at all: the temporary file cannot be created.
+	t.Setenv("TMPDIR", "/no/such/dir")
+	runGuard := map[string]any{"command": "/bin/true", "unless": "/bin/echo run-secret"}
+	_, _, err = Exec{}.Apply(context.Background(), markedExec(runGuard, "unless"), false)
+	if err == nil {
+		t.Fatal("marked guard with no temporary directory: no error")
+	}
+	assertRedacted(t, err.Error(), "run-secret")
+}
+
+func TestExecMarkedMissingExecutable(t *testing.T) {
+	params := map[string]any{"command": []any{"/no/such-secret", "x"}}
+	ch := execChange(t, markedExec(params, "command"))
+	assertRedacted(t, ch.Err.Error(), "such-secret")
+	if ch = execChange(t, markedExec(params)); ch.Err.Error() != "Could not find command '/no/such-secret'" {
+		t.Errorf("unmarked Err = %q", ch.Err)
+	}
+}
+
+func TestExecMarkedNotQualified(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		params map[string]any
+		marked string
+		prefix string
+	}{
+		{"command", map[string]any{"command": "secretcmd -x"}, "command", "Validation of Exec[m] failed: "},
+		{"unless", map[string]any{"command": "/bin/true", "unless": "secretcmd"}, "unless", "Parameter unless failed on Exec[m]: "},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			err := Exec{}.Validate(markedExec(tc.params, tc.marked))
+			if err == nil {
+				t.Fatal("marked unqualified command: no error")
+			}
+			assertRedacted(t, err.Error(), "secretcmd")
+			want := tc.prefix + "[command redacted] is not qualified and no path was specified. Please qualify the command or specify a path."
+			if err.Error() != want {
+				t.Errorf("Validate = %q, want %q", err, want)
+			}
+			err = Exec{}.Validate(markedExec(tc.params))
+			if err == nil || !strings.Contains(err.Error(), "'secretcmd") {
+				t.Errorf("unmarked Validate = %v, want the command named", err)
+			}
+		})
+	}
+}
+
+func TestExecMarkedRunError(t *testing.T) {
+	t.Setenv("TMPDIR", "/no/such/dir")
+	params := map[string]any{"command": "/bin/echo run-secret"}
+	_, _, err := Exec{}.Apply(context.Background(), markedExec(params, "command"), false)
+	if err == nil {
+		t.Fatal("run with no temporary directory: no error")
+	}
+	assertRedacted(t, err.Error(), "run-secret")
+	_, _, err = Exec{}.Apply(context.Background(), markedExec(params), false)
+	if err == nil || !strings.Contains(err.Error(), "run '/bin/echo run-secret'") {
+		t.Errorf("unmarked run error = %v, want the command named", err)
+	}
+}
+
+// A marked returns whose value is not an integer must not echo it.
+func TestExecMarkedReturnsValueError(t *testing.T) {
+	params := map[string]any{"command": "/bin/true", "returns": "bogus-secret"}
+	_, _, err := Exec{}.Apply(context.Background(), markedExec(params, "returns"), false)
+	if err == nil || strings.Contains(err.Error(), "bogus-secret") || !strings.Contains(err.Error(), "[redacted]") {
+		t.Errorf("marked returns error = %v, want [redacted] and no value", err)
+	}
+	_, _, err = Exec{}.Apply(context.Background(), markedExec(params), false)
+	if err == nil || !strings.Contains(err.Error(), "bogus-secret") {
+		t.Errorf("unmarked returns error = %v, want the value named", err)
+	}
+}
+
+// Redaction replaces only the value; an error that quotes none is kept.
+func TestExecMarkedReturnsValueFreeErrorIsKept(t *testing.T) {
+	params := map[string]any{"command": "/bin/true", "returns": []any{}}
+	_, _, err := Exec{}.Apply(context.Background(), markedExec(params, "returns"), false)
+	if err == nil || err.Error() != "exec returns: returns is an empty array" {
+		t.Errorf("marked empty returns: %v, want the value-free error kept", err)
+	}
+}
+
+// setLocale sets the only locale variable outputEncoding will see as set. The
+// tests that call it cannot be parallel: t.Setenv refuses them.
+func setLocale(t *testing.T, lang string) {
+	t.Helper()
+	t.Setenv("LC_ALL", "")
+	t.Setenv("LC_CTYPE", "")
+	t.Setenv("LANG", lang)
+}
+
+// type/exec.rb:120-190 with logoutput at :271: true logs always, false never,
+// on_failure (the default) when the status is not in returns. stdout and
+// stderr are one stream.
+func TestExecLogoutputValues(t *testing.T) {
+	setLocale(t, "C")
+	output := []string{"out", "err"}
+	for _, tc := range []struct {
+		name      string
+		logoutput any
+		absent    bool
+		onSuccess bool
+		onFailure bool
+	}{
+		{"true", true, false, true, true},
+		{`"true"`, "true", false, true, true},
+		{"false", false, false, false, false},
+		{`"false"`, "false", false, false, false},
+		{"on_failure", "on_failure", false, false, true},
+		{"absent", nil, true, false, true},
+	} {
+		for _, exit := range []int{0, 3} {
+			params := map[string]any{"command": fmt.Sprintf("printf 'out\\n'; printf 'err\\n' >&2; exit %d", exit)}
+			if !tc.absent {
+				params["logoutput"] = tc.logoutput
+			}
+			ch := execChange(t, execRes("lo", params))
+			logged := tc.onSuccess
+			if exit != 0 {
+				logged = tc.onFailure
+			}
+			var want []string
+			if logged {
+				want = output
+			}
+			if !slices.Equal(ch.PropertyNotices, want) {
+				t.Errorf("logoutput %s, exit %d: PropertyNotices = %q, want %q", tc.name, exit, ch.PropertyNotices, want)
+			}
+			if failed := ch.Err != nil; failed != (exit != 0) {
+				t.Errorf("logoutput %s, exit %d: Err = %v", tc.name, exit, ch.Err)
+			}
+		}
+	}
+}
+
+// A marked command's output is never read; one [output redacted] line
+// stands for it, empty output included.
+func TestExecLogoutputMarkedCommand(t *testing.T) {
+	setLocale(t, "C")
+	for _, params := range []map[string]any{
+		{"command": "printf 's-true\\n'", "logoutput": true},
+		{"command": "exit 5"},
+		{"command": "printf '\\377'", "logoutput": true},
+	} {
+		ch := execChange(t, markedExec(params, "command"))
+		if want := []string{"[output redacted]"}; !slices.Equal(ch.PropertyNotices, want) {
+			t.Errorf("%v: PropertyNotices = %q, want %q", params, ch.PropertyNotices, want)
+		}
+		if ch.Err != nil && strings.Contains(ch.Err.Error(), "invalid byte sequence") {
+			t.Errorf("%v: Err = %v, want the output never decoded", params, ch.Err)
+		}
+	}
+	// A marked guard marks the command with it (type/exec.rb:707-728).
+	ch := execChange(t, markedExec(map[string]any{"command": "echo s-unless; exit 6", "unless": "/bin/false"}, "unless"))
+	if want := []string{"[output redacted]"}; !slices.Equal(ch.PropertyNotices, want) {
+		t.Errorf("marked unless: PropertyNotices = %q, want %q", ch.PropertyNotices, want)
+	}
+}
+
+// Output to be logged that is invalid in the locale's encoding fails the
+// change with Ruby's split error, replacing the exit-status error whatever
+// the status; output that is not logged is never decoded.
+func TestExecLogoutputEncoding(t *testing.T) {
+	for _, tc := range []struct {
+		name      string
+		lang      string
+		command   string
+		logoutput any
+		wantErr   string
+		want      []string
+	}{
+		{"UTF-8 under C", "C", `printf 'caf\303\251'`, true, "invalid byte sequence in US-ASCII", nil},
+		{"UTF-8 under C.UTF-8", "C.UTF-8", `printf 'caf\303\251'`, true, "", []string{"café"}},
+		{"0xff under C.UTF-8", "C.UTF-8", `printf '\377'`, true, "invalid byte sequence in UTF-8", nil},
+		{"failure replaced", "C", `printf '\377\376bad\n'; exit 1`, "on_failure", "invalid byte sequence in US-ASCII", nil},
+		{"not logged", "C", `printf '\377'`, false, "", nil},
+		{"not logged by default", "C", `printf '\377\n'`, nil, "", nil},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			setLocale(t, tc.lang)
+			params := map[string]any{"command": tc.command}
+			if tc.logoutput != nil {
+				params["logoutput"] = tc.logoutput
+			}
+			ch := execChange(t, execRes("enc", params))
+			gotErr := ""
+			if ch.Err != nil {
+				gotErr = ch.Err.Error()
+			}
+			if gotErr != tc.wantErr {
+				t.Errorf("Err = %q, want %q", gotErr, tc.wantErr)
+			}
+			if !slices.Equal(ch.PropertyNotices, tc.want) {
+				t.Errorf("PropertyNotices = %q, want %q", ch.PropertyNotices, tc.want)
+			}
+			if tc.wantErr == "" && ch.Message != "executed successfully" {
+				t.Errorf("Message = %q, want executed successfully", ch.Message)
+			}
+		})
+	}
+}
+
+// newvalues(:true, :false, :on_failure), Ruby's wording. A marked value
+// is replaced quotes included (D-78).
+func TestExecLogoutputInvalid(t *testing.T) {
+	for _, tc := range []struct {
+		value  any
+		marked []string
+		want   string
+	}{
+		{"maybe", nil, `Parameter logoutput failed on Exec[bad]: Invalid value "maybe". Valid values are true, false, on_failure.`},
+		{"maybe", []string{"logoutput"}, `Parameter logoutput failed on Exec[bad]: Invalid value [redacted]. Valid values are true, false, on_failure.`},
+		{float64(1), nil, `Parameter logoutput failed on Exec[bad]: Invalid value 1. Valid values are true, false, on_failure.`},
+		{"True", nil, `Parameter logoutput failed on Exec[bad]: Invalid value "True". Valid values are true, false, on_failure.`},
+	} {
+		r := execRes("bad", map[string]any{"command": "/bin/true", "logoutput": tc.value})
+		r.SensitiveParameters = tc.marked
+		err := Exec{}.Validate(r)
+		if err == nil || err.Error() != tc.want {
+			t.Errorf("Validate(logoutput %v, marked %v) = %v, want %q", tc.value, tc.marked, err, tc.want)
+		}
+	}
+	for _, v := range []any{true, false, "true", "false", "on_failure"} {
+		if err := (Exec{}).Validate(execRes("ok", map[string]any{"command": "/bin/true", "logoutput": v})); err != nil {
+			t.Errorf("Validate(logoutput %v) = %v, want nil", v, err)
+		}
+	}
+	// A caller that skipped Validate still runs nothing.
+	marker := filepath.Join(t.TempDir(), "ran")
+	_, _, err := Exec{}.Apply(context.Background(),
+		execRes("bad", map[string]any{"command": "touch " + marker, "logoutput": "maybe"}), false)
+	if err == nil {
+		t.Error("Apply with an invalid logoutput: no error")
+	}
+	if _, statErr := os.Stat(marker); statErr == nil {
+		t.Error("Apply with an invalid logoutput ran the command")
+	}
+}
+
+// A refresh is returns.sync (type/exec.rb:690-698), so its output is
+// logged by the same rule, at the returns property.
+func TestExecRefreshLogoutput(t *testing.T) {
+	setLocale(t, "C")
+	out, err := Exec{}.RefreshLogged(context.Background(),
+		execRes("rt", map[string]any{"command": "echo refreshed", "refreshonly": true, "logoutput": true}), false)
+	if err != nil || !out.Refreshed {
+		t.Fatalf("RefreshLogged = %+v, %v; want refreshed", out, err)
+	}
+	if want := []PropertyNotice{{Property: "returns", Message: "refreshed"}}; !slices.Equal(out.PropertyNotices, want) {
+		t.Errorf("PropertyNotices = %v, want %v", out.PropertyNotices, want)
+	}
+
+	out, err = Exec{}.RefreshLogged(context.Background(),
+		execRes("rf", map[string]any{"command": "echo refresh-broke; exit 4", "refreshonly": true}), false)
+	if err == nil || err.Error() != "'echo refresh-broke; exit 4' returned 4 instead of one of [0]" || out.Refreshed {
+		t.Errorf("RefreshLogged = %+v, %v; want the status error", out, err)
+	}
+	if want := []PropertyNotice{{Property: "returns", Message: "refresh-broke"}}; !slices.Equal(out.PropertyNotices, want) {
+		t.Errorf("PropertyNotices = %v, want %v", out.PropertyNotices, want)
+	}
+
+	marker := filepath.Join(t.TempDir(), "ran")
+	out, err = Exec{}.RefreshLogged(context.Background(),
+		execRes("rn", map[string]any{"command": "echo x; touch " + marker, "logoutput": true}), true)
+	if err != nil || len(out.PropertyNotices) != 0 {
+		t.Errorf("noop RefreshLogged = %+v, %v; want no output", out, err)
+	}
+	if _, statErr := os.Stat(marker); statErr == nil {
+		t.Error("noop RefreshLogged ran the command")
+	}
+}
+
+// debugSources are the sources the transaction puts on the context for the exec
+// the debug-line tests run.
+var debugSources = Sources{
+	Resource: "/Stage[main]/Main/Exec[x]",
+	Provider: "Exec[x](provider=posix)",
+	Ref:      "Exec[x]",
+}
+
+// execDebugLines applies r (or refreshes it) at level and returns the run-log
+// entries it kept, as {level, source, message} for assertWarnings.
+func execDebugLines(t *testing.T, level string, r catalog.Resource) []report.LogEntry {
+	t.Helper()
+	ctx, got := debugContext(level)
+	ctx = WithSources(ctx, debugSources)
+	if _, _, err := (Exec{}).Apply(ctx, r, false); err != nil {
+		t.Fatalf("Apply: %v", err)
+	}
+	return *got
+}
+
+func dbg(source, message string) report.LogEntry {
+	return report.LogEntry{Level: "debug", Source: source, Message: message}
+}
+
+// provider/exec.rb:48 (Executing '<cmd>') and util/execution.rb:181
+// (Executing: '<cmd>'): the first at the provider form, the second at Puppet.
+func TestExecDebugLinesForARun(t *testing.T) {
+	got := execDebugLines(t, "debug", execRes("x", map[string]any{"command": "echo hi"}))
+	assertWarnings(t, got, []report.LogEntry{
+		dbg("Exec[x](provider=posix)", "Executing 'echo hi'"),
+		dbg("Puppet", "Executing: 'echo hi'"),
+	})
+}
+
+// An argv shows as Array#inspect in the provider's line (it interpolates the
+// original value) and as the words joined by a space in execution.rb's.
+func TestExecDebugLinesForAnArgvRun(t *testing.T) {
+	got := execDebugLines(t, "debug", execRes("x", map[string]any{
+		"command": []any{"/bin/echo", "hi"}}))
+	assertWarnings(t, got, []report.LogEntry{
+		dbg("Exec[x](provider=posix)", `Executing '["/bin/echo", "hi"]'`),
+		dbg("Puppet", "Executing: '/bin/echo hi'"),
+	})
+}
+
+func TestExecDebugLinesAreRedactedWhenMarked(t *testing.T) {
+	got := execDebugLines(t, "debug", markedExec(map[string]any{"command": "echo SECRET"}, "command"))
+	assertWarnings(t, got, []report.LogEntry{
+		dbg("Exec[x](provider=posix)", "Executing '[redacted]'"),
+		dbg("Puppet", "Executing: '[redacted]'"),
+	})
+}
+
+// type/exec.rb:511-514: one debug line per output line of the guard, at the
+// guard parameter's path; the check form of the provider line.
+func TestExecDebugLinesForAnUnlessGuard(t *testing.T) {
+	got := execDebugLines(t, "debug", execRes("x", map[string]any{
+		"command": "true", "unless": "printf 'one\\ntwo\\n'; exit 1"}))
+	assertWarnings(t, got, []report.LogEntry{
+		dbg("Exec[x](provider=posix)", "Executing check 'printf 'one\\ntwo\\n'; exit 1'"),
+		dbg("Puppet", "Executing: 'printf 'one\\ntwo\\n'; exit 1'"),
+		dbg("/Stage[main]/Main/Exec[x]/unless", "one"),
+		dbg("/Stage[main]/Main/Exec[x]/unless", "two"),
+		dbg("Exec[x](provider=posix)", "Executing 'true'"),
+		dbg("Puppet", "Executing: 'true'"),
+	})
+}
+
+func TestExecDebugLinesForAnOnlyifGuard(t *testing.T) {
+	got := execDebugLines(t, "debug", execRes("x", map[string]any{
+		"command": "true", "onlyif": "echo yes"}))
+	assertWarnings(t, got, []report.LogEntry{
+		dbg("Exec[x](provider=posix)", "Executing check 'echo yes'"),
+		dbg("Puppet", "Executing: 'echo yes'"),
+		dbg("/Stage[main]/Main/Exec[x]/onlyif", "yes"),
+		dbg("Exec[x](provider=posix)", "Executing 'true'"),
+		dbg("Puppet", "Executing: 'true'"),
+	})
+}
+
+// Review Focus 4: one line with no trailing newline is one debug line, and a
+// guard with no output logs none.
+func TestExecGuardOutputLineCounts(t *testing.T) {
+	for _, tc := range []struct {
+		name, guard string
+		want        []string
+	}{
+		{"single line without newline", "printf one; exit 1", []string{"one"}},
+		{"single line with newline", "echo one; exit 1", []string{"one"}},
+		{"interior blank line kept, trailing dropped", "printf 'a\\n\\nb\\n\\n'; exit 1", []string{"a", "", "b"}},
+		{"no output", "exit 1", nil},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got := execDebugLines(t, "debug", execRes("x", map[string]any{"command": "true", "unless": tc.guard}))
+			var lines []string
+			for _, e := range got {
+				if e.Source == "/Stage[main]/Main/Exec[x]/unless" {
+					lines = append(lines, e.Message)
+				}
+			}
+			if !slices.Equal(lines, tc.want) {
+				t.Errorf("guard output lines = %q, want %q", lines, tc.want)
+			}
+		})
+	}
+}
+
+func TestExecGuardOutputIsOneRedactedLineWhenMarked(t *testing.T) {
+	got := execDebugLines(t, "debug", markedExec(map[string]any{
+		"command": "true", "unless": "echo SECRET1; echo SECRET2; exit 1"}, "unless"))
+	assertWarnings(t, got, []report.LogEntry{
+		dbg("Exec[x](provider=posix)", "Executing check '[redacted]'"),
+		dbg("Puppet", "Executing: '[redacted]'"),
+		dbg("/Stage[main]/Main/Exec[x]/unless", "[output redacted]"),
+		dbg("Exec[x](provider=posix)", "Executing '[redacted]'"),
+		dbg("Puppet", "Executing: '[redacted]'"),
+	})
+}
+
+// A marked guard with no output still logs the one redacted line, as Ruby does.
+func TestExecMarkedGuardWithNoOutputStillLogsRedactedLine(t *testing.T) {
+	got := execDebugLines(t, "debug", markedExec(map[string]any{
+		"command": "true", "unless": "exit 1"}, "unless"))
+	if len(got) < 3 {
+		t.Fatalf("entries = %+v, want at least three", got)
+	}
+	assertWarnings(t, got[2:3], []report.LogEntry{dbg("/Stage[main]/Main/Exec[x]/unless", "[output redacted]")})
+}
+
+// type/exec.rb:672 and :454: the failed-check line at the resource, the
+// creates line at its parameter. Only the lines about the check are compared.
+func TestExecDebugLinesForFailedChecks(t *testing.T) {
+	res := "/Stage[main]/Main/Exec[x]"
+	tmp := t.TempDir()
+	for _, tc := range []struct {
+		name string
+		r    catalog.Resource
+		want []report.LogEntry
+	}{
+		{"creates", execRes("x", map[string]any{"command": "/bin/true", "creates": tmp}), []report.LogEntry{
+			dbg(res+"/creates", "Checking that 'creates' path '"+tmp+"' exists"),
+			dbg(res, "'/bin/true' won't be executed because of failed check 'creates'"),
+		}},
+		{"onlyif", execRes("x", map[string]any{"command": "/bin/true", "onlyif": "exit 1"}), []report.LogEntry{
+			dbg(res, "'/bin/true' won't be executed because of failed check 'onlyif'"),
+		}},
+		{"unless", execRes("x", map[string]any{"command": "/bin/true", "unless": "exit 0"}), []report.LogEntry{
+			dbg(res, "'/bin/true' won't be executed because of failed check 'unless'"),
+		}},
+		{"refreshonly", execRes("x", map[string]any{"command": "/bin/true", "refreshonly": true}), []report.LogEntry{
+			dbg(res, "'/bin/true' won't be executed because of failed check 'refreshonly'"),
+		}},
+		{"argv command shows as inspect", execRes("x", map[string]any{
+			"command": []any{"/bin/true", "a"}, "refreshonly": true}), []report.LogEntry{
+			dbg(res, `'["/bin/true", "a"]' won't be executed because of failed check 'refreshonly'`),
+		}},
+		{"marked command", markedExec(map[string]any{"command": "/bin/true", "onlyif": "exit 1"}, "command"), []report.LogEntry{
+			dbg(res, "'[command redacted]' won't be executed because of failed check 'onlyif'"),
+		}},
+		{"marked refreshonly", markedExec(map[string]any{"command": "/bin/true", "refreshonly": true}, "command"), []report.LogEntry{
+			dbg(res, "'[command redacted]' won't be executed because of failed check 'refreshonly'"),
+		}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var about []report.LogEntry
+			for _, e := range execDebugLines(t, "debug", tc.r) {
+				if e.Source == res || e.Source == res+"/creates" {
+					about = append(about, e)
+				}
+			}
+			assertWarnings(t, about, tc.want)
+		})
+	}
+}
+
+// A blocked command never reaches its own Executing lines.
+func TestExecBlockedCommandLogsNoExecutingLine(t *testing.T) {
+	for _, e := range execDebugLines(t, "debug", execRes("x", map[string]any{
+		"command": "/bin/true", "creates": t.TempDir()})) {
+		if strings.HasPrefix(e.Message, "Executing") {
+			t.Errorf("unexpected %+v", e)
+		}
+	}
+}
+
+// Under refresh the refreshonly check is skipped (check_all_attributes(true)),
+// so a refreshonly exec runs and logs no refreshonly line.
+func TestExecRefreshOfARefreshonlyLogsNoRefreshonlyLine(t *testing.T) {
+	ctx, got := debugContext("debug")
+	ctx = WithSources(ctx, debugSources)
+	r := execRes("x", map[string]any{"command": "true", "refreshonly": true})
+	if _, err := (Exec{}).Refresh(ctx, r, false); err != nil {
+		t.Fatal(err)
+	}
+	assertWarnings(t, *got, []report.LogEntry{
+		dbg("Exec[x](provider=posix)", "Executing 'true'"),
+		dbg("Puppet", "Executing: 'true'"),
+	})
+}
+
+// Debug off: no records at all.
+func TestExecDebugLinesOffAtNotice(t *testing.T) {
+	for _, level := range []string{"notice", "info"} {
+		got := execDebugLines(t, level, execRes("x", map[string]any{
+			"command": "true", "unless": "echo out; exit 1", "creates": "/nonexistent/x"}))
+		if len(got) != 0 {
+			t.Errorf("level %s: entries = %+v, want none", level, got)
+		}
+	}
+}
+
+// A command ENOEXEC retries as a script runs once, so it logs one Executing:
+// line (execution.rb:181 fires once per execute).
+func TestExecENOEXECRetryLogsExecutingOnce(t *testing.T) {
+	script := filepath.Join(t.TempDir(), "noshebang")
+	if err := os.WriteFile(script, []byte("echo hi\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	got := execDebugLines(t, "debug", execRes("x", map[string]any{"command": []any{script}}))
+	var n int
+	for _, e := range got {
+		if e.Source == "Puppet" {
+			n++
+		}
+	}
+	if n != 1 {
+		t.Errorf("Puppet Executing: lines = %d (%+v), want 1", n, got)
 	}
 }

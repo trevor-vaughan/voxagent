@@ -1,0 +1,46 @@
+{
+ "name": "spine.example",
+ "catalog_format": 2,
+ "resources": [
+  {
+   "type": "File",
+   "title": "/tmp/target/create",
+   "tags": [
+    "file",
+    "class"
+   ],
+   "file": "/tmp/e/production/manifests/site.pp",
+   "line": 1,
+   "exported": false,
+   "kind": "compilable_type",
+   "parameters": {
+    "ensure": "file",
+    "content": "topsecret-create\n"
+   },
+   "sensitive_parameters": [
+    "content"
+   ]
+  },
+  {
+   "type": "File",
+   "title": "/tmp/target/mode",
+   "tags": [
+    "file",
+    "class"
+   ],
+   "file": "/tmp/e/production/manifests/site.pp",
+   "line": 4,
+   "exported": false,
+   "kind": "compilable_type",
+   "parameters": {
+    "ensure": "file",
+    "content": "plain\n",
+    "mode": "0600"
+   },
+   "sensitive_parameters": [
+    "mode"
+   ]
+  }
+ ],
+ "edges": []
+}

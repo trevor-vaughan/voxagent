@@ -1,0 +1,61 @@
+# Gate stack for `voxagent agent` (tests/agent/run.sh): one OpenVox server
+# (CA + autosign, no OpenVoxDB, reports stored on disk) and two EL nodes, one
+# per agent under comparison.
+#
+# Every service sets `logging: driver: k8s-file`. Podman defaults to journald
+# and this environment has no journald, so without it `podman logs` is empty.
+services:
+  puppet:
+    # Pinned by digest so a floating :latest cannot change the oracle under a
+    # green gate. Measured 2026-11-16 as the manifest-list digest of :latest;
+    # bump deliberately: podman image inspect IMAGE --format '{{.Digest}}'.
+    image: ghcr.io/openvoxproject/openvoxserver@sha256:f03ce8d90bd1835169a9e21385cec44e56517515cc0f96e0b1f515b82df3932b
+    container_name: ${AGENTGATE_PROJECT:-agentgate}_puppet
+    hostname: puppet
+    environment:
+      # Variables read by the image's /container-entrypoint.d scripts.
+      CERTNAME: puppet
+      DNS_ALT_NAMES: puppet
+      AUTOSIGN: "true"
+      CA_ENABLED: "true"
+      USE_OPENVOXDB: "false"
+      # 85-setup-storeconfigs.sh only resets reports to `log` when this is
+      # `puppetdb`, so with OpenVoxDB off `store` survives: each report is
+      # written as YAML under the server's reportdir.
+      OPENVOX_REPORTS: store
+      OPENVOXSERVER_JAVA_ARGS: "-Xms512m -Xmx512m"
+    volumes:
+      - ./fixture/environments/production:/etc/puppetlabs/code/environments/production:ro,z
+      - ./fixture/server/request-logging.xml:/etc/puppetlabs/puppetserver/request-logging.xml:ro,z
+    networks:
+      - agentgate-net
+    logging:
+      driver: k8s-file
+
+  ruby:
+    # Built by `task fleet:images` (fleet/images/Dockerfile.el).
+    image: localhost/fleet-node-el:latest
+    container_name: ${AGENTGATE_PROJECT:-agentgate}_ruby
+    hostname: ruby.example.test
+    command: ["sleep", "infinity"]
+    depends_on:
+      - puppet
+    networks:
+      - agentgate-net
+    logging:
+      driver: k8s-file
+
+  vox:
+    image: localhost/fleet-node-el:latest
+    container_name: ${AGENTGATE_PROJECT:-agentgate}_vox
+    hostname: vox.example.test
+    command: ["sleep", "infinity"]
+    depends_on:
+      - puppet
+    networks:
+      - agentgate-net
+    logging:
+      driver: k8s-file
+
+networks:
+  agentgate-net:

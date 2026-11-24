@@ -38,7 +38,7 @@
 # tests/spine/allowlist.json, used unchanged. A second comparator would be a
 # second thing to keep in step with Ruby.
 #
-#   0  the reports agree outside the allowlist
+#   0  the reports agree outside the allowlist and the walk order agrees
 #   1  they diverge -- a result about voxagent
 #   2  the comparison could not run
 set -uo pipefail
@@ -58,7 +58,7 @@ IMAGE="${IMAGE:-localhost/fleet-node-el:latest}"
 #
 # Deliberately NOT a second pinning mechanism: one constant per gate, the same
 # shape, so a rebuild trips both in the same recognisable way.
-WANT_PUPPET="${WANT_PUPPET:-8.29.0}"
+WANT_PUPPET="${WANT_PUPPET:-8.33.0}"
 
 # The four package fixtures. Every one of them is measured against the image
 # below before anything is applied, because a package fixture whose starting
@@ -94,6 +94,20 @@ PKG_LATEST_FROM="${PKG_LATEST_FROM:-1.97.1-4.el10}"
 # the version, and nothing about either agent has been learned.
 SEED_LATEST="dnf -y -q downgrade '$PKG_LATEST-$PKG_LATEST_FROM' >/dev/null 2>&1"
 PKG_MISSING="${PKG_MISSING:-voxagent-no-such-package}"
+
+# The validate_cmd fixture's starting state, also run in every container: sudo
+# for SIMP's `visudo -q -c -f %` (the image does not carry it), and the two
+# existing files whose content change a validator accepts or refuses.
+SEED_VALIDATE="dnf -y -q install sudo >/dev/null 2>&1 &&
+  printf 'old\\n' > /tmp/target/v-fail && printf 'old\\n' > /tmp/target/v-notoken &&
+  chmod 0644 /tmp/target/v-fail /tmp/target/v-notoken"
+
+# The Sensitive fixture's starting state: files whose content, mode or owner
+# the catalog changes, and one it removes, so each marked property has a
+# previous value for Ruby to redact.
+SEED_SENSITIVE="printf 'old\\n' > /tmp/target/s-change &&
+  printf 'plain\\n' > /tmp/target/s-mode && chmod 0644 /tmp/target/s-mode &&
+  touch /tmp/target/s-owner && printf 'g\\n' > /tmp/target/s-absent"
 
 RUBY_SIDE="report-ruby-$$"
 GO_SIDE="report-go-$$"
@@ -167,11 +181,23 @@ if ! podman run --rm "$IMAGE" sh -c "
   if [ -n \"\$(dnf -q repoquery '$PKG_MISSING' 2>/dev/null)\" ]; then
     echo '$PKG_MISSING now resolves, so it no longer reaches the failure path'; exit 1
   fi
+  if ! (mkdir -p /tmp/target && $SEED_VALIDATE) || [ ! -x /usr/sbin/visudo ]; then
+    echo 'installing sudo failed, so there is no visudo for the validate_cmd fixture'; exit 1
+  fi
+  if [ -e /nonexistent/validator ]; then
+    echo '/nonexistent/validator exists, so the validate_cmd exec failure is not one'; exit 1
+  fi
   if ! /bin/true; then
     echo '/bin/true does not exit 0, so the successful exec is not successful'; exit 1
   fi
   if /bin/false; then
     echo '/bin/false exits 0, so the failing exec does not reach the failure path'; exit 1
+  fi
+  if ! id nobody >/dev/null 2>&1; then
+    echo 'there is no user nobody, so the Sensitive owner change cannot apply'; exit 1
+  fi
+  if [ -e /usr/bin/nosuchcmd ]; then
+    echo '/usr/bin/nosuchcmd exists, so the missing argv command is not missing'; exit 1
   fi
   /usr/bin/test -d /nonexistent-spine
   if [ \$? -ne 1 ]; then
@@ -262,6 +288,119 @@ node default {
     command => '/bin/true',
     onlyif  => '/bin/false',
   }
+
+  # argv commands. An argv runs with no shell, after Puppet's checkexe, and a
+  # failure names it by Array#inspect.
+  # Both agents log a failing command's output at the returns property
+  # (logoutput's on_failure default); the Exec output cases below compare
+  # that. 'exit 3' stands in for 'echo out; exit 3' only for brevity.
+  #
+  # Shell metacharacters and a space arrive as literal arguments.
+  exec { 'spine-argv-ok':
+    command => ['/bin/echo', 'hello world', '$HOME;ls', '*'],
+  }
+  # The failure detail is '["/bin/sh", "-c", "exit 3"]' returned 3 ...
+  exec { 'spine-argv-fail':
+    command => ['/bin/sh', '-c', 'exit 3'],
+  }
+  # A slash-less argv[0] is found through path.
+  exec { 'spine-argv-rel':
+    command => ['echo', 'rel'],
+    path    => ['/usr/bin', '/bin'],
+  }
+  # checkexe fails the returns property with "Could not find command".
+  exec { 'spine-argv-missing':
+    command => ['nosuchcmd', 'x'],
+    path    => '/usr/bin',
+  }
+  # Each name is one argument no shell sees, so touch creates every one
+  # literally, and nothing is redirected. The one exec that writes, and only
+  # into /tmp/target, which each side's own container starts empty.
+  exec { 'spine-argv-meta':
+    command => ['/usr/bin/touch', '/tmp/target/a b;c', '/tmp/target/`id`',
+      '/tmp/target/$(id)', '/tmp/target/"q"', "/tmp/target/it's", '/tmp/target/>x'],
+  }
+  # An argv check that exits 0 makes unless skip, with no event.
+  exec { 'spine-argv-unless':
+    command => ['/bin/echo', 'x'],
+    unless  => [['/usr/bin/test', '-d', '/tmp']],
+  }
+
+  # validate_cmd. Every failure message carries the
+  # substituted temp path, whose date, pid and random token the comparator
+  # masks (maskValidateTempNames); the output after "returned N: " is masked
+  # as every ExecutionFailure's is (failure_detail).
+  #
+  # Accepted on a new file: file_created, "defined content as ...".
+  file { '/tmp/target/v-ok':
+    content      => "new\n",
+    validate_cmd => '/usr/bin/test -s %',
+  }
+  # Refused, with output on both streams, over an existing file: content
+  # fails, the file keeps its content, and mode still syncs (case 2, c02b).
+  # The quotes and ; send the line through /bin/sh, as in Ruby.
+  file { '/tmp/target/v-fail':
+    content      => "new\n",
+    mode         => '0600',
+    validate_cmd => '/bin/sh -c "echo stdout line; echo stderr line >&2; exit 1" %',
+  }
+  # No token: the command runs verbatim and the file is replaced (case 3).
+  file { '/tmp/target/v-notoken':
+    content      => "new\n",
+    validate_cmd => '/usr/bin/true',
+  }
+  # The validator cannot be executed: status 1, and Ruby's output is its log
+  # destination's rendering of the exec error (case 6, c06a).
+  file { '/tmp/target/v-noexec':
+    content      => "new\n",
+    validate_cmd => '/nonexistent/validator %',
+  }
+  # SIMP's sudoers check (case 7): valid content is created at 0440, and
+  # invalid content fails ensure and creates nothing. -q prints nothing, so
+  # Ruby's message ends "returned 1: ".
+  file { '/tmp/target/sudoers-ok':
+    content      => "Defaults env_reset\nroot ALL=(ALL) ALL\n",
+    mode         => '0440',
+    validate_cmd => '/usr/sbin/visudo -q -c -f %',
+  }
+  file { '/tmp/target/sudoers-bad':
+    content      => "root ALL=(ALL ALL\nthis is not sudoers\n",
+    mode         => '0440',
+    validate_cmd => '/usr/sbin/visudo -q -c -f %',
+  }
+
+  # Sensitive. A marked property's event and log read "[redacted]"; Notify logs "Sensitive [value redacted]"; a marked Exec
+  # command or guard reads "[command redacted]" and its output
+  # "[output redacted]". A marked cwd only warns on the console.
+  file { '/tmp/target/s-create': ensure => file, content => Sensitive("topsecret-create\n") }
+  file { '/tmp/target/s-change': ensure => file, content => Sensitive("topsecret-change\n") }
+  file { '/tmp/target/s-absent': ensure => absent, content => Sensitive("gone\n") }
+  file { '/tmp/target/s-mode':   ensure => file, content => "plain\n", mode => Sensitive('0600') }
+  file { '/tmp/target/s-owner':  ensure => file, owner => Sensitive('nobody') }
+  notify { 'n1': message => Sensitive('notify-secret') }
+  exec { 'e-unless':  command => '/bin/echo ran-unless', unless => Sensitive('/bin/false'), logoutput => true }
+  exec { 'e-cwd':     command => '/bin/echo plain', onlyif => '/bin/true', cwd => Sensitive('/tmp'), logoutput => true }
+
+  # Exec output (logoutput). The container sets no LANG, so output is decoded
+  # as US-ASCII and binary-fail's \377 fails the exec in both agents.
+  exec { 'default-ok':      command => '/bin/sh -c "echo quiet"' }
+  exec { 'default-fail':    command => '/bin/sh -c "printf \"a\\n\\n  b\\n\\n\"; exit 2"' }
+  exec { 'true-ok':         command => '/bin/sh -c "printf \"x\\r\\ny\\n\""', logoutput => true }
+  exec { 'false-fail':      command => '/bin/sh -c "echo hidden; exit 2"', logoutput => false }
+  exec { 'stderr-fail':     command => '/bin/sh -c "echo to-out; echo to-err >&2; exit 1"' }
+  exec { 'binary-fail':     command => '/bin/sh -c "printf \"\\377\\376bad\\n\"; exit 1"' }
+  exec { 'empty-fail':      command => '/bin/sh -c "exit 1"' }
+  exec { 'noeol-true':      command => '/bin/sh -c "printf last-no-eol"', logoutput => true }
+  exec { 'lo-string':       command => '/bin/sh -c "echo s"', logoutput => 'true' }
+  exec { 'sens-true':       command => Sensitive('/bin/sh -c "echo s-true"'), logoutput => true }
+  exec { 'sens-empty':      command => Sensitive('/bin/sh -c "exit 5"') }
+  exec { 'sens-unless':     command => '/bin/sh -c "echo s-unless; exit 6"', unless => Sensitive('/bin/false') }
+  exec { 'sens-ok-default': command => Sensitive('/bin/sh -c "echo s-ok"') }
+  notify { 'kick': message => 'kick' }
+  exec { 'refresh-true': command => '/bin/sh -c "echo refreshed"', refreshonly => true, logoutput => true, subscribe => Notify['kick'] }
+  exec { 'refresh-fail': command => '/bin/sh -c "echo refresh-broke; exit 4"', refreshonly => true, subscribe => Notify['kick'] }
+  exec { 'rs-true': command => Sensitive('/bin/sh -c "echo rs"'), refreshonly => true, logoutput => true, subscribe => Notify['kick'] }
+  exec { 'rs-fail': command => Sensitive('/bin/sh -c "echo rsf; exit 3"'), refreshonly => true, subscribe => Notify['kick'] }
 EOF
 
 cat >> "$WORK/site.pp" <<EOF || exit 2
@@ -318,8 +457,11 @@ start_side() {
   podman run --name "$name" --hostname spine.example --detach "$IMAGE" \
     sleep 900 >/dev/null 2>&1 || return 2
   podman cp "$WORK/catalog.json" "$name:/tmp/catalog.json" >/dev/null 2>&1 || return 2
+  podman cp "$HERE/lib" "$name:/tmp/gatelib" >/dev/null 2>&1 || return 2
   podman exec "$name" sh -c 'mkdir -p /tmp/target' >/dev/null 2>&1 || return 2
   podman exec "$name" sh -c "$SEED_LATEST" || return 2
+  podman exec "$name" sh -c "$SEED_VALIDATE" || return 2
+  podman exec "$name" sh -c "$SEED_SENSITIVE" || return 2
   return 0
 }
 
@@ -329,22 +471,17 @@ start_side "$RUBY_SIDE" || {
 }
 podman exec "$RUBY_SIDE" sh -c '
   /opt/puppetlabs/bin/puppet apply --catalog /tmp/catalog.json \
-    --report --reports store --reportdir /tmp/ruby
+    --report --reports gatejson --libdir /tmp/gatelib --reportdir /tmp/ruby
 ' >"$WORK/ruby.out" 2>&1
 
-# Ruby's report is a YAML object graph; convert it to the same data hash a
-# report processor or PuppetDB would receive, which is the surface that has to
-# match. Converted INSIDE the container, with the image's vendored ruby and its
-# openvox: the host's Ruby is the one that cannot fork, and loading a different
-# Puppet to deserialise this image's report would be a third implementation in
-# the comparison.
-podman exec "$RUBY_SIDE" sh -c '
-  y="$(find /tmp/ruby -name "*.yaml" | head -1)"
-  [ -n "$y" ] || exit 3
-  /opt/puppetlabs/puppet/bin/ruby -ryaml -rpuppet -rjson -e "
-    puts YAML.unsafe_load_file(ARGV[0]).to_data_hash.to_json
-  " "$y"
-' >"$WORK/ruby.json" 2>"$WORK/convert.err"
+# Ruby's report is captured by tests/spine/lib/puppet/reports/gatejson.rb as
+# the data hash a report processor or PuppetDB would receive, which is the
+# surface that has to match; that file records why it is captured live rather
+# than converted from the stored YAML. Captured INSIDE the container, by the
+# image's own openvox: the host's Ruby is the one that cannot fork, and loading
+# a different Puppet to read this image's report would be a third
+# implementation in the comparison.
+podman exec "$RUBY_SIDE" cat /tmp/ruby/gate.json >"$WORK/ruby.json" 2>"$WORK/convert.err"
 if [ ! -s "$WORK/ruby.json" ]; then
   echo "report-diff-container: Ruby wrote no usable report; there is nothing to" >&2
   echo "report-diff-container: compare against" >&2
@@ -406,21 +543,43 @@ then
   exit 2
 fi
 
+# keep_evidence: the divergence list names the fields, but reading why needs
+# the two reports side by side, and the work tree is about to go.
+keep_evidence() {
+  mkdir -p "$EVIDENCE" \
+    && cp "$WORK/ruby.json" "$EVIDENCE/container-ruby.json" \
+    && cp "$WORK/go.json" "$EVIDENCE/container-voxagent.json" \
+    && cp "$WORK/catalog.json" "$EVIDENCE/container-catalog.json" \
+    && echo "report-diff-container: the two reports and the catalog are in $EVIDENCE" >&2
+}
+
 "$GATEKIT" compare-reports \
   "$WORK/ruby.json" "$WORK/go.json" "$HERE/allowlist.json"
 rc=$?
 case "$rc" in
   0) echo "report-diff-container: reports agree outside the allowlist" ;;
   1)
-    # Keep the evidence. The divergence list names the fields, but reading why
-    # needs the two reports side by side, and the work tree is about to go.
-    mkdir -p "$EVIDENCE" \
-      && cp "$WORK/ruby.json" "$EVIDENCE/container-ruby.json" \
-      && cp "$WORK/go.json" "$EVIDENCE/container-voxagent.json" \
-      && cp "$WORK/catalog.json" "$EVIDENCE/container-catalog.json" \
-      && echo "report-diff-container: the two reports and the catalog are in $EVIDENCE" >&2
+    keep_evidence
     echo "report-diff-container: reports diverge" >&2
     ;;
   *) echo "report-diff-container: the comparison could not run" >&2 ;;
 esac
+# The walk order: compare-reports matches statuses by ref and logs as a
+# multiset, so it cannot see the order resources were evaluated in.
+# compare-order reads it from each report's log order. Could-not-run (2)
+# outranks a divergence (1), which outranks agreement.
+"$GATEKIT" compare-order "$WORK/ruby.json" "$WORK/go.json"
+order_rc=$?
+case "$order_rc" in
+  0) ;;
+  1)
+    [ "$rc" -eq 1 ] || keep_evidence
+    echo "report-diff-container: the walk order diverges" >&2
+    ;;
+  *)
+    echo "report-diff-container: the walk order could not be compared" >&2
+    order_rc=2
+    ;;
+esac
+[ "$order_rc" -gt "$rc" ] && rc=$order_rc
 exit "$rc"

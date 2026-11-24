@@ -1,0 +1,8 @@
+# The G5 base with systemd as PID 1, for the service differential.
+#
+# systemd 257 is already installed in the base (measured), so nothing is added;
+# booting it is the whole difference. The base is never rebuilt here: a rebuild
+# would float the openvox version report-diff-container.sh pins.
+FROM localhost/fleet-node-el:latest
+STOPSIGNAL SIGRTMIN+3
+CMD ["/sbin/init"]

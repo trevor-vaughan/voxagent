@@ -43,10 +43,6 @@ command -v "$PUPPET" >/dev/null 2>&1 || {
   echo "derive-run-to-run: $PUPPET is not on PATH; there is nothing to measure" >&2
   exit 2
 }
-command -v ruby >/dev/null 2>&1 || {
-  echo "derive-run-to-run: ruby is not on PATH; Ruby's report cannot be converted" >&2
-  exit 2
-}
 # Refuses a missing or stale binary -- a stale one is a false green; fresh.sh
 # records why.
 # shellcheck source=fresh.sh
@@ -87,23 +83,17 @@ C=(--confdir "$WORK/conf" --vardir "$WORK/var" --codedir "$WORK/code")
 for n in 1 2; do
   rm -rf "${WORK:?}/target" && mkdir -p "$WORK/target" || exit 2
   "$PUPPET" apply --catalog "$WORK/catalog.json" "${C[@]}" \
-    --report --reports store --reportdir "$WORK/r$n" >/dev/null 2>"$WORK/apply$n.err"
-  report="$(find "$WORK/r$n" -name '*.yaml' | head -1)"
-  [ -n "$report" ] || {
+    --report --reports gatejson --libdir "$HERE/lib" --reportdir "$WORK/r$n" \
+    >/dev/null 2>"$WORK/apply$n.err"
+  # Captured as the gates capture it, by lib/puppet/reports/gatejson.rb.
+  [ -s "$WORK/r$n/gate.json" ] || {
     echo "derive-run-to-run: run $n wrote no report" >&2
     sed -n '1,10p' "$WORK/apply$n.err" >&2
     exit 2
   }
-  ruby -ryaml -rpuppet -rjson -e '
-    puts YAML.unsafe_load_file(ARGV[0]).to_data_hash.to_json
-  ' "$report" > "$WORK/r$n.json" 2>"$WORK/convert$n.err" || {
-    echo "derive-run-to-run: converting run $n's report failed" >&2
-    sed -n '1,10p' "$WORK/convert$n.err" >&2
-    exit 2
-  }
 done
 
-"$GATEKIT" run-to-run "$WORK/r1.json" "$WORK/r2.json" "$HERE/allowlist.json"
+"$GATEKIT" run-to-run "$WORK/r1/gate.json" "$WORK/r2/gate.json" "$HERE/allowlist.json"
 rc=$?
 case "$rc" in
   0) echo "derive-run-to-run: the allowlist covers exactly what varies" ;;

@@ -1,6 +1,8 @@
 package main
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -22,6 +24,7 @@ func TestBadArgumentsCannotRun(t *testing.T) {
 		{"no-such-subcommand"},
 		{"compare-reports", "a", "b"},
 		{"run-to-run", "a", "b", "c", "d"},
+		{"compare-order", "a"},
 		{"g5-reference", "a", "b", "c"},
 	} {
 		code, _, stderr := gatekit(args...)
@@ -89,5 +92,60 @@ func TestG5ReferenceExitCodes(t *testing.T) {
 		if (code == exitFinding) != (stdout != "") {
 			t.Errorf("%s: exit %d but stdout %q; complaints and a finding go together", tc.report, code, stdout)
 		}
+	}
+}
+
+func TestCompareOrderExitCodes(t *testing.T) {
+	dir := t.TempDir()
+	report := func(name string, sources ...string) string {
+		logs := make([]string, len(sources))
+		for i, s := range sources {
+			logs[i] = `{"source":"` + s + `"}`
+		}
+		path := filepath.Join(dir, name)
+		doc := `{"resource_statuses":{` +
+			`"A":{"containment_path":["Stage[main]","A"]},"B":{"containment_path":["Stage[main]","B"]}},` +
+			`"logs":[` + strings.Join(logs, ",") + `]}`
+		if err := os.WriteFile(path, []byte(doc), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		return path
+	}
+	ab := report("ab.json", "/Stage[main]/A/x", "/Stage[main]/B/x")
+	ba := report("ba.json", "/Stage[main]/B/x", "/Stage[main]/A/x")
+	onlyA := report("a.json", "/Stage[main]/A/x")
+	unattributed := report("none.json", "/elsewhere/A", "/elsewhere/B")
+	notJSON := filepath.Join(dir, "bad.json")
+	if err := os.WriteFile(notJSON, []byte("{"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		name       string
+		ruby, vox  string
+		want       int
+		wantOutput string // in stdout, or in stderr for exit 2
+	}{
+		{"agree", ab, ab, exitExpected, "walk order agrees over 2 resources\n"},
+		{"diverge", ab, ba, exitFinding, "walk order diverges at 0: ruby A, voxagent B"},
+		{"logged on one side", ab, onlyA, exitFinding, "B logged only by ruby"},
+		{"thin", ab, unattributed, exitFailure, "compared 0 of 2 logging resources; attribution failed"},
+		{"unreadable", ab, notJSON, exitFailure, "could not read an input"},
+	} {
+		code, stdout, stderr := gatekit("compare-order", tc.ruby, tc.vox)
+		if code != tc.want || !strings.Contains(stdout+stderr, tc.wantOutput) {
+			t.Errorf("%s: exit %d, stdout %q, stderr %q; want %d and %q", tc.name, code, stdout, stderr, tc.want, tc.wantOutput)
+		}
+	}
+}
+
+func TestCompareOrderWithNothingToCompareCannotRun(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "empty.json")
+	doc := `{"resource_statuses":{"A":{"containment_path":["Stage[main]","A"]}},"logs":[{"source":"/elsewhere/A"}]}`
+	if err := os.WriteFile(path, []byte(doc), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	code, stdout, stderr := gatekit("compare-order", path, path)
+	if code != exitFailure || stdout != "" || !strings.Contains(stderr, "nothing to compare") {
+		t.Errorf("exit %d, stdout %q, stderr %q; want 2 and nothing to compare", code, stdout, stderr)
 	}
 }

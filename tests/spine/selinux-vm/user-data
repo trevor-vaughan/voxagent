@@ -1,0 +1,31 @@
+#cloud-config
+# The CentOS Stream 10 guest report-diff-selinux.sh boots. The image ships
+# SELinux enforcing with selinux-policy-targeted; the gate asserts `getenforce`
+# rather than trusting that.
+#
+# @GATE_SSH_KEY@ is replaced by the public half of a key the gate generates for
+# each run, so no private key is ever committed.
+#
+# openvox is the oracle and is pinned: the release RPM by its SHA256 (it is not
+# signed by a key the guest already trusts) and the agent by version. dnf
+# GPG-checks every repository package, openvox's with the key the release RPM
+# installs.
+# libselinux-utils carries selabel_lookup and matchpathcon, which voxagent
+# needs; dosfstools makes the vfat filesystem that has no label support.
+# A failure in runcmd puts cloud-init in `error`, which the gate reads.
+users:
+  - name: gate
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    lock_passwd: true
+    ssh_authorized_keys:
+      - @GATE_SSH_KEY@
+ssh_pwauth: false
+package_update: false
+runcmd:
+  - - sh
+    - -ec
+    - |
+      curl -fsSL -o /root/openvox8-release.rpm https://yum.voxpupuli.org/openvox8-release-el-10.noarch.rpm
+      echo 'f0615f3bc0d5f1ec1740f794abfe8da545519dba96d88dfcd945a2032798df3a  /root/openvox8-release.rpm' | sha256sum -c -
+      dnf -y install /root/openvox8-release.rpm
+      dnf -y install openvox-agent-8.29.0 libselinux-utils dosfstools

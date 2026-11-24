@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -159,14 +160,14 @@ func TestPreflightRefusesAndChangesNothing(t *testing.T) {
 	cat := writeCatalog(t, dir, []map[string]any{
 		fileResource(target, map[string]any{"ensure": "file", "content": "x\n"}),
 		fileResource(filepath.Join(dir, "tree"),
-			map[string]any{"ensure": "directory", "recurse": true}),
+			map[string]any{"ensure": "directory", "checksum": "md5"}),
 	})
 
 	_, stderr, code := run(t, bin, "apply", "--catalog", cat)
 	if code != 2 {
 		t.Errorf("plain exit = %d, want 2 (could not run)\n%s", code, stderr)
 	}
-	if !strings.Contains(stderr, "recurse") {
+	if !strings.Contains(stderr, `attribute "checksum" is not implemented`) {
 		t.Errorf("stderr does not name the unimplemented attribute:\n%s", stderr)
 	}
 	if !strings.Contains(stderr, "outcome=could-not-run") {
@@ -607,13 +608,13 @@ func TestPreflightGapIsReportedBeforeValidation(t *testing.T) {
 	dir := t.TempDir()
 	t.Chdir(dir)
 	cat := writeCatalog(t, dir, []map[string]any{
-		fileResource("rel/f1", map[string]any{"ensure": "link"}),
+		fileResource("rel/f1", map[string]any{"source": "puppet:///modules/m/f"}),
 	})
 	_, stderr, code := run(t, bin, "apply", "--catalog", cat)
 	if code != 2 {
 		t.Errorf("exit = %d, want 2\n%s", code, stderr)
 	}
-	if !strings.Contains(stderr, `ensure => "link" is not implemented`) {
+	if !strings.Contains(stderr, `source => "puppet:///modules/m/f" is not implemented`) {
 		t.Errorf("stderr lacks the pre-flight gap:\n%s", stderr)
 	}
 	if strings.Contains(stderr, "fully qualified") {
@@ -621,42 +622,27 @@ func TestPreflightGapIsReportedBeforeValidation(t *testing.T) {
 	}
 }
 
-func TestFileEnsureLinkIsRefusedBeforeApplying(t *testing.T) {
+// Measured before pre-flight judged non-strings: a JSON false skipped value
+// bounding, the valid file was written, and the run exited 6 -- a
+// half-applied catalog. false is now absent; true, which Puppet fails as a link
+// target that is not a path, is refused by validation before anything runs.
+func TestFileEnsureTrueIsRefusedBeforeApplying(t *testing.T) {
 	bin := buildBinary(t)
 	dir := t.TempDir()
 	valid := filepath.Join(dir, "valid.txt")
 	cat := writeCatalog(t, dir, []map[string]any{
 		fileResource(valid, map[string]any{"ensure": "file", "content": "x\n"}),
-		fileResource(filepath.Join(dir, "l"), map[string]any{"ensure": "link"}),
+		fileResource(filepath.Join(dir, "b"), map[string]any{"ensure": true}),
 	})
 	_, stderr, code := run(t, bin, "apply", "--catalog", cat)
 	if code != 2 {
 		t.Errorf("exit = %d, want 2\n%s", code, stderr)
 	}
-	if _, err := os.Stat(valid); err == nil {
-		t.Error("the valid resource was applied despite the ensure => link refusal")
-	}
-}
-
-// Measured before the fix: a JSON false skipped value bounding, the valid file
-// was written, and the run exited 6 -- a half-applied catalog.
-func TestFileEnsureBooleanIsRefusedBeforeApplying(t *testing.T) {
-	bin := buildBinary(t)
-	dir := t.TempDir()
-	valid := filepath.Join(dir, "valid.txt")
-	cat := writeCatalog(t, dir, []map[string]any{
-		fileResource(valid, map[string]any{"ensure": "file", "content": "x\n"}),
-		fileResource(filepath.Join(dir, "b"), map[string]any{"ensure": false}),
-	})
-	_, stderr, code := run(t, bin, "apply", "--catalog", cat)
-	if code != 2 {
-		t.Errorf("exit = %d, want 2\n%s", code, stderr)
-	}
-	if !strings.Contains(stderr, `ensure => "false" is not implemented`) {
-		t.Errorf("stderr lacks the pre-flight gap:\n%s", stderr)
+	if !strings.Contains(stderr, `ensure => true (bool) is not implemented`) {
+		t.Errorf("stderr lacks the refusal:\n%s", stderr)
 	}
 	if _, err := os.Stat(valid); err == nil {
-		t.Error("the valid resource was applied despite the ensure => false refusal")
+		t.Error("the valid resource was applied despite the ensure => true refusal")
 	}
 }
 
@@ -686,5 +672,622 @@ func TestExecRelativeCwdIsRefusedAndRunsNothing(t *testing.T) {
 		if _, err := os.Stat(p); err == nil {
 			t.Errorf("%s exists: the command ran despite the refusal", p)
 		}
+	}
+}
+
+// service is registered: a catalog with one is not refused as an unimplemented
+// type. A host whose PID 1 is not systemd refuses the whole catalog as invalid
+// (Service.Validate); a systemd host applies it. The test host may be either,
+// so it asserts only that the pre-flight coverage gap is gone.
+func TestServiceIsRegistered(t *testing.T) {
+	bin := buildBinary(t)
+	dir := t.TempDir()
+	cat := writeCatalog(t, dir, []map[string]any{{
+		"type": "Service", "title": "voxagent-no-such-unit", "tags": []any{},
+		"parameters": map[string]any{"enable": false},
+	}})
+	_, stderr, _ := run(t, bin, "apply", "--catalog", cat, "--noop")
+	if strings.Contains(stderr, "resource type Service is not implemented") {
+		t.Errorf("service is still refused at pre-flight:\n%s", stderr)
+	}
+	if strings.Contains(stderr, "gap(s)") {
+		t.Errorf("pre-flight reported gaps:\n%s", stderr)
+	}
+	if strings.Contains(stderr, "systemd is not the init system") &&
+		!strings.Contains(stderr, "invalid resource(s)") {
+		t.Errorf("non-systemd host did not refuse the catalog as invalid:\n%s", stderr)
+	}
+}
+
+// The core promise on a host that cannot run service: a catalog holding a
+// valid file and a service is refused whole, before the file is written,
+// rather than applying the file and failing the service (D-22).
+func TestServiceOnANonSystemdHostRefusesTheWholeCatalog(t *testing.T) {
+	comm, err := os.ReadFile("/proc/1/comm")
+	if err != nil {
+		t.Skipf("cannot read /proc/1/comm: %v", err)
+	}
+	if strings.Contains(string(comm), "systemd") {
+		t.Skip("PID 1 is systemd here; the refusal this test pins cannot happen")
+	}
+	bin := buildBinary(t)
+	dir := t.TempDir()
+	valid := filepath.Join(dir, "valid.txt")
+	cat := writeCatalog(t, dir, []map[string]any{
+		fileResource(valid, map[string]any{"ensure": "file", "content": "x\n"}),
+		{
+			"type": "Service", "title": "voxagent-no-such-unit", "tags": []any{},
+			"parameters": map[string]any{"ensure": "running"},
+		},
+	})
+
+	_, stderr, code := run(t, bin, "apply", "--catalog", cat)
+	if code != 2 {
+		t.Errorf("exit = %d, want 2 (could not run)\n%s", code, stderr)
+	}
+	if !strings.Contains(stderr, "outcome=could-not-run") {
+		t.Errorf("stderr lacks outcome=could-not-run:\n%s", stderr)
+	}
+	if !strings.Contains(stderr, "systemd is not the init system") {
+		t.Errorf("stderr does not name the reason:\n%s", stderr)
+	}
+	if _, err := os.Stat(valid); err == nil {
+		t.Errorf("%s was written despite the refusal", valid)
+	}
+}
+
+// readReport reads the one report a run wrote into dir.
+func readReport(t *testing.T, dir string) map[string]any {
+	t.Helper()
+	entries, err := os.ReadDir(dir)
+	if err != nil || len(entries) != 1 {
+		t.Fatalf("want exactly one report in %s: %v (err %v)", dir, entries, err)
+	}
+	b, err := os.ReadFile(filepath.Join(dir, entries[0].Name()))
+	if err != nil {
+		t.Fatalf("read report: %v", err)
+	}
+	var rep map[string]any
+	if err := json.Unmarshal(b, &rep); err != nil {
+		t.Fatalf("report is not JSON: %v", err)
+	}
+	return rep
+}
+
+// End to end: a source is copied, and a source missing everywhere is a
+// resource failure naming the catalog's environment, whose dependent is
+// skipped while the rest of the catalog applies.
+func TestFileSourceAppliesAndAMissingSourceSkipsItsDependent(t *testing.T) {
+	bin := buildBinary(t)
+	dir := t.TempDir()
+	src := filepath.Join(dir, "src.txt")
+	if err := os.WriteFile(src, []byte("from source\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	copied := filepath.Join(dir, "copied.txt")
+	never := filepath.Join(dir, "never.txt")
+	reportDir := filepath.Join(dir, "reports")
+	cat := writeCatalog(t, dir, []map[string]any{
+		fileResource(copied, map[string]any{"source": src}),
+		fileResource(never, map[string]any{"source": []any{filepath.Join(dir, "absent")}}),
+		notifyResource("after", "never", map[string]any{"require": []any{"File[" + never + "]"}}),
+	})
+	_, stderr, code := run(t, bin, "apply", "--catalog", cat, "--detailed-exitcodes", "--report-dir", reportDir)
+	if code != 6 {
+		t.Fatalf("exit = %d, want 6 (changes and failures)\n%s", code, stderr)
+	}
+	if b, err := os.ReadFile(copied); err != nil || string(b) != "from source\n" {
+		t.Errorf("copied = %q (err %v)", b, err)
+	}
+	if _, err := os.Lstat(never); !os.IsNotExist(err) {
+		t.Errorf("the resource with a missing source created its path: %v", err)
+	}
+	rep := readReport(t, reportDir)
+	wantErr := "Could not evaluate: Could not retrieve information from environment production source(s) file://" +
+		filepath.Join(dir, "absent")
+	found := false
+	for _, l := range rep["logs"].([]any) {
+		entry := l.(map[string]any)
+		found = found || (entry["level"] == "err" && entry["message"] == wantErr)
+	}
+	if !found {
+		t.Errorf("no err log %q in %v", wantErr, rep["logs"])
+	}
+	statuses := rep["resource_statuses"].(map[string]any)
+	if after, ok := statuses["Notify[after]"].(map[string]any); !ok || after["skipped"] != true {
+		t.Errorf("Notify[after] = %v, want skipped", statuses["Notify[after]"])
+	}
+}
+
+// End to end: recursion from a source with purge, beside an explicitly managed
+// child and a subscriber. The managed child survives the purge, a symlink is
+// unlinked without touching its target, generated children report null
+// file/line, and the subscriber is refreshed by exactly one event. Review
+// Focus 2 and 5.
+func TestRecursePurgeAppliesAsOneUnit(t *testing.T) {
+	bin := buildBinary(t)
+	dir := t.TempDir()
+	src, dst := filepath.Join(dir, "src"), filepath.Join(dir, "dst")
+	precious := filepath.Join(dir, "precious")
+	for path, body := range map[string]string{
+		filepath.Join(src, "new.txt"):          "new\n",
+		filepath.Join(src, "sub", "inner.txt"): "inner\n",
+		filepath.Join(dst, "stale.txt"):        "stale\n",
+		filepath.Join(dst, "keep.txt"):         "old\n",
+		precious:                               "precious\n",
+	} {
+		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := os.Symlink(precious, filepath.Join(dst, "link")); err != nil {
+		t.Fatal(err)
+	}
+	marker := filepath.Join(dir, "refreshed")
+	reportDir := filepath.Join(dir, "reports")
+	cat := writeCatalog(t, dir, []map[string]any{
+		fileResource(dst, map[string]any{"ensure": "directory", "source": src, "recurse": true, "purge": true}),
+		fileResource(filepath.Join(dst, "keep.txt"), map[string]any{"ensure": "file", "content": "kept\n"}),
+		execResource("reload", "/bin/sh -c 'echo x >> "+marker+"'", map[string]any{
+			"refreshonly": true, "subscribe": []any{"File[" + dst + "]"}}),
+	})
+	_, stderr, code := run(t, bin, "apply", "--catalog", cat, "--detailed-exitcodes", "--report-dir", reportDir)
+	if code != 2 {
+		t.Fatalf("exit = %d, want 2 (changes, no failures)\n%s", code, stderr)
+	}
+	for path, want := range map[string]string{
+		filepath.Join(dst, "new.txt"):          "new\n",
+		filepath.Join(dst, "sub", "inner.txt"): "inner\n",
+		filepath.Join(dst, "keep.txt"):         "kept\n",
+		precious:                               "precious\n",
+	} {
+		if b, err := os.ReadFile(path); err != nil || string(b) != want {
+			t.Errorf("%s = %q (err %v), want %q", path, b, err, want)
+		}
+	}
+	for _, gone := range []string{"stale.txt", "link"} {
+		if _, err := os.Lstat(filepath.Join(dst, gone)); !os.IsNotExist(err) {
+			t.Errorf("%s survived the purge: %v", gone, err)
+		}
+	}
+	if b, err := os.ReadFile(marker); err != nil || string(b) != "x\n" {
+		t.Errorf("marker = %q (err %v), want exactly one refresh", b, err)
+	}
+	rep := readReport(t, reportDir)
+	statuses := rep["resource_statuses"].(map[string]any)
+	child, ok := statuses["File["+filepath.Join(dst, "new.txt")+"]"].(map[string]any)
+	if !ok || child["file"] != nil || child["line"] != nil {
+		t.Errorf("generated child status = %v, want present with null file and line", child)
+	}
+	var messages []string
+	for _, ev := range statuses["Exec[reload]"].(map[string]any)["events"].([]any) {
+		messages = append(messages, ev.(map[string]any)["message"].(string))
+	}
+	if !slices.Equal(messages, []string{"Triggered 'refresh' from 1 event"}) {
+		t.Errorf("Exec[reload] events = %v, want one refresh from 1 event", messages)
+	}
+}
+
+// A catalog File written with a trailing or doubled slash is the same path
+// to Puppet (type/file.rb:66-73 munges it clean), so a recurse+purge parent
+// leaves it and everything under it alone, exactly as for a clean title;
+// an unmanaged sibling is still purged. Measured on Puppet 8.10.0 for the
+// trailing slash.
+func TestRecursePurgeExemptsUncleanlyWrittenCatalogFiles(t *testing.T) {
+	bin := buildBinary(t)
+	dir := t.TempDir()
+	dst := filepath.Join(dir, "dst")
+	for _, rel := range []string{"keep/x", "keep2", "stale"} {
+		path := filepath.Join(dst, rel)
+		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, []byte("x\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	cat := writeCatalog(t, dir, []map[string]any{
+		fileResource(dst, map[string]any{"ensure": "directory", "recurse": true, "purge": true}),
+		fileResource(dst+"/keep/", map[string]any{"ensure": "directory"}),
+		fileResource(dst+"//keep2", map[string]any{"ensure": "file"}),
+	})
+	_, stderr, code := run(t, bin, "apply", "--catalog", cat, "--detailed-exitcodes")
+	if code != 2 {
+		t.Fatalf("exit = %d, want 2 (the purge changed something, no failures)\n%s", code, stderr)
+	}
+	// Content too: a purged keep2 would be recreated empty by its own
+	// ensure => file.
+	for _, kept := range []string{"keep/x", "keep2"} {
+		if b, err := os.ReadFile(filepath.Join(dst, kept)); err != nil || string(b) != "x\n" {
+			t.Errorf("%s = %q (err %v): purged though a catalog File manages it", kept, b, err)
+		}
+	}
+	if _, err := os.Lstat(filepath.Join(dst, "stale")); !os.IsNotExist(err) {
+		t.Errorf("the unmanaged stale survived the purge: %v", err)
+	}
+}
+
+// End to end, a trailing slash does not walk a File through a symlink: the
+// title is cleaned to the path Puppet's munge gives it (type/file.rb:66-73)
+// before anything reads the filesystem, so under links => manage the link
+// itself is replaced by the directory, as Puppet replaces it (measured), and
+// its target keeps its mode.
+func TestTrailingSlashTitleOverASymlinkReplacesTheLink(t *testing.T) {
+	bin := buildBinary(t)
+	dir := t.TempDir()
+	target := filepath.Join(dir, "real")
+	if err := os.Mkdir(target, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(target, filepath.Join(dir, "link")); err != nil {
+		t.Fatal(err)
+	}
+	cat := writeCatalog(t, dir, []map[string]any{
+		fileResource(dir+"/link/", map[string]any{"ensure": "directory", "mode": "0700"}),
+	})
+	_, stderr, code := run(t, bin, "apply", "--catalog", cat, "--detailed-exitcodes")
+	if code != 2 {
+		t.Errorf("exit = %d, want 2 (the link was replaced)\n%s", code, stderr)
+	}
+	if fi, err := os.Lstat(filepath.Join(dir, "link")); err != nil || !fi.IsDir() {
+		t.Errorf("link = %v (err %v), want a directory in its place", fi, err)
+	}
+	fi, err := os.Stat(target)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := fi.Mode().Perm(); got != 0o755 {
+		t.Errorf("target mode = %o, want 0755 (chmod went through the link)", got)
+	}
+}
+
+// --vardir is where backup => 'puppet' keeps the old content: the
+// clientbucket under it, and nothing beside the file.
+func TestVardirHoldsTheClientbucket(t *testing.T) {
+	bin := buildBinary(t)
+	dir, vardir := t.TempDir(), t.TempDir()
+	path := filepath.Join(dir, "f")
+	if err := os.WriteFile(path, []byte("old\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	cat := writeCatalog(t, dir, []map[string]any{
+		fileResource(path, map[string]any{"content": "new\n", "backup": "puppet"}),
+	})
+	_, stderr, code := run(t, bin, "apply", "--catalog", cat, "--vardir", vardir)
+	if code != 0 {
+		t.Fatalf("exit = %d\n%s", code, stderr)
+	}
+	const sum = "01d09d19c2139a46aebfb577780d123d7396e97201bc7ead210a2ebff8239dee"
+	contents := filepath.Join(vardir, "clientbucket", "0", "1", "d", "0", "9", "d", "1", "9", sum, "contents")
+	if b, err := os.ReadFile(contents); err != nil || string(b) != "old\n" {
+		t.Errorf("contents = %q, %v; want the old content", b, err)
+	}
+}
+
+func richNotify(message any) map[string]any {
+	return map[string]any{"type": "Notify", "title": "n", "tags": []any{}, "kind": "compilable_type",
+		"parameters": map[string]any{"message": message}}
+}
+
+// An ASCII Binary applies as the string it holds.
+func TestBinaryParameterAppliesAsAString(t *testing.T) {
+	bin := buildBinary(t)
+	dir := t.TempDir()
+	reports := filepath.Join(dir, "reports")
+	c := writeCatalog(t, dir, []map[string]any{richNotify(map[string]any{"__ptype": "Binary", "__pvalue": "aGVsbG8="})})
+	_, stderr, code := run(t, bin, "apply", "--catalog", c, "--report-dir", reports)
+	if code != 0 {
+		t.Fatalf("exit %d, stderr:\n%s", code, stderr)
+	}
+	st := readReport(t, reports)["resource_statuses"].(map[string]any)["Notify[n]"].(map[string]any)
+	ev := st["events"].([]any)[0].(map[string]any)
+	if ev["message"] != "defined 'message' as 'hello'" || ev["desired_value"] != "hello" {
+		t.Errorf("event = %v", ev)
+	}
+}
+
+// Ruby renders a non-ASCII Binary byte-wise; voxagent
+// refuses it on a native resource (D-51).
+func TestNonASCIIBinaryOnANativeResourceIsRefused(t *testing.T) {
+	bin := buildBinary(t)
+	dir := t.TempDir()
+	target := filepath.Join(dir, "a.txt")
+	c := writeCatalog(t, dir, []map[string]any{
+		richNotify(map[string]any{"__ptype": "Binary", "__pvalue": "w6k="}),
+		fileResource(target, map[string]any{"ensure": "file", "content": "x\n"}),
+	})
+	_, stderr, code := run(t, bin, "apply", "--catalog", c)
+	const want = "voxagent: Notify[n]: parameter message holds a Binary value that is not ASCII, " +
+		"which voxagent does not support on a native resource"
+	if code != 2 || !strings.Contains(stderr, want) || !strings.Contains(stderr, "nothing applied") {
+		t.Errorf("exit %d, stderr:\n%s", code, stderr)
+	}
+	if _, err := os.Stat(target); err == nil {
+		t.Error("a resource was applied despite the refusal")
+	}
+}
+
+// Deferred is refused before the extension host starts,
+// whose resolve_and_replace would otherwise resolve or defer it.
+func TestDeferredIsRefusedBeforeTheHost(t *testing.T) {
+	bin := buildBinary(t)
+	dir := t.TempDir()
+	c := writeCatalog(t, dir, []map[string]any{
+		richNotify(map[string]any{"__ptype": "Deferred", "name": "join", "arguments": []any{[]any{"a", "b"}, "-"}}),
+		ext("Vox_value", "a", map[string]any{"value": "x"}),
+	})
+	_, stderr, code := run(t, bin, "apply", "--catalog", c, "--ruby", "/nonexistent/ruby")
+	if code != 2 {
+		t.Errorf("exit %d, want 2", code)
+	}
+	for _, want := range []string{
+		"voxagent: Notify[n]: parameter message is Deferred; voxagent does not resolve Deferred values\n",
+		"voxagent: 1 Deferred value(s); nothing applied\n",
+	} {
+		if !strings.Contains(stderr, want) {
+			t.Errorf("stderr lacks %q:\n%s", want, stderr)
+		}
+	}
+	if strings.Contains(stderr, "extension host is unavailable") {
+		t.Errorf("the host was started before the refusal:\n%s", stderr)
+	}
+}
+
+// A Deferred wrapped in a Sensitive, the usual shape of a secret looked up at
+// apply time, is refused before the host too: Puppet's resolver would find it.
+func TestSensitiveDeferredOnATier3ResourceIsRefusedBeforeTheHost(t *testing.T) {
+	bin := buildBinary(t)
+	dir := t.TempDir()
+	c := writeCatalog(t, dir, []map[string]any{ext("Vox_value", "a", map[string]any{"value": map[string]any{
+		"__ptype": "Sensitive", "__pvalue": map[string]any{"__ptype": "Deferred", "name": "join", "arguments": []any{[]any{"a", "b"}, "-"}}}})})
+	_, stderr, code := run(t, bin, "apply", "--catalog", c, "--ruby", "/nonexistent/ruby")
+	if code != 2 {
+		t.Errorf("exit %d, want 2", code)
+	}
+	for _, want := range []string{
+		"voxagent: Vox_value[a]: parameter value is Deferred; voxagent does not resolve Deferred values\n",
+		"voxagent: 1 Deferred value(s); nothing applied\n",
+	} {
+		if !strings.Contains(stderr, want) {
+			t.Errorf("stderr lacks %q:\n%s", want, stderr)
+		}
+	}
+	if strings.Contains(stderr, "extension host is unavailable") {
+		t.Errorf("the host was started before the refusal:\n%s", stderr)
+	}
+}
+
+// Invalid base64 fails the whole catalog, as Ruby's
+// strict_decode64 does.
+func TestInvalidBase64IsCouldNotRun(t *testing.T) {
+	bin := buildBinary(t)
+	dir := t.TempDir()
+	c := writeCatalog(t, dir, []map[string]any{richNotify(map[string]any{"__ptype": "Binary", "__pvalue": "aGVsbG8"})})
+	_, stderr, code := run(t, bin, "apply", "--catalog", c)
+	const want = "voxagent: Could not deserialize catalog from rich_data_json: Could not intern from rich_data_json: invalid base64\n"
+	if code != 2 || !strings.Contains(stderr, want) {
+		t.Errorf("exit %d, stderr:\n%s", code, stderr)
+	}
+}
+
+// End to end on real paths: unrelated resources
+// apply in catalog order, a recursed directory's generated children follow it
+// contiguously in bytewise path order (a-b before a/x), and whatever depends on
+// the directory -- including the catalog-managed d/c, through its autorequire
+// -- waits for the whole unit. after_d runs before File[d] because File[d] is
+// blocked by before_d: the Key orders only the ready set.
+func TestWalkOrderAroundARecursedDirectory(t *testing.T) {
+	bin := buildBinary(t)
+	dir := t.TempDir()
+	d := filepath.Join(dir, "d")
+	for _, sub := range []string{"a", "zdir"} {
+		if err := os.MkdirAll(filepath.Join(d, sub), 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for _, f := range []string{"0", "a/x", "a-b", "b", "c", "zdir/q"} {
+		if err := os.WriteFile(filepath.Join(d, f), []byte(f+"\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for _, p := range []string{d, filepath.Join(d, "a"), filepath.Join(d, "zdir")} {
+		if err := os.Chmod(p, 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	reportDir := filepath.Join(dir, "reports")
+	cat := writeCatalog(t, dir, []map[string]any{
+		notifyResource("first", "first", nil),
+		fileResource(d, map[string]any{"recurse": true, "mode": "0700"}),
+		notifyResource("after_d", "after_d", nil),
+		notifyResource("dep_on_d", "dep_on_d", map[string]any{"require": []any{"File[" + d + "]"}}),
+		fileResource(filepath.Join(d, "c"), map[string]any{"mode": "0600"}),
+		notifyResource("before_d", "before_d", map[string]any{"before": []any{"File[" + d + "]"}}),
+	})
+	_, stderr, code := run(t, bin, "apply", "--catalog", cat, "--detailed-exitcodes", "--report-dir", reportDir)
+	if code != 2 {
+		t.Fatalf("exit = %d, want 2 (changes, no failures)\n%s", code, stderr)
+	}
+	var got []string
+	for _, l := range readReport(t, reportDir)["logs"].([]any) {
+		source := l.(map[string]any)["source"].(string)
+		var name string
+		if i := strings.Index(source, "Notify["); i >= 0 {
+			name = source[i+len("Notify[") : strings.LastIndex(source, "]")]
+		} else if i := strings.Index(source, "File["+d); i >= 0 {
+			name = "d" + source[i+len("File["+d):strings.LastIndex(source, "]")]
+		} else {
+			continue
+		}
+		if !slices.Contains(got, name) {
+			got = append(got, name)
+		}
+	}
+	want := []string{"first", "after_d", "before_d", "d", "d/0", "d/a", "d/a-b", "d/a/x", "d/b",
+		"d/zdir", "d/zdir/q", "dep_on_d", "d/c"}
+	if !slices.Equal(got, want) {
+		t.Errorf("first log of each resource, in order:\n got %v\nwant %v", got, want)
+	}
+}
+
+// Ruby prints "Unable to mark 'cwd' as sensitive" for a parameter that is not a
+// property and applies the resource anyway. voxagent prints it on stderr
+// in Ruby's console form after validation, keeps it out of the report, and
+// still runs the exec.
+func TestApplyWarnsOnAnUnmarkableSensitiveParameter(t *testing.T) {
+	bin := buildBinary(t)
+	dir := t.TempDir()
+	marker := filepath.Join(dir, "ran")
+	e := execResource("e", "/usr/bin/touch "+marker, map[string]any{"cwd": dir})
+	e["sensitive_parameters"] = []any{"cwd"}
+	cat := writeCatalog(t, dir, []map[string]any{e})
+	reports := filepath.Join(dir, "reports")
+
+	_, stderr, code := run(t, bin, "apply", "--catalog", cat, "--report-dir", reports)
+	if code != 2 && code != 0 {
+		t.Fatalf("exit = %d, want the exec applied\n%s", code, stderr)
+	}
+	want := "Warning: /Exec[e]: Unable to mark 'cwd' as sensitive: cwd is a parameter and not a property, and cannot be automatically redacted.\n"
+	if !strings.Contains(stderr, want) {
+		t.Errorf("stderr lacks %q:\n%s", want, stderr)
+	}
+	if _, err := os.Stat(marker); err != nil {
+		t.Errorf("the exec did not run: %v", err)
+	}
+	b, err := json.Marshal(readReport(t, reports))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(b), "Unable to mark") {
+		t.Errorf("the warning is in the report: %s", b)
+	}
+}
+
+// A File's content is a property, so marking it warns about nothing.
+func TestApplyDoesNotWarnOnAMarkableSensitiveProperty(t *testing.T) {
+	bin := buildBinary(t)
+	dir := t.TempDir()
+	f := fileResource(filepath.Join(dir, "f"), map[string]any{"ensure": "file", "content": "x\n"})
+	f["sensitive_parameters"] = []any{"content"}
+	cat := writeCatalog(t, dir, []map[string]any{f})
+
+	_, stderr, _ := run(t, bin, "apply", "--catalog", cat)
+	if strings.Contains(stderr, "Unable to mark") {
+		t.Errorf("unexpected warning:\n%s", stderr)
+	}
+}
+
+// containedNotifyCatalog is a Notify "n" (message "n") in Class[main], so its
+// log source is Ruby's /Stage[main]/Main/Notify[n].
+func containedNotifyCatalog(t *testing.T, dir string) string {
+	t.Helper()
+	mainClass := map[string]any{"type": "Class", "title": "main", "tags": []any{}, "kind": "class",
+		"parameters": map[string]any{"name": "main"}}
+	stage := map[string]any{"type": "Stage", "title": "main", "tags": []any{}, "parameters": map[string]any{}}
+	path := writeCatalog(t, dir, []map[string]any{stage, mainClass, notifyResource("n", "n", nil)})
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var body map[string]any
+	if err := json.Unmarshal(raw, &body); err != nil {
+		t.Fatal(err)
+	}
+	body["edges"] = []map[string]string{{"source": "Stage[main]", "target": "Class[main]"},
+		{"source": "Class[main]", "target": "Notify[n]"}}
+	if raw, err = json.Marshal(body); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, raw, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	return path
+}
+
+// apply prints the run's log as Ruby's console does, at the level the flags
+// name, and the report holds exactly the levels printed. --debug implies
+// --verbose in either order.
+func TestApplyConsoleLevels(t *testing.T) {
+	notice := "Notice: /Stage[main]/Main/Notify[n]/message: defined 'message' as 'n'\n"
+	info := "Info: Applying configuration version '1'\n"
+	for _, tc := range []struct {
+		name        string
+		flags       []string
+		info, debug bool
+	}{
+		{"default", nil, false, false},
+		{"verbose", []string{"--verbose"}, true, false},
+		{"debug", []string{"--debug"}, true, true},
+		{"debug then verbose", []string{"--debug", "--verbose"}, true, true},
+		{"verbose then debug", []string{"--verbose", "--debug"}, true, true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			bin := buildBinary(t)
+			dir := t.TempDir()
+			cat := containedNotifyCatalog(t, dir)
+			reports := filepath.Join(dir, "reports")
+			stdout, stderr, code := run(t, bin, append([]string{"apply", "--catalog", cat, "--report-dir", reports}, tc.flags...)...)
+			if code != 0 {
+				t.Fatalf("exit = %d\n%s", code, stderr)
+			}
+			if !strings.Contains(stdout, notice) {
+				t.Errorf("stdout lacks %q:\n%s", notice, stdout)
+			}
+			if got := strings.Contains(stdout, info); got != tc.info {
+				t.Errorf("stdout has %q = %v, want %v:\n%s", info, got, tc.info, stdout)
+			}
+			if got := strings.Contains(stdout, "\nDebug: voxagent: ") || strings.HasPrefix(stdout, "Debug: voxagent: "); got != tc.debug {
+				t.Errorf("stdout has a Debug line = %v, want %v:\n%s", got, tc.debug, stdout)
+			}
+			if got := lastLine(stderr); !strings.HasPrefix(got, "voxagent: outcome=") {
+				t.Errorf("last stderr line = %q\n%s", got, stderr)
+			}
+			var printed []string
+			for _, line := range strings.Split(strings.TrimRight(stdout, "\n"), "\n") {
+				level, rest, _ := strings.Cut(line, ": ")
+				printed = append(printed, strings.ToLower(level)+" "+rest)
+			}
+			var held []string
+			for _, l := range reportLogs(t, readReport(t, reports)) {
+				// "<level> <source> <message>" against the console's "<Level>: [<source>: ]<message>".
+				level, rest, _ := strings.Cut(l, " ")
+				source, message, _ := strings.Cut(rest, " ")
+				if source != "Puppet" {
+					message = source + ": " + message
+				}
+				held = append(held, level+" "+message)
+			}
+			if !slices.Equal(printed, held) {
+				t.Errorf("console and report differ:\nconsole:\n%s\nreport:\n%s", strings.Join(printed, "\n"), strings.Join(held, "\n"))
+			}
+		})
+	}
+}
+
+// Review Focus 5: no --report-dir writes no report, and the console still
+// shows the debug lines.
+func TestApplyDebugWithoutReportDir(t *testing.T) {
+	bin := buildBinary(t)
+	dir := t.TempDir()
+	cat := containedNotifyCatalog(t, dir)
+	stdout, stderr, code := run(t, bin, "apply", "--catalog", cat, "--debug")
+	if code != 0 {
+		t.Fatalf("exit = %d\n%s", code, stderr)
+	}
+	if !strings.Contains(stdout, "Debug: voxagent: voxagent ") || !strings.Contains(stdout, " apply noop=false level=debug; catalog 3 resources, code_id none\n") {
+		t.Errorf("stdout lacks the run-start debug line:\n%s", stdout)
+	}
+	if want := "Debug: /Stage[main]/Main/Notify[n]: The container Class[Main] will propagate my refresh event\n"; !strings.Contains(stdout, want) {
+		t.Errorf("stdout lacks the transaction's debug line %q:\n%s", want, stdout)
+	}
+	if strings.Contains(stderr, "panic") {
+		t.Errorf("stderr reports a panic:\n%s", stderr)
+	}
+	entries, err := os.ReadDir(dir)
+	if err != nil || len(entries) != 1 || entries[0].Name() != "catalog.json" {
+		t.Errorf("directory holds %v (err %v); want only the catalog", entries, err)
 	}
 }

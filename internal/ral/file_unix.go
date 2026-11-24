@@ -8,16 +8,12 @@ import (
 	"syscall"
 )
 
-// currentOwnership returns the uid and gid of path, or (-1, -1) when it does
-// not exist yet -- which makes any declared owner read as a change, the correct
-// answer for a file this run is about to create.
-func currentOwnership(path string) (int, int, error) {
-	fi, err := os.Stat(path)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return -1, -1, nil
-		}
-		return 0, 0, fmt.Errorf("stat %s: %w", path, err)
+// currentOwnership returns the uid and gid in fi, or (-1, -1) when fi is nil
+// because the path does not exist yet -- which makes any declared owner read
+// as a change, the correct answer for a file this run is about to create.
+func currentOwnership(path string, fi os.FileInfo) (int, int, error) {
+	if fi == nil {
+		return -1, -1, nil
 	}
 	st, ok := fi.Sys().(*syscall.Stat_t)
 	if !ok {

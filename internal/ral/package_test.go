@@ -5,11 +5,13 @@ import (
 	"errors"
 	"os"
 	"os/exec"
+	"slices"
 	"strconv"
 	"strings"
 	"testing"
 
 	"github.com/voxagent/voxagent/internal/catalog"
+	"github.com/voxagent/voxagent/internal/report"
 )
 
 // fakeRunner replays scripted responses and records what it was asked to run.
@@ -1830,5 +1832,251 @@ func TestRpmQueryFormatIsRubysNevraFormat(t *testing.T) {
 	const want = `%{NAME} %|EPOCH?{%{EPOCH}}:{0}| %{VERSION} %{RELEASE} %{ARCH}\n`
 	if rpmQueryFormat != want {
 		t.Errorf("rpmQueryFormat = %q, want rpm.rb's NEVRA_FORMAT %q", rpmQueryFormat, want)
+	}
+}
+
+// A marked ensure is a version a catalog may want kept out of logs: the
+// failure text shows it as [redacted] (D-78, Ruby leaks it).
+func TestPackageMarkedEnsureValueErrors(t *testing.T) {
+	marked := func(params map[string]any) catalog.Resource {
+		r := pkgRes("kernel", params)
+		r.SensitiveParameters = []string{"ensure"}
+		return r
+	}
+
+	t.Run("refused value", func(t *testing.T) {
+		p := prefetched(&fakeRunner{}, map[string]string{"kernel": "6.12.0-1.el10"})
+		_, _, err := p.Apply(context.Background(), marked(map[string]any{"ensure": "held"}), false)
+		if err == nil || err.Error() != "ensure => [redacted] is not implemented" {
+			t.Errorf("marked Err = %v, want ensure => [redacted] is not implemented", err)
+		}
+		_, _, err = p.Apply(context.Background(), pkgRes("kernel", map[string]any{"ensure": "held"}), false)
+		if err == nil || err.Error() != `ensure => "held" is not implemented` {
+			t.Errorf("unmarked Err = %v", err)
+		}
+	})
+
+	t.Run("version verification", func(t *testing.T) {
+		newPkg := func() Package {
+			f := &fakeRunner{replies: map[string]fakeReply{
+				requeryKey("kernel", false): {out: "kernel 0 6.12.0 1.el10 x86_64\nkernel 0 6.12.0 2.el10 x86_64\n"},
+			}}
+			return prefetched(f, map[string]string{"kernel": "6.12.0-1.el10; 6.12.0-2.el10"})
+		}
+		changes, _, err := newPkg().Apply(context.Background(), marked(map[string]any{"ensure": "6.12.0-2.el10"}), false)
+		if err != nil || len(changes) != 1 || changes[0].Err == nil {
+			t.Fatalf("Apply = %+v, %v; want one failed change", changes, err)
+		}
+		const want = "Could not update: Failed to update to version [redacted], " +
+			"got version 6.12.0-1.el10; 6.12.0-2.el10 instead"
+		if got := changes[0].Err.Error(); got != want {
+			t.Errorf("marked Err = %q, want %q", got, want)
+		}
+		changes, _, err = newPkg().Apply(context.Background(), pkgRes("kernel", map[string]any{"ensure": "6.12.0-2.el10"}), false)
+		if err != nil || len(changes) != 1 || changes[0].Err == nil ||
+			!strings.Contains(changes[0].Err.Error(), "Failed to update to version 6.12.0-2.el10,") {
+			t.Errorf("unmarked Apply = %+v, %v; want the version named", changes, err)
+		}
+	})
+
+	t.Run("failed install", func(t *testing.T) {
+		newPkg := func() Package {
+			f := &fakeRunner{replies: map[string]fakeReply{
+				"/usr/bin/dnf -y upgrade kernel-9.9.9-secret": {exit: 1, out: "No match for argument: kernel-9.9.9-secret\n"},
+			}}
+			return prefetched(f, map[string]string{"kernel": "6.12.0-1.el10"})
+		}
+		changes, _, err := newPkg().Apply(context.Background(), marked(map[string]any{"ensure": "9.9.9-secret"}), false)
+		if err != nil || len(changes) != 1 || changes[0].Err == nil {
+			t.Fatalf("Apply = %+v, %v; want one failed change", changes, err)
+		}
+		const want = "Could not update: Execution of '/usr/bin/dnf -y upgrade kernel-[redacted]' returned 1: " +
+			"No match for argument: kernel-[redacted]"
+		if got := changes[0].Err.Error(); got != want {
+			t.Errorf("marked Err = %q, want %q", got, want)
+		}
+		changes, _, err = newPkg().Apply(context.Background(), pkgRes("kernel", map[string]any{"ensure": "9.9.9-secret"}), false)
+		if err != nil || len(changes) != 1 || changes[0].Err == nil ||
+			!strings.Contains(changes[0].Err.Error(), "kernel-9.9.9-secret' returned 1: No match for argument: kernel-9.9.9-secret") {
+			t.Errorf("unmarked Apply = %+v, %v; want the version named", changes, err)
+		}
+	})
+}
+
+// transaction.rb:379 logs this at Puppet before it calls the provider's
+// prefetch, so a prefetch that then fails has still logged it.
+func TestPackagePrefetchLogsRubysDebugLine(t *testing.T) {
+	ctx, got := debugContext("debug")
+	_, _ = Package{run: &fakeRunner{}}.Prefetch(ctx, nil)
+	want := report.LogEntry{Level: "debug", Source: "Puppet", Message: "Prefetching dnf resources for package"}
+	if len(*got) == 0 || (*got)[0].Level != want.Level || (*got)[0].Source != want.Source || (*got)[0].Message != want.Message {
+		t.Errorf("entries = %+v, want first %+v", *got, want)
+	}
+}
+
+func TestPackagePrefetchLogsNothingAtNotice(t *testing.T) {
+	ctx, got := debugContext("notice")
+	_, _ = Package{run: &fakeRunner{}}.Prefetch(ctx, nil)
+	if len(*got) != 0 {
+		t.Errorf("entries = %+v, want none at notice", *got)
+	}
+}
+
+// pkgSources is the identity the transaction puts on the context for a
+// Package resource named name.
+func pkgSources(name string) Sources {
+	ref := "Package[" + name + "]"
+	return Sources{Resource: "/Stage[main]/Main/" + ref, Provider: ref + "(provider=dnf)", Ref: ref}
+}
+
+// provider/package/yum.rb:250-304: install says what it was asked for and which
+// operation it chose, at the provider form. A marked ensure is shown as
+// [redacted] wherever the line names a value (D-78: Ruby leaks it). The dnf
+// outcome is not what these tests are about, so a failed verification is fine.
+func TestPackageInstallLogsRubysDebugLines(t *testing.T) {
+	for _, tc := range []struct {
+		name      string
+		ensure    string
+		installed string // "" for a package that is not installed
+		noop      bool
+		want      []string
+		wantMark  []string // when ensure is marked
+	}{
+		{"present", "present", "", false,
+			[]string{"Ensuring => present"}, []string{"Ensuring => [redacted]"}},
+		{"installed is present", "installed", "", false,
+			[]string{"Ensuring => present"}, []string{"Ensuring => [redacted]"}},
+		{"latest on an absent package", "latest", "", false,
+			[]string{"Ensuring => latest", "Ensuring latest, but package is absent, so using install"},
+			[]string{"Ensuring => [redacted]", "Ensuring latest, but package is absent, so using install"}},
+		{"latest on an installed package", "latest", "1-1.el10", false,
+			[]string{"Ensuring => latest", "Ensuring latest, so using upgrade"},
+			[]string{"Ensuring => [redacted]", "Ensuring latest, so using upgrade"}},
+		{"a version on a purged package", "2-1.el10", "", false,
+			[]string{"Ensuring => 2-1.el10"}, []string{"Ensuring => [redacted]"}},
+		{"a newer version", "2-3.el10", "2-1.el10", false,
+			[]string{"Ensuring => 2-3.el10", "Upgrading package tree from version 2-1.el10 to 2-3.el10"},
+			[]string{"Ensuring => [redacted]", "Upgrading package tree from version 2-1.el10 to [redacted]"}},
+		{"an older version", "2-1.el10", "2-3.el10", false,
+			[]string{"Ensuring => 2-1.el10", "Downgrading package tree from version 2-3.el10 to 2-1.el10"},
+			[]string{"Ensuring => [redacted]", "Downgrading package tree from version 2-3.el10 to [redacted]"}},
+		{"absent runs uninstall, not install", "absent", "1-1.el10", false, nil, nil},
+		{"noop installs nothing", "present", "", true, nil, nil},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			for _, marked := range []bool{false, true} {
+				state := map[string]string{}
+				replies := notInstalled(nil, "tree")
+				if tc.installed != "" {
+					state["tree"] = tc.installed
+					replies = map[string]fakeReply{}
+				}
+				p := prefetched(&fakeRunner{replies: replies}, state)
+				p.updates = map[string]string{"tree": "0:1-2.el10"}
+				r := pkgRes("tree", map[string]any{"ensure": tc.ensure})
+				want := tc.want
+				if marked {
+					r.SensitiveParameters = []string{"ensure"}
+					want = tc.wantMark
+				}
+				src := pkgSources("tree")
+
+				ctx, got := debugContext("debug")
+				if _, _, err := p.Apply(WithSources(ctx, src), r, tc.noop); err != nil {
+					t.Fatalf("marked=%v: Apply returned %v", marked, err)
+				}
+				if lines := linesAt(*got, src.Provider); !slices.Equal(lines, want) {
+					t.Errorf("marked=%v: debug lines at %s = %q, want %q", marked, src.Provider, lines, want)
+				}
+
+				ctx, got = debugContext("notice")
+				if _, _, err := p.Apply(WithSources(ctx, src), r, tc.noop); err != nil {
+					t.Fatalf("marked=%v: Apply returned %v", marked, err)
+				}
+				if len(*got) != 0 {
+					t.Errorf("marked=%v: entries = %+v, want none at notice", marked, *got)
+				}
+			}
+		})
+	}
+}
+
+// A version already installed is in sync, so install never runs and says
+// nothing.
+func TestPackageInSyncVersionLogsNothing(t *testing.T) {
+	p := prefetched(&fakeRunner{}, map[string]string{"tree": "2-1.el10"})
+	ctx, got := debugContext("debug")
+	if _, _, err := p.Apply(WithSources(ctx, pkgSources("tree")), pkgRes("tree", map[string]any{"ensure": "2-1.el10"}), false); err != nil {
+		t.Fatalf("Apply returned %v", err)
+	}
+	if len(*got) != 0 {
+		t.Errorf("entries = %+v, want none", *got)
+	}
+}
+
+// provider/package/yum.rb:127: check-update exiting 0 is a debug line from the
+// class method, so its source is the class (as the warning beside it is), and
+// the command is dnf's absolute path. Exit 100 and a failure log no such line.
+func TestPackageCheckUpdateWithNoUpdatesLogsRubysDebugLine(t *testing.T) {
+	for _, tc := range []struct {
+		exit int
+		want []string
+	}{
+		{0, []string{"/usr/bin/dnf check-update exited with 0; no package updates available."}},
+		{100, nil},
+		{1, nil},
+	} {
+		f := &fakeRunner{replies: map[string]fakeReply{"/usr/bin/dnf -y check-update": {exit: tc.exit}}}
+		p := prefetched(f, map[string]string{"tree": "1-1.el10"})
+
+		ctx, got := debugContext("debug")
+		_, _, err := p.resolveUpdates(ctx, []catalog.Resource{pkgRes("tree", map[string]any{"ensure": "latest"})})
+		if err != nil {
+			t.Fatalf("exit %d: resolveUpdates returned %v", tc.exit, err)
+		}
+		if lines := linesAt(*got, dnfProviderSource); !slices.Equal(lines, tc.want) {
+			t.Errorf("exit %d: debug lines at %s = %q, want %q", tc.exit, dnfProviderSource, lines, tc.want)
+		}
+	}
+
+	f := &fakeRunner{replies: map[string]fakeReply{"/usr/bin/dnf -y check-update": {exit: 0}}}
+	ctx, got := debugContext("notice")
+	if _, _, err := prefetched(f, map[string]string{"tree": "1-1.el10"}).resolveUpdates(ctx,
+		[]catalog.Resource{pkgRes("tree", map[string]any{"ensure": "latest"})}); err != nil {
+		t.Fatal(err)
+	}
+	if len(*got) != 0 {
+		t.Errorf("entries = %+v, want none at notice", *got)
+	}
+}
+
+// D-78 through the real runner: dnf's argv names name-<version>, which Ruby
+// logs (util/execution.rb:181) and voxagent shows as '[redacted]' when ensure
+// is marked. A fake runner never reaches that line.
+func TestPackageMarkedVersionIsRedactedInTheExecutingLine(t *testing.T) {
+	for _, marked := range []bool{false, true} {
+		p := Package{dnfPath: "/bin/true", rpmPath: "/bin/false", state: map[string]string{}}
+		r := pkgRes("tree", map[string]any{"ensure": "2-1.el10"})
+		want := "Executing: '/bin/true -y install tree-2-1.el10'"
+		if marked {
+			r.SensitiveParameters = []string{"ensure"}
+			want = "Executing: '[redacted]'"
+		}
+		ctx, got := debugContext("debug")
+		if _, _, err := p.Apply(WithSources(ctx, pkgSources("tree")), r, false); err != nil {
+			t.Fatalf("marked=%v: Apply returned %v", marked, err)
+		}
+		var installs []string
+		for _, line := range linesAt(*got, "Puppet") {
+			if strings.Contains(line, "install") || strings.Contains(line, "redacted") {
+				installs = append(installs, line)
+			}
+			if marked && strings.Contains(line, "2-1.el10") {
+				t.Errorf("marked: line %q leaks the version", line)
+			}
+		}
+		if !slices.Equal(installs, []string{want}) {
+			t.Errorf("marked=%v: install lines = %q, want %q", marked, installs, want)
+		}
 	}
 }

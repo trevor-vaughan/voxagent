@@ -1,0 +1,5 @@
+/dev/mapper/luks-880db1df-1300-43ad-967a-e6e065038bc4 /workspace xfs rw,seclabel,relatime,attr2,inode64,logbufs=8,logbsize=32k,noquota 0 0
+devtmpfs /dev/fuse devtmpfs rw,seclabel,nosuid,noexec,size=32838656k,nr_inodes=8209664,mode=755,inode64 0 0
+shm /dev/shm tmpfs rw,context="system_u:object_r:container_file_t:s0:c1022,c1023",nosuid,nodev,noexec,relatime,size=64000k,uid=1000,gid=1000,inode64 0 0
+tmpfs /run/.containerenv tmpfs rw,seclabel,nosuid,nodev,relatime,size=6574048k,nr_inodes=1643512,mode=700,uid=1000,gid=1000,inode64 0 0
+tmpfs /run/secrets tmpfs rw,seclabel,nosuid,nodev,relatime,size=6574048k,nr_inodes=1643512,mode=700,uid=1000,gid=1000,inode64 0 0

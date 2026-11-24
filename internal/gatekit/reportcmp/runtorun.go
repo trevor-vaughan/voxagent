@@ -16,8 +16,13 @@ import (
 // is what it is for; matching stable ones is what makes it a blind spot, and
 // each entry is only defensible if the second count is zero.
 //
-// The leaves are the ones Compare sees before its failure-detail elision and
-// its Ruby-only log drop, which is what the Python check used.
+// The leaves are the ones Compare compares: the same normalisations, so a
+// leaf a normalisation already masks (a failure's detail) is not called
+// uncovered, and an entry is never asked for what Compare cannot see. Only
+// Compare's Ruby-only log drop and cross_implementation are left out; neither
+// describes run-to-run variance. The Python check this was ported from
+// derived before the failure-detail elision, which made every report with a
+// run-dependent failure detail INCOMPLETE no allowlist entry could fix.
 func RunToRun(first, second any, allow Allowlist, w io.Writer) (bool, error) {
 	firstLeaves, err := runLeaves(first, "first")
 	if err != nil {
@@ -124,17 +129,18 @@ func RunToRun(first, second any, allow Allowlist, w io.Writer) (bool, error) {
 	return true, nil
 }
 
-// runLeaves is the leaf set the differential will compare, metrics included.
+// runLeaves is the leaf set the differential will compare, normalised as
+// Compare normalises it.
 func runLeaves(doc any, which string) (map[string]any, error) {
 	m, err := asObject(doc, which)
 	if err != nil {
 		return nil, err
 	}
-	m, err = normaliseMetrics(m)
+	m, err = normalise(m)
 	if err != nil {
 		return nil, fmt.Errorf("the %s report: %w", which, err)
 	}
-	leaves, err := flatten(normaliseLogs(m))
+	leaves, err := flatten(m)
 	if err != nil {
 		return nil, fmt.Errorf("the %s report: %w", which, err)
 	}

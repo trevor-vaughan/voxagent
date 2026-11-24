@@ -13,19 +13,258 @@ implement, applies the rest, and writes a `report_format 12` report.
 ```bash
 task build
 ./bin/voxagent apply --catalog catalog.json --detailed-exitcodes
+./bin/voxagent agent --server puppet --detailed-exitcodes   # one run against an OpenVox server
 ```
 
-Three resource types, each with a bounded attribute set — `notify` (`message`),
-`file` (`ensure`, `content`, `mode`, `owner`, `group`), and `exec` (`command`,
-`path`, `cwd`, `returns`, `refreshonly`, `creates`, `onlyif`, `unless`).
-Anything else is refused **before** anything is applied, so a run either applies
+`voxagent agent --help` lists its flags; their defaults are Puppet's compiled-in
+settings (`puppet.conf` is not read).
+
+### Log levels: `--verbose` and `--debug`
+
+Both subcommands take `--verbose` and `--debug`; `--debug` implies `--verbose`,
+whichever order they come in. The level applies to the console and to the
+report alike. `apply` prints the run's log as `agent` does, in Puppet's console
+format and without colour: `Notice: <message>`, or `Notice: <source>: <message>`
+for a resource's line. Notice, info and debug lines go to stdout; warnings and
+worse go to stderr, and `voxagent: outcome=<status>` stays the last stderr line.
+
+| Flag | Console and report show |
+|---|---|
+| none | notice and above |
+| `--verbose` | also `Info:` lines |
+| `--debug` | also `Debug:` lines: Ruby's graph, transaction, `exec`, `file`, `package` and `service` debug lines, and voxagent's own, which name no parameter value, file content, header, certificate, key or HTTP body |
+
+`Sensitive` values are redacted from debug lines as from error text: a marked
+command shows as `[redacted]` and its output as `[output redacted]`. A run
+without `--debug` writes the same report as before. Debug lines are a subset of
+Ruby's (`docs/maintainers/apply-spine.md`, D-82).
+
+Two caps bound a run's memory. A command's output is kept up to 64 MiB, cut at
+a line break, or at the last complete UTF-8 sequence when it has none; past it
+voxagent logs the warning `<resource>: output of <command> truncated at 64 MiB`
+and carries on. The report keeps at most 16 MiB of debug
+text; after that it records the warning `debug log truncated in the report
+after 16 MiB; the console has the rest` and the console alone shows further
+debug lines. Both are fixed, not flags.
+
+Five resource types, each with a bounded attribute set — `notify` (`message`),
+`file` (`ensure`, `content`, `mode`, `owner`, `group`, `source`, `recurse`,
+`purge`, `path`, `replace`, `force`, `links`, `target`, `show_diff`, `backup`; `mode` is
+octal (`0644`) or symbolic (`u+rwX,g-rwx,o-rwx`), computed for each path from
+its current mode and whether it is a directory, as Puppet computes it; `source` is
+an absolute path or a `file:` URI, or a list of them, `recurse`, `purge`,
+`replace` and `force` are `true` or `false`, `links` is `manage` or `follow`,
+`ensure` also takes `link` (with `target`) or a path to link to, and
+`show_diff` is accepted and has no effect; `backup` is `false`, `true` (the
+suffix `.puppet-bak`), a suffix starting with `.`, or `puppet`, the local
+clientbucket under `--vardir`; `validate_cmd` checks new content before it
+replaces the file, run against a temp file beside it whose path replaces every
+`validate_replacement` (default `%`), and is refused with `recurse => true`;
+`seluser`, `selrole`, `seltype`,
+`selrange` and `selinux_ignore_defaults` manage SELinux contexts, see below),
+`exec` (`command`,
+`path`, `cwd`, `returns`, `refreshonly`, `creates`, `onlyif`, `unless`,
+`logoutput`; a `command`, or an `onlyif` or `unless` check, given as an argv array
+runs with no shell, a string through `/bin/sh -c`; `logoutput` is `true`,
+`false` or `on_failure`, the default, and logs the command's output a line at a
+time at notice level, whenever it is `true` and when the exit status is not in
+`returns` if it is `on_failure`; output that is not valid in the locale's
+encoding, which is US-ASCII unless `LC_ALL`, `LC_CTYPE` or `LANG` names a UTF-8
+codeset, fails the exec as Puppet does; locales Ruby resolves differently are
+listed in D-79 of `docs/maintainers/apply-spine.md`),
+`package` (`ensure`, `name`, `provider`; dnf only), and
+`service` (`ensure`, `enable`, `start`, `stop`, `status`, `restart`, `hasstatus`,
+`hasrestart`, `name`, `provider`), systemd only; `enable` is `true` or `false`
+(`mask`, `manual` and `delayed` are refused).
+A catalog with a `service` is refused whole on a host whose PID 1 is not systemd.
+Of the metaparameters, `loglevel` is accepted on any resource only as `notice`,
+Puppet's default, which `concat` copies onto every file it generates.
+Any other type is applied by the Ruby extension host if it is a legacy
+`Puppet::Type.newtype` type and the host can run (below). Anything else is
+refused **before** anything is applied, so a run either applies
 the whole catalog or changes nothing. Declaring an attribute is a promise to
 read it, so the refusal list is the honest statement of coverage — and doubles
 as the porting roadmap.
 Some catalogs Puppet itself would refuse are refused the same way, after the
 coverage check and before anything is applied, and reported in Puppet's own
-words. Today: a `file` whose path is not absolute, and an `exec` with a
-relative `cwd` or `creates`, or an unqualified command and no `path`.
+words. Today: a `file` whose path is not absolute, whose `source` is relative,
+opaque or unparseable, or that sets both `content` and `source`; and an `exec`
+with a relative `cwd` or `creates`, or an unqualified command and no `path`.
+voxagent also refuses, before anything is applied, a `file` whose `source`
+names a host, a `file` with `content` and `recurse => true`, a `file` with
+`links => follow` and `recurse => true`, and a static catalog carrying inlined
+file metadata.
+
+A `Sensitive` value is redacted as Puppet redacts it. The properties it marks
+show `[redacted]` in the report and the log, and an `exec` with a marked
+`command`, `unless` or `onlyif` shows `[command redacted]` in its error text
+and noop message and logs `[output redacted]` for its output. voxagent also
+keeps a marked value out of the error text where Puppet prints it. A parameter that is not a property (`cwd`, `environment`) cannot
+be redacted automatically: voxagent warns on the console, as Puppet does,
+`voxagent: Warning: /Exec[x]: Unable to mark 'cwd' as sensitive: …` under `apply`
+and `Warning: /Exec[x]: …` under `agent`, and leaves the warning out of the
+report. The value of such a parameter is not hidden, so a command that echoes a
+marked `environment` value prints it. The file voxagent writes holds the
+cleartext, and voxagent shows no diffs. A `file` recursion child inherits owner,
+group and mode from a parent whose values are marked but carries no marks, as in
+Puppet, so its events show those values in the clear.
+
+Rich catalog values (`__ptype` in the catalog JSON) are decoded as
+`puppet apply` decodes them. An ASCII `Binary`, which openvox's compiler emits
+for Facter's networking facts, becomes its string and applies on any resource.
+Every other rich value (a `Binary` that is not ASCII, `Timestamp`, `Regexp`,
+`SemVer`, `URI`, a `Hash` with non-string keys, `Error`, a `Pcore` type, a
+`Sensitive` map) applies only on a resource the Ruby extension host applies
+(below), which hands it to the type's own code as Ruby does. On a native
+resource it is refused before anything is applied, one line per parameter:
+
+```
+voxagent: <Ref>: parameter <name> holds a Binary value that is not ASCII, which voxagent does not support on a native resource
+voxagent: <Ref>: parameter <name> holds a rich <Type> value, which voxagent does not support
+```
+
+A `Deferred` value is refused on every resource that is not a container,
+before the host starts (Ruby never resolves one on a container either):
+`voxagent: <Ref>: parameter <name> is Deferred; voxagent does not resolve
+Deferred values`, then `voxagent: <n> Deferred value(s); nothing applied`.
+An unknown `__ptype` name, or a `Binary` that is not valid base64, fails the
+whole catalog with Puppet's own message.
+
+Resources are applied in catalog order, the order the compiler evaluated the
+manifest in, except where a relationship (`before`, `require`, `notify`,
+`subscribe`, a chaining arrow, or a type's autorequire) says otherwise: like
+Puppet, voxagent always applies, among the resources whose dependencies are
+done, the one that comes first in the catalog. A class or defined type is
+ordered as a whole, as Puppet orders it, and a resource a type generates takes
+the place Puppet gives it. A resource the extension host applies whose type
+has no suitable provider on this host is set aside until nothing else is
+ready, offered again, and failed if it is still unsuitable, as Puppet does.
+
+A symlink at a managed `file` path is not refused: under `links => manage`,
+Puppet's default, `ensure => file` or `directory` replaces it, and under
+`links => follow` the link's target is what is managed. A directory in the way
+is replaced only with `force => true`; without it voxagent logs Puppet's
+notice and the resource fails or, for `ensure => absent`, reports `removed`
+while the directory stays, as Puppet does.
+
+SELinux contexts are managed only on a host where SELinux is enabled (a
+read-write selinuxfs and `/etc/selinux/config`); elsewhere the `sel*`
+attributes do nothing. A `file` gets the policy's default context unless
+`selinux_ignore_defaults => true`, and a declared `seluser`, `selrole`,
+`seltype` or `selrange` replaces that field. The defaults come from
+`selabel_lookup`, so an SELinux-enabled host needs the `libselinux-utils`
+package: without it a catalog with a `file` that needs a default (not a
+removal, and not one declaring all four fields) is refused whole before
+anything is applied. So is such a catalog when the policy's file contexts
+cannot be opened (`Cannot get default context with nil handle`), as Puppet
+fails its whole run then.
+Each default is one `selabel_lookup` process, 4 ms or more; a recursion looks
+its children's defaults up in batches through `matchpathcon` instead.
+
+### File backups and validation
+
+`backup` defaults to `false`, as in Puppet 8. A backup is taken just before a
+`file` replaces or removes what is at its path, or rewrites an existing file's
+content; never for a new file or a mode-only change, and never under `--noop`.
+A backup that cannot be made fails that change and leaves the path as it was.
+The exception is a path Puppet cannot back up at all: a fifo, socket or device
+there only gets the warning `Could not back up file of type <type>` and is then
+replaced without a backup, as Puppet does.
+
+- **A suffix** (`true` is `.puppet-bak`) copies the path to `<path><suffix>`,
+  keeping mode, owner and times; a directory is copied whole, but only with
+  `force => true`. An old copy that is a file is replaced. One that is a
+  directory refuses the resource on every run with `Will not remove directory
+  backup <path><suffix>; use a filebucket`, as Puppet does, until you remove it.
+- **On a filesystem where root does not own the directories it makes** (NFS
+  with `root_squash`), a suffix backup of a directory is refused: voxagent
+  cannot tell the directory it made from one swapped in by someone else, so it
+  writes nothing into it and leaves it, empty and `0700`. Later runs then meet
+  the refusal above. Remove it with `rmdir '<path><suffix>'` (which only removes
+  an empty directory), and give such a resource `backup => false` or
+  `backup => 'puppet'`.
+- **`puppet`** stores the old content in the local clientbucket,
+  `<vardir>/clientbucket`, byte for byte as Puppet writes it (the gates compare
+  the two). Set the vardir with `--vardir` (default
+  `/opt/puppetlabs/puppet/cache`, Puppet's); it is created if missing. A
+  directory's files are bucketed one by one. A symlink anywhere under the
+  clientbucket fails the resource instead of being followed (Puppet follows
+  it). Any other bucket name fails the resource with `Could not find
+  filebucket <name> specified in backup`. A catalog that declares a
+  `filebucket` resource is refused before anything is applied (exit 2), even
+  one named `puppet`: `file`'s backup implements only the default bucket, so
+  it could not use the declared one.
+
+`validate_cmd` runs before new content replaces a file, against a temp file
+beside it, and the file is replaced only when the command exits 0. Every
+`validate_replacement` (default `%`) in the command becomes the temp file's
+path; without one the command runs with no file argument and validates
+nothing, as in Puppet. The command runs as the user running voxagent, in its
+working directory, with no timeout, as Puppet runs it; nothing runs under
+`--noop`. Its environment drops `HOME`, `USER`, `LOGNAME` and the locale
+variables and sets `LANG=C` and `LC_ALL=C`. Its `PATH` is voxagent's own:
+Puppet appends any missing `/usr/sbin` and `/sbin`, voxagent does not, so name
+the validator by its full path.
+
+### Ruby extension host
+
+A catalog may hold types voxagent does not implement: `User` and `Group`, types
+that modules ship, `file_line` from stdlib. If they are legacy
+`Puppet::Type.newtype` types, voxagent starts one Ruby process, the extension
+host, which loads them and evaluates each with Puppet's own code. voxagent keeps
+the ordering, refresh propagation and the report. A catalog with only the five
+native types never starts Ruby.
+
+```bash
+./bin/voxagent apply --catalog catalog.json \
+  --ruby /opt/puppetlabs/puppet/bin/ruby \
+  --libdir /opt/puppetlabs/puppet/cache/lib
+```
+
+| Flag | Default | Meaning |
+|---|---|---|
+| `--ruby <path>` | `/opt/puppetlabs/puppet/bin/ruby` | Interpreter for the host. Must be an absolute path and able to load the `puppet` gem. It is never looked up on `PATH` |
+| `--libdir <dir>` | `/opt/puppetlabs/puppet/cache/lib` | The pluginsync directory the host loads types from. voxagent does not read `puppet.conf` |
+| `--vardir <dir>` | `/opt/puppetlabs/puppet/cache` | Puppet's vardir, shared with the host. `backup => 'puppet'` keeps the old content in `<dir>/clientbucket`, as Puppet's `clientbucketdir` does, and Tier 3 types keep their own state there (below). The default is root's openvox cache, so a run as another user that backs up to `puppet` (every `File` concat generates does), or that applies Tier 3 types, needs `--vardir` set to a directory it can write |
+| `--no-ruby` | off | Refuse any catalog that needs the host, naming the types. No interpreter is started |
+| `--extension-timeout <d>` | `5m` | Limit for each host request other than evaluating a resource |
+| `--extension-evaluate-timeout <d>` | `1h` | Limit for each resource's evaluation, which includes the provider's prefetch |
+
+Durations are Go durations (`90s`, `5m`) and must be positive.
+
+What to expect:
+
+- stderr names each type the host will apply, with its resource count and where
+  the type came from (`core` or `libdir`), and, after the last resource, prints one
+  line giving the host's start-up time, the resources it evaluated and the time
+  spent in it. The `outcome=` line stays the last line on stderr.
+- The host shares `--vardir`, as an agent run does, so Tier 3 types write
+  their own state there, such as simplib's `reboot_notify` and its
+  `reboot_notifications.json`. A non-root run with Tier 3 types therefore needs
+  a writable vardir. voxagent never writes Puppet's `state.yaml` there.
+- The host runs with only `PATH`, `HOME`, `LANG`, `LC_ALL`, `GEM_HOME` and
+  `GEM_PATH` from your environment. Module code runs as the user running
+  voxagent, with the same trust Puppet gives pluginsynced code. The host's own
+  stdin is `/dev/null`, and what module code prints goes to stderr.
+- Puppet's own log lines for those resources are in the report. A host that
+  fails or does not answer in time is killed, not restarted: the Tier 3
+  resources not yet evaluated fail, their dependents are skipped, native
+  resources keep applying, and the run reports failures.
+- Resources a type generates are applied. Generation done before the run
+  (`generate`) happens when the host loads the catalog; generation during the
+  run (`eval_generate`, which `concat` uses) happens at the generating
+  resource's turn. Either way Puppet's own code generates them, and voxagent
+  applies each new resource through its own type, natively when it is one of
+  the five. A resource `eval_generate` makes that voxagent cannot apply fails,
+  and the generating resource's dependents are skipped, rather than being
+  half-applied; one generated at load refuses the run (below).
+- A Tier 3 resource can be referred to by its name as well as its title, as in
+  Puppet.
+- Refused before anything is applied, with could-not-run: `--no-ruby` on a
+  catalog that needs the host, a host that cannot start (no Ruby, or one that
+  cannot load Puppet), a resource Puppet itself would refuse (every one is
+  listed, where Puppet stops at the first), a Resource API type, an unknown
+  type, and a resource generated at load that voxagent cannot apply.
 
 Exit codes follow Puppet's, measured rather than assumed. Plain `puppet apply`
 exits 0 for changes *and* for failures — its status says only that the tool ran
@@ -34,17 +273,163 @@ Puppet's 0/2/4/6 bitmask. "Could not run" takes the value each mode leaves free:
 `2` plain, `1` under the flag. Every run prints `outcome=` to stderr so the
 status never has to be decoded from the argv.
 
+One case differs from Puppet on purpose. A relationship naming a Tier 3
+resource by a title Puppet cannot look up, because the resource's type
+rewrites its title (`Kernel_parameter[fips]`, which Puppet names
+`Kernel_parameter[fips:all]`), is refused before anything is applied, as
+could not run (`2`, or `1` under `--detailed-exitcodes`):
+`voxagent: Failed to apply catalog: Could not retrieve dependency '<ref>' of
+<ref>; nothing applied`. Puppet prints the same error, applies nothing,
+writes a failed report and exits `0`, even under `--detailed-exitcodes`.
+
+### Running against an OpenVox server
+
+`voxagent agent` is one Puppet agent run: it enrols with the server's CA,
+fetches what the catalog needs, applies the catalog with the same spine as
+`voxagent apply`, and reports back. There is no daemon; run it from a timer
+(below).
+
+```bash
+sudo ./bin/voxagent agent --server puppet.example.com --detailed-exitcodes
+```
+
+One run does, in Puppet's order:
+
+1. **SSL bootstrap** under `--ssldir`: downloads the CA, the CRL and, on a
+   first run, submits a CSR for `--certname` and fetches the signed
+   certificate. A steady-state run makes no certificate request.
+2. **Node request**: the server's classification may override
+   `--environment`.
+3. **Pluginsync** of the `plugins` and `pluginfacts` mounts into `--libdir`
+   and `--pluginfactdest`.
+4. **Facts** from `facter`, sent with the catalog request.
+5. **Catalog request**, then every `puppet:///` source in it is fetched
+   before anything is applied.
+6. **Apply**, through the Go spine and, for Tier 3 types, the Ruby extension
+   host.
+7. **Report**: `PUT` of the run's report to the server.
+
+Run it as root, on a node with `openvox-agent` installed: `facter` and the
+Ruby the extension host loads come from that package, at the default paths in
+the table below.
+
+| Flag | Default | Meaning |
+|---|---|---|
+| `--server` | `puppet` | Server host name. The server certificate must name it. |
+| `--serverport` | `8140` | Server port. |
+| `--certname` | the FQDN, lower case | This node's certificate name. |
+| `--environment` | `production` | Environment to request; the server's node classification may override it. |
+| `--ssldir` | `/etc/puppetlabs/puppet/ssl` | CA bundle, CRL, key and certificate. |
+| `--ca-fingerprint` | unset | Pin the CA; see below. |
+| `--waitforcert` | `0` | Poll interval while the certificate is unsigned, in Puppet's syntax: seconds (`120`) or a number with `s`, `m`, `h`, `d` or `y` (`30s`, `2m`). `0` exits instead of waiting. Puppet's default is `2m`. |
+| `--facter` | `/opt/puppetlabs/puppet/bin/facter` | Absolute path of the facter binary. |
+| `--libdir` | `/opt/puppetlabs/puppet/cache/lib` | Pluginsync target; the extension host loads types from here. |
+| `--pluginfactdest` | `/opt/puppetlabs/puppet/cache/facts.d` | Pluginsync target for external facts. |
+| `--vardir` | `/opt/puppetlabs/puppet/cache` | Holds the run's downloaded `puppet:` sources and the clientbucket. |
+| `--ruby` | `/opt/puppetlabs/puppet/bin/ruby` | Ruby for the extension host. |
+| `--no-ruby` | off | Refuse catalogs that need the extension host. |
+| `--extension-timeout` | `5m` | Limit per extension host request other than evaluate. |
+| `--extension-evaluate-timeout` | `1h` | Limit per extension host evaluate request. |
+| `--http-timeout` | `2m` | Limit per HTTP request, including reading the response. |
+| `--noop` | off | Report what would change without changing it. |
+| `--detailed-exitcodes` | off | Puppet's exit bitmask. |
+| `--verbose` | off | Also log info-level lines, to the console and the report. |
+| `--debug` | off | Also log debug-level lines; implies `--verbose`. See "Log levels". |
+| `--report-dir` | unset | Also write the run's report to this directory. |
+
+Defaults are Puppet's compiled-in settings; `puppet.conf` is not read.
+`voxagent agent --help` is the authority on the flags.
+
+**Console output.** The run's log lines are printed as Puppet's console prints
+them, without colour: `Notice: <message>`, or `Notice: <source>: <message>`
+for a resource's line. Notice and info lines go to stdout; warnings and worse
+(`Warning:`, `Error:`, ...) go to stderr. The level is Puppet's default,
+notice; `--verbose` lowers it to info, for the console and the submitted
+report alike, so `--verbose --detailed-exitcodes` is the equivalent of
+`puppet agent -t`; `--debug` lowers it to debug. voxagent's own progress and
+error lines go to stderr prefixed `voxagent: `, ending with the
+`voxagent: outcome=<status>` line.
+
+**Trust on first use.** Like Puppet, voxagent downloads the CA certificate on
+first contact without being able to verify it, and logs its fingerprint. A
+network attacker present at that moment could substitute their own CA, so pass
+`--ca-fingerprint` on the first run (and keep passing it): the SHA-256 of the
+root CA certificate's DER, in hex, colons optional.
+
+```bash
+openssl x509 -in ca.pem -outform DER | sha256sum
+```
+
+`openssl x509` reads the first certificate in the file; if the CA has an
+intermediate, use the self-signed root.
+
+This is **not** Puppet's `ca_fingerprint` setting, which digests the PEM of
+the whole bundle; a value copied from Puppet will mismatch. A mismatch saves
+nothing and the run exits could-not-run. The pin is also checked every time
+`ca.pem` is loaded and on every CA refresh. After the first run, every request
+to the server is verified against the saved CA, the server's name, and the CRL,
+except the CA and CRL refreshes, which (as Puppet) do not check revocation.
+
+Because the agent runs as root and loads pluginsynced Ruby, it refuses to run
+if `--libdir`, `--pluginfactdest`, `--vardir`, the facter binary, or any
+parent directory of them is writable by anyone but root or the running user,
+or if the key, `ca.pem` or `crl.pem` is owned by someone else or writable by
+group or world, or if the private key is world-readable. Pluginsync fails closed: any error stops the run before
+facter or the extension host loads anything.
+
+Exit codes are those of `voxagent apply`, described above. Any failure before
+the catalog is applied (network, TLS, pluginsync, a source that cannot be
+fetched, a compile error) is could-not-run, nothing is applied, and no report
+is sent. A report that cannot be sent is logged and does not change the exit
+code.
+
+Scheduling: with systemd, a oneshot service and a timer; with cron, a line.
+
+```ini
+# /etc/systemd/system/voxagent.service
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/voxagent agent --server puppet.example.com --ca-fingerprint <sha256> --detailed-exitcodes
+SuccessExitStatus=2
+
+# /etc/systemd/system/voxagent.timer
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=30min
+RandomizedDelaySec=5min
+[Install]
+WantedBy=timers.target
+```
+
+`SuccessExitStatus=2` is because `--detailed-exitcodes` returns 2 for "changes
+applied". `RandomizedDelaySec` stands in for Puppet's splay. Two runs at once
+are not prevented (there is no run lock); a oneshot unit cannot overlap itself.
+
+Not implemented: daemon mode, splay, a run lock, cached catalogs (a down
+server fails the run), `puppet.conf`, static catalogs, HTTP proxies
+(proxy environment variables are ignored), `server_list` failover, certificate
+renewal, CA rotation, `csr_attributes.yaml`, `last_run_summary.yaml`, and
+SPIFFE or catalog signing. The deliberate differences from `puppet agent` are
+registered as D-59 to D-77 in
+[`docs/maintainers/apply-spine.md`](docs/maintainers/apply-spine.md); how it is
+built is in [`docs/maintainers/agent-transport.md`](docs/maintainers/agent-transport.md).
+
 ### Gates
 
 ```bash
 task dev:report-diff         # voxagent's report vs Ruby's, identical catalog bytes
+task dev:report-diff-extension  # the same for Tier 3 types, run through the extension host
 task dev:idempotence         # a second apply must change nothing
 task dev:derive-run-to-run   # re-measure report-diff's allowlist against Ruby
 task dev:state-diff          # both agents, two containers, same resulting state
 task dev:report-diff-container  # the report comparison for package and exec, in a container
+task dev:report-diff-systemd    # the report comparison for service, in a systemd container
+task dev:report-diff-simp       # both agents apply the public SIMP catalog, in systemd containers
 ```
 
-The first two run inside `task check`. `dev:state-diff` and
+`dev:report-diff`, `dev:report-diff-extension` and `dev:idempotence` run inside
+`task check`; `dev:report-diff-extension` needs `puppet` and `ruby` on `PATH` and
+the vendored stdlib (`task fleet:vendor`). `dev:state-diff` and
 `dev:report-diff-container` need a built container image and take minutes, so
 they are run explicitly, the way `task fleet:gate` is. The container report
 differential exists because the host is not a valid oracle for `package` or for
@@ -55,9 +440,31 @@ running anything. Inside the container both work, and it is the only gate that
 compares an `exec` event — `executed_command`, `returns` as the property a
 non-zero status is attributed to, the refresh callback event — against Ruby.
 
-See [the maintainer notes](docs/maintainers/apply-spine.md) for the divergence
+`dev:report-diff-simp` is the extension host's acceptance gate: it compiles the
+public SIMP catalog from pinned forge modules, applies it for real with Ruby
+and with voxagent, each in a fresh systemd-booted container, and compares the
+reports, the walk order and the end state. It is not part of `task check`: a
+cold run needs the network (the forge and the CentOS Stream mirrors) and takes
+about five minutes, a warm one about a minute. Like `dev:report-diff-systemd`,
+it boots systemd under rootless podman, which inside a nested container needs a
+delegated cgroup subtree. Delegate one once per container boot (the snippet,
+and the check that keeps it off a host whose PID 1 is systemd, are in
+[Running the systemd gate](docs/maintainers/apply-spine.md#running-the-systemd-gate)),
+then run the gate from a shell placed in it:
+
+```bash
+mkdir -p /sys/fs/cgroup/$USER/gate
+bash -c 'sudo sh -c "echo $$ > /sys/fs/cgroup/$USER/gate/cgroup.procs" && task dev:report-diff-simp'
+```
+
+It ends with `report-diff-simp: reports agree outside the allowlist`, exit 0.
+
+See [the extension host notes](docs/maintainers/extension-host.md) for its
+protocol, lifecycle and how to change it, and
+[the maintainer notes](docs/maintainers/apply-spine.md) for the divergence
 register, the known defects, and what each gate does and does not prove.
 Measured speed and memory against Ruby are in [the performance notes](docs/maintainers/performance.md).
+Puppet behaviour that voxagent reproduces but should eventually change is logged in [the improvements log](docs/maintainers/improvements.md).
 
 ## voxdiff
 
@@ -163,3 +570,9 @@ task check             # all quality gates
 ```
 
 Artifacts are written to `.test-output/`.
+
+## License
+
+Apache License 2.0; see [LICENSE.md](LICENSE.md). voxagent is a derivative
+work of [Puppet](https://github.com/puppetlabs/puppet), which is licensed the
+same way; the attribution is in [NOTICE](NOTICE).

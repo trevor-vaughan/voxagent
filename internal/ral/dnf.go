@@ -2,9 +2,6 @@ package ral
 
 import (
 	"context"
-	"errors"
-	"fmt"
-	"os/exec"
 	"regexp"
 	"strings"
 )
@@ -49,18 +46,11 @@ type execRunner struct{}
 //
 // No process group is set up, again unlike Exec.execute: there is no shell to
 // outlive, so CommandContext's kill reaches the command itself.
+//
+// Output goes to a temporary file capped at maxCommandOutput, with the D-80
+// warning when cut (runCapped); the exit-code and error contract is unchanged.
 func (execRunner) run(ctx context.Context, name string, args ...string) (int, string, error) {
-	cmd := exec.CommandContext(ctx, name, args...)
-	out, err := cmd.CombinedOutput()
-	if err != nil {
-		var ee *exec.ExitError
-		if errors.As(err, &ee) {
-			return ee.ExitCode(), string(out), nil
-		}
-		return 0, string(out), fmt.Errorf("run '%s': %w",
-			strings.Join(append([]string{name}, args...), " "), err)
-	}
-	return 0, string(out), nil
+	return runArgv(ctx, name, args...)
 }
 
 // nevraLine is rpm.rb:28's NEVRA_REGEX. Its fields are name, epoch, version,

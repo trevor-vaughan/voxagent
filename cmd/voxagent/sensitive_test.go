@@ -1,0 +1,380 @@
+package main
+
+import (
+	"encoding/json"
+	"os"
+	"path/filepath"
+	"regexp"
+	"strings"
+	"testing"
+)
+
+// markedResource returns a resource marking the given attributes sensitive.
+func markedResource(typ, title string, params map[string]any, marked ...string) map[string]any {
+	names := make([]any, len(marked))
+	for i, m := range marked {
+		names[i] = m
+	}
+	return map[string]any{
+		"type": typ, "title": title, "tags": []any{},
+		"parameters": params, "sensitive_parameters": names,
+	}
+}
+
+// leakCase is one catalog run under every mode, so that a pre-flight refusal in
+// one does not hide the others. Marked attributes hold "D8SECRET-<type>-<attr>".
+type leakCase struct {
+	name string
+	// refused cases stop before any report: pre-flight refuses the catalog
+	// (exit 2, "could-not-run"). Every other case must apply and report.
+	refused bool
+	// agentOnly cases need the fake server: they fetch a puppet: source.
+	agentOnly bool
+	// rootOnly cases change ownership, which needs privilege.
+	rootOnly bool
+	// seed prepares pre-existing state under dir before the run.
+	seed      func(t *testing.T, dir string)
+	resources func(dir string) []map[string]any
+	// plain, when set, lists values of marked properties that carry no
+	// D8SECRET marker (a mode, an owner), which must not appear either.
+	plain []string
+}
+
+func writeSeed(t *testing.T, path, content string, mode os.FileMode) {
+	t.Helper()
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, []byte(content), mode); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(path, mode); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func leakCases() []leakCase {
+	return []leakCase{
+		{name: "notify", resources: func(dir string) []map[string]any {
+			return []map[string]any{
+				markedResource("Notify", "n1", map[string]any{"message": "D8SECRET-Notify-message"}, "message"),
+			}
+		}},
+		{name: "file-content", resources: func(dir string) []map[string]any {
+			return []map[string]any{
+				markedResource("File", filepath.Join(dir, "c.txt"), map[string]any{"ensure": "file", "content": "D8SECRET-File-content"}, "content"),
+				// The missing parent directory makes the create fail.
+				markedResource("File", filepath.Join(dir, "c-fail/c.txt"), map[string]any{"ensure": "file", "content": "D8SECRET-File-content-fail"}, "content"),
+			}
+		}},
+		{name: "file-content-change", // existing file, different content: the content change message runs
+			seed: func(t *testing.T, dir string) {
+				writeSeed(t, filepath.Join(dir, "cc.txt"), "D8SECRET-File-content-old\n", 0o644)
+			},
+			plain: []string{"D8SECRET-File-content-old"},
+			resources: func(dir string) []map[string]any {
+				return []map[string]any{
+					markedResource("File", filepath.Join(dir, "cc.txt"), map[string]any{"ensure": "file", "content": "D8SECRET-File-content-new\n"}, "content"),
+				}
+			}},
+		{name: "file-content-absent", // marked content with ensure absent on an existing file
+			seed: func(t *testing.T, dir string) {
+				writeSeed(t, filepath.Join(dir, "ca.txt"), "x", 0o644)
+			},
+			resources: func(dir string) []map[string]any {
+				return []map[string]any{
+					markedResource("File", filepath.Join(dir, "ca.txt"), map[string]any{"ensure": "absent", "content": "D8SECRET-File-content-absent"}, "content"),
+				}
+			}},
+		{name: "file-source", resources: func(dir string) []map[string]any {
+			return []map[string]any{
+				markedResource("File", filepath.Join(dir, "s.txt"), map[string]any{"ensure": "file", "source": "/nonexistent/D8SECRET-File-source"}, "source"),
+			}
+		}},
+		{name: "file-source-puppet", agentOnly: true, // a marked source the agent downloads: its debug lines and HTTP lines
+			resources: func(dir string) []map[string]any {
+				return []map[string]any{
+					markedResource("File", filepath.Join(dir, "p.txt"), map[string]any{"ensure": "file", "source": "puppet:///" + secretSourceMount}, "source"),
+				}
+			}},
+		{name: "file-source-recurse", // children are generated from a marked source directory and walked
+			seed: func(t *testing.T, dir string) {
+				writeSeed(t, filepath.Join(dir, "D8SECRET-File-srcdir", "f.txt"), "body\n", 0o644)
+				writeSeed(t, filepath.Join(dir, "D8SECRET-File-srcdir", "sub", "g.txt"), "body2\n", 0o644)
+			},
+			resources: func(dir string) []map[string]any {
+				return []map[string]any{
+					markedResource("File", filepath.Join(dir, "tree"), map[string]any{
+						"ensure": "directory", "recurse": true,
+						"source": filepath.Join(dir, "D8SECRET-File-srcdir"),
+					}, "source"),
+				}
+			}},
+		{name: "file-source-recurse-fail", // the same walk against an unreadable source
+			resources: func(dir string) []map[string]any {
+				return []map[string]any{
+					markedResource("File", filepath.Join(dir, "tree"), map[string]any{
+						"ensure": "directory", "recurse": true,
+						"source": "/nonexistent/D8SECRET-File-srcdir2",
+					}, "source"),
+				}
+			}},
+		{name: "file-owner", resources: func(dir string) []map[string]any {
+			return []map[string]any{
+				markedResource("File", filepath.Join(dir, "o.txt"), map[string]any{"ensure": "file", "content": "x", "owner": "D8SECRET-File-owner"}, "owner"),
+			}
+		}},
+		{name: "file-group", resources: func(dir string) []map[string]any {
+			return []map[string]any{
+				markedResource("File", filepath.Join(dir, "g.txt"), map[string]any{"ensure": "file", "content": "x", "group": "D8SECRET-File-group"}, "group"),
+			}
+		}},
+		{name: "file-owner-group-change", rootOnly: true, // valid, different owner and group: the change messages run
+			seed: func(t *testing.T, dir string) {
+				writeSeed(t, filepath.Join(dir, "og.txt"), "x", 0o644)
+			},
+			plain: []string{"daemon"},
+			resources: func(dir string) []map[string]any {
+				return []map[string]any{
+					markedResource("File", filepath.Join(dir, "og.txt"), map[string]any{"ensure": "file", "owner": "daemon", "group": "daemon"}, "owner", "group"),
+				}
+			}},
+		{name: "file-mode-invalid", resources: func(dir string) []map[string]any {
+			return []map[string]any{
+				markedResource("File", filepath.Join(dir, "m.txt"), map[string]any{"ensure": "file", "content": "x", "mode": "D8SECRET-File-mode"}, "mode"),
+			}
+		}, refused: true},
+		{name: "file-mode-change", // existing file, different mode: the mode change message runs
+			seed: func(t *testing.T, dir string) {
+				writeSeed(t, filepath.Join(dir, "mc.txt"), "x", 0o604)
+			},
+			plain: []string{`'0751'`, `"0751"`, `'0604'`, `"0604"`}, // quoted: a bare 0751 can match a timing digit run
+			resources: func(dir string) []map[string]any {
+				return []map[string]any{
+					markedResource("File", filepath.Join(dir, "mc.txt"), map[string]any{"ensure": "file", "mode": "0751"}, "mode"),
+				}
+			}},
+		{name: "file-ensure", resources: func(dir string) []map[string]any {
+			return []map[string]any{
+				markedResource("File", filepath.Join(dir, "e.txt"), map[string]any{"ensure": "D8SECRET-File-ensure"}, "ensure"),
+			}
+		}},
+		{name: "file-target", resources: func(dir string) []map[string]any {
+			return []map[string]any{
+				markedResource("File", filepath.Join(dir, "l"), map[string]any{"ensure": "link", "target": "/nonexistent/D8SECRET-File-target"}, "target"),
+				markedResource("File", filepath.Join(dir, "l2"), map[string]any{"ensure": "link", "target": filepath.Join(dir, "l2-target-D8SECRET-File-target2")}, "target"),
+			}
+		}},
+		{name: "exec",
+			seed: func(t *testing.T, dir string) {
+				writeSeed(t, filepath.Join(dir, "fail.sh"), "#!/bin/sh\necho \"$1\"\nexit 1\n", 0o755)
+			},
+			resources: func(dir string) []map[string]any {
+				return []map[string]any{
+					markedResource("Exec", "e-ok", map[string]any{
+						"command": "/bin/echo D8SECRET-Exec-command", "logoutput": true,
+						"unless": "/bin/false D8SECRET-Exec-unless", "onlyif": "/bin/true D8SECRET-Exec-onlyif",
+					}, "command", "unless", "onlyif"),
+					markedResource("Exec", "e-fail", map[string]any{
+						"command": "/bin/false D8SECRET-Exec-failcmd", "logoutput": "on_failure",
+					}, "command"),
+					// A failing marked command that echoes its own marker: the
+					// failure path must log "[output redacted]".
+					markedResource("Exec", "e-fail-echo", map[string]any{
+						"command": filepath.Join(dir, "fail.sh") + " D8SECRET-Exec-failecho", "logoutput": "on_failure",
+					}, "command"),
+					markedResource("Exec", "e-missing", map[string]any{
+						"command": "/nonexistent/D8SECRET-Exec-missing",
+					}, "command"),
+					markedResource("Exec", "e-unless-only", map[string]any{
+						"command": "/bin/echo plain", "unless": "/bin/false D8SECRET-Exec-unless2", "logoutput": true,
+					}, "unless"),
+					markedResource("Exec", "e-cwd", map[string]any{
+						"command": "/bin/true", "cwd": "/D8SECRET-Exec-cwd",
+					}, "cwd"),
+					markedResource("Exec", "e-path", map[string]any{
+						"command": "true", "path": "/D8SECRET-Exec-path:/bin",
+					}, "path"),
+				}
+			}},
+		// Package: dnf needs root, so every operation fails; the failure and its
+		// message must not carry the marked version.
+		{name: "package", resources: func(dir string) []map[string]any {
+			return []map[string]any{
+				markedResource("Package", "voxagent-no-such-package", map[string]any{"ensure": "D8SECRET-Package-ensure"}, "ensure"),
+				markedResource("Package", "voxagent-no-such-package2", map[string]any{"ensure": "1.D8SECRET-Package-ensure2"}, "ensure"),
+			}
+		}},
+		// Service: Service.Validate refuses the catalog when PID 1 is not systemd, so
+		// the provider's Apply never runs there and this case only proves the
+		// refusal text is clean. On a systemd host the catalog applies instead. The
+		// provider's own redaction is covered by internal/ral tests.
+		{name: "service", refused: pid1IsNotSystemd(), resources: func(dir string) []map[string]any {
+			return []map[string]any{
+				markedResource("Service", "voxagent-no-such-service", map[string]any{"ensure": "running", "enable": true}, "ensure", "enable"),
+			}
+		}},
+		// The refusal text of an unimplemented marked value must carry no marker.
+		{name: "service-unimplemented-values", refused: true, resources: func(dir string) []map[string]any {
+			return []map[string]any{
+				markedResource("Service", "voxagent-no-such-service2", map[string]any{"ensure": "D8SECRET-Service-ensure", "enable": "D8SECRET-Service-enable"}, "ensure", "enable"),
+			}
+		}},
+	}
+}
+
+// pid1IsNotSystemd mirrors Service.Validate's init-system check
+// (internal/ral/service.go). An unreadable /proc/1/comm counts as not systemd.
+func pid1IsNotSystemd() bool {
+	comm, err := os.ReadFile("/proc/1/comm")
+	return err != nil || !strings.Contains(string(comm), "systemd")
+}
+
+// leakAllowed lists markers of plain parameters (never properties) that Ruby
+// parity lets an error or command output quote. Each entry names the message.
+// None of the cases below surfaced one, so it is empty.
+var leakAllowed = []string{}
+
+func assertNoLeak(t *testing.T, where, text string, plain []string) {
+	t.Helper()
+	rest := text
+	for _, a := range leakAllowed {
+		rest = strings.ReplaceAll(rest, a, "")
+	}
+	for i := strings.Index(rest, "D8SECRET-"); i >= 0; i = strings.Index(rest, "D8SECRET-") {
+		t.Errorf("%s leaks a marker: %q", where, rest[i:min(len(rest), i+80)])
+		rest = rest[i+len("D8SECRET-"):]
+	}
+	for _, p := range plain {
+		if strings.Contains(rest, p) {
+			t.Errorf("%s leaks the marked value %q in: %s", where, p, rest)
+		}
+	}
+}
+
+// debugEntry matches a level-debug log entry in a report.
+var debugEntry = regexp.MustCompile(`"level":\s*"debug"`)
+
+func TestNoSensitiveMarkerLeaks(t *testing.T) {
+	bin := buildBinary(t)
+	sawWarning := false
+
+	// The -debug modes add --debug, the level that logs the most (graph,
+	// transaction, Exec/File/Package/Service lines); the plain agent mode keeps
+	// the --verbose this test always used.
+	for _, mode := range []string{"apply", "noop", "agent", "apply-debug", "noop-debug", "agent-debug"} {
+		debug := strings.HasSuffix(mode, "-debug")
+		kind := strings.TrimSuffix(mode, "-debug")
+		for _, tc := range leakCases() {
+			t.Run(mode+"/"+tc.name, func(t *testing.T) {
+				if tc.agentOnly && kind != "agent" {
+					t.Skip("fetches a puppet: source, which only the agent does")
+				}
+				if tc.rootOnly && os.Geteuid() != 0 {
+					t.Skip("changing ownership needs root; verified only when run as root")
+				}
+				var stdout, stderr string
+				var code int
+				var reportBytes []byte
+				if kind == "agent" {
+					base := agentScratch(t)
+					if tc.seed != nil {
+						tc.seed(t, base)
+					}
+					f := newFakeServer(t, filepath.Join(base, "managed.txt"))
+					cat, err := json.Marshal(map[string]any{
+						"catalog_format": 2, "name": agentCertname, "environment": "production", "version": 1,
+						"catalog_uuid": "00000000-0000-4000-8000-00000000000a",
+						"resources":    tc.resources(base),
+						"edges":        []any{}, "tags": []any{}, "classes": []any{},
+					})
+					if err != nil {
+						t.Fatal(err)
+					}
+					f.catalog = cat
+					level := "--verbose"
+					if debug {
+						level = "--debug"
+					}
+					stdout, stderr, code = run(t, bin, append(agentArgs(t, base, f), level)...)
+					f.mu.Lock()
+					reportBytes = append([]byte(nil), f.report...)
+					f.mu.Unlock()
+				} else {
+					dir := t.TempDir()
+					if tc.seed != nil {
+						tc.seed(t, dir)
+					}
+					cat := writeCatalog(t, dir, tc.resources(dir))
+					reports := filepath.Join(dir, "reports")
+					args := []string{"apply", "--catalog", cat, "--report-dir", reports}
+					if kind == "noop" {
+						args = append(args, "--noop")
+					}
+					if debug {
+						args = append(args, "--debug")
+					}
+					stdout, stderr, code = run(t, bin, args...)
+					if entries, err := os.ReadDir(reports); err == nil && len(entries) == 1 {
+						reportBytes, _ = os.ReadFile(filepath.Join(reports, entries[0].Name()))
+					}
+				}
+
+				// Plain mode never reports a verdict: 0 for any applied run, 2 for
+				// could-not-run. Anything else is a crash.
+				wantCode := 0
+				if tc.refused {
+					wantCode = 2
+				}
+				if code != wantCode {
+					t.Fatalf("exit = %d, want %d\nstdout:\n%s\nstderr:\n%s", code, wantCode, stdout, stderr)
+				}
+				if tc.refused && len(reportBytes) != 0 {
+					t.Errorf("a refused catalog produced a report: %s", reportBytes)
+				}
+				if !tc.refused && len(reportBytes) == 0 {
+					t.Fatalf("no report was produced; stderr:\n%s", stderr)
+				}
+				assertNoLeak(t, "stdout", stdout, tc.plain)
+				assertNoLeak(t, "stderr", stderr, tc.plain)
+				assertNoLeak(t, "report", string(reportBytes), tc.plain)
+
+				// A --debug that was silently dropped would leave every check above
+				// passing on a quieter run, so require the debug output itself.
+				if debug && !tc.refused {
+					if !strings.Contains(stdout, "Debug: ") {
+						t.Errorf("--debug printed no Debug: line on stdout:\n%s", stdout)
+					}
+					if !debugEntry.Match(reportBytes) {
+						t.Errorf("--debug left no level-debug entry in the report")
+					}
+				}
+				if len(tc.plain) > 0 && kind != "noop" && !strings.Contains(string(reportBytes), "[redacted]") {
+					t.Errorf("the seeded change never ran: no [redacted] in the report; stderr:\n%s", stderr)
+				}
+				if tc.name == "exec" {
+					if strings.Contains(stderr, "Unable to mark 'cwd' as sensitive") {
+						sawWarning = true
+					}
+					if debug {
+						wants := []string{"Executing check '[redacted]'"}
+						if kind != "noop" {
+							wants = append(wants, "Executing '[redacted]'", "Executing: '[redacted]'")
+						}
+						for _, w := range wants {
+							if !strings.Contains(stdout, w) || !strings.Contains(string(reportBytes), w) {
+								t.Errorf("--debug: %q missing from stdout or the report; stdout:\n%s", w, stdout)
+							}
+						}
+					}
+					if kind != "noop" && !strings.Contains(string(reportBytes), "[output redacted]") {
+						t.Errorf("no [output redacted] in the report; stderr:\n%s", stderr)
+					}
+				}
+			})
+		}
+	}
+	if !sawWarning {
+		t.Error("the \"Unable to mark 'cwd'\" warning never appeared")
+	}
+}

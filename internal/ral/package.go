@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/voxagent/voxagent/internal/catalog"
+	"github.com/voxagent/voxagent/internal/runlog"
 )
 
 // rpmQueryFormat is provider/package/rpm.rb:27's NEVRA_FORMAT, verbatim: five
@@ -124,6 +125,11 @@ func (Package) AutoRequires(catalog.Resource, func(string) bool) []string { retu
 // allow_virtual and the rest are refused at pre-flight by their absence.
 // Declaring one would promise to honour it.
 func (Package) Attrs() Attrs { return NewAttrs("ensure", "name", "provider") }
+
+// Properties implements PropertyDeclaring. Of the three attributes only ensure
+// is a property of Puppet's package type (type/package.rb ensurable); name and
+// provider are parameters.
+func (Package) Properties() Attrs { return NewAttrs("ensure") }
 
 // purgedValue is the ensure value provider/package.rb's properties substitutes
 // for a package rpm does not know. It is a REPORTED value -- every captured
@@ -263,6 +269,10 @@ func (p Package) runner() commandRunner {
 // It also resolves `ensure => latest` here, once for the whole run, for the
 // reasons resolveUpdates sets out.
 func (p Package) Prefetch(ctx context.Context, rs []catalog.Resource) (Provider, error) {
+	// transaction.rb:379, before the provider's own prefetch runs. Only a
+	// provider that defines prefetch is announced: posix (file, exec) and
+	// systemd (service) define none, and 1-core/debug.txt has no such line.
+	runlog.Debugf(ctx, "Puppet", "Prefetching %s resources for %s", *p.ProviderUsed(), p.Type())
 	if os.Geteuid() != 0 {
 		return nil, errors.New(notRootMessage)
 	}
@@ -306,6 +316,9 @@ func (p Package) Apply(ctx context.Context, r catalog.Resource, noop bool) ([]Ch
 	}
 	name := paramString(r, "name", r.Title)
 	ensure := paramString(r, "ensure", "present")
+	// A marked ensure is shown as [redacted] in the errors that name it (D-78:
+	// Ruby leaks it).
+	ensureMarked := isMarked(p, r, "ensure")
 	current, installed := p.state[name]
 	if !installed {
 		// provider/package.rb's prefetch hands a provider only to resources
@@ -344,6 +357,10 @@ func (p Package) Apply(ctx context.Context, r catalog.Resource, noop bool) ([]Ch
 		}
 		// Is is "present" for `installed` too -- the type normalises the alias.
 		ch := Change{Property: "ensure", Was: was, Is: "present", Name: "package_installed", Message: ensureMessage(was, "present")}
+		if !noop {
+			// installed is the alias the type normalises to present.
+			logInstall(ctx, name, "present", ensureMarked, false, "", "install")
+		}
 		return p.sync(ctx, ch, noop, p.dnfPath, "-y", "install", name), nil, nil
 	case "absent":
 		if !installed {
@@ -370,7 +387,10 @@ func (p Package) Apply(ctx context.Context, r catalog.Resource, noop bool) ([]Ch
 		// `upgrade` (AMENDMENT A15).
 		if !installed {
 			ch := Change{Property: "ensure", Was: was, Is: "latest", Name: "package_changed", Message: ensureMessage(was, "latest")}
-			return p.syncUpdate(ctx, ch, noop, "install", name, ""), nil, nil
+			if !noop {
+				logInstall(ctx, name, "latest", ensureMarked, false, "", "install")
+			}
+			return p.syncUpdate(ctx, ch, noop, "install", name, "", false), nil, nil
 		}
 		// The warning belongs to the resources that ASK for a latest version,
 		// which is why it is raised here rather than for every `latest`
@@ -416,14 +436,17 @@ func (p Package) Apply(ctx context.Context, r catalog.Resource, noop bool) ([]Ch
 			Property: "ensure", Was: was, Is: "latest", IsDisplay: newest,
 			Name: "package_changed", Message: ensureMessage(was, newest),
 		}
-		return p.syncUpdate(ctx, ch, noop, "upgrade", name, ""), warnings, nil
+		if !noop {
+			logInstall(ctx, name, "latest", ensureMarked, true, current, "upgrade")
+		}
+		return p.syncUpdate(ctx, ch, noop, "upgrade", name, "", false), warnings, nil
 	default:
 		if !ensureIsVersion(ensure) {
 			// Values this provider refuses. Pre-flight refuses all of them
 			// through SupportsValue, so reaching here means a caller bypassed
 			// it: fail the resource rather than report a change nothing made
 			// -- or, worse, install a package named after the value.
-			return nil, nil, fmt.Errorf("ensure => %q is not implemented", ensure)
+			return nil, nil, fmt.Errorf("ensure => %s is not implemented", redactIf(ensureMarked, "%q", ensure))
 		}
 		if installed && versionInSync(current, ensure) {
 			return nil, nil, nil
@@ -434,7 +457,34 @@ func (p Package) Apply(ctx context.Context, r catalog.Resource, noop bool) ([]Ch
 		// both ways -- Package[nano] upgraded and Package[lsof] installed from
 		// purged are both package_changed (AMENDMENT A2).
 		ch := Change{Property: "ensure", Was: was, Is: ensure, Name: "package_changed", Message: ensureMessage(was, ensure)}
-		return p.syncUpdate(ctx, ch, noop, versionOperation(ensure, current, installed), name, ensure), nil, nil
+		operation := versionOperation(ensure, current, installed)
+		if !noop {
+			logInstall(ctx, name, ensure, ensureMarked, installed, current, operation)
+		}
+		return p.syncUpdate(ctx, ch, noop, operation, name, ensure, ensureMarked), nil, nil
+	}
+}
+
+// logInstall is the debug lines of yum.rb's install (:250-304) for the sync
+// Apply is about to run, at the provider form. Ruby's should is the declared
+// ensure, which a marked ensure shows as [redacted] (D-78: Ruby leaks it), in
+// "Ensuring =>" and in the version the Upgrading and Downgrading lines name.
+// operation is dnf's subcommand and current the installed version: for a
+// declared version, Ruby's upgrade and downgrade lines follow versionOperation.
+// The lines naming no value are Ruby's, whatever ensure is marked.
+func logInstall(ctx context.Context, name, ensure string, marked, installed bool, current, operation string) {
+	source := SourcesFrom(ctx).Provider
+	should := redactIf(marked, "%s", ensure)
+	runlog.Debugf(ctx, source, "Ensuring => %s", should)
+	switch {
+	case ensure == "latest" && !installed:
+		runlog.Debugf(ctx, source, "Ensuring latest, but package is absent, so using install")
+	case ensure == "latest":
+		runlog.Debugf(ctx, source, "Ensuring latest, so using %s", operation)
+	case installed && operation == "upgrade":
+		runlog.Debugf(ctx, source, "Upgrading package %s from version %s to %s", name, current, should)
+	case installed && operation == "downgrade":
+		runlog.Debugf(ctx, source, "Downgrading package %s from version %s to %s", name, current, should)
 	}
 }
 
@@ -571,16 +621,27 @@ func (p Package) sync(ctx context.Context, ch Change, noop bool, path string, ar
 // dnf's subcommand. The argv is quoted verbatim into a failure message, so both
 // are output contracts (AMENDMENT A15).
 //
+// redact shows should as [redacted] in the sync failure (command line and
+// output) and in that verification failure.
+//
 // The verification's failure takes the same "Could not update: " prefix: it is
 // raised inside the same provider call newvalue(/./) rescues.
-func (p Package) syncUpdate(ctx context.Context, ch Change, noop bool, operation, name, should string) []Change {
+func (p Package) syncUpdate(ctx context.Context, ch Change, noop bool, operation, name, should string, redact bool) []Change {
 	target := name
 	if should != "" {
 		target = name + "-" + should
 	}
-	changes := p.sync(ctx, ch, noop, p.dnfPath, "-y", operation, target)
+	syncCtx := ctx
+	if redact && should != "" {
+		syncCtx = withRedactedCommands(ctx)
+	}
+	changes := p.sync(syncCtx, ch, noop, p.dnfPath, "-y", operation, target)
+	if redact && should != "" && changes[0].Err != nil {
+		// The command line and dnf's output both name name-<should>.
+		changes[0].Err = errors.New(strings.ReplaceAll(changes[0].Err.Error(), should, "[redacted]"))
+	}
 	if changes[0].Err == nil && !noop && should != "" {
-		changes[0].Err = p.verifyVersion(ctx, name, should)
+		changes[0].Err = p.verifyVersion(ctx, name, should, redact)
 	}
 	if changes[0].Err != nil {
 		changes[0].Err = fmt.Errorf("%s%w", couldNotUpdate, changes[0].Err)
@@ -597,7 +658,7 @@ func (p Package) syncUpdate(ctx context.Context, ch Change, noop bool, operation
 // reports a FAILED resource on a machine it changed, on every run.
 //
 // Nothing found is yum.rb:315's "Could not find package".
-func (p Package) verifyVersion(ctx context.Context, name, should string) error {
+func (p Package) verifyVersion(ctx context.Context, name, should string, redact bool) error {
 	version, found, err := p.query(ctx, name)
 	if err != nil {
 		return err
@@ -606,7 +667,7 @@ func (p Package) verifyVersion(ctx context.Context, name, should string) error {
 		return fmt.Errorf("Could not find package %s", name)
 	}
 	if !providerInSync(version, should) {
-		return fmt.Errorf("Failed to update to version %s, got version %s instead", should, version)
+		return fmt.Errorf("Failed to update to version %s, got version %s instead", redactIf(redact, "%s", should), version)
 	}
 	return nil
 }
@@ -703,8 +764,9 @@ func (p Package) resolveUpdates(ctx context.Context, rs []catalog.Resource) (map
 		return parseCheckUpdate(out), "", nil
 	case 0:
 		// None are available. yum.rb:127 debug-logs this and returns an empty
-		// hash; voxagent has no debug channel, and an empty map is the same
-		// answer.
+		// hash. The call is on the class, so the source is the class, as the
+		// warning below has it, and the command is dnf's absolute path.
+		runlog.Debugf(ctx, dnfProviderSource, "%s check-update exited with 0; no package updates available.", p.dnfPath)
 		return nil, "", nil
 	default:
 		return nil, fmt.Sprintf(checkUpdateWarning, p.dnfPath, exit), nil

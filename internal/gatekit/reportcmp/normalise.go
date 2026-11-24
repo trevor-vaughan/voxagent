@@ -52,6 +52,20 @@ var (
 	// output after it is masked.
 	executionWrapper = regexp.MustCompile(`^(?:Could not update: )?Execution of '[^']*' returned \p{Nd}+: `)
 
+	// The command inside the ExecutionFailure wrapper, which is all
+	// maskValidateTempNames looks at. Puppet interpolates the command between
+	// single quotes without escaping it, so a command that itself holds a
+	// single quote does not match: its temp name stays unmasked and the
+	// leaf diverges between any two runs. That fails loud, never as a false
+	// agreement; G5's validators hold no quote.
+	executedCommand = regexp.MustCompile(`Execution of '([^']*)' returned `)
+
+	// Read from file_system/uniquefile.rb:102-116: the temp file a File's
+	// validate_cmd is run against is "<base><YYYYMMDD>-<pid>-<base36 rand>",
+	// with "-<n>" on a retry, and its path is substituted into the command.
+	// Group 1 is the directory and base the name was made from.
+	validateTempName = regexp.MustCompile(`(/[^/\s]*?)[0-9]{8}-[0-9]+-[0-9a-z]+(?:-[0-9]+)?\b`)
+
 	// Read from util/errors.rb error_location_with_space, its three non-empty
 	// forms. Group 1 is the location without the final newline Python's $
 	// would have let it precede.
@@ -216,8 +230,22 @@ func elideFailureDetail(message string) string {
 	return head + "<detail>" + location
 }
 
-// normaliseFailureDetails applies elideFailureDetail to failure events and to
-// their logs.
+// maskValidateTempNames masks the date, pid and random token of a
+// validate_cmd temp file's name inside an ExecutionFailure's command.
+//
+// Measured: a failing validate_cmd's message is
+// "Execution of '/tmp/fail.sh /tmp/t/f20261007-625-1c0wrau' returned 1: ...",
+// whose name carries the agent's pid and a random number, so it differs
+// between two RUBY runs. The directory and base name stay compared, and so does
+// the shape: a temp file named any other way is not masked and diverges.
+func maskValidateTempNames(message string) string {
+	return executedCommand.ReplaceAllStringFunc(message, func(wrapper string) string {
+		return validateTempName.ReplaceAllString(wrapper, "${1}<YYYYMMDD-pid-rand>")
+	})
+}
+
+// normaliseFailureDetails applies elideFailureDetail and maskValidateTempNames
+// to failure events and to their logs.
 //
 // Events are selected by status "failure" and logs by level "err" -- on what
 // the report says happened, never on what the message looks like, so a success
@@ -249,7 +277,7 @@ func normaliseFailureDetails(doc map[string]any) map[string]any {
 				}
 				message, isString := event["message"].(string)
 				if outcome, _ := event["status"].(string); isString && outcome == "failure" {
-					masked[i] = with(event, "message", elideFailureDetail(message))
+					masked[i] = with(event, "message", maskValidateTempNames(elideFailureDetail(message)))
 				}
 			}
 			rewritten[ref] = with(status, "events", masked)
@@ -258,7 +286,7 @@ func normaliseFailureDetails(doc map[string]any) map[string]any {
 	}
 	return mapLogs(doc, func(entry map[string]any, message string) (string, bool) {
 		if level, _ := entry["level"].(string); level == "err" {
-			return elideFailureDetail(message), true
+			return maskValidateTempNames(elideFailureDetail(message)), true
 		}
 		return "", false
 	})
@@ -288,6 +316,31 @@ func dropWrappedExceptionLogs(doc map[string]any) map[string]any {
 			if message, ok := entry["message"].(string); ok && strings.Contains(message, wrappedException) {
 				continue
 			}
+		}
+		kept = append(kept, e)
+	}
+	return with(doc, "logs", kept)
+}
+
+// dropCachingCatalogLog drops the line Ruby's agent logs when it writes the
+// catalog it received to its cache (configurer.rb:495), which voxagent never
+// does (D-67): no catalog cache, no fallback to one.
+//
+// Exact on every field -- source "Puppet", level info, message "Caching
+// catalog for " and the report's own host -- so any other wording still
+// diverges. Called on the Ruby document only, like dropWrappedExceptionLogs:
+// the same line from voxagent would be a claim it caches, and must surface.
+func dropCachingCatalogLog(doc map[string]any) map[string]any {
+	logs, ok := doc["logs"].([]any)
+	host, named := doc["host"].(string)
+	if !ok || !named {
+		return doc
+	}
+	kept := make([]any, 0, len(logs))
+	for _, e := range logs {
+		if entry, ok := e.(map[string]any); ok && entry["source"] == "Puppet" && entry["level"] == "info" &&
+			entry["message"] == "Caching catalog for "+host {
+			continue
 		}
 		kept = append(kept, e)
 	}

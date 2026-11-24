@@ -47,7 +47,7 @@ tasks:
     # did. dev:state-diff is deliberately absent -- it needs a container image
     # and takes minutes, so it is run explicitly like fleet:gate.
     deps: [lint, test, dev:adjudication, dev:vendor-pins, dev:noclobber,
-           dev:report-diff, dev:idempotence]
+           dev:report-diff, dev:report-diff-extension, dev:idempotence]
 
   clean:
     desc: Remove build artifacts and test output

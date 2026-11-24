@@ -7,11 +7,13 @@ import (
 	"os"
 	"os/user"
 	"path/filepath"
+	"reflect"
 	"slices"
 	"strconv"
 	"strings"
 	"syscall"
 	"testing"
+	"time"
 
 	"github.com/voxagent/voxagent/internal/catalog"
 )
@@ -256,10 +258,13 @@ func TestFileCreateFailureIsAttributedToEnsure(t *testing.T) {
 	if ch.Err == nil {
 		t.Fatal("Change.Err is nil for a create that cannot succeed")
 	}
-	want := "Could not set 'file' on ensure: open " + path +
-		": no such file or directory (file: " + r.File + ", line: 7)"
-	if ch.Err.Error() != want {
-		t.Errorf("Change.Err = %q\n         want   %q", ch.Err, want)
+	// Content is written through a temp file named after the path
+	// (writeViaTemp), as Puppet's replace_file names "<path><stamp>.lock", so
+	// the open that fails is the temp file's.
+	wantPrefix := "Could not set 'file' on ensure: open " + path + ".voxagent"
+	wantSuffix := ": no such file or directory (file: " + r.File + ", line: 7)"
+	if got := ch.Err.Error(); !strings.HasPrefix(got, wantPrefix) || !strings.HasSuffix(got, wantSuffix) {
+		t.Errorf("Change.Err = %q\n         want   %q<token>%q", ch.Err, wantPrefix, wantSuffix)
 	}
 }
 
@@ -367,43 +372,25 @@ func TestFileAbsentRemovalFailureIsAttributedToEnsure(t *testing.T) {
 	}
 }
 
-func TestFileRejectsUnknownEnsure(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "a")
-	if _, _, err := (File{}).Apply(context.Background(),
-		fileRes(path, map[string]any{"ensure": "link"}), false); err == nil {
-		t.Fatal("Apply accepted ensure => link; want an error")
-	}
-}
-
-// ensure => file against an existing directory, and ensure => directory against
-// an existing file, are both errors rather than silent replacements. Removing
-// and recreating would destroy data the catalog never asked to destroy.
-func TestFileRefusesToChangeType(t *testing.T) {
-	dir := t.TempDir()
-	asDir := filepath.Join(dir, "d")
-	if err := os.Mkdir(asDir, 0o755); err != nil {
-		t.Fatalf("seed: %v", err)
-	}
-	if _, _, err := (File{}).Apply(context.Background(),
-		fileRes(asDir, map[string]any{"ensure": "file", "content": "x"}), false); err == nil {
-		t.Error("Apply accepted ensure => file over a directory; want an error")
-	}
-
-	asFile := filepath.Join(dir, "f")
-	if err := os.WriteFile(asFile, []byte("x"), 0o644); err != nil {
-		t.Fatalf("seed: %v", err)
-	}
-	if _, _, err := (File{}).Apply(context.Background(),
-		fileRes(asFile, map[string]any{"ensure": "directory"}), false); err == nil {
-		t.Error("Apply accepted ensure => directory over a file; want an error")
-	}
-}
-
-func TestFileRejectsNonOctalMode(t *testing.T) {
+// Validate refuses an invalid mode; Apply's own bare error is the defence for a
+// caller that skipped it.
+func TestFileRejectsAnInvalidMode(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "a.txt")
 	if _, _, err := (File{}).Apply(context.Background(),
 		fileRes(path, map[string]any{"ensure": "file", "mode": "rwxr-xr-x"}), false); err == nil {
-		t.Fatal("Apply accepted a symbolic mode; want an error")
+		t.Fatal("Apply accepted an invalid mode; want an error")
+	}
+}
+
+// Ownership now syncs before mode, but a mode Validate refuses still fails the
+// resource before either moves.
+func TestFileUnparseableModeMovesNoOwnership(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "a.txt")
+	mustWrite(t, path, "x\n")
+	changes, _, err := applyMetadataOnly(context.Background(), osFS{}, path, fileRes(path, map[string]any{
+		"group": strconv.Itoa(os.Getgid() + 1), "mode": "rwxr-xr-x"}), false, nil)
+	if err == nil || len(changes) != 0 {
+		t.Errorf("applyMetadataOnly = %+v, %v; want a bare error and no change", changes, err)
 	}
 }
 
@@ -535,23 +522,411 @@ func TestFileAbsentNoopLeavesFileInPlace(t *testing.T) {
 	}
 }
 
-// Fix #3: Puppet requires force => true to remove a directory; without it,
-// Puppet leaves an empty directory in place (measured, Puppet 8.10.0: "Not
-// removing directory; use 'force' to override"). force is outside the
-// bounded attribute set, so voxagent refuses the resource outright rather
-// than silently deleting (worse than Puppet's no-op) or silently leaving it
-// while reporting success (also worse).
-func TestFileAbsentRefusesToRemoveDirectory(t *testing.T) {
-	dir := filepath.Join(t.TempDir(), "d")
-	if err := os.Mkdir(dir, 0o755); err != nil {
-		t.Fatalf("seed: %v", err)
+func mustMkdir(t *testing.T, p string) {
+	t.Helper()
+	if err := os.Mkdir(p, 0o755); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func mustWrite(t *testing.T, p, s string) {
+	t.Helper()
+	if err := os.WriteFile(p, []byte(s), 0o644); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestFileAbsentForceRemovesTheTree(t *testing.T) {
+	d := filepath.Join(t.TempDir(), "d")
+	mustMkdir(t, d)
+	mustWrite(t, filepath.Join(d, "x"), "x")
+	changes, _, err := (File{}).Apply(context.Background(),
+		fileRes(d, map[string]any{"ensure": "absent", "force": true}), false)
+	if err != nil || len(changes) != 1 || changes[0].Was != "directory" || changes[0].Message != "removed" {
+		t.Fatalf("Apply = %+v, %v", changes, err)
+	}
+	if _, err := os.Lstat(d); !os.IsNotExist(err) {
+		t.Errorf("directory still present: %v", err)
+	}
+}
+
+// Replaces TestFileAbsentRefusesToRemoveDirectory: Puppet notices, reports
+// removed and keeps the directory (I-1).
+func TestFileAbsentWithoutForceNoticesAndReportsRemoved(t *testing.T) {
+	d := filepath.Join(t.TempDir(), "d")
+	mustMkdir(t, d)
+	changes, _, err := (File{}).Apply(context.Background(), fileRes(d, map[string]any{"ensure": "absent"}), false)
+	if err != nil || len(changes) != 1 {
+		t.Fatalf("Apply = %+v, %v", changes, err)
+	}
+	ch := changes[0]
+	if ch.Message != "removed" || ch.Err != nil ||
+		!slices.Equal(ch.PathNotices, []string{"Not removing directory; use 'force' to override"}) {
+		t.Errorf("change = %+v", ch)
+	}
+	if _, err := os.Stat(d); err != nil {
+		t.Errorf("directory was removed: %v", err)
+	}
+}
+
+func TestFileForceRemovalDoesNotFollowAPlantedSymlink(t *testing.T) {
+	base := t.TempDir()
+	outside := filepath.Join(base, "outside")
+	mustMkdir(t, outside)
+	mustWrite(t, filepath.Join(outside, "precious"), "keep")
+	d := filepath.Join(base, "d")
+	mustMkdir(t, d)
+	if err := os.Symlink(outside, filepath.Join(d, "link")); err != nil {
+		t.Fatal(err)
 	}
 	if _, _, err := (File{}).Apply(context.Background(),
-		fileRes(dir, map[string]any{"ensure": "absent"}), false); err == nil {
-		t.Fatal("Apply removed a directory; want an error naming force as unimplemented")
+		fileRes(d, map[string]any{"ensure": "absent", "force": true}), false); err != nil {
+		t.Fatal(err)
 	}
-	if _, err := os.Stat(dir); err != nil {
-		t.Errorf("directory removed despite the error: %v", err)
+	if b, err := os.ReadFile(filepath.Join(outside, "precious")); err != nil || string(b) != "keep" {
+		t.Errorf("removal followed the link: %q, %v", b, err)
+	}
+}
+
+func TestFileAbsentForceUnderNoopRemovesNothing(t *testing.T) {
+	d := filepath.Join(t.TempDir(), "d")
+	mustMkdir(t, d)
+	changes, _, err := (File{}).Apply(context.Background(),
+		fileRes(d, map[string]any{"ensure": "absent", "force": true}), true)
+	if err != nil || len(changes) != 1 || changes[0].Was != "directory" || len(changes[0].PathNotices) != 0 {
+		t.Fatalf("Apply = %+v, %v", changes, err)
+	}
+	if _, err := os.Stat(d); err != nil {
+		t.Errorf("noop removed the directory: %v", err)
+	}
+}
+
+func TestFileOverADirectoryWithoutForceFailsWithTwoNotices(t *testing.T) {
+	d := filepath.Join(t.TempDir(), "d")
+	mustMkdir(t, d)
+	changes, _, err := (File{}).Apply(context.Background(),
+		fileRes(d, map[string]any{"ensure": "file", "content": "c\n"}), false)
+	if err != nil || len(changes) != 1 {
+		t.Fatalf("Apply = %+v, %v", changes, err)
+	}
+	ch := changes[0]
+	notice := "Not removing directory; use 'force' to override"
+	if ch.Property != "ensure" || ch.Was != "directory" || ch.Is != "file" || ch.Err == nil ||
+		!slices.Equal(ch.PathNotices, []string{notice, notice}) {
+		t.Errorf("change = %+v", ch)
+	}
+	if !strings.HasPrefix(ch.Err.Error(), "Could not set 'file' on ensure: ") {
+		t.Errorf("err = %q; want the ensure wrapper", ch.Err)
+	}
+	if fi, err := os.Stat(d); err != nil || !fi.IsDir() {
+		t.Errorf("directory was replaced: %v", err)
+	}
+}
+
+func TestFileOverADirectoryWithForceReplacesIt(t *testing.T) {
+	d := filepath.Join(t.TempDir(), "d")
+	mustMkdir(t, d)
+	mustWrite(t, filepath.Join(d, "x"), "x")
+	changes, _, err := (File{}).Apply(context.Background(),
+		fileRes(d, map[string]any{"ensure": "file", "content": "c\n", "force": true}), false)
+	if err != nil || len(changes) != 1 {
+		t.Fatalf("Apply = %+v, %v", changes, err)
+	}
+	ch := changes[0]
+	if ch.Name != "file_created" || ch.Was != "directory" || !strings.HasPrefix(ch.Message, "defined content as '{sha256}") {
+		t.Errorf("change = %+v", ch)
+	}
+	if b, _ := os.ReadFile(d); string(b) != "c\n" {
+		t.Errorf("content = %q", b)
+	}
+}
+
+func TestFileWithoutContentOverADirectoryWithForceSaysEnsureChanged(t *testing.T) {
+	d := filepath.Join(t.TempDir(), "d")
+	mustMkdir(t, d)
+	changes, _, err := (File{}).Apply(context.Background(),
+		fileRes(d, map[string]any{"ensure": "file", "force": true}), false)
+	if err != nil || len(changes) != 1 || changes[0].Err != nil || changes[0].Message != "ensure changed 'directory' to 'file'" {
+		t.Errorf("Apply = %+v, %v", changes, err)
+	}
+	if fi, err := os.Lstat(d); err != nil || !fi.Mode().IsRegular() {
+		t.Errorf("the directory did not become a file: %v", err)
+	}
+}
+
+// links => follow reads a link to a directory as the directory, so with
+// force ensure => file removes what is in the way -- and that is the link,
+// never the tree it points at (removeExisting unlinks; RemoveAll does not
+// follow a final link).
+func TestFileFollowWithForceOverALinkToADirectoryRemovesOnlyTheLink(t *testing.T) {
+	base := t.TempDir()
+	tree(t, base, "t/x", "t/sub/y")
+	l := filepath.Join(base, "l")
+	mustSymlink(t, "t", l)
+	changes, _, err := (File{}).Apply(context.Background(),
+		fileRes(l, map[string]any{"ensure": "file", "links": "follow", "force": true}), false)
+	if err != nil || len(changes) != 1 || changes[0].Err != nil || changes[0].Was != "directory" {
+		t.Fatalf("Apply = %+v, %v", changes, err)
+	}
+	if fi, err := os.Lstat(l); err != nil || !fi.Mode().IsRegular() {
+		t.Errorf("the link was not replaced by a file: %v", err)
+	}
+	for _, rel := range []string{"t/x", "t/sub/y"} {
+		if b, err := os.ReadFile(filepath.Join(base, rel)); err != nil || string(b) != "x" {
+			t.Errorf("%s = %q, %v; the target tree must survive", rel, b, err)
+		}
+	}
+}
+
+func TestDirectoryOverAFileReplacesIt(t *testing.T) {
+	f := filepath.Join(t.TempDir(), "f")
+	mustWrite(t, f, "x")
+	changes, _, err := (File{}).Apply(context.Background(), fileRes(f, map[string]any{"ensure": "directory"}), false)
+	if err != nil || len(changes) != 1 || changes[0].Name != "directory_created" ||
+		changes[0].Was != "file" || changes[0].Message != "ensure changed 'file' to 'directory'" {
+		t.Fatalf("Apply = %+v, %v", changes, err)
+	}
+	if fi, err := os.Stat(f); err != nil || !fi.IsDir() {
+		t.Errorf("not a directory: %v", err)
+	}
+}
+
+// type/file.rb:814-815 removes a fifo like a file, and the event names the
+// type Ruby's ftype does.
+func TestDirectoryOverAFifoReplacesIt(t *testing.T) {
+	f := filepath.Join(t.TempDir(), "p")
+	if err := syscall.Mkfifo(f, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	changes, _, err := (File{}).Apply(context.Background(), fileRes(f, map[string]any{"ensure": "directory"}), false)
+	if err != nil || len(changes) != 1 || changes[0].Err != nil || changes[0].Was != "fifo" ||
+		changes[0].Message != "ensure changed 'fifo' to 'directory'" {
+		t.Fatalf("Apply = %+v, %v", changes, err)
+	}
+	if fi, err := os.Lstat(f); err != nil || !fi.IsDir() {
+		t.Errorf("the fifo was not replaced: %v", err)
+	}
+}
+
+// applyBounded applies r and fails the test instead of hanging when Apply
+// blocks, as an open of a fifo for reading does until a writer appears.
+func applyBounded(t *testing.T, r catalog.Resource) ([]Change, error) {
+	t.Helper()
+	type result struct {
+		changes []Change
+		err     error
+	}
+	done := make(chan result, 1)
+	go func() {
+		changes, _, err := (File{}).Apply(context.Background(), r, false)
+		done <- result{changes, err}
+	}()
+	select {
+	case res := <-done:
+		return res.changes, res.err
+	case <-time.After(5 * time.Second):
+		t.Fatal("Apply blocked on the special file at the path")
+		return nil, nil
+	}
+}
+
+// mkSocket leaves a unix socket file at p.
+func mkSocket(t *testing.T, p string) {
+	t.Helper()
+	fd, err := syscall.Socket(syscall.AF_UNIX, syscall.SOCK_STREAM, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer syscall.Close(fd)
+	if err := syscall.Bind(fd, &syscall.SockaddrUnix{Name: p}); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// ensure => file compares the path's type (type/file/ensure.rb), so a fifo
+// or socket in the way is replaced like any non-file (type/file.rb:814-815).
+// Measured on Puppet 8.10.0: file_created from "fifo" or "socket", "defined
+// content as ..." with content and "ensure changed 'fifo' to 'file'" without,
+// and content alone (ensure inferred) replaces a fifo too. Reading a fifo's
+// content first would block the agent forever.
+func TestFileOverAFifoOrSocketReplacesIt(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		mk     func(t *testing.T, p string)
+		params map[string]any
+		was    string
+		msg    string
+	}{
+		{"fifo with content", mkFifo, map[string]any{"ensure": "file", "content": "c\n"}, "fifo", "defined content as '" + checksum([]byte("c\n")) + "'"},
+		{"fifo without content", mkFifo, map[string]any{"ensure": "file"}, "fifo", "ensure changed 'fifo' to 'file'"},
+		{"fifo, content alone", mkFifo, map[string]any{"content": "c\n"}, "fifo", "defined content as '" + checksum([]byte("c\n")) + "'"},
+		{"socket with content", mkSocket, map[string]any{"ensure": "file", "content": "c\n"}, "socket", "defined content as '" + checksum([]byte("c\n")) + "'"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			p := filepath.Join(t.TempDir(), "p")
+			tc.mk(t, p)
+			changes, err := applyBounded(t, fileRes(p, tc.params))
+			if err != nil || len(changes) != 1 || changes[0].Err != nil || changes[0].Name != "file_created" ||
+				changes[0].Was != tc.was || changes[0].Message != tc.msg {
+				t.Fatalf("Apply = %+v, %v", changes, err)
+			}
+			if fi, err := os.Lstat(p); err != nil || !fi.Mode().IsRegular() {
+				t.Errorf("not replaced by a file: %v, %v", fi, err)
+			}
+		})
+	}
+}
+
+// ensure => present is satisfied by any type (should_be_file?,
+// type/file.rb:867-878), so content is not synced into a fifo (measured:
+// the fifo stays) and nothing may block reading it.
+func TestFilePresentWithContentLeavesAFifo(t *testing.T) {
+	p := filepath.Join(t.TempDir(), "p")
+	mkFifo(t, p)
+	changes, err := applyBounded(t, fileRes(p, map[string]any{"ensure": "present", "content": "c\n"}))
+	if err != nil || len(changes) != 0 {
+		t.Fatalf("Apply = %+v, %v; want nothing", changes, err)
+	}
+	if fi, err := os.Lstat(p); err != nil || fi.Mode()&os.ModeNamedPipe == 0 {
+		t.Errorf("the fifo did not survive: %v, %v", fi, err)
+	}
+}
+
+// A regular file swapped for a fifo between the stat and the read must not
+// block the content comparison: the open is non-blocking and checked.
+func TestFileContentReadRefusesAFifoSwappedIn(t *testing.T) {
+	p := filepath.Join(t.TempDir(), "p")
+	mkFifo(t, p)
+	fsys := swappedFS{osFS: osFS{}, regular: p}
+	done := make(chan error, 1)
+	go func() {
+		_, _, err := applyFile(context.Background(), fsys, p, fileRes(p, map[string]any{"ensure": "file", "content": "c\n"}), false, false, nil, nil, nil)
+		done <- err
+	}()
+	select {
+	case err := <-done:
+		if err == nil || !strings.Contains(err.Error(), "is no longer a regular file") {
+			t.Errorf("applyFile = %v; want the read refused", err)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("applyFile blocked opening the fifo")
+	}
+}
+
+// A device in the way fails ensure => file with Puppet's wording
+// (type/file.rb:816-818), unwrapped, and is not touched. mknod needs a
+// capability the test host may lack, so the device is a stand-in Lstat.
+func TestFileOverADeviceFailsWithPuppetsWording(t *testing.T) {
+	p := filepath.Join(t.TempDir(), "n")
+	fsys := deviceFS{osFS: osFS{}, device: p}
+	changes, _, err := applyFile(context.Background(), fsys, p, fileRes(p, map[string]any{"ensure": "file", "content": "c\n"}), false, false, nil, nil, nil)
+	if err != nil || len(changes) != 1 || changes[0].Was != "characterSpecial" || changes[0].Err == nil ||
+		changes[0].Err.Error() != "Could not remove files of type characterSpecial" {
+		t.Fatalf("applyFile = %+v, %v", changes, err)
+	}
+	if _, err := os.Lstat(p); !os.IsNotExist(err) {
+		t.Errorf("something was written at the device's path: %v", err)
+	}
+}
+
+func mkFifo(t *testing.T, p string) {
+	t.Helper()
+	if err := syscall.Mkfifo(p, 0o644); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// swappedFS reports regular as a regular file, as a stat taken before the
+// swap would.
+type swappedFS struct {
+	osFS
+	regular string
+}
+
+func (s swappedFS) Lstat(name string) (os.FileInfo, error) {
+	fi, err := s.osFS.Lstat(name)
+	if err == nil && name == s.regular {
+		return modeInfo{FileInfo: fi, mode: 0o644}, nil
+	}
+	return fi, err
+}
+
+// deviceFS reports device as a character device.
+type deviceFS struct {
+	osFS
+	device string
+}
+
+func (d deviceFS) Lstat(name string) (os.FileInfo, error) {
+	if name == d.device {
+		return modeInfo{mode: os.ModeDevice | os.ModeCharDevice | 0o644}, nil
+	}
+	return d.osFS.Lstat(name)
+}
+
+// Creating a device node needs root, so the device rule is tested on the
+// decision itself with a stand-in FileInfo (type/file.rb:816-818).
+type modeInfo struct {
+	os.FileInfo
+	mode os.FileMode
+}
+
+func (m modeInfo) Mode() os.FileMode { return m.mode }
+func (m modeInfo) IsDir() bool       { return m.mode.IsDir() }
+
+func TestRemoveExistingRefusesDevicesWithPuppetsWording(t *testing.T) {
+	for mode, want := range map[os.FileMode]string{
+		os.ModeDevice:                     "Could not remove files of type blockSpecial",
+		os.ModeDevice | os.ModeCharDevice: "Could not remove files of type characterSpecial",
+	} {
+		removed, notices, err := removeExisting(context.Background(), osFS{}, "/nonexistent/dev", modeInfo{mode: mode}, true, "absent")
+		if removed || notices != nil || err == nil || err.Error() != want {
+			t.Errorf("mode %v: = %v, %v, %v; want %q", mode, removed, notices, err, want)
+		}
+	}
+}
+
+// Under noop nothing is synced, so nothing is removed and no notice is logged,
+// but the change is still reported (measured, Puppet 8.10.0).
+func TestFileForceReplaceOfADirectoryUnderNoopTouchesNothing(t *testing.T) {
+	d := filepath.Join(t.TempDir(), "d")
+	mustMkdir(t, d)
+	mustWrite(t, filepath.Join(d, "x"), "x")
+	changes, _, err := (File{}).Apply(context.Background(),
+		fileRes(d, map[string]any{"ensure": "file", "content": "c\n", "force": true}), true)
+	if err != nil || len(changes) != 1 {
+		t.Fatalf("Apply = %+v, %v", changes, err)
+	}
+	ch := changes[0]
+	if ch.Name != "file_created" || ch.Was != "directory" || ch.Is != "file" || ch.Err != nil ||
+		!strings.HasPrefix(ch.Message, "defined content as '{sha256}") || len(ch.PathNotices) != 0 {
+		t.Errorf("change = %+v", ch)
+	}
+	if b, err := os.ReadFile(filepath.Join(d, "x")); err != nil || string(b) != "x" {
+		t.Errorf("the directory was touched: %q, %v", b, err)
+	}
+}
+
+func TestDirectoryOverAFileUnderNoopTouchesNothing(t *testing.T) {
+	f := filepath.Join(t.TempDir(), "f")
+	mustWrite(t, f, "keep")
+	changes, _, err := (File{}).Apply(context.Background(), fileRes(f, map[string]any{"ensure": "directory"}), true)
+	if err != nil || len(changes) != 1 || changes[0].Was != "file" || changes[0].Err != nil ||
+		changes[0].Message != "ensure changed 'file' to 'directory'" {
+		t.Fatalf("Apply = %+v, %v", changes, err)
+	}
+	if b, err := os.ReadFile(f); err != nil || string(b) != "keep" {
+		t.Errorf("the file was touched: %q, %v", b, err)
+	}
+}
+
+func TestFileForceMustBeABoolean(t *testing.T) {
+	if err := (File{}).Validate(fileRes("/x/f", map[string]any{"force": "maybe"})); err == nil ||
+		!strings.Contains(err.Error(), `Parameter force failed on`) {
+		t.Errorf("err = %v", err)
+	}
+	if _, ok := (File{}).Attrs()["force"]; !ok {
+		t.Error("force is not an accepted attribute")
 	}
 }
 
@@ -587,10 +962,10 @@ func TestFileAbsentRemovesDanglingSymlink(t *testing.T) {
 
 // Fix #2: the agent normally runs as root, so writing through a symlink is a
 // privilege-escalation primitive. Measured against Puppet 8.10.0 (links
-// defaults to manage): the symlink is replaced by a regular file and the
-// target is untouched. links is outside the bounded attribute set, so
-// voxagent refuses outright instead -- a deliberate divergence.
-func TestFileRefusesToFollowSymlink(t *testing.T) {
+// defaults to manage): ensure => file with no content over a link replaces the
+// link with an empty file, "ensure changed 'link' to 'file'", and the target is
+// untouched (remove_existing unlinks it, type/file.rb:814-815).
+func TestFileEnsureFileWithoutContentReplacesALink(t *testing.T) {
 	dir := t.TempDir()
 	target := filepath.Join(dir, "target")
 	if err := os.WriteFile(target, []byte("ORIGINAL"), 0o644); err != nil {
@@ -600,9 +975,11 @@ func TestFileRefusesToFollowSymlink(t *testing.T) {
 	if err := os.Symlink(target, link); err != nil {
 		t.Fatalf("seed symlink: %v", err)
 	}
-	if _, _, err := (File{}).Apply(context.Background(),
-		fileRes(link, map[string]any{"ensure": "file", "content": "NEW"}), false); err == nil {
-		t.Fatal("Apply followed a symlink; want an error naming links as unimplemented")
+	changes, _, err := (File{}).Apply(context.Background(),
+		fileRes(link, map[string]any{"ensure": "file"}), false)
+	if err != nil || len(changes) != 1 || changes[0].Name != "file_created" || changes[0].Was != "link" ||
+		changes[0].Message != "ensure changed 'link' to 'file'" || changes[0].Err != nil {
+		t.Fatalf("Apply = %+v, %v", changes, err)
 	}
 	b, err := os.ReadFile(target)
 	if err != nil {
@@ -615,13 +992,15 @@ func TestFileRefusesToFollowSymlink(t *testing.T) {
 	if err != nil {
 		t.Fatalf("lstat link: %v", err)
 	}
-	if fi.Mode()&os.ModeSymlink == 0 {
-		t.Error("link was replaced with a regular file; want it left alone")
+	if !fi.Mode().IsRegular() || fi.Size() != 0 {
+		t.Errorf("link = %v, size %d; want an empty regular file in its place", fi.Mode(), fi.Size())
 	}
 }
 
-// The same refusal for ensure => directory.
-func TestFileDirectoryRefusesToFollowSymlink(t *testing.T) {
+// ensure => directory over a link (links => manage) replaces the link.
+// Measured: "directory_created | link | directory | ensure changed 'link' to
+// 'directory'". The directory the link pointed at keeps its mode.
+func TestFileDirectoryReplacesALink(t *testing.T) {
 	dir := t.TempDir()
 	realDir := filepath.Join(dir, "real")
 	if err := os.Mkdir(realDir, 0o755); err != nil {
@@ -631,16 +1010,143 @@ func TestFileDirectoryRefusesToFollowSymlink(t *testing.T) {
 	if err := os.Symlink(realDir, link); err != nil {
 		t.Fatalf("seed symlink: %v", err)
 	}
-	if _, _, err := (File{}).Apply(context.Background(),
-		fileRes(link, map[string]any{"ensure": "directory", "mode": "0700"}), false); err == nil {
-		t.Fatal("Apply followed a symlink to a directory; want an error naming links as unimplemented")
+	changes, _, err := (File{}).Apply(context.Background(),
+		fileRes(link, map[string]any{"ensure": "directory", "mode": "0700"}), false)
+	if err != nil || len(changes) != 1 || changes[0].Name != "directory_created" || changes[0].Was != "link" ||
+		changes[0].Message != "ensure changed 'link' to 'directory'" || changes[0].Err != nil {
+		t.Fatalf("Apply = %+v, %v", changes, err)
 	}
 	fi, err := os.Lstat(link)
 	if err != nil {
 		t.Fatalf("lstat: %v", err)
 	}
-	if fi.Mode()&os.ModeSymlink == 0 {
-		t.Error("link was replaced with a directory; want it left alone")
+	if !fi.IsDir() || fi.Mode().Perm() != 0o700 {
+		t.Errorf("path = %v, want a 0700 directory in place of the link", fi.Mode())
+	}
+	if fi, err := os.Stat(realDir); err != nil || fi.Mode().Perm() != 0o755 {
+		t.Errorf("target = %v (err %v), want it untouched at 0755", fi, err)
+	}
+}
+
+// Linux lstat("/d/link/") follows the link, so a title the provider passed to
+// lstat unclean would see the link's target rather than the link. Puppet's path
+// munge cleans the title before anything touches the filesystem
+// (type/file.rb:66-73, File.join(File.split(File.expand_path(v))) -- "/d/link/",
+// "/d//link" and "/d/link/." all become "/d/link"), so every spelling of the
+// path must act on the link exactly as the clean one does, and none may chmod
+// the target.
+func TestFileNonCleanTitleOverSymlinkActsAsTheCleanTitle(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		params map[string]any
+	}{
+		{"directory", map[string]any{"ensure": "directory", "mode": "0700"}},
+		{"metadata only", map[string]any{"mode": "0700"}},
+	} {
+		seed := func(t *testing.T) (dir, realDir string) {
+			dir = t.TempDir()
+			realDir = filepath.Join(dir, "real")
+			if err := os.Mkdir(realDir, 0o755); err != nil {
+				t.Fatalf("seed: %v", err)
+			}
+			if err := os.Symlink(realDir, filepath.Join(dir, "link")); err != nil {
+				t.Fatalf("seed symlink: %v", err)
+			}
+			return dir, realDir
+		}
+		for _, suffix := range []string{"/link/", "//link", "/link//", "/link/."} {
+			t.Run(tc.name+" "+suffix, func(t *testing.T) {
+				cleanDir, _ := seed(t)
+				want, _, err := (File{}).Apply(context.Background(), fileRes(filepath.Join(cleanDir, "link"), tc.params), false)
+				if err != nil {
+					t.Fatalf("clean title: %v", err)
+				}
+				dir, realDir := seed(t)
+				got, _, err := (File{}).Apply(context.Background(), fileRes(dir+suffix, tc.params), false)
+				if err != nil {
+					t.Fatalf("title %q: %v", dir+suffix, err)
+				}
+				if len(got) != len(want) || (len(got) == 1 && got[0].Message != want[0].Message) {
+					t.Errorf("title %q: changes = %+v, want the clean title's %+v", dir+suffix, got, want)
+				}
+				fi, err := os.Stat(realDir)
+				if err != nil {
+					t.Fatalf("stat target: %v", err)
+				}
+				if got := fi.Mode().Perm(); got != 0o755 {
+					t.Errorf("target mode = %o, want 0755 (chmod went through the link)", got)
+				}
+			})
+		}
+	}
+}
+
+// ensure => absent with a trailing slash removes the link, as the clean title
+// does, and never the directory the link points at.
+func TestFileAbsentTrailingSlashOverSymlinkRemovesTheLinkOnly(t *testing.T) {
+	dir := t.TempDir()
+	realDir := filepath.Join(dir, "real")
+	if err := os.Mkdir(realDir, 0o755); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(realDir, "f"), []byte("x"), 0o644); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+	link := filepath.Join(dir, "link")
+	if err := os.Symlink(realDir, link); err != nil {
+		t.Fatalf("seed symlink: %v", err)
+	}
+	changes, _, err := (File{}).Apply(context.Background(),
+		fileRes(link+"/", map[string]any{"ensure": "absent"}), false)
+	if err != nil {
+		t.Fatalf("Apply: %v", err)
+	}
+	if len(changes) != 1 || changes[0].Was != "link" {
+		t.Errorf("changes = %+v, want one change from %q", changes, "link")
+	}
+	if _, err := os.Lstat(link); !os.IsNotExist(err) {
+		t.Errorf("link still present: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(realDir, "f")); err != nil {
+		t.Errorf("target tree damaged: %v", err)
+	}
+}
+
+// A non-clean title is applied at the path Puppet's munge gives it
+// (type/file.rb:66-73): File.expand_path resolves ".." lexically, so
+// "/d/x/../keep2" is "/d/keep2" whether or not /d/x exists. voxagent used
+// the raw title, and the kernel failed it ENOENT on the missing /d/x.
+func TestFileNonCleanTitleIsAppliedAtTheCleanedPath(t *testing.T) {
+	dir := t.TempDir()
+	changes, _, err := (File{}).Apply(context.Background(),
+		fileRes(dir+"/x/../keep2", map[string]any{"ensure": "file", "content": "k\n"}), false)
+	if err != nil {
+		t.Fatalf("Apply: %v", err)
+	}
+	if len(changes) == 0 {
+		t.Error("no changes reported for a created file")
+	}
+	if b, err := os.ReadFile(filepath.Join(dir, "keep2")); err != nil || string(b) != "k\n" {
+		t.Errorf("keep2 = %q, %v; want %q", b, err, "k\n")
+	}
+	if _, err := os.Lstat(filepath.Join(dir, "x")); !os.IsNotExist(err) {
+		t.Errorf("x was created: %v", err)
+	}
+
+	realDir := filepath.Join(dir, "d")
+	if err := os.Mkdir(realDir, 0o755); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+	if _, _, err := (File{}).Apply(context.Background(),
+		fileRes(realDir+"//", map[string]any{"ensure": "directory", "mode": "0700"}), false); err != nil {
+		t.Fatalf("Apply %s//: %v", realDir, err)
+	}
+	fi, err := os.Stat(realDir)
+	if err != nil {
+		t.Fatalf("stat: %v", err)
+	}
+	if got := fi.Mode().Perm(); got != 0o700 {
+		t.Errorf("mode = %o, want 0700", got)
 	}
 }
 
@@ -982,7 +1488,7 @@ func TestFileCreateFailureOutranksMetadataFailure(t *testing.T) {
 		t.Fatal("Change.Err is nil for a create that cannot succeed")
 	}
 	got := changes[0].Err.Error()
-	if !strings.Contains(got, "open "+path+": no such file or directory") {
+	if !strings.Contains(got, "open "+path+".voxagent") || !strings.Contains(got, ": no such file or directory") {
 		t.Errorf("Change.Err = %q does not report the create that failed", got)
 	}
 	// The discriminator: a chown attempted on the path that was never created
@@ -1001,7 +1507,7 @@ func TestFileCreateFailureOutranksMetadataFailure(t *testing.T) {
 // name "file_created", status success -- and the file is 0600 on disk.
 //
 // Ownership is the only metadata applyMetadata itself touches on a created path
-// (mode is applied at creation, see resourceMode), and changing ownership at all
+// (mode is applied at creation, see createMode), and changing ownership at all
 // needs CAP_CHOWN -- so this runs under task dev:test-privileged.
 func TestFileCreatedMetadataIsAppliedButNotReported(t *testing.T) {
 	if os.Getuid() != 0 {
@@ -1043,23 +1549,121 @@ func TestFileCreatedMetadataIsAppliedButNotReported(t *testing.T) {
 	}
 }
 
+// chown(2) on a non-directory clears S_ISUID and S_ISGID, even as root;
+// a directory keeps them (measured on the host as root: a 4755 file chowned
+// ends 755, a 2755 file chgrp'ed ends 755, a 2775 directory stays 2775).
+// Puppet's property_fix re-reads before each property (type/file.rb:1117), so
+// mode, synced after owner and group, finds the bit gone and chmods it back,
+// silently: measured, a created 4755 file owned by nobody ends 4755 with one
+// ensure event.
+func TestFileCreatedSetIDModeSurvivesTheChown(t *testing.T) {
+	if os.Getuid() != 0 {
+		t.Skip("only root can chown, and only a chown clears the bits; this case runs under task dev:test-privileged")
+	}
+	// Numeric ids, as TestFileCreatedMetadataIsAppliedButNotReported's: the
+	// fixture does not depend on the host's passwd and group entries.
+	const id = "12345"
+	for _, tc := range []struct {
+		name, ensure, mode, attr string
+		want                     os.FileMode
+	}{
+		{"setuid file, owner", "file", "4755", "owner", 0o755 | os.ModeSetuid},
+		{"setgid file, group", "file", "2755", "group", 0o755 | os.ModeSetgid},
+		{"setgid directory, group", "directory", "2775", "group", 0o775 | os.ModeSetgid},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			path := filepath.Join(t.TempDir(), "p")
+			params := map[string]any{"ensure": tc.ensure, "mode": tc.mode, tc.attr: id}
+			if tc.ensure == "file" {
+				params["content"] = "x"
+			}
+			changes, _, err := File{}.Apply(context.Background(), fileRes(path, params), false)
+			if err != nil || len(changes) != 1 || changes[0].Property != "ensure" || changes[0].Err != nil {
+				t.Fatalf("Apply = %+v, %v; want one successful ensure change", changes, err)
+			}
+			fi, err := os.Stat(path)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got := fi.Mode() & (os.ModePerm | os.ModeSetuid | os.ModeSetgid | os.ModeSticky); got != tc.want {
+				t.Errorf("mode = %v, want %v", got, tc.want)
+			}
+		})
+	}
+}
+
+// setIDFaultFS fails a group chown, and any chmod once a chown has run, so
+// the created path's silent mode resync can fail after ownership moved.
+type setIDFaultFS struct {
+	osFS
+	groupErr, chmodAfterChown error
+	chowned                   *bool
+}
+
+func (f setIDFaultFS) Lchown(name string, uid, gid int) error {
+	if gid != -1 && f.groupErr != nil {
+		return f.groupErr
+	}
+	*f.chowned = true
+	return f.osFS.Lchown(name, uid, gid)
+}
+
+func (f setIDFaultFS) Chmod(name string, mode os.FileMode) error {
+	if *f.chowned && f.chmodAfterChown != nil {
+		return f.chmodAfterChown
+	}
+	return f.osFS.Chmod(name, mode)
+}
+
+// property_fix raises out of the first property that fails, in declaration
+// order (type/file.rb:1113-1114): a failed resync chmod is what a created
+// path's ensure reports, unless group failed before it.
+func TestFileCreatedSetIDResyncFailureCollapsesInOrder(t *testing.T) {
+	if os.Getuid() != 0 {
+		t.Skip("only root's chown clears the bits that make mode resync; this case runs under task dev:test-privileged")
+	}
+	for _, tc := range []struct {
+		name     string
+		groupErr error
+		want     string
+	}{
+		{"mode", nil, "chmod injected failure"},
+		{"group before mode", errors.New("group injected failure"), "Failed to set group to '12345': group injected failure"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			path := filepath.Join(t.TempDir(), "p")
+			chowned := false
+			fsys := setIDFaultFS{groupErr: tc.groupErr, chmodAfterChown: errors.New("chmod injected failure"), chowned: &chowned}
+			changes, _, err := applyFile(context.Background(), fsys, path, fileRes(path, map[string]any{
+				"ensure": "file", "content": "x", "mode": "4755", "owner": "12345", "group": "12345"}),
+				false, false, nil, nil, nil)
+			if err != nil || len(changes) != 1 || changes[0].Err == nil {
+				t.Fatalf("applyFile = %+v, %v; want one failed ensure change", changes, err)
+			}
+			if got := changes[0].Err.Error(); !strings.HasPrefix(got, "Could not set 'file' on ensure: ") ||
+				!strings.Contains(got, tc.want) {
+				t.Errorf("Err = %q; want the wrapped %q", got, tc.want)
+			}
+		})
+	}
+}
+
 // The resource-level failures stay bare. Each of these blames no property that
 // moved -- Ruby reports them through status.failed_because, which synthesizes a
 // resource_error event rather than a property event -- so Apply must keep
 // returning an error and must not attribute them to a Change.
+//
+// "9" is invalid by both the octal and the symbolic pattern. A valid mode whose
+// X sits under the wrong operator is deliberately not here: it fails the mode
+// property at apply time, a property failure.
 func TestFileResourceLevelFailuresStayBare(t *testing.T) {
 	dir := t.TempDir()
-	asDir := filepath.Join(dir, "d")
-	if err := os.Mkdir(asDir, 0o755); err != nil {
-		t.Fatalf("seed: %v", err)
-	}
 	for _, tt := range []struct {
 		name   string
 		path   string
 		params map[string]any
 	}{
-		{"an unimplemented ensure value", filepath.Join(dir, "x"), map[string]any{"ensure": "link"}},
-		{"ensure => file over a directory", asDir, map[string]any{"ensure": "file", "content": "x"}},
+		{"a mode that does not parse", filepath.Join(dir, "x"), map[string]any{"ensure": "file", "mode": "9"}},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			changes, _, err := File{}.Apply(context.Background(), fileRes(tt.path, tt.params), false)
@@ -1931,14 +2535,8 @@ func TestFileUnresolvableOwnershipUnderNoopIsNotAFailure(t *testing.T) {
 // resource.properties.each keeps going -- the rescue at :147 is commented
 // "Execution will continue on StandardErrors, just store the event".
 //
-// mode is reconciled before ownership, so a chmod that cannot succeed must
-// still leave owner attempted. A read-only parent DIRECTORY is what blocks
-// chmod on a file we own... it is not: chmod needs ownership of the inode, not
-// write permission on the parent. So the failure is forced by making the file
-// owned by someone else, which is only arrangeable as root -- hence the skip.
-//
-// Instead this drives mode failure through a path we can arrange unprivileged:
-// see TestFileMetadataChmodFailureIsAttributedToMode for the mechanism.
+// Ownership is reconciled before mode (type/file.rb:1133-1135), so an owner
+// and a group that cannot be set must still leave mode attempted.
 func TestFileMetadataFailureDoesNotStopLaterProperties(t *testing.T) {
 	if os.Getuid() == 0 {
 		t.Skip("needs an unprivileged process to fail chmod and chown")
@@ -1971,20 +2569,57 @@ func TestFileMetadataFailureDoesNotStopLaterProperties(t *testing.T) {
 	for _, ch := range changes {
 		props = append(props, ch.Property)
 	}
-	want := []string{"mode", "owner", "group"}
+	// type/file.rb:1133-1135 declares owner, group, mode, and the harness
+	// syncs properties in that order (measured as root: owner_changed,
+	// group_changed, mode_changed on one file).
+	want := []string{"owner", "group", "mode"}
 	if !slices.Equal(props, want) {
 		t.Fatalf("properties = %v, want %v in declaration order -- an earlier "+
 			"property's outcome must not stop a later one", props, want)
 	}
 	// mode succeeds here (we own the file); owner and group cannot.
-	if changes[0].Err != nil {
-		t.Errorf("mode carries Err %v, but chmod on a file we own succeeds", changes[0].Err)
+	if changes[2].Err != nil {
+		t.Errorf("mode carries Err %v, but chmod on a file we own succeeds", changes[2].Err)
 	}
-	for _, i := range []int{1, 2} {
+	for _, i := range []int{0, 1} {
 		if changes[i].Err == nil {
 			t.Errorf("%s has no Err, but neither an unresolvable owner nor a chown "+
 				"to root can succeed unprivileged", changes[i].Property)
 		}
+	}
+}
+
+// Owner, group, then mode on a file and on a directory, the order
+// type/file.rb:1133-1135 declares them in. Under noop nothing is synced, so the
+// order shows whatever the privilege: the unresolvable owner is a noop change
+// there (owner.rb:26), not a failure.
+func TestFileMetadataIsReportedOwnerGroupMode(t *testing.T) {
+	group := strconv.Itoa(os.Getgid() + 1)
+	for _, ensure := range []string{"file", "directory"} {
+		t.Run(ensure, func(t *testing.T) {
+			path := filepath.Join(t.TempDir(), "p")
+			if ensure == "file" {
+				mustWrite(t, path, "x\n")
+			} else {
+				mustMkdir(t, path)
+			}
+			if err := os.Chmod(path, 0o700); err != nil {
+				t.Fatal(err)
+			}
+			changes, _, err := File{}.Apply(context.Background(), fileRes(path, map[string]any{
+				"ensure": ensure, "owner": "nosuchuser-voxagent", "group": group, "mode": "0640",
+			}), true)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var props []string
+			for _, ch := range changes {
+				props = append(props, ch.Property)
+			}
+			if want := []string{"owner", "group", "mode"}; !slices.Equal(props, want) {
+				t.Errorf("properties = %v, want %v", props, want)
+			}
+		})
 	}
 }
 
@@ -2031,7 +2666,9 @@ func TestFileMetadataChmodFailureIsAttributedToMode(t *testing.T) {
 //
 // This is the red/green proof for applyMetadata's abort: with the pre-fix code
 // the chmod returned a bare error, so Apply reported a resource_error naming no
-// property AND never reached applyOwnership at all.
+// property AND never reached applyOwnership at all. Ownership now syncs before
+// mode (type/file.rb:1133-1135), so the walk runs the other way: the failed
+// chown does not stop mode, and the failed chmod is still attributed.
 //
 // It needs a stat that SUCCEEDS and a chmod that FAILS, which is narrower than
 // it sounds. chmod checks ownership of the inode, not permissions -- so making
@@ -2064,9 +2701,8 @@ func TestFileMetadataChmodFailureStillAttemptsOwnership(t *testing.T) {
 		t.Skipf("%s is owned by this process, so chmod would succeed", foreign)
 	}
 	before := fi.Mode().Perm()
-	// Declare a mode that differs, so a chmod is actually attempted, and an
-	// owner that cannot be set either -- the owner change is what proves the
-	// walk continued past the failed chmod.
+	// Declare a mode that differs, so a chmod is actually attempted, and a
+	// group that cannot be set either.
 	wantMode := "0600"
 	if before == 0o600 {
 		wantMode = "0640"
@@ -2080,9 +2716,7 @@ func TestFileMetadataChmodFailureStillAttemptsOwnership(t *testing.T) {
 	// It was our own UID until owner.rb:35's root check landed. Unprivileged, an
 	// out-of-sync owner is now suppressed and emits no change, which reads
 	// identically to "the walk stopped" in just the same way -- so the evidence
-	// moves to group, which group.rb still attempts unprivileged. The claim is
-	// unchanged: a failed chmod does not end the metadata walk, and the property
-	// after it is still reconciled.
+	// moves to group, which group.rb still attempts unprivileged.
 	r := fileRes(foreign, map[string]any{
 		"ensure": "file", "mode": wantMode, "group": strconv.Itoa(os.Getgid()),
 	})
@@ -2105,11 +2739,10 @@ func TestFileMetadataChmodFailureStillAttemptsOwnership(t *testing.T) {
 	if mode.Err == nil {
 		t.Errorf("mode carries no Err, but chmod on a file we do not own cannot succeed")
 	}
-	// The whole point: the failed chmod did not end the walk.
-	if _, sawGroup := byProperty["group"]; !sawGroup {
-		t.Errorf("ownership was not attempted after mode failed; properties = %v -- "+
+	if want := []string{"group", "mode"}; !slices.Equal(props, want) {
+		t.Errorf("properties = %v, want %v -- "+
 			"resource_harness.rb:147's rescue is commented \"Execution will "+
-			"continue on StandardErrors\"", props)
+			"continue on StandardErrors\"", props, want)
 	}
 
 	after, err := os.Stat(foreign)
@@ -2289,38 +2922,1294 @@ func TestFileOwnerChangeAsRootIsAppliedWithoutWarning(t *testing.T) {
 	}
 }
 
-// File's ensure is closed, so an unimplemented value must be refused before
-// anything is applied. Puppet reads any string other than its keywords as a
-// link target (type/file/ensure.rb), so "/etc/target" means ensure => link.
-func TestFileEnsureValuesAreBoundedAtPreflight(t *testing.T) {
+// File's ensure is open: Puppet reads any string other than its keywords as a
+// link target (type/file/ensure.rb:109-120), so "/etc/target" means
+// ensure => link, and false is absent (:62). Pre-flight refuses none of them;
+// a value that is not a string is Validate's
+// (TestFileValidateRefusesWhatLinksDoNotImplement).
+func TestFileEnsureValuesPassPreflight(t *testing.T) {
 	reg := NewRegistry(File{})
-	cases := []struct {
-		value any
-		gap   bool
-	}{
-		{"file", false},
-		{"present", false},
-		{"directory", false},
-		{"absent", false},
-		{"link", true},
-		{"/etc/target", true},
-		// Puppet aliases false to absent (type/file/ensure.rb:62); voxagent does
-		// not implement the alias, so a JSON boolean is refused before anything
-		// is applied rather than failing this resource after the rest ran.
-		{true, true},
-		{false, true},
-	}
-	for _, tc := range cases {
+	for _, value := range []any{"file", "present", "directory", "absent", "link", "/etc/target", true, false} {
 		c := &catalog.Catalog{Resources: []catalog.Resource{
-			{Type: "File", Title: "/tmp/x", Parameters: map[string]any{"ensure": tc.value}},
+			{Type: "File", Title: "/tmp/x", Parameters: map[string]any{"ensure": value}},
 		}}
-		gaps := Preflight(reg, c)
-		if got := len(gaps) == 1; got != tc.gap {
-			t.Errorf("ensure => %v: gaps = %v, want gap=%v", tc.value, gaps, tc.gap)
+		if gaps := Preflight(reg, c); len(gaps) != 0 {
+			t.Errorf("ensure => %v: gaps = %v, want none", value, gaps)
+		}
+	}
+}
+
+// type/file.rb:561-567 infers ensure only from content (and target, and
+// source). With none of them ensure is unmanaged: measured on Puppet 8.10.0,
+// file { '/x': mode => '0600' } on an absent path changes nothing and
+// reports nothing. voxagent defaulted ensure to file and created the path.
+func TestFileWithoutEnsureLeavesAnAbsentPathAbsent(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "absent")
+	changes, warnings, err := File{}.Apply(context.Background(),
+		fileRes(path, map[string]any{"mode": "0600"}), false)
+	if err != nil || len(changes) != 0 || len(warnings) != 0 {
+		t.Fatalf("Apply = %+v, %v, %v; want no changes, no warnings, no error", changes, warnings, err)
+	}
+	if _, err := os.Lstat(path); !os.IsNotExist(err) {
+		t.Errorf("Lstat = %v; the path was created", err)
+	}
+}
+
+// Measured on Puppet 8.10.0: the same resource on an existing 0644 file
+// reports only "mode changed '0644' to '0600'" and leaves the content alone.
+func TestFileWithoutEnsureReconcilesAnExistingFilesMode(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "f")
+	if err := os.WriteFile(path, []byte("x"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(path, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	changes, _, err := File{}.Apply(context.Background(),
+		fileRes(path, map[string]any{"mode": "0600"}), false)
+	if err != nil {
+		t.Fatalf("Apply returned error: %v", err)
+	}
+	if len(changes) != 1 || changes[0].Property != "mode" ||
+		changes[0].Message != "mode changed '0644' to '0600'" {
+		t.Fatalf("changes = %+v, want one mode change '0644' to '0600'", changes)
+	}
+	fi, err := os.Stat(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := fi.Mode().Perm(); got != 0o600 {
+		t.Errorf("mode = %04o, want 0600", got)
+	}
+	if b, err := os.ReadFile(path); err != nil || string(b) != "x" {
+		t.Errorf("content = %q (err %v), want the untouched \"x\"", b, err)
+	}
+}
+
+func TestFileWithoutEnsureUnderNoopChangesNothing(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "f")
+	if err := os.WriteFile(path, []byte("x"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(path, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	changes, _, err := File{}.Apply(context.Background(),
+		fileRes(path, map[string]any{"mode": "0600"}), true)
+	if err != nil || len(changes) != 1 {
+		t.Fatalf("Apply = %+v, %v; want the one would-be mode change", changes, err)
+	}
+	fi, err := os.Stat(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := fi.Mode().Perm(); got != 0o644 {
+		t.Errorf("mode = %04o after noop, want 0644", got)
+	}
+}
+
+// Measured: an existing link with mode => '0600' and links => manage reports
+// nothing. type/file/mode.rb:133 answers in sync for a link, so neither the
+// link nor its target is chmod'ed.
+func TestFileManageLeavesALinksModeAlone(t *testing.T) {
+	dir := t.TempDir()
+	target := filepath.Join(dir, "target")
+	if err := os.WriteFile(target, []byte("x"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(target, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	link := filepath.Join(dir, "link")
+	if err := os.Symlink(target, link); err != nil {
+		t.Fatal(err)
+	}
+	changes, _, err := File{}.Apply(context.Background(), fileRes(link, map[string]any{"mode": "0600"}), false)
+	if err != nil || len(changes) != 0 {
+		t.Fatalf("Apply = %+v, %v; want nothing", changes, err)
+	}
+	fi, err := os.Stat(target)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := fi.Mode().Perm(); got != 0o644 {
+		t.Errorf("target mode = %04o, want 0644: the chmod went through the link", got)
+	}
+	if fi, err := os.Lstat(link); err != nil || fi.Mode()&os.ModeSymlink == 0 {
+		t.Errorf("link = %v (err %v); it must stay a link", fi, err)
+	}
+}
+
+// type/file/mode.rb:111-121 (dirmask): on a directory each class with read
+// also gets search. Measured on Puppet 8.10.0: an absent path with
+// ensure => directory, mode => '0640' reports only "created" and ends 0750.
+func TestFileCreatedDirectoryModeGainsSearchWhereItHasRead(t *testing.T) {
+	for _, tc := range []struct {
+		mode string
+		want os.FileMode
+	}{
+		{"0640", 0o750}, {"0644", 0o755}, {"0604", 0o705},
+		{"0400", 0o500}, {"0000", 0o000}, {"0750", 0o750},
+	} {
+		path := filepath.Join(t.TempDir(), "d")
+		changes, _, err := File{}.Apply(context.Background(),
+			fileRes(path, map[string]any{"ensure": "directory", "mode": tc.mode}), false)
+		if err != nil || len(changes) != 1 || changes[0].Message != "created" {
+			t.Fatalf("mode %s: Apply = %+v, %v; want one \"created\"", tc.mode, changes, err)
+		}
+		fi, err := os.Stat(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got := fi.Mode().Perm(); got != tc.want {
+			t.Errorf("mode %s: directory is %04o, want %04o", tc.mode, got, tc.want)
+		}
+	}
+}
+
+// Measured: over an existing 0700 directory the event reads "mode changed
+// '0700' to '0750'" -- the MASKED value is what is compared and reported,
+// which is also what makes the second run quiet.
+func TestFileExistingDirectoryModeComparesTheMaskedValue(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "d")
+	if err := os.Mkdir(path, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(path, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	r := fileRes(path, map[string]any{"ensure": "directory", "mode": "0640"})
+	changes, _, err := File{}.Apply(context.Background(), r, false)
+	if err != nil {
+		t.Fatalf("Apply returned error: %v", err)
+	}
+	if len(changes) != 1 || changes[0].Was != "0700" || changes[0].Is != "0750" ||
+		changes[0].Message != "mode changed '0700' to '0750'" {
+		t.Fatalf("changes = %+v, want one mode change '0700' to '0750'", changes)
+	}
+	fi, err := os.Stat(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := fi.Mode().Perm(); got != 0o750 {
+		t.Errorf("mode = %04o, want 0750", got)
+	}
+	if again, _, err := (File{}).Apply(context.Background(), r, false); err != nil || len(again) != 0 {
+		t.Errorf("second Apply = %+v, %v; want converged", again, err)
+	}
+}
+
+// The mask follows the path's type, not the ensure value: ensure => present
+// over a directory reconciles the directory's mode, masked.
+func TestFilePresentOverADirectoryMasksTheMode(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "d")
+	if err := os.Mkdir(path, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(path, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	changes, _, err := File{}.Apply(context.Background(),
+		fileRes(path, map[string]any{"ensure": "present", "mode": "0644"}), false)
+	if err != nil || len(changes) != 1 || changes[0].Message != "mode changed '0700' to '0755'" {
+		t.Fatalf("Apply = %+v, %v; want one mode change '0700' to '0755'", changes, err)
+	}
+}
+
+func TestFileWritesToThePathParameterNotTheTitle(t *testing.T) {
+	dir := t.TempDir()
+	p := filepath.Join(dir, "n")
+	r := catalog.Resource{Type: "File", Title: "nsx",
+		Parameters: map[string]any{"path": p, "ensure": "file", "content": "x\n"}}
+	if err := (File{}).Validate(r); err != nil {
+		t.Fatalf("Validate: %v", err)
+	}
+	if _, _, err := (File{}).Apply(context.Background(), r, false); err != nil {
+		t.Fatalf("Apply: %v", err)
+	}
+	if b, err := os.ReadFile(p); err != nil || string(b) != "x\n" {
+		t.Errorf("path content = %q, %v; want \"x\\n\"", b, err)
+	}
+	if _, err := os.Stat(filepath.Join(dir, "nsx")); !os.IsNotExist(err) {
+		t.Errorf("something was written at the title: %v", err)
+	}
+}
+
+func TestFileValidateChecksThePathNotTheTitle(t *testing.T) {
+	r := catalog.Resource{Type: "File", Title: "nsx",
+		Parameters: map[string]any{"path": "rel/n"}}
+	err := (File{}).Validate(r)
+	want := "Parameter path failed on File[nsx]: File paths must be fully qualified, not 'rel/n'"
+	if err == nil || err.Error() != want {
+		t.Errorf("Validate = %v; want %q", err, want)
+	}
+}
+
+func TestFileReplaceFalseLeavesExistingContent(t *testing.T) {
+	p := filepath.Join(t.TempDir(), "f")
+	if err := os.WriteFile(p, []byte("old\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	changes, _, err := (File{}).Apply(context.Background(),
+		fileRes(p, map[string]any{"ensure": "file", "content": "new\n", "replace": false}), false)
+	if err != nil || len(changes) != 0 {
+		t.Fatalf("Apply = %+v, %v; want no change", changes, err)
+	}
+	if b, _ := os.ReadFile(p); string(b) != "old\n" {
+		t.Errorf("content = %q; want old", b)
+	}
+}
+
+func TestFileReplaceFalseStillCreates(t *testing.T) {
+	p := filepath.Join(t.TempDir(), "f")
+	changes, _, err := (File{}).Apply(context.Background(),
+		fileRes(p, map[string]any{"ensure": "file", "content": "new\n", "replace": "no"}), false)
+	if err != nil || len(changes) != 1 || changes[0].Name != "file_created" {
+		t.Fatalf("Apply = %+v, %v; want one file_created", changes, err)
+	}
+}
+
+func TestFileValidateRejectsANonBooleanReplace(t *testing.T) {
+	r := fileRes("/x/f", map[string]any{"replace": "maybe"})
+	want := `Parameter replace failed on File[/x/f]: Invalid value "maybe". Valid values are true, false, yes, no.`
+	if err := (File{}).Validate(r); err == nil || err.Error() != want {
+		t.Errorf("Validate = %v; want %q", err, want)
+	}
+}
+
+func TestFileShowDiffChangesNothing(t *testing.T) {
+	p := filepath.Join(t.TempDir(), "f")
+	if err := os.WriteFile(p, []byte("old\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	changes, _, err := (File{}).Apply(context.Background(),
+		fileRes(p, map[string]any{"ensure": "file", "content": "new\n", "show_diff": true}), false)
+	if err != nil || len(changes) != 1 || changes[0].Property != "content" {
+		t.Fatalf("Apply = %+v, %v; want exactly the content change", changes, err)
+	}
+}
+
+func TestFileSourcePlusReplaceFalseOverExistingLeavesUnchanged(t *testing.T) {
+	srcDir := t.TempDir()
+	srcFile := filepath.Join(srcDir, "src")
+	if err := os.WriteFile(srcFile, []byte("source\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	targetDir := t.TempDir()
+	targetFile := filepath.Join(targetDir, "target")
+	if err := os.WriteFile(targetFile, []byte("old\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	changes, _, err := (File{}).Apply(context.Background(),
+		fileRes(targetFile, map[string]any{"ensure": "file", "source": srcFile, "replace": false}), false)
+	if err != nil || len(changes) != 0 {
+		t.Fatalf("Apply = %+v, %v; want no change", changes, err)
+	}
+	if b, _ := os.ReadFile(targetFile); string(b) != "old\n" {
+		t.Errorf("content = %q; want old", b)
+	}
+}
+
+// With replace => false, ensure is in sync for anything that exists
+// (type/file/ensure.rb:162-165), whatever its type and whatever force says;
+// mode, owner and group still reconcile as ordinary properties. Measured on
+// Puppet 8.10.0 for every row with a disk-state expectation below.
+func TestFileReplaceFalseKeepsWhateverExists(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		entries []string          // tree entries under base
+		links   map[string]string // link name -> target, under base
+		path    string
+		params  map[string]any
+		want    []string          // change messages, in order
+		after   map[string]string // rel -> ftype that must remain
+	}{
+		{name: "absent over a file", entries: []string{"f"}, path: "f",
+			params: map[string]any{"ensure": "absent", "mode": "0600"},
+			want:   []string{"mode changed '0644' to '0600'"}, after: map[string]string{"f": "file"}},
+		{name: "false over a file", entries: []string{"f"}, path: "f",
+			params: map[string]any{"ensure": false},
+			after:  map[string]string{"f": "file"}},
+		{name: "absent with force over a directory", entries: []string{"d/x"}, path: "d",
+			params: map[string]any{"ensure": "absent", "force": true},
+			after:  map[string]string{"d": "directory", "d/x": "file"}},
+		{name: "file with force over a directory", entries: []string{"d/x"}, path: "d",
+			params: map[string]any{"ensure": "file", "force": true, "mode": "0700"},
+			want:   []string{"mode changed '0755' to '0700'"}, after: map[string]string{"d": "directory", "d/x": "file"}},
+		{name: "file with content and force over a directory", entries: []string{"d/x"}, path: "d",
+			params: map[string]any{"ensure": "file", "content": "c\n", "force": "yes"},
+			after:  map[string]string{"d": "directory", "d/x": "file"}},
+		{name: "file with content over a link", entries: []string{"t"}, links: map[string]string{"l": "t"}, path: "l",
+			params: map[string]any{"ensure": "file", "content": "new\n"},
+			after:  map[string]string{"l": "link", "t": "file"}},
+		{name: "file without content over a link", entries: []string{"t"}, links: map[string]string{"l": "t"}, path: "l",
+			params: map[string]any{"ensure": "file"},
+			after:  map[string]string{"l": "link", "t": "file"}},
+		{name: "content alone over a directory", entries: []string{"d/"}, path: "d",
+			params: map[string]any{"content": "c\n", "force": true},
+			after:  map[string]string{"d": "directory"}},
+		{name: "follow, file with force over a link to a directory", entries: []string{"t/x"},
+			links: map[string]string{"l": "t"}, path: "l",
+			params: map[string]any{"ensure": "file", "links": "follow", "force": true},
+			after:  map[string]string{"l": "link", "t": "directory", "t/x": "file"}},
+		{name: "directory over a file", entries: []string{"f"}, path: "f",
+			params: map[string]any{"ensure": "directory", "mode": "0600"},
+			want:   []string{"mode changed '0644' to '0600'"}, after: map[string]string{"f": "file"}},
+		{name: "directory over a link", entries: []string{"t/"}, links: map[string]string{"l": "t"}, path: "l",
+			params: map[string]any{"ensure": "directory"},
+			after:  map[string]string{"l": "link", "t": "directory"}},
+		{name: "a source directory over a file", entries: []string{"s/a", "f"}, path: "f",
+			params: map[string]any{"source": "@BASE@/s"},
+			after:  map[string]string{"f": "file"}},
+		{name: "a source file over a directory", entries: []string{"s", "d/"}, path: "d",
+			params: map[string]any{"source": "@BASE@/s", "force": true},
+			after:  map[string]string{"d": "directory"}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			base := t.TempDir()
+			tree(t, base, tc.entries...)
+			for l, target := range tc.links {
+				mustSymlink(t, target, filepath.Join(base, l))
+			}
+			params := map[string]any{"replace": false}
+			for k, v := range tc.params {
+				if s, ok := v.(string); ok {
+					v = strings.ReplaceAll(s, "@BASE@", base)
+				}
+				params[k] = v
+			}
+			changes, _, err := (File{}).Apply(context.Background(), fileRes(filepath.Join(base, tc.path), params), false)
+			var got []string
+			for _, ch := range changes {
+				got = append(got, ch.Message)
+				if ch.Err != nil {
+					t.Errorf("%s failed: %v", ch.Property, ch.Err)
+				}
+			}
+			if err != nil || !slices.Equal(got, tc.want) {
+				t.Errorf("Apply = %q, %v; want %q", got, err, tc.want)
+			}
+			for rel, want := range tc.after {
+				if fi, err := os.Lstat(filepath.Join(base, rel)); err != nil || ftype(fi) != want {
+					t.Errorf("%s: %v (err %v); want a %s", rel, fi, err, want)
+				}
+			}
+		})
+	}
+}
+
+// A purged child inherits replace (newchild, type/file.rb:583-603), so its
+// ensure => absent is in sync too and nothing is purged (measured), while
+// the inherited mode still reconciles.
+func TestFilePurgeWithReplaceFalseRemovesNothing(t *testing.T) {
+	base := t.TempDir()
+	tree(t, base, "dst/extra", "dst/sub/y")
+	dst := filepath.Join(base, "dst")
+	parent := fileRes(dst, map[string]any{"ensure": "directory", "recurse": true, "purge": true,
+		"force": true, "replace": false, "mode": "0700"})
+	children, _, err := File{}.Generate(context.Background(), parent, noneManaged)
+	if err != nil || len(children) != 3 {
+		t.Fatalf("Generate = %v, %v", titles(children), err)
+	}
+	for _, child := range children {
+		if child.Parameters["ensure"] != "absent" || child.Parameters["replace"] != false {
+			t.Fatalf("%s: params = %v; want a purge inheriting replace", child.Title, child.Parameters)
+		}
+		changes, _, err := File{}.Apply(context.Background(), child, false)
+		if err != nil || len(changes) != 1 || changes[0].Property != "mode" || changes[0].Err != nil {
+			t.Errorf("%s: Apply = %+v, %v; want only a mode change", child.Title, changes, err)
+		}
+		if _, err := os.Lstat(child.Title); err != nil {
+			t.Errorf("%s was purged: %v", child.Title, err)
+		}
+	}
+}
+
+// Owner and group reconcile under replace => false over a path whose type
+// ensure would otherwise replace (measured as root: owner_changed and
+// group_changed, the directory kept).
+func TestFileReplaceFalseStillReconcilesOwnerAndGroup(t *testing.T) {
+	if os.Geteuid() != 0 {
+		t.Skip("chown to another user needs root")
+	}
+	d := filepath.Join(t.TempDir(), "d")
+	mustMkdir(t, d)
+	changes, _, err := (File{}).Apply(context.Background(), fileRes(d, map[string]any{
+		"ensure": "file", "replace": false, "owner": "nobody", "group": "nobody"}), false)
+	var got []string
+	for _, ch := range changes {
+		got = append(got, ch.Message)
+	}
+	want := []string{"owner changed 'root' to 'nobody'", "group changed 'root' to 'nobody'"}
+	if err != nil || !slices.Equal(got, want) {
+		t.Errorf("Apply = %q, %v; want %q", got, err, want)
+	}
+	if fi, err := os.Lstat(d); err != nil || !fi.IsDir() {
+		t.Errorf("the directory was replaced: %v", err)
+	}
+}
+
+func TestFileBoolParam(t *testing.T) {
+	for _, tc := range []struct {
+		raw     any
+		want    bool
+		wantErr bool
+	}{
+		{true, true, false}, {false, false, false},
+		{"true", true, false}, {"false", false, false},
+		{"yes", true, false}, {"no", false, false},
+		{float64(1), false, true}, {"True", false, true},
+	} {
+		got, err := fileBoolParam(fileRes("/x/f", map[string]any{"replace": tc.raw}), "replace", true)
+		if got != tc.want || (err != nil) != tc.wantErr {
+			t.Errorf("%#v: = %v, %v; want %v, error %v", tc.raw, got, err, tc.want, tc.wantErr)
+		}
+	}
+	// Measured: Puppet prints the value's inspect, so a number is unquoted
+	// ("Invalid value 1.", "Invalid value 1.5.") and a string is quoted.
+	for raw, shown := range map[any]string{float64(1): "1", 1.5: "1.5", "maybe": `"maybe"`} {
+		_, err := fileBoolParam(fileRes("/x/f", map[string]any{"replace": raw}), "replace", true)
+		want := "Parameter replace failed on File[/x/f]: Invalid value " + shown + ". Valid values are true, false, yes, no."
+		if err == nil || err.Error() != want {
+			t.Errorf("%#v: error = %v; want %q", raw, err, want)
+		}
+	}
+	if got, err := fileBoolParam(fileRes("/x/f", nil), "replace", true); !got || err != nil {
+		t.Errorf("absent: = %v, %v; want the default", got, err)
+	}
+}
+
+// seedLink makes dir/real holding body at mode and dir/l, a link to it.
+func seedLink(t *testing.T, body string, mode os.FileMode) (real, l string) {
+	t.Helper()
+	dir := t.TempDir()
+	real, l = filepath.Join(dir, "real"), filepath.Join(dir, "l")
+	mustWrite(t, real, body)
+	if err := os.Chmod(real, mode); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(real, l); err != nil {
+		t.Fatal(err)
+	}
+	return real, l
+}
+
+func TestFileManageReplacesALinkWithAFile(t *testing.T) {
+	real, l := seedLink(t, "a\n", 0o644)
+	changes, _, err := (File{}).Apply(context.Background(),
+		fileRes(l, map[string]any{"ensure": "file", "content": "c\n"}), false)
+	if err != nil || len(changes) != 1 || changes[0].Name != "file_created" || changes[0].Was != "link" ||
+		changes[0].Message != fmt.Sprintf("defined content as '%s'", checksum([]byte("c\n"))) {
+		t.Fatalf("Apply = %+v, %v", changes, err)
+	}
+	if fi, _ := os.Lstat(l); fi.Mode()&os.ModeSymlink != 0 {
+		t.Error("link not replaced")
+	}
+	if b, _ := os.ReadFile(l); string(b) != "c\n" {
+		t.Errorf("path content = %q", b)
+	}
+	if b, _ := os.ReadFile(real); string(b) != "a\n" {
+		t.Errorf("target written through the link: %q", b)
+	}
+}
+
+// Measured: links => follow with content over a link to a file reports
+// content_changed from the TARGET's checksum, and the link is replaced by a
+// regular file (type/file.rb:929 write, util.rb:594 replace_file renames over
+// the path); the target is untouched.
+func TestFileFollowContentReplacesTheLinkNotItsTarget(t *testing.T) {
+	real, l := seedLink(t, "old\n", 0o644)
+	changes, _, err := (File{}).Apply(context.Background(),
+		fileRes(l, map[string]any{"ensure": "file", "content": "new\n", "links": "follow"}), false)
+	if err != nil || len(changes) != 1 || changes[0].Property != "content" || changes[0].Err != nil {
+		t.Fatalf("Apply = %+v, %v", changes, err)
+	}
+	if changes[0].Was != checksum([]byte("old\n")) {
+		t.Errorf("Was = %v; want the target's checksum", changes[0].Was)
+	}
+	if fi, _ := os.Lstat(l); fi.Mode()&os.ModeSymlink != 0 {
+		t.Error("the link survived; Puppet replaces it")
+	}
+	if b, _ := os.ReadFile(l); string(b) != "new\n" {
+		t.Errorf("path content = %q", b)
+	}
+	if b, _ := os.ReadFile(real); string(b) != "old\n" {
+		t.Errorf("target written: %q", b)
+	}
+}
+
+// util.rb:623-626 replace_file copies the uid, gid and mode of
+// Puppet::FileSystem.lstat(file) -- the LINK's, not its target's -- onto the
+// file it renames over the path. Measured on Puppet 8.10.0: links => follow,
+// content and no mode over a link to a 0640 file leaves a 0777 regular file
+// (I-5). The target keeps 0640.
+func TestFileFollowContentTakesTheLinksOwnModeAsPuppetDoes(t *testing.T) {
+	real, l := seedLink(t, "old\n", 0o640)
+	if _, _, err := (File{}).Apply(context.Background(),
+		fileRes(l, map[string]any{"ensure": "file", "content": "new\n", "links": "follow"}), false); err != nil {
+		t.Fatal(err)
+	}
+	if fi, err := os.Lstat(l); err != nil || !fi.Mode().IsRegular() || fi.Mode().Perm() != 0o777 {
+		t.Errorf("path = %v (err %v), want a 0777 regular file", fi.Mode(), err)
+	}
+	if fi, err := os.Stat(real); err != nil || fi.Mode().Perm() != 0o640 {
+		t.Errorf("target = %v (err %v), want 0640", fi.Mode(), err)
+	}
+}
+
+// Measured on Puppet 8.10.0, links => follow, content and mode over a link to
+// a 0640 file: the mode event is reported against the target's mode, retrieved
+// before anything synced, and the file that replaced the link ends at the
+// declared mode, which write's property_fix (type/file.rb:970, :1112-1121)
+// applies unreported -- so mode => '0640' reports no mode event at all.
+func TestFileFollowContentAndModeReportTheTargetsMode(t *testing.T) {
+	for _, tc := range []struct {
+		mode    string
+		want    os.FileMode
+		message string
+	}{
+		{"0600", 0o600, "mode changed '0640' to '0600'"},
+		{"0640", 0o640, ""},
+	} {
+		t.Run(tc.mode, func(t *testing.T) {
+			real, l := seedLink(t, "old\n", 0o640)
+			changes, _, err := (File{}).Apply(context.Background(), fileRes(l, map[string]any{
+				"ensure": "file", "content": "new\n", "links": "follow", "mode": tc.mode}), false)
+			if err != nil || propertyFixErr(changes, nil) != nil {
+				t.Fatalf("Apply = %+v, %v", changes, err)
+			}
+			var got []string
+			for _, ch := range changes {
+				got = append(got, ch.Property)
+			}
+			wantProps := []string{"content"}
+			if tc.message != "" {
+				wantProps = append(wantProps, "mode")
+			}
+			if !slices.Equal(got, wantProps) || (tc.message != "" && changes[1].Message != tc.message) {
+				t.Errorf("changes = %+v, want %v with %q", changes, wantProps, tc.message)
+			}
+			if fi, err := os.Lstat(l); err != nil || !fi.Mode().IsRegular() || fi.Mode().Perm() != tc.want {
+				t.Errorf("path = %v (err %v), want a %04o regular file", fi.Mode(), err, tc.want)
+			}
+			if fi, err := os.Stat(real); err != nil || fi.Mode().Perm() != 0o640 {
+				t.Errorf("target = %v (err %v), want 0640", fi.Mode(), err)
+			}
+		})
+	}
+}
+
+// Measured: links => follow, mode => '0600' and no content over a link reports
+// "mode changed '0644' to '0600'" and chmods THROUGH the link.
+func TestFileFollowModeChangesTheTarget(t *testing.T) {
+	real, l := seedLink(t, "a\n", 0o644)
+	changes, _, err := (File{}).Apply(context.Background(),
+		fileRes(l, map[string]any{"ensure": "file", "links": "follow", "mode": "0600"}), false)
+	if err != nil || len(changes) != 1 || changes[0].Message != "mode changed '0644' to '0600'" {
+		t.Fatalf("Apply = %+v, %v", changes, err)
+	}
+	if fi, _ := os.Stat(real); fi.Mode().Perm() != 0o600 {
+		t.Errorf("target mode = %v", fi.Mode().Perm())
+	}
+	if fi, err := os.Lstat(l); err != nil || fi.Mode()&os.ModeSymlink == 0 {
+		t.Errorf("link = %v (err %v); it must stay a link", fi, err)
+	}
+}
+
+// Measured: ensure => directory, links => follow over a link to a directory
+// reports nothing.
+func TestFileFollowDirectoryIsSatisfiedByALinkToADirectory(t *testing.T) {
+	dir := t.TempDir()
+	realDir, l := filepath.Join(dir, "real"), filepath.Join(dir, "l")
+	if err := os.Mkdir(realDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(realDir, l); err != nil {
+		t.Fatal(err)
+	}
+	changes, _, err := (File{}).Apply(context.Background(),
+		fileRes(l, map[string]any{"ensure": "directory", "links": "follow"}), false)
+	if err != nil || len(changes) != 0 {
+		t.Fatalf("Apply = %+v, %v; want nothing", changes, err)
+	}
+	if got, _ := os.Readlink(l); got != realDir {
+		t.Errorf("readlink = %q; the link must stay", got)
+	}
+}
+
+// Measured on Puppet 8.10.0: under links => follow ensure => absent reports
+// the TARGET's type as previous_value (ensure retrieves through stat,
+// type/file.rb:895-903), so a link to a directory is "Not removing directory"
+// without force. Whatever is removed, it is the link, never the target.
+func TestFileFollowAbsentReportsTheTargetsType(t *testing.T) {
+	for _, tc := range []struct {
+		name      string
+		dir       bool
+		force     bool
+		was       string
+		notices   int
+		linkStays bool
+	}{
+		{"file", false, false, "file", 0, false},
+		{"directory", true, false, "directory", 1, true},
+		{"directory with force", true, true, "directory", 0, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			dir := t.TempDir()
+			real, l := filepath.Join(dir, "real"), filepath.Join(dir, "l")
+			if tc.dir {
+				if err := os.Mkdir(real, 0o755); err != nil {
+					t.Fatal(err)
+				}
+			} else {
+				mustWrite(t, real, "a\n")
+			}
+			if err := os.Symlink(real, l); err != nil {
+				t.Fatal(err)
+			}
+			changes, _, err := (File{}).Apply(context.Background(), fileRes(l, map[string]any{
+				"ensure": "absent", "links": "follow", "force": tc.force}), false)
+			if err != nil || len(changes) != 1 || changes[0].Was != tc.was || changes[0].Message != "removed" ||
+				len(changes[0].PathNotices) != tc.notices || changes[0].Err != nil {
+				t.Fatalf("Apply = %+v, %v", changes, err)
+			}
+			if _, err := os.Lstat(l); (err == nil) != tc.linkStays {
+				t.Errorf("link lstat err = %v, want it to stay: %v", err, tc.linkStays)
+			}
+			if _, err := os.Stat(real); err != nil {
+				t.Errorf("target removed: %v", err)
+			}
+		})
+	}
+}
+
+func TestFilePresentIsSatisfiedByALink(t *testing.T) {
+	real, l := seedLink(t, "a\n", 0o644)
+	changes, _, err := (File{}).Apply(context.Background(), fileRes(l, map[string]any{"ensure": "present"}), false)
+	if err != nil || len(changes) != 0 {
+		t.Fatalf("Apply = %+v, %v; want nothing", changes, err)
+	}
+	if got, _ := os.Readlink(l); got != real {
+		t.Errorf("readlink = %q; the link must stay", got)
+	}
+}
+
+func TestFileValidateRejectsLinksIgnore(t *testing.T) {
+	r := fileRes("/x/f", map[string]any{"links": "ignore"})
+	want := `Parameter links failed on File[/x/f]: Invalid value "ignore". Valid values are follow, manage.`
+	if err := (File{}).Validate(r); err == nil || err.Error() != want {
+		t.Errorf("Validate = %v; want %q", err, want)
+	}
+	for _, v := range []string{"manage", "follow"} {
+		if err := (File{}).Validate(fileRes("/x/f", map[string]any{"links": v})); err != nil {
+			t.Errorf("Validate(links => %s) = %v", v, err)
+		}
+	}
+}
+
+// Measured on Puppet 8.10.0: links => follow, ensure => file and no content
+// over a dangling link opens the path in place (type/file.rb:964-966) and so
+// creates the file the link points at. voxagent never writes through a link
+// (D-30): the create is O_EXCL, which the link fails, and nothing is created
+// at its target.
+func TestFileFollowEnsureFileOverADanglingLinkWritesNothingThroughIt(t *testing.T) {
+	dir := t.TempDir()
+	nowhere, l := filepath.Join(dir, "nowhere"), filepath.Join(dir, "l")
+	if err := os.Symlink(nowhere, l); err != nil {
+		t.Fatal(err)
+	}
+	changes, _, err := (File{}).Apply(context.Background(),
+		fileRes(l, map[string]any{"ensure": "file", "links": "follow"}), false)
+	if err != nil || len(changes) != 1 || changes[0].Was != "absent" || changes[0].Err == nil ||
+		!strings.HasSuffix(changes[0].Err.Error(), l+": file exists") {
+		t.Fatalf("Apply = %+v, %v; want one failed create", changes, err)
+	}
+	if _, err := os.Lstat(nowhere); !os.IsNotExist(err) {
+		t.Errorf("the link's target was created: %v", err)
+	}
+	if got, _ := os.Readlink(l); got != nowhere {
+		t.Errorf("readlink = %q; the link must stay", got)
+	}
+}
+
+// type/file.rb:403-418: a file autorequires its owner and group when they are
+// names, never when they are numeric ids.
+func TestFileAutorequiresOwnerAndGroupByName(t *testing.T) {
+	managed := func(ref string) bool {
+		return ref == "User[alice]" || ref == "Group[staff]" || ref == "User[1000]"
+	}
+	for _, tt := range []struct {
+		name   string
+		params map[string]any
+		want   []string
+	}{
+		{"names", map[string]any{"owner": "alice", "group": "staff"}, []string{"User[alice]", "Group[staff]"}},
+		{"numeric strings", map[string]any{"owner": "1000", "group": "50"}, nil},
+		{"numbers", map[string]any{"owner": float64(1000)}, nil},
+		{"unmanaged name", map[string]any{"owner": "bob"}, nil},
+		{"first element of a list", map[string]any{"owner": []any{"alice"}}, []string{"User[alice]"}},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			r := catalog.Resource{Type: "File", Title: "/x/y", Parameters: tt.params}
+			got := File{}.AutoRequires(r, managed)
+			if !slices.Equal(got, tt.want) {
+				t.Errorf("AutoRequires = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+// A File an extension-host eval_generate made is generated from a resource
+// that is not a File, so it is an ordinary File: only a recursion child is
+// confined to its parent's directory.
+func TestFileGeneratedByANonFileAppliesAtItsOwnPath(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "made.txt")
+	parent := catalog.Resource{Type: "Vox_evalgen", Title: "p"}
+	r := fileRes(path, map[string]any{"ensure": "file", "content": "made\n"})
+	r.GeneratedFrom = &parent
+	if _, _, err := (File{}).Apply(context.Background(), r, false); err != nil {
+		t.Fatalf("Apply: %v", err)
+	}
+	if b, err := os.ReadFile(path); err != nil || string(b) != "made\n" {
+		t.Errorf("content = %q, %v", b, err)
+	}
+}
+
+// The other side of recursionChild: a child whose generator is a File stays
+// confined to that File's directory, so a child naming a path elsewhere
+// cannot write there.
+func TestFileRecursionChildCannotEscapeItsParentsDirectory(t *testing.T) {
+	base := t.TempDir()
+	dir, other := filepath.Join(base, "d"), filepath.Join(base, "other")
+	for _, d := range []string{dir, other} {
+		if err := os.Mkdir(d, 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	parent := fileRes(dir, map[string]any{"ensure": "directory", "recurse": "true"})
+	escape := filepath.Join(other, "x")
+	r := fileRes(escape, map[string]any{"ensure": "file", "content": "no\n"})
+	r.GeneratedFrom = &parent
+	if _, _, err := (File{}).Apply(context.Background(), r, false); err == nil {
+		t.Error("Apply succeeded outside the parent's directory")
+	}
+	if _, err := os.Lstat(escape); !errors.Is(err, os.ErrNotExist) {
+		t.Errorf("%s exists or cannot be checked: %v", escape, err)
+	}
+}
+
+// modeOf is path's mode as a manifest spells it, special bits included.
+func modeOf(t *testing.T, path string) uint32 {
+	t.Helper()
+	fi, err := os.Lstat(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return modeBits(fi.Mode())
+}
+
+// seededFile is a file holding "x" at mode, whatever the umask.
+func seededFile(t *testing.T, path string, mode os.FileMode) {
+	t.Helper()
+	mustWrite(t, path, "x")
+	if err := os.Chmod(path, mode); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// Measured on Puppet 8.10.0.
+func TestFileSymbolicModeChangesAnExistingFile(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "a")
+	seededFile(t, path, 0o750)
+	r := fileRes(path, map[string]any{"ensure": "file", "mode": "u+rwX,g-rwx,o-rwx"})
+	changes, _, err := File{}.Apply(context.Background(), r, false)
+	want := Change{Property: "mode", Was: "0750", Is: "u+rwX,g-rwx,o-rwx",
+		Message: "mode changed '0750' to '0700' (u+rwX,g-rwx,o-rwx)"}
+	if err != nil || len(changes) != 1 || !reflect.DeepEqual(changes[0], want) {
+		t.Fatalf("Apply = %+v, %v; want only %+v", changes, err, want)
+	}
+	if got := modeOf(t, path); got != 0o700 {
+		t.Errorf("mode = %04o, want 0700", got)
+	}
+	if changes, _, err := (File{}).Apply(context.Background(), r, false); err != nil || len(changes) != 0 {
+		t.Errorf("second Apply = %+v, %v; want no change", changes, err)
+	}
+}
+
+// Measured, cases #8-#10: a created path is created at the computed mode,
+// whatever the umask, from base 0644 (file) or 0755 (directory, where X
+// always applies), and reports only its ensure change.
+func TestFileSymbolicModeOnCreation(t *testing.T) {
+	old := syscall.Umask(0o077)
+	defer syscall.Umask(old)
+	dir := t.TempDir()
+	for _, tc := range []struct {
+		name   string
+		params map[string]any
+		want   uint32
+	}{
+		{"file", map[string]any{"ensure": "file", "content": "x", "mode": "g-w,o-rw"}, 0o640},
+		{"dir", map[string]any{"ensure": "directory", "mode": "g-w,o-rw"}, 0o751},
+		{"sticky", map[string]any{"ensure": "directory", "mode": "u+rwx,g+rwx,o+rwxt"}, 0o1777},
+	} {
+		path := filepath.Join(dir, tc.name)
+		changes, _, err := File{}.Apply(context.Background(), fileRes(path, tc.params), false)
+		if err != nil || len(changes) != 1 || changes[0].Property != "ensure" || changes[0].Err != nil {
+			t.Errorf("%s: Apply = %+v, %v; want only a successful ensure change", tc.name, changes, err)
 			continue
 		}
-		if tc.gap && (gaps[0].Attribute != "ensure" || gaps[0].Value != fmt.Sprint(tc.value)) {
-			t.Errorf("ensure => %v: gap = %+v, want Attribute=ensure Value=%v", tc.value, gaps[0], tc.value)
+		if got := modeOf(t, path); got != tc.want {
+			t.Errorf("%s: mode = %04o, want %04o", tc.name, got, tc.want)
 		}
+	}
+}
+
+// Measured: an octal mode inherits nothing, special bits included.
+func TestFileOctalModeClearsSpecialBits(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "a")
+	seededFile(t, path, 0o755|os.ModeSetgid)
+	changes, _, err := File{}.Apply(context.Background(),
+		fileRes(path, map[string]any{"ensure": "file", "mode": "0755"}), false)
+	if err != nil || len(changes) != 1 || changes[0].Message != "mode changed '2755' to '0755'" ||
+		changes[0].Was != "2755" || changes[0].Is != "0755" {
+		t.Fatalf("Apply = %+v, %v; want mode changed '2755' to '0755'", changes, err)
+	}
+	if got := modeOf(t, path); got != 0o755 {
+		t.Errorf("mode = %04o, want 0755", got)
+	}
+}
+
+// Measured: X under any operator but '+' fails the mode property at
+// apply time, rendered with the padded desired value, and the disk is unchanged.
+// It is a property failure, not a resource-level one.
+func TestFileSymbolicModeXFailureIsAPropertyFailure(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "a")
+	seededFile(t, path, 0o644)
+	changes, _, err := File{}.Apply(context.Background(),
+		fileRes(path, map[string]any{"ensure": "file", "mode": "u-X"}), false)
+	if err != nil || len(changes) != 1 {
+		t.Fatalf("Apply = %+v, %v; want one failed mode change", changes, err)
+	}
+	ch := changes[0]
+	const wantErr = `X only works with the '+' operator in symbolic mode "u-X"`
+	if ch.Property != "mode" || ch.Was != "0644" || ch.Is != "u-X" || ch.IsDisplay != "0u-X" ||
+		ch.Err == nil || ch.Err.Error() != wantErr {
+		t.Errorf("change = %+v; want mode 0644 -> u-X (0u-X) failing with %q", ch, wantErr)
+	}
+	if got := modeOf(t, path); got != 0o644 {
+		t.Errorf("mode = %04o, want 0644 unchanged", got)
+	}
+}
+
+// Measured: the mode is computed before the create, so the X error
+// fails ensure, unwrapped, and nothing is created.
+func TestFileSymbolicModeXFailureOnCreateFailsEnsure(t *testing.T) {
+	dir := t.TempDir()
+	for _, ensure := range []string{"file", "directory"} {
+		path := filepath.Join(dir, ensure)
+		changes, _, err := File{}.Apply(context.Background(),
+			fileRes(path, map[string]any{"ensure": ensure, "mode": "u=rwX"}), false)
+		const wantErr = `X only works with the '+' operator in symbolic mode "u=rwX"`
+		if err != nil || len(changes) != 1 || changes[0].Property != "ensure" || changes[0].Was != "absent" ||
+			changes[0].Err == nil || changes[0].Err.Error() != wantErr {
+			t.Errorf("%s: Apply = %+v, %v; want one ensure change failing with %q", ensure, changes, err, wantErr)
+		}
+		if _, err := os.Lstat(path); !errors.Is(err, os.ErrNotExist) {
+			t.Errorf("%s: %s exists or cannot be checked: %v", ensure, path, err)
+		}
+	}
+}
+
+// Measured: a content change keeps the on-disk mode, so the mode is
+// computed from the pre-run 0700, not from 0644.
+func TestFileSymbolicModeAfterContent(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "a")
+	seededFile(t, path, 0o700)
+	changes, _, err := File{}.Apply(context.Background(),
+		fileRes(path, map[string]any{"ensure": "file", "content": "new", "mode": "g+r,o+r"}), false)
+	if err != nil || len(changes) != 2 || changes[0].Property != "content" ||
+		changes[1].Message != "mode changed '0700' to '0744' (g+r,o+r)" || changes[1].Was != "0700" {
+		t.Fatalf("Apply = %+v, %v; want content, then mode changed '0700' to '0744' (g+r,o+r)", changes, err)
+	}
+	if got := modeOf(t, path); got != 0o744 {
+		t.Errorf("mode = %04o, want 0744", got)
+	}
+}
+
+// Measured, cases #21-#23: every entry of a recursion computes its own mode
+// from its own mode and type, and a link under links => manage keeps its own.
+func TestFileSymbolicModeRecurseComputesPerEntry(t *testing.T) {
+	base := t.TempDir()
+	n := filepath.Join(base, "n")
+	tree(t, base, "n/", "n/d1/", "n/f", "n/d1/g", "n/d1/exe")
+	if err := os.Chmod(filepath.Join(n, "d1/exe"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(filepath.Join(n, "f"), filepath.Join(n, "ln")); err != nil {
+		t.Fatal(err)
+	}
+	const mode = "u+rwX,g-rwx,o-rwx"
+	parent := fileRes(n, map[string]any{"recurse": true, "mode": mode})
+	children, _, err := File{}.Generate(context.Background(), parent, noneManaged)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := map[string]string{
+		n:             "mode changed '0755' to '0700' (" + mode + ")",
+		n + "/d1":     "mode changed '0755' to '0700' (" + mode + ")",
+		n + "/d1/exe": "mode changed '0755' to '0700' (" + mode + ")",
+		n + "/d1/g":   "mode changed '0644' to '0600' (" + mode + ")",
+		n + "/f":      "mode changed '0644' to '0600' (" + mode + ")",
+		n + "/ln":     "",
+	}
+	for _, r := range append([]catalog.Resource{parent}, children...) {
+		fBefore := modeOf(t, n+"/f")
+		changes, _, err := File{}.Apply(context.Background(), r, false)
+		if err != nil {
+			t.Errorf("%s: Apply: %v", r.Title, err)
+			continue
+		}
+		msg, ok := want[r.Title]
+		delete(want, r.Title)
+		switch {
+		case !ok:
+			t.Errorf("unexpected entry %s: %+v", r.Title, changes)
+		case msg == "" && len(changes) != 0:
+			t.Errorf("%s: changes = %+v, want none", r.Title, changes)
+		case msg != "" && (len(changes) != 1 || changes[0].Message != msg):
+			t.Errorf("%s: changes = %+v, want only %q", r.Title, changes, msg)
+		}
+		if r.Title != n+"/f" && modeOf(t, n+"/f") != fBefore {
+			t.Errorf("%s changed %s/f's mode", r.Title, n)
+		}
+	}
+	if len(want) != 0 {
+		t.Errorf("entries never applied: %v", want)
+	}
+	if fi, err := os.Lstat(n + "/ln"); err != nil || fi.Mode()&os.ModeSymlink == 0 {
+		t.Errorf("%s/ln = %v, %v; want it still a link", n, fi, err)
+	}
+}
+
+// Measured: an invalid mode fails the catalog before
+// anything applies, with Puppet's wording. "000755" is read, not measured;
+// "u+x\nj" is I-22.
+func TestFileValidateRefusesBadModes(t *testing.T) {
+	for _, tc := range []struct {
+		mode any
+		want string
+	}{
+		{"u+q", `Parameter mode failed on File[/x]: The file mode specification is invalid: "u+q"`},
+		{float64(420), `Parameter mode failed on File[/x]: The file mode specification must be a string, not 'Integer'`},
+		{"000755", `Parameter mode failed on File[/x]: The file mode specification is invalid: "000755"`},
+		{"u+x\nj", `Parameter mode failed on File[/x]: The file mode specification is invalid: "u+x\nj"`},
+	} {
+		err := File{}.Validate(fileRes("/x", map[string]any{"mode": tc.mode}))
+		if err == nil || err.Error() != tc.want {
+			t.Errorf("Validate(mode %#v) = %v; want %q", tc.mode, err, tc.want)
+		}
+	}
+	for _, mode := range []string{"0644", "u+rwX,g-rwx,o-rwx"} {
+		if err := (File{}).Validate(fileRes("/x", map[string]any{"mode": mode})); err != nil {
+			t.Errorf("Validate(mode %q) = %v; want it accepted", mode, err)
+		}
+	}
+}
+
+// Under noop ensure is never synced, so nothing computes the mode and an X
+// under the wrong operator cannot fail: one noop ensure change, no Err.
+func TestFileSymbolicModeXErrorUnderNoopIsNotAFailure(t *testing.T) {
+	dir := t.TempDir()
+	replaced := filepath.Join(dir, "replaced")
+	tree(t, dir, "replaced/x")
+	for _, tc := range []struct {
+		path   string
+		params map[string]any
+	}{
+		{filepath.Join(dir, "file"), map[string]any{"ensure": "file"}},
+		{filepath.Join(dir, "directory"), map[string]any{"ensure": "directory"}},
+		{replaced, map[string]any{"ensure": "file", "force": true}},
+	} {
+		tc.params["mode"] = "u=rwX"
+		changes, _, err := File{}.Apply(context.Background(), fileRes(tc.path, tc.params), true)
+		if err != nil || len(changes) != 1 || changes[0].Property != "ensure" || changes[0].Err != nil {
+			t.Errorf("%s: Apply(noop) = %+v, %v; want one ensure change and no Err", tc.path, changes, err)
+		}
+	}
+	if fi, err := os.Stat(replaced); err != nil || !fi.IsDir() {
+		t.Errorf("%s = %v, %v; noop must leave the directory", replaced, fi, err)
+	}
+}
+
+// I-23, read: ensure's sync removes what is in the way before write computes
+// the mode, so an X error on a replacement loses the old path and creates
+// nothing.
+func TestFileSymbolicModeXErrorOnReplacementLosesTheOldPath(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "d")
+	tree(t, dir, "d/x")
+	changes, _, err := File{}.Apply(context.Background(),
+		fileRes(path, map[string]any{"ensure": "file", "force": true, "mode": "u=rwX"}), false)
+	const wantErr = `X only works with the '+' operator in symbolic mode "u=rwX"`
+	if err != nil || len(changes) != 1 || changes[0].Property != "ensure" || changes[0].Was != "directory" ||
+		changes[0].Err == nil || changes[0].Err.Error() != wantErr {
+		t.Fatalf("Apply = %+v, %v; want one ensure change failing with %q", changes, err, wantErr)
+	}
+	if _, err := os.Lstat(path); !errors.Is(err, os.ErrNotExist) {
+		t.Errorf("%s exists or cannot be checked: %v; want it removed and not replaced", path, err)
+	}
+}
+
+// I-24, read: a symbolic mode whose X depends on bits it sets itself does not
+// converge. A created file is made at 0744 and property_fix moves it to 0754;
+// an existing 0644 file moves one step per run.
+func TestFileSymbolicModeThatDoesNotConverge(t *testing.T) {
+	dir := t.TempDir()
+	created := filepath.Join(dir, "created")
+	changes, _, err := File{}.Apply(context.Background(),
+		fileRes(created, map[string]any{"ensure": "file", "mode": "u+x,g+X"}), false)
+	if err != nil || len(changes) != 1 || changes[0].Property != "ensure" || changes[0].Err != nil {
+		t.Fatalf("Apply = %+v, %v; want only a successful ensure change", changes, err)
+	}
+	if got := modeOf(t, created); got != 0o754 {
+		t.Errorf("created mode = %04o, want 0754", got)
+	}
+	existing := filepath.Join(dir, "existing")
+	seededFile(t, existing, 0o644)
+	r := fileRes(existing, map[string]any{"ensure": "file", "mode": "u+x,g+X"})
+	for _, want := range []string{
+		"mode changed '0644' to '0744' (u+x,g+X)",
+		"mode changed '0744' to '0754' (u+x,g+X)",
+		"",
+	} {
+		changes, _, err := File{}.Apply(context.Background(), r, false)
+		switch {
+		case err != nil:
+			t.Fatalf("Apply: %v", err)
+		case want == "" && len(changes) != 0:
+			t.Errorf("Apply = %+v; want no change", changes)
+		case want != "" && (len(changes) != 1 || changes[0].Message != want):
+			t.Errorf("Apply = %+v; want only %q", changes, want)
+		}
+	}
+}
+
+// type/file.rb defines no refresh, so event_manager.rb:73 queues no event
+// for a File a changed resource notifies (apply-spine.md D-41).
+func TestFileIsNotRefreshable(t *testing.T) {
+	if (File{}).Refreshable(catalog.Resource{Type: "File", Title: "/t"}) {
+		t.Error("File is refreshable; Puppet's file type has no refresh")
+	}
+}
+
+// resource_harness.rb:97: a file with no ensure, content, source or target
+// whose path does not exist has nothing to manage.
+func TestFileWithNothingToManageLogsRubysDebugLine(t *testing.T) {
+	r := fileRes(filepath.Join(t.TempDir(), "absent"), map[string]any{"mode": "0600"})
+	src := Sources{Resource: "/Stage[main]/Main/File[absent]", Provider: "File[absent](provider=posix)", Ref: "File[absent]"}
+
+	ctx, got := debugContext("debug")
+	if _, _, err := (File{}).Apply(WithSources(ctx, src), r, false); err != nil {
+		t.Fatalf("Apply returned error: %v", err)
+	}
+	if len(*got) != 1 || (*got)[0].Level != "debug" || (*got)[0].Source != src.Resource ||
+		(*got)[0].Message != "Nothing to manage: no ensure and the resource doesn't exist" {
+		t.Errorf("entries = %+v, want one debug line at %s", *got, src.Resource)
+	}
+
+	ctx, got = debugContext("notice")
+	if _, _, err := (File{}).Apply(WithSources(ctx, src), r, false); err != nil {
+		t.Fatalf("Apply returned error: %v", err)
+	}
+	if len(*got) != 0 {
+		t.Errorf("entries = %+v, want none at notice", *got)
+	}
+}
+
+func TestFileThatExistsHasSomethingToManage(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "present")
+	if err := os.WriteFile(path, []byte("x"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	ctx, got := debugContext("debug")
+	if _, _, err := (File{}).Apply(ctx, fileRes(path, map[string]any{"mode": "0600"}), false); err != nil {
+		t.Fatalf("Apply returned error: %v", err)
+	}
+	if len(*got) != 0 {
+		t.Errorf("entries = %+v, want none for an existing path", *got)
+	}
+}
+
+// fileSources is the identity the transaction puts on the context for a File
+// whose path is the title.
+func fileSources(path string) Sources {
+	ref := "File[" + path + "]"
+	return Sources{Resource: "/Stage[main]/Main/" + ref, Provider: ref + "(provider=posix)", Ref: ref}
+}
+
+// type/file.rb:1035 and :1048: remove_existing says what it removes and what
+// replaces it, at the resource's path, before it removes. wanted is should.to_s
+// (type/file/ensure.rb:186), "link" for ensure => <target> and the target
+// itself for the target property (type/file/target.rb:43).
+func TestFileRemovalLogsRubysDebugLine(t *testing.T) {
+	fileAt := func(p string) { mustWrite(t, p, "x") }
+	dirAt := func(p string) {
+		if err := os.Mkdir(p, 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	linkAt := func(p string) {
+		if err := os.Symlink("elsewhere", p); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for _, tc := range []struct {
+		name   string
+		setup  func(p string)
+		params map[string]any
+		marked []string
+		want   []string
+	}{
+		{"absent over a file", fileAt, map[string]any{"ensure": "absent"}, nil,
+			[]string{"Removing existing file for replacement with absent"}},
+		{"absent over a link", linkAt, map[string]any{"ensure": "absent"}, nil,
+			[]string{"Removing existing link for replacement with absent"}},
+		{"absent over a directory with force", dirAt, map[string]any{"ensure": "absent", "force": true}, nil,
+			[]string{"Removing existing directory for replacement with absent"}},
+		{"absent over a directory without force is only noticed", dirAt, map[string]any{"ensure": "absent"}, nil, nil},
+		{"file over a link", linkAt, map[string]any{"ensure": "file", "content": "y"}, nil,
+			[]string{"Removing existing link for replacement with file"}},
+		{"file over a directory with force", dirAt, map[string]any{"ensure": "file", "content": "y", "force": true}, nil,
+			[]string{"Removing existing directory for replacement with file"}},
+		{"file over a file removes nothing", fileAt, map[string]any{"ensure": "file", "content": "y"}, nil, nil},
+		{"content alone over a link", linkAt, map[string]any{"content": "y"}, nil,
+			[]string{"Removing existing link for replacement with file"}},
+		{"directory over a file", fileAt, map[string]any{"ensure": "directory"}, nil,
+			[]string{"Removing existing file for replacement with directory"}},
+		{"link over a file", fileAt, map[string]any{"ensure": "link", "target": "t"}, nil,
+			[]string{"Removing existing file for replacement with link"}},
+		{"target alone over a file", fileAt, map[string]any{"target": "t"}, nil,
+			[]string{"Removing existing file for replacement with link"}},
+		{"a marked ensure is redacted", fileAt, map[string]any{"ensure": "absent"}, []string{"ensure"},
+			[]string{"Removing existing file for replacement with [redacted]"}},
+		{"a marked ensure with a link to make", fileAt, map[string]any{"ensure": "link", "target": "t"}, []string{"ensure"},
+			[]string{"Removing existing file for replacement with [redacted]"}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			p := filepath.Join(t.TempDir(), "p")
+			tc.setup(p)
+			r := fileRes(p, tc.params)
+			r.SensitiveParameters = tc.marked
+			src := fileSources(p)
+
+			ctx, got := debugContext("debug")
+			if _, _, err := (File{}).Apply(WithSources(ctx, src), r, false); err != nil {
+				t.Fatalf("Apply returned error: %v", err)
+			}
+			if lines := linesAt(*got, src.Resource); !slices.Equal(lines, tc.want) {
+				t.Errorf("debug lines at %s = %q, want %q", src.Resource, lines, tc.want)
+			}
+		})
+	}
+}
+
+// remove_existing(target) is the target property's (type/file/target.rb:43):
+// a link pointing elsewhere is replaced, and Ruby's argument is the target.
+func TestFileRelinkLogsTheTargetAsWhatReplacesTheLink(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		marked []string
+		want   string
+	}{
+		{"plain", nil, "Removing existing link for replacement with /new"},
+		{"marked target", []string{"target"}, "Removing existing link for replacement with [redacted]"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			p := filepath.Join(t.TempDir(), "l")
+			if err := os.Symlink("/old", p); err != nil {
+				t.Fatal(err)
+			}
+			r := fileRes(p, map[string]any{"ensure": "link", "target": "/new"})
+			r.SensitiveParameters = tc.marked
+			src := fileSources(p)
+
+			ctx, got := debugContext("debug")
+			if _, _, err := (File{}).Apply(WithSources(ctx, src), r, false); err != nil {
+				t.Fatalf("Apply returned error: %v", err)
+			}
+			if lines := linesAt(*got, src.Resource); !slices.Equal(lines, []string{tc.want}) {
+				t.Errorf("debug lines = %q, want %q", lines, tc.want)
+			}
+		})
+	}
+}
+
+// Nothing is removed under noop, so nothing is logged; and below debug the
+// logger drops the line.
+func TestFileRemovalLogsNothingUnderNoopOrAtNotice(t *testing.T) {
+	for _, tc := range []struct {
+		level string
+		noop  bool
+	}{{"debug", true}, {"notice", false}} {
+		p := filepath.Join(t.TempDir(), "p")
+		mustWrite(t, p, "x")
+		ctx, got := debugContext(tc.level)
+		if _, _, err := (File{}).Apply(WithSources(ctx, fileSources(p)),
+			fileRes(p, map[string]any{"ensure": "absent"}), tc.noop); err != nil {
+			t.Fatalf("Apply returned error: %v", err)
+		}
+		if len(*got) != 0 {
+			t.Errorf("level %s noop %v: entries = %+v, want none", tc.level, tc.noop, *got)
+		}
+	}
+}
+
+// type/file/mode.rb:134: a link is in sync whatever its mode, and Ruby says so
+// at the mode property's path. links => follow reads the target instead, and a
+// plain file is compared as usual.
+func TestFileModeOfALinkLogsRubysDebugLine(t *testing.T) {
+	for _, tc := range []struct {
+		name  string
+		links string
+		real  bool
+		want  []string
+	}{
+		{"manage on a link", "manage", false, []string{"Not managing symlink mode"}},
+		{"follow reads the target", "follow", false, nil},
+		{"a regular file", "manage", true, nil},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			dir := t.TempDir()
+			target := filepath.Join(dir, "target")
+			mustWrite(t, target, "x")
+			p := filepath.Join(dir, "p")
+			params := map[string]any{"mode": "0600", "links": tc.links}
+			if tc.real {
+				mustWrite(t, p, "x")
+			} else if err := os.Symlink(target, p); err != nil {
+				t.Fatal(err)
+			}
+			src := fileSources(p)
+
+			ctx, got := debugContext("debug")
+			if _, _, err := (File{}).Apply(WithSources(ctx, src), fileRes(p, params), false); err != nil {
+				t.Fatalf("Apply returned error: %v", err)
+			}
+			if lines := linesAt(*got, src.Resource+"/mode"); !slices.Equal(lines, tc.want) {
+				t.Errorf("debug lines at %s/mode = %q, want %q", src.Resource, lines, tc.want)
+			}
+		})
+	}
+
+	p := filepath.Join(t.TempDir(), "p")
+	if err := os.Symlink("x", p); err != nil {
+		t.Fatal(err)
+	}
+	ctx, got := debugContext("notice")
+	if _, _, err := (File{}).Apply(WithSources(ctx, fileSources(p)), fileRes(p, map[string]any{"mode": "0600"}), false); err != nil {
+		t.Fatalf("Apply returned error: %v", err)
+	}
+	if len(*got) != 0 {
+		t.Errorf("entries = %+v, want none at notice", *got)
 	}
 }

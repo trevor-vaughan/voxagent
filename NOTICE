@@ -1,0 +1,13 @@
+voxagent
+Copyright 2026 the voxagent contributors
+
+This product is a derivative work of Puppet
+(https://github.com/puppetlabs/puppet), developed by Puppet Labs (now
+Puppet, Inc.) and licensed under the Apache License, Version 2.0.
+
+voxagent reimplements Puppet's catalog apply behaviour in Go. Its behaviour,
+messages and report format are derived from Puppet 8.10.0's source, which the
+code cites by path and line. No Puppet source file is redistributed
+unmodified.
+
+Licensed under the Apache License, Version 2.0; see LICENSE.md.

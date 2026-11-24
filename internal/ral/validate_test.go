@@ -1,6 +1,7 @@
 package ral
 
 import (
+	"encoding/json"
 	"testing"
 
 	"github.com/voxagent/voxagent/internal/catalog"
@@ -59,5 +60,33 @@ func TestValidateAcceptsAValidCatalog(t *testing.T) {
 	}}
 	if got := Validate(reg, c); len(got) != 0 {
 		t.Errorf("Validate = %v, want none", got)
+	}
+}
+
+// A static catalog inlines file metadata the server computed, and Puppet's
+// source reads it in place of the file (type/file/source.rb:186). voxagent
+// reads every source itself, so a catalog carrying either key is refused
+// before anything runs.
+func TestValidateRefusesInlinedFileMetadata(t *testing.T) {
+	reg := NewRegistry(File{})
+	c := &catalog.Catalog{
+		Resources:         []catalog.Resource{{Type: "File", Title: "/ok"}},
+		Metadata:          json.RawMessage(`{"/ok":{"checksum":{"type":"sha256","value":"x"}}}`),
+		RecursiveMetadata: json.RawMessage(`{}`),
+	}
+	var got []string
+	for _, i := range Validate(reg, c) {
+		got = append(got, i.String())
+	}
+	want := []string{
+		"the catalog carries metadata (a static catalog's inlined file metadata), which is not implemented",
+		"the catalog carries recursive_metadata (a static catalog's inlined file metadata), which is not implemented",
+	}
+	if len(got) != len(want) || got[0] != want[0] || got[1] != want[1] {
+		t.Errorf("Validate = %q, want %q", got, want)
+	}
+	c.Metadata, c.RecursiveMetadata = nil, json.RawMessage("null")
+	if got := Validate(reg, c); len(got) != 0 {
+		t.Errorf("Validate = %v for absent and null metadata, want none", got)
 	}
 }

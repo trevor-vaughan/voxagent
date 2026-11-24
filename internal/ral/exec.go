@@ -4,14 +4,17 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"os/exec"
 	"regexp"
 	"slices"
 	"strconv"
 	"strings"
+	"syscall"
 
 	"github.com/voxagent/voxagent/internal/catalog"
+	"github.com/voxagent/voxagent/internal/runlog"
 )
 
 // Exec is the Tier 1 exec provider, bounded to command, path, cwd, returns,
@@ -46,9 +49,12 @@ var (
 
 // AutoRequires implements Provider.
 //
-// Measured against Puppet 8.10.0, type/exec.rb autorequire(:file): cwd if set,
-// plus every absolute path the two patterns above find in command, onlyif and
-// unless. Only managed paths become edges.
+// Read from Puppet 8.10.0, type/exec.rb:593-640 autorequire(:file), in its
+// order: cwd if set; then the command, or an argv's first element, scanned
+// with execPath and then execQuoted; then each onlyif and unless command (a
+// scalar is a one-element list), or an argv check's first element, scanned
+// with execPath only. A guard's quoted path is no edge (measured).
+// Only managed paths become edges.
 func (e Exec) AutoRequires(r catalog.Resource, managed func(string) bool) []string {
 	var out []string
 	seen := map[string]struct{}{}
@@ -67,24 +73,51 @@ func (e Exec) AutoRequires(r catalog.Resource, managed func(string) bool) []stri
 	if cwd, ok := r.Parameters["cwd"].(string); ok {
 		add(cwd)
 	}
-	for _, param := range []string{"command", "onlyif", "unless"} {
-		text, ok := r.Parameters[param].(string)
-		if !ok {
-			continue
+	// line is `line = line[0] if line.is_a? Array`. Validate refuses an argv
+	// whose first element is not a string, which Ruby cannot scan.
+	line := func(v any) (string, bool) {
+		if argv, ok := v.([]any); ok && len(argv) > 0 {
+			v = argv[0]
+		}
+		s, ok := v.(string)
+		return s, ok
+	}
+	if text, ok := line(r.Parameters["command"]); ok {
+		for _, m := range execPath.FindAllStringSubmatch(text, -1) {
+			add(m[1])
 		}
 		for _, m := range execQuoted.FindAllStringSubmatch(text, -1) {
 			add(m[1])
 		}
-		for _, m := range execPath.FindAllStringSubmatch(text, -1) {
-			add(m[1])
+	}
+	for _, param := range []string{"onlyif", "unless"} {
+		v, ok := r.Parameters[param]
+		if !ok {
+			continue
+		}
+		list, isList := v.([]any)
+		if !isList {
+			list = []any{v}
+		}
+		for _, check := range list {
+			if text, ok := line(check); ok {
+				for _, m := range execPath.FindAllStringSubmatch(text, -1) {
+					add(m[1])
+				}
+			}
 		}
 	}
 	return out
 }
 
+// Properties implements PropertyDeclaring. type/exec.rb has one property,
+// returns (newproperty(:returns)); command, unless, onlyif and the rest are
+// parameters.
+func (Exec) Properties() Attrs { return NewAttrs("returns") }
+
 // Attrs implements Provider.
 func (Exec) Attrs() Attrs {
-	return NewAttrs("command", "path", "cwd", "returns", "refreshonly", "creates", "onlyif", "unless")
+	return NewAttrs("command", "path", "cwd", "logoutput", "returns", "refreshonly", "creates", "onlyif", "unless")
 }
 
 // quotedExe is provider/exec.rb extractexe's pattern. Ruby's ^ matches at every
@@ -96,21 +129,63 @@ var quotedExe = regexp.MustCompile(`(?m)^"([^"]+)"|^'([^']+)'`)
 //
 // Read from Puppet 8.10.0 source, not measured. Before this check a relative
 // cwd ran the command via /bin/sh in voxagent's own working directory -- the
-// same defect File.Validate closed for paths. Puppet refuses three things
+// same defect File.Validate closed for paths. Puppet refuses these
 // while converting the catalog, so the whole run fails:
 //
 //   - cwd (type/exec.rb:266) and creates (:420) are Parameter::Path, whose
 //     validate_path (parameter/path.rb) refuses an array where one path is
-//     allowed and any path not starting with "/"; type.rb:692 wraps that as
+//     allowed and any path not starting with "/"; creates calls accept_arrays
+//     (:448), so only cwd refuses an array. type.rb:692 wraps that as
 //     "Parameter <name> failed on <ref>: ...".
+//   - logoutput (:271) takes newvalues(:true, :false, :on_failure), which
+//     refuses anything else as "Invalid value ...", wrapped the same way.
+//   - unless (:497) and onlyif (:560) run validatecmd on each command and
+//     are wrapped the same way.
 //   - the command (:589) goes through provider/exec.rb validatecmd, which
 //     refuses an executable not starting with "/" when no path is set;
 //     type.rb:2360 wraps that as "Validation of <ref> failed: ...".
 //
 // The first failure is returned, in Puppet's order: parameters are set in
-// allattrs order, where cwd is declared before creates, and the type-level
-// validate that checks the command runs after every parameter is set.
-func (Exec) Validate(r catalog.Resource) error {
+// allattrs order, where the command (the namevar, type/exec.rb:216-220 checks
+// its class), cwd, logoutput, creates, unless and onlyif are declared in that
+// sequence, and the type-level validate that checks the executable runs after
+// every parameter is set.
+//
+// voxagent also refuses two argv shapes (apply-spine.md D-54): a Hash element,
+// which Ruby's to_s would render as Hash#inspect, and, with a path, an argv
+// whose first element is not a string, on which Puppet's autorequire raises
+// and fails the whole catalog. Without a path validatecmd refuses that one
+// first, naming the element as Ruby interpolates it.
+func (e Exec) Validate(r catalog.Resource) error {
+	// The command is the namevar, so absent the parameter the title is it.
+	var command any = r.Title
+	if v, ok := r.Parameters["command"]; ok {
+		command = v
+	}
+	argvs := map[string][][]any{}
+	switch c := command.(type) {
+	case string:
+	case []any:
+		argvs["command"] = [][]any{c}
+	default:
+		return fmt.Errorf("Parameter command failed on %s: Command must be a String or Array<String>, got value of class %s",
+			r.Ref(), catalog.RubyClassName(command))
+	}
+	for _, name := range []string{"onlyif", "unless"} {
+		list, _ := r.Parameters[name].([]any)
+		for _, check := range list {
+			if argv, ok := check.([]any); ok {
+				argvs[name] = append(argvs[name], argv)
+			}
+		}
+	}
+	for _, name := range []string{"command", "unless", "onlyif"} {
+		for _, argv := range argvs[name] {
+			if hasHashElement(argv) {
+				return fmt.Errorf("%s: %s => an argv element of class Hash is not implemented", r.Ref(), name)
+			}
+		}
+	}
 	if cwd, ok := r.Parameters["cwd"]; ok {
 		if _, isArray := cwd.([]any); isArray {
 			return fmt.Errorf("Parameter cwd failed on %s: cwd only accepts a single path, not an array of paths", r.Ref())
@@ -119,17 +194,92 @@ func (Exec) Validate(r catalog.Resource) error {
 			return fmt.Errorf("Parameter cwd failed on %s: cwd must be a fully qualified path", r.Ref())
 		}
 	}
+	if _, err := logoutputMode(r); err != nil {
+		return err
+	}
 	if creates, ok := r.Parameters["creates"]; ok && !absolutePaths(creates) {
 		return fmt.Errorf("Parameter creates failed on %s: creates must be a fully qualified path", r.Ref())
 	}
-	// The command is the namevar, so absent the parameter the title is it.
-	var command any = r.Title
-	if v, ok := r.Parameters["command"]; ok {
-		command = v
+	if path, ok := r.Parameters["path"]; !ok || path == nil {
+		redact := commandsMarked(e, r)
+		// unless is declared before onlyif (type/exec.rb:459, :522); each runs
+		// validatecmd on every command, a string or an array whose elements
+		// are strings or argv arrays, wrapped as a parameter failure like cwd.
+		for _, name := range []string{"unless", "onlyif"} {
+			cmds, ok := r.Parameters[name]
+			if !ok {
+				continue
+			}
+			list, isList := cmds.([]any)
+			if !isList {
+				list = []any{cmds}
+			}
+			for _, cmd := range list {
+				if exe, bad := unqualifiedExe(cmd); bad {
+					return fmt.Errorf("Parameter %s failed on %s: %s", name, r.Ref(), unqualifiedMessage(exe, redact))
+				}
+			}
+		}
+		if exe, bad := unqualifiedExe(command); bad {
+			return fmt.Errorf("Validation of %s failed: %s", r.Ref(), unqualifiedMessage(exe, redact))
+		}
 	}
-	if path, ok := r.Parameters["path"]; ok && path != nil {
-		return nil
+	// autorequire's order: the command, then onlyif, then unless.
+	for _, name := range []string{"command", "onlyif", "unless"} {
+		for _, argv := range argvs[name] {
+			if len(argv) == 0 {
+				return fmt.Errorf("%s: %s => an empty argv is not implemented", r.Ref(), name)
+			}
+			if _, ok := argv[0].(string); !ok {
+				return fmt.Errorf("%s: %s => an argv whose first element is of class %s is not implemented",
+					r.Ref(), name, catalog.RubyClassName(argv[0]))
+			}
+		}
 	}
+	return nil
+}
+
+// commandsMarked reports whether the catalog marks command, unless or onlyif
+// sensitive. Marking one marks every one given (MarkSensitive), so any hit
+// redacts the command and the guards alike.
+func commandsMarked(e Exec, r catalog.Resource) bool {
+	marked, _ := MarkSensitive(e, r)
+	for _, name := range []string{"command", "unless", "onlyif"} {
+		if _, ok := marked[name]; ok {
+			return true
+		}
+	}
+	return false
+}
+
+// hasHashElement reports whether a map sits anywhere in argv.
+func hasHashElement(argv []any) bool {
+	for _, el := range argv {
+		switch v := el.(type) {
+		case map[string]any:
+			return true
+		case []any:
+			if hasHashElement(v) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// unqualifiedMessage is validatecmd's failure text (provider/exec.rb:105).
+//
+// A marked command or guard is shown as [command redacted], quotes included
+// (D-78: Ruby leaks it).
+func unqualifiedMessage(exe string, redact bool) string {
+	return quoteOrRedact(exe, redact) + " is not qualified and no path was specified. Please qualify the command or specify a path."
+}
+
+// unqualifiedExe is validatecmd's test (provider/exec.rb:102): the executable
+// extractexe finds must be absolute when no path is given. It returns the
+// executable and true when the command is NOT qualified. A shape validatecmd
+// cannot read returns false; the apply-time type check reports it.
+func unqualifiedExe(command any) (string, bool) {
 	var exe string
 	switch c := command.(type) {
 	case string:
@@ -139,18 +289,11 @@ func (Exec) Validate(r catalog.Resource) error {
 			exe, _, _ = strings.Cut(c, " ")
 		}
 	case []any:
-		if len(c) > 0 {
-			exe, _ = c[0].(string)
-		}
+		exe = argvExe(c)
 	default:
-		// Not a command shape validatecmd can read; the apply-time type check
-		// in run reports it.
-		return nil
+		return "", false
 	}
-	if strings.HasPrefix(exe, "/") {
-		return nil
-	}
-	return fmt.Errorf("Validation of %s failed: '%s' is not qualified and no path was specified. Please qualify the command or specify a path.", r.Ref(), exe)
+	return exe, !strings.HasPrefix(exe, "/")
 }
 
 // absolutePaths is parameter/path.rb validate_path's test: Array(paths).all?
@@ -178,6 +321,9 @@ func absolutePaths(v any) bool {
 // own to warn into.
 func (e Exec) Apply(ctx context.Context, r catalog.Resource, noop bool) ([]Change, []Warning, error) {
 	if truthy(r.Parameters["refreshonly"]) {
+		// A refreshonly exec fails its refreshonly check on every apply
+		// (type/exec.rb:387, check_all_attributes(false)); Refresh skips it.
+		debugBlocked(ctx, r.Parameters["command"], commandsMarked(e, r), "refreshonly")
 		return nil, nil, nil
 	}
 	changes, err := e.run(ctx, r, noop)
@@ -187,16 +333,31 @@ func (e Exec) Apply(ctx context.Context, r catalog.Resource, noop bool) ([]Chang
 // Refresh implements Provider. Every exec is refreshable, refreshonly or not --
 // that is Puppet's behaviour.
 //
-// A guard that skips the command (creates/onlyif/unless) makes run return
-// (nil, nil), so len(changes) == 0 here and Refresh correctly reports false:
-// a refresh whose guard skipped never happened, and must not be reported as
-// one. This is deliberately pinned by TestExecRefreshSkippedByGuardReportsNoRefresh
-// -- returning true unconditionally would make the transaction set Restarted
-// and write a "triggered refresh" event for a command that never ran.
+// A guard that blocks the command (creates/onlyif/unless) makes run return
+// (nil, nil), and Refresh still reports a refresh. type/exec.rb:690-699's
+// refresh is `if check_all_attributes(true) ... end`, which returns normally
+// either way, and process_callback counts a normal return as a refresh:
+// Puppet logs `Triggered 'refresh' from 1 event`, records a refresh event and
+// sets restarted for a command it did not run. Pinned by TestExecRefreshBlockedByAGuardStillTriggers.
 func (e Exec) Refresh(ctx context.Context, r catalog.Resource, noop bool) (bool, error) {
+	out, err := e.RefreshLogged(ctx, r, noop)
+	return out.Refreshed, err
+}
+
+// RefreshLogged implements RefreshLogging. A refresh is returns.sync
+// (type/exec.rb:690-698), so its output is logged by the same rule as Apply's,
+// at the returns property, before the walk's Triggered or Failed line.
+// Under noop the guards run and the command does not, as in Apply.
+func (e Exec) RefreshLogged(ctx context.Context, r catalog.Resource, noop bool) (RefreshOutcome, error) {
+	var out RefreshOutcome
 	changes, err := e.run(ctx, r, noop)
 	if err != nil {
-		return false, err
+		return out, err
+	}
+	for _, ch := range changes {
+		for _, n := range ch.PropertyNotices {
+			out.PropertyNotices = append(out.PropertyNotices, PropertyNotice{Property: ch.Property, Message: n})
+		}
 	}
 	// A refresh reports a failing command as an ERROR, not as a returns event.
 	// Read in type/exec.rb refresh: it calls property(:returns).sync itself, so
@@ -207,10 +368,11 @@ func (e Exec) Refresh(ctx context.Context, r catalog.Resource, noop bool) (bool,
 	// successfully when the command it ran had failed.
 	for _, ch := range changes {
 		if ch.Err != nil {
-			return false, ch.Err
+			return out, ch.Err
 		}
 	}
-	return len(changes) > 0, nil
+	out.Refreshed = true
+	return out, nil
 }
 
 // Prefetch implements Provider. An exec has no state to pre-read.
@@ -228,21 +390,32 @@ func (e Exec) Prefetch(context.Context, []catalog.Resource) (Provider, error) { 
 // The first failing entry stops evaluation -- the command does not run, and
 // no later entry is checked.
 func (e Exec) run(ctx context.Context, r catalog.Resource, noop bool) ([]Change, error) {
-	commandVal, hasCommand := r.Parameters["command"]
+	command, hasCommand := r.Parameters["command"]
 	if !hasCommand {
 		return nil, fmt.Errorf("exec has no command")
 	}
-	// command must be a string. Puppet's command is a string, or an argv array
-	// which is out of scope for this bounded attribute set; refuse an array
-	// (or any other type) clearly rather than flattening it with %v, which
-	// measured as `sh -c "[/bin/echo hi]"` -- exit 127 with no indication of
-	// why.
-	command, ok := commandVal.(string)
-	if !ok {
-		return nil, fmt.Errorf("command is %T, not a string (argv-array commands are not supported)", commandVal)
+	// command is a string, run through /bin/sh -c, or an argv, run directly
+	// with no shell. Validate
+	// refuses any other class with Puppet's text; this is the same check for
+	// a caller that did not validate.
+	switch c := command.(type) {
+	case string:
+		if c == "" {
+			return nil, fmt.Errorf("exec has no command")
+		}
+	case []any:
+	default:
+		return nil, fmt.Errorf("Command must be a String or Array<String>, got value of class %s", catalog.RubyClassName(command))
 	}
-	if command == "" {
-		return nil, fmt.Errorf("exec has no command")
+
+	// A marked command, unless or onlyif is shown as [command redacted] in
+	// every message below, guards included: Puppet's override marks the three
+	// together. D-78: Ruby leaks the command in the noop and run errors.
+	redact := commandsMarked(e, r)
+
+	logoutput, err := logoutputMode(r)
+	if err != nil {
+		return nil, err
 	}
 
 	creates, err := stringListParam(r, "creates")
@@ -250,7 +423,11 @@ func (e Exec) run(ctx context.Context, r catalog.Resource, noop bool) ([]Change,
 		return nil, err
 	}
 	for _, path := range creates {
+		// type/exec.rb:454, source <resource>/creates. creates is a parameter,
+		// which Sensitive cannot mark (MarkSensitive), so the path shows as is.
+		runlog.Debugf(ctx, SourcesFrom(ctx).Resource+"/creates", "Checking that 'creates' path '%s' exists", path)
 		if _, err := os.Stat(path); err == nil {
+			debugBlocked(ctx, command, redact, "creates")
 			return nil, nil
 		} else if !os.IsNotExist(err) {
 			// "we could not check" is not "the path is missing". Treating an
@@ -260,30 +437,32 @@ func (e Exec) run(ctx context.Context, r catalog.Resource, noop bool) ([]Change,
 		}
 	}
 
-	onlyifs, err := stringListParam(r, "onlyif")
+	onlyifs, err := commandList(r, "onlyif")
 	if err != nil {
 		return nil, err
 	}
 	for _, guard := range onlyifs {
-		ok, err := e.guardPasses(ctx, r, guard)
+		ok, err := e.guardPasses(ctx, r, "onlyif", guard, redact)
 		if err != nil {
 			return nil, err
 		}
 		if !ok {
+			debugBlocked(ctx, command, redact, "onlyif")
 			return nil, nil
 		}
 	}
 
-	unlesses, err := stringListParam(r, "unless")
+	unlesses, err := commandList(r, "unless")
 	if err != nil {
 		return nil, err
 	}
 	for _, guard := range unlesses {
-		ok, err := e.guardPasses(ctx, r, guard)
+		ok, err := e.guardPasses(ctx, r, "unless", guard, redact)
 		if err != nil {
 			return nil, err
 		}
 		if ok {
+			debugBlocked(ctx, command, redact, "unless")
 			return nil, nil
 		}
 	}
@@ -313,26 +492,58 @@ func (e Exec) run(ctx context.Context, r catalog.Resource, noop bool) ([]Change,
 		// applies no --noop run, so this branch is still reached by no gate.
 		return []Change{{Property: "returns", Name: "executed_command",
 			Was: "notrun", Is: "",
-			Message: fmt.Sprintf("would execute '%s'", command)}}, nil
+			Message: "would execute " + quoteOrRedact(commandDisplay(command), redact)}}, nil
 	}
 
-	// The output is deliberately discarded. Ruby does not put it in the event
-	// message -- measured, `command => '/bin/sh -c "echo hello; exit 7"'` yields
-	// the message `change from 'notrun' to ['0'] failed: '/bin/sh -c "echo
-	// hello; exit 7"' returned 7 instead of one of [0]` and logs "hello" as a
-	// separate notice at the returns property, which type/exec.rb sync emits
-	// from its logoutput branch before failing. logoutput is not in this
-	// provider's bounded attribute set, and Change.Notice logs at source
-	// "Puppet" rather than at the property, so that line cannot be reproduced
-	// here. Appending the output to the detail instead, as this once did, put
-	// text in the message that Ruby's does not hold.
-	code, _, err := e.execute(ctx, r, command)
-	if err != nil {
-		return nil, err
+	// An argv's executable is checked before it runs (posix.rb:30-54, run by
+	// provider/exec.rb:46 inside returns#sync), so its ArgumentError fails
+	// the returns property exactly as a bad status does. That
+	// failure carries the accepted list, so an argv's returns is read first;
+	// a string's is read after it ran, as it always was.
+	var accepted []int
+	// acceptable reads returns. A marked returns is shown as [redacted] in the
+	// error that quotes its value (D-78: Ruby leaks it).
+	returnsMarked := isMarked(e, r, "returns")
+	acceptable := func() ([]int, error) {
+		list, err := acceptableList(r.Parameters["returns"], returnsMarked)
+		if err != nil {
+			return nil, fmt.Errorf("exec returns: %w", err)
+		}
+		return list, nil
 	}
-	accepted, err := acceptableList(r.Parameters["returns"])
-	if err != nil {
-		return nil, fmt.Errorf("exec returns: %w", err)
+	var exeErr error
+	argv, isArgv := command.([]any)
+	if isArgv {
+		if accepted, err = acceptable(); err != nil {
+			return nil, err
+		}
+		path, err := pathParam(r)
+		if err != nil {
+			return nil, err
+		}
+		exeErr = checkExe(argvExe(argv), path, redact)
+	}
+	// The output never enters the event message. Ruby logs it as separate
+	// notices at the returns property, which type/exec.rb sync (:120-190)
+	// emits from its logoutput branch before it fails -- measured,
+	// `command => '/bin/sh -c "echo hello; exit 7"'` yields the message
+	// `change from 'notrun' to ['0'] failed: '/bin/sh -c "echo hello; exit
+	// 7"' returned 7 instead of one of [0]` and a separate "hello" notice. So it
+	// becomes Change.PropertyNotices when logoutput (:271) is
+	// true, or on_failure and the status is not accepted; see outputNotices.
+	// Appending it to the detail instead, as this once did, put text in the
+	// message that Ruby's does not hold.
+	var code int
+	var output string
+	if exeErr == nil {
+		if code, output, err = e.execute(ctx, r, command, redact, false); err != nil {
+			return nil, err
+		}
+	}
+	if !isArgv {
+		if accepted, err = acceptable(); err != nil {
+			return nil, err
+		}
 	}
 
 	// desired_value is the ACCEPTED LIST, as strings -- not the status the
@@ -354,7 +565,19 @@ func (e Exec) run(ctx context.Context, r catalog.Resource, noop bool) ([]Change,
 	// success AND on failure -- measured in both. Without it the transaction
 	// falls back to "returns_changed", which no Ruby report contains.
 	change := Change{Property: "returns", Name: "executed_command", Was: "notrun", Is: desired}
-	if slices.Contains(accepted, code) {
+
+	if exeErr != nil {
+		change.Err = exeErr
+		return []Change{change}, nil
+	}
+	// An output that cannot be decoded fails the change with Ruby's split
+	// error in place of the exit-status error, whatever the status.
+	succeeded := slices.Contains(accepted, code)
+	if change.PropertyNotices, err = outputNotices(logoutput, !succeeded, output, redact); err != nil {
+		change.Err = err
+		return []Change{change}, nil
+	}
+	if succeeded {
 		// type/exec.rb's change_to_s for returns, read: `_("executed
 		// successfully")`. It names neither the command nor the status.
 		change.Message = "executed successfully"
@@ -372,53 +595,146 @@ func (e Exec) run(ctx context.Context, r catalog.Resource, noop bool) ([]Change,
 	// spells it twice: format_value_for_display puts ", " between the elements
 	// of desired_value, while this detail is `should.join(",")` -- measured
 	// `change from 'notrun' to ['0', '3'] failed: ... instead of one of [0,3]`.
-	change.Err = fmt.Errorf("'%s' returned %d instead of one of [%s]",
-		command, code, strings.Join(desired, ","))
+	change.Err = fmt.Errorf("%s returned %d instead of one of [%s]",
+		quoteOrRedact(commandDisplay(command), redact), code, strings.Join(desired, ","))
 	return []Change{change}, nil
 }
 
-// guardPasses runs an onlyif or unless command and reports whether it exited 0.
+// debugBlocked logs that check stopped the command (type/exec.rb:672), at the
+// resource. Ruby prints @parameters[:command].value, so an argv shows as
+// Array#inspect (commandDisplay), and "[command redacted]" for a marked one.
+func debugBlocked(ctx context.Context, command any, redact bool, check string) {
+	shown := commandDisplay(command)
+	if redact {
+		shown = "[command redacted]"
+	}
+	runlog.Debugf(ctx, SourcesFrom(ctx).Resource, "'%s' won't be executed because of failed check '%s'", shown, check)
+}
+
+// guardPasses runs the named onlyif or unless command and reports whether it exited 0.
 // A guard that cannot be started at all is an error, not a false: "we could not
 // check" is not the same claim as "the condition does not hold", and treating
-// the first as the second would silently skip the command.
-func (e Exec) guardPasses(ctx context.Context, r catalog.Resource, command string) (bool, error) {
-	code, _, err := e.execute(ctx, r, command)
+// the first as the second would silently skip the command. An argv check's
+// executable fails checkExe the same way, as provider.run(value, true) raises
+// it in Puppet.
+//
+// Its output is logged at debug, one line per line of output at
+// <resource>/<name>, or one "[output redacted]" when the command is marked
+// (type/exec.rb:511-514, :568-571). The output is split only when debug is on.
+func (e Exec) guardPasses(ctx context.Context, r catalog.Resource, name string, command any, redact bool) (bool, error) {
+	if argv, ok := command.([]any); ok {
+		path, err := pathParam(r)
+		if err != nil {
+			return false, err
+		}
+		if err := checkExe(argvExe(argv), path, redact); err != nil {
+			return false, fmt.Errorf("guard %s: %w", quoteOrRedact(commandDisplay(command), redact), err)
+		}
+	}
+	code, out, err := e.execute(ctx, r, command, redact, true)
 	if err != nil {
-		return false, fmt.Errorf("guard '%s': %w", command, err)
+		return false, fmt.Errorf("guard %s: %w", quoteOrRedact(commandDisplay(command), redact), err)
+	}
+	if l := runlog.From(ctx); l.Enabled("debug") {
+		source := SourcesFrom(ctx).Resource + "/" + name
+		if redact {
+			l.Log("debug", source, "[output redacted]")
+		} else {
+			for _, line := range splitOutput(out) {
+				l.Log("debug", source, line)
+			}
+		}
 	}
 	return code == 0, nil
 }
 
 // execute runs a command and returns its exit status. A non-zero status is a
-// value, not an error; only a failure to start or to wait is an error.
-func (e Exec) execute(ctx context.Context, r catalog.Resource, command string) (int, string, error) {
-	cmd := exec.CommandContext(ctx, "/bin/sh", "-c", command)
-	// CommandContext alone kills only the shell. Whether that stops the work
-	// depends on which shell /bin/sh is -- see exec_unix.go for the measurement.
-	setupProcessGroup(cmd)
+// value, not an error; only a failure to start or to wait is an error. Output
+// goes through a temporary file, so a command that backgrounds a process
+// (`/opt/app/run &`) returns when the shell exits, as under Puppet.
+//
+// A string runs through /bin/sh -c. An argv runs with no shell, as Puppet's
+// child runs Kernel.exec(*argv) after its chdir to cwd (util/execution.rb:
+// 359,388-391): argv[0] with a slash is used as given, relative to cwd, and
+// one without is found through the resource's path by lookPathIn, whose "."
+// and empty entries are cwd too. Validate guarantees the path for that.
+// Every way that exec can fail once checkExe has passed (no file found from
+// cwd, a cwd that cannot be entered, EACCES on an interpreter, an empty argv)
+// is status 1, as the child's rescue calls exit!(1) (:392-396); a file with
+// no #! line is retried as a /bin/sh script, as Ruby's exec retries ENOEXEC.
+//
+// check says the command is a guard: Ruby's provider names it in its debug line
+// (provider/exec.rb:48), source the provider form, "Executing check '<cmd>'" or
+// "Executing '<cmd>'", [redacted] for a marked command.
+func (e Exec) execute(ctx context.Context, r catalog.Resource, command any, redact, check bool) (int, string, error) {
+	kind := "Executing"
+	if check {
+		kind = "Executing check"
+	}
+	runlog.Debugf(ctx, SourcesFrom(ctx).Provider, "%s '%s'", kind, redactIf(redact, "%s", commandDisplay(command)))
+	var cwd string
 	if cwdVal, ok := r.Parameters["cwd"]; ok {
-		cwd, ok := cwdVal.(string)
+		s, ok := cwdVal.(string)
 		if !ok {
 			return 0, "", fmt.Errorf("cwd is %T, not a string", cwdVal)
 		}
-		cmd.Dir = cwd
+		cwd = s
 	}
 	path, err := pathParam(r)
 	if err != nil {
 		return 0, "", err
 	}
-	if path != "" {
-		cmd.Env = append(os.Environ(), "PATH="+path)
-	}
-	out, err := cmd.CombinedOutput()
-	if err != nil {
-		var ee *exec.ExitError
-		if errors.As(err, &ee) {
-			return ee.ExitCode(), string(out), nil
+	child := func(name string, args ...string) *exec.Cmd {
+		cmd := exec.CommandContext(ctx, name, args...)
+		// CommandContext alone kills only the shell. Whether that stops the
+		// work depends on which shell /bin/sh is -- see exec_unix.go for the
+		// measurement.
+		setupProcessGroup(cmd)
+		cmd.Dir = cwd
+		if path != "" {
+			cmd.Env = append(os.Environ(), "PATH="+path)
 		}
-		return 0, string(out), fmt.Errorf("run '%s': %w", command, err)
+		return cmd
 	}
-	return 0, string(out), nil
+	argv, isArgv := command.([]any)
+	if !isArgv {
+		line := command.(string)
+		return runLogged(ctx, child("/bin/sh", "-c", line), quoteOrRedact(line, redact), redactIf(redact, "%s", line))
+	}
+
+	line := quoteOrRedact(commandDisplay(command), redact)
+	words := argvOf(argv)
+	if len(words) == 0 {
+		return 1, "", nil
+	}
+	prog := words[0]
+	if !strings.Contains(prog, "/") {
+		hit, found := lookPathIn(prog, path, cwd)
+		if !found {
+			return 1, "", nil
+		}
+		prog = hit
+	}
+	// prog holds a slash, so exec.Command does no LookPath of its own (and
+	// raises no ErrDot); a relative prog is resolved against cmd.Dir.
+	cmd := child(prog, words[1:]...)
+	cmd.Args[0] = words[0]
+	code, out, err := runLogged(ctx, cmd, line, redactIf(redact, "%s", strings.Join(words, " ")))
+	var startErr *fs.PathError
+	if err == nil || !errors.As(err, &startErr) || startErr.Op != "fork/exec" {
+		return code, out, err
+	}
+	// A cwd that cannot be entered reaches here as Op "fork/exec" only
+	// because setupProcessGroup sets SysProcAttr: without it os/exec
+	// pre-checks Dir itself and returns Op "chdir", bypassing this mapping.
+	if errors.Is(startErr.Err, syscall.ENOEXEC) {
+		// The script path and the argv go to sh as separate positional
+		// arguments, no -c: the shell reads the file, never parses the argv.
+		retry := child("/bin/sh", append([]string{prog}, words[1:]...)...)
+		retry.Args[0] = "sh"
+		return runCapped(ctx, retry, line)
+	}
+	return 1, out, nil
 }
 
 // pathParam returns path as a colon-joined string, accepting both the scalar
@@ -448,8 +764,34 @@ func pathParam(r catalog.Resource) (string, error) {
 	}
 }
 
-// stringListParam reads creates/onlyif/unless, accepting both the scalar and
-// array shapes a real catalog produces. A missing key returns (nil, nil); the
+// commandList reads onlyif or unless: a list of commands, each a string or an
+// argv (a nested array), where a scalar is a one-element list
+// (type/exec.rb:493-499,556-562). A flat array is several string commands, not
+// one argv. A missing key returns (nil, nil), which is "not declared".
+func commandList(r catalog.Resource, name string) ([]any, error) {
+	v, ok := r.Parameters[name]
+	if !ok {
+		return nil, nil
+	}
+	switch val := v.(type) {
+	case string:
+		return []any{val}, nil
+	case []any:
+		for _, item := range val {
+			switch item.(type) {
+			case string, []any:
+			default:
+				return nil, fmt.Errorf("%s element is %T, not a string or array", name, item)
+			}
+		}
+		return val, nil
+	default:
+		return nil, fmt.Errorf("%s is %T, not a string or array", name, v)
+	}
+}
+
+// stringListParam reads creates, accepting both the scalar and array shapes a
+// real catalog produces. A missing key returns (nil, nil); the
 // caller's range over a nil slice is a no-op, which is exactly "not declared".
 func stringListParam(r catalog.Resource, name string) ([]string, error) {
 	v, ok := r.Parameters[name]
@@ -479,8 +821,8 @@ func stringListParam(r catalog.Resource, name string) ([]string, error) {
 //
 // An unparseable entry or an empty array is an error, not a silent fallback
 // to 0: a `returns` filter the catalog never declared is a policy this
-// provider must not invent.
-func acceptableList(returns any) ([]int, error) {
+// provider must not invent. redact shows a quoted value as [redacted].
+func acceptableList(returns any, redact bool) ([]int, error) {
 	switch v := returns.(type) {
 	case nil:
 		return []int{0}, nil
@@ -490,7 +832,7 @@ func acceptableList(returns any) ([]int, error) {
 		}
 		out := make([]int, 0, len(v))
 		for _, item := range v {
-			n, err := toInt(item)
+			n, err := toInt(item, redact)
 			if err != nil {
 				return nil, err
 			}
@@ -498,7 +840,7 @@ func acceptableList(returns any) ([]int, error) {
 		}
 		return out, nil
 	default:
-		n, err := toInt(v)
+		n, err := toInt(v, redact)
 		if err != nil {
 			return nil, err
 		}
@@ -511,7 +853,7 @@ func acceptableList(returns any) ([]int, error) {
 // string. Anything else -- including an unparseable string -- is an error:
 // silently treating it as 0 would invent an acceptable-status policy the
 // catalog never declared.
-func toInt(v any) (int, error) {
+func toInt(v any, redact bool) (int, error) {
 	switch n := v.(type) {
 	case int:
 		return n, nil
@@ -522,7 +864,7 @@ func toInt(v any) (int, error) {
 	case string:
 		i, err := strconv.Atoi(n)
 		if err != nil {
-			return 0, fmt.Errorf("returns value %q is not an integer", n)
+			return 0, fmt.Errorf("returns value %s is not an integer", redactIf(redact, "%q", n))
 		}
 		return i, nil
 	default:

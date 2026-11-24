@@ -1,0 +1,47 @@
+{
+  "_comment": [
+    "The agent gate's additions to tests/spine/allowlist.json. run.sh merges the two",
+    "into .test-output/agent/allowlist.json (lists concatenated, cross_implementation",
+    "keys refused if both files name one) and compares through the merged copy, so",
+    "nothing here loosens the apply gates.",
+    "",
+    "run_to_run: fields that differ between two `puppet agent -t` runs on ONE node.",
+    "Measured 2026-11-16 from the agent gate's Ruby run 1 against its run 2:",
+    "catalog_uuid 81d1c69d-... against 273ceed1-... (each compile mints one, so",
+    "the apply gates, which hand both sides one catalog file, never see it vary);",
+    "startup_time 1.359451704 against 0.416595999; plugin_sync 0.357259556 against",
+    "0.300215325; fact_generation 0.553457542 against 0.532411848; convert_catalog",
+    "0.031244258 against 0.038862475; config_retrieval 0.607902966 against",
+    "0.229451645; vox_marker 0.001095281 against 0.000121422. config_retrieval is",
+    "compared as a value on the apply gates, where both sides report a structural 0;",
+    "an agent retrieves a catalog, so here it is a duration like the others.",
+    "",
+    "cross_implementation: the gate compares two NODES, ruby.example.test and",
+    "vox.example.test, so identity differs by construction; and the D-rows of",
+    "docs/maintainers/apply-spine.md that only an agent run shows.",
+    "",
+    "'logs (Puppet: Caching catalog for <host>)' is a documentation key like the",
+    "spine's 'logs (Puppet: Wrapped exception)': it matches no path, and the drop it",
+    "declares is reportcmp's dropCachingCatalogLog, Ruby side only."
+  ],
+  "run_to_run": [
+    "catalog_uuid",
+    "metrics.time.values.startup_time.value",
+    "metrics.time.values.plugin_sync.value",
+    "metrics.time.values.fact_generation.value",
+    "metrics.time.values.convert_catalog.value",
+    "metrics.time.values.config_retrieval.value",
+    "metrics.time.values.vox_marker.value"
+  ],
+  "cross_implementation": {
+    "host": "two nodes compared: identity differs by construction -- each report's host is its own certname",
+    "metrics.resources.values.total.value": "D-75 (docs/maintainers/apply-spine.md): Ruby's agent adds Puppet's six default schedules and the default filebucket to every catalog (catalog.rb make_default_resources) and counts them; voxagent does not. run.sh asserts the remainder instead: Ruby's total minus 7 must equal voxagent's",
+    "metrics.time.values.schedule.label": "D-75: the default schedules' per-type timing, Ruby only",
+    "metrics.time.values.schedule.value": "D-75: the default schedules' per-type timing, Ruby only",
+    "metrics.time.values.filebucket.label": "D-75: the default filebucket's per-type timing, Ruby only",
+    "metrics.time.values.filebucket.value": "D-75: the default filebucket's per-type timing, Ruby only",
+    "metrics.time.values.node_retrieval.label": "D-76 (docs/maintainers/apply-spine.md): voxagent requests the node on every run; Ruby, once a lastrunfile exists, skips the request and its timing",
+    "metrics.time.values.node_retrieval.value": "D-76: as the label; when both sides time it, a duration",
+    "logs (Puppet: Caching catalog for <host>)": "D-67 (docs/maintainers/apply-spine.md): voxagent caches no catalog, so never logs configurer.rb:495's 'Caching catalog for <certname>'. Dropped from the RUBY side only, and only with source Puppet, level info and the report's own host, so the line from voxagent or in any other wording still diverges"
+  }
+}

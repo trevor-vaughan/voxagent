@@ -1,0 +1,18 @@
+<!-- Access log with the request/response headers the transport measurement needs.
+     Pattern conversion words are logback-access's (%i = request header, %o = response header). -->
+<configuration debug="false" scan="true">
+    <appender name="FILE" class="ch.qos.logback.core.FileAppender">
+        <file>/var/log/puppetlabs/puppetserver/puppetserver-access.log</file>
+        <append>true</append>
+        <encoder>
+            <pattern>%date "%r" %s %b %D accept="%i{Accept}" ctype="%i{Content-Type}" xpv="%i{X-Puppet-Version}" xprof="%i{X-Puppet-Profiling}" ua="%i{User-Agent}" aenc="%i{Accept-Encoding}" resp_ctype="%o{Content-Type}" resp_xpv="%o{X-Puppet-Version}" resp_cenc="%o{Content-Encoding}"</pattern>
+        </encoder>
+    </appender>
+    <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%h %l %u %user %date "%r" %s %b %h %a %localPort %D</pattern>
+        </encoder>
+    </appender>
+    <appender-ref ref="FILE"/>
+    <appender-ref ref="STDOUT"/>
+</configuration>

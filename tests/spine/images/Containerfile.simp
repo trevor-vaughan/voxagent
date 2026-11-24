@@ -1,0 +1,58 @@
+# The node report-diff-simp.sh compiles the public SIMP catalog for and applies
+# it to: the systemd-booted G5 base (Containerfile.systemd) plus the packages
+# that catalog manages, so both agents find the same files and services to
+# configure. The package list and its exclusions are measured: every
+# package the catalog declares except haveged (EPEL, which the image does not
+# enable), dracut-fips* and iptables-services, plus procps-ng,
+# grubby, selinux-policy-targeted and kmod. Building it needs the CentOS Stream
+# mirrors.
+FROM localhost/voxagent-systemd:latest
+RUN dnf install -y aide at audispd-plugins audit audit-rules bind-utils checkpolicy chrony cronie crypto-policies crypto-policies-scripts irqbalance libpwquality libxcrypt logrotate netlabel_tools nss oddjob oddjob-mkhomedir openssh-clients openssh-server pam policycoreutils-python-utils polkit rsyslog sssd sssd-client sssd-common sssd-dbus sssd-tools sudo tlog tuned tzdata procps-ng grubby selinux-policy-targeted kmod && dnf clean all
+
+
+# Service[auditd] and Service[polkit], measured 2026-10-08 in booted containers
+# of this image. Unprepared, both fail to start for both agents, and Puppet's
+# failure message then carries a journalctl tail whose timestamps, PIDs and line
+# window differ between any two containers, Ruby against Ruby included. So two
+# drop-ins make both units startable, and auditd is disabled. None of it changes
+# what the catalog asks; it changes only how this container runs the units, and
+# both agents boot the same image.
+#
+# auditd cannot run in a rootless user namespace at all: the kernel's audit
+# netlink belongs to the initial namespace, and auditd exits 4/NOPERMISSION
+# ("You must be root or have capabilities"). Its drop-in replaces the start
+# command with /usr/bin/true, as a oneshot that stays active. The unit's
+# enablement, its status and the catalog's own stop and restart commands
+# (auditctl --signal stop; systemctl start auditd) are still what both agents
+# read and run.
+#
+# polkit fails at systemd's step USER, "Failed to keep CAP_SYS_ADMIN". Rootless
+# podman grants no CAP_SYS_ADMIN, and systemd needs it to install a seccomp
+# filter for a unit that switches User=, even under NoNewPrivileges. Each line
+# of its drop-in resets one setting that installs such a filter. With any one
+# of them left in place (measured one at a time, all the others reset) the
+# start still fails; with all fourteen reset, polkitd starts. Its other
+# sandboxing is kept.
+#
+# The starting state, auditd: installed, disabled, stopped. The catalog's
+# ensure => running starts it, and both reports carry that event ("ensure
+# changed 'stopped' to 'running'"), so the start path is compared. There is no
+# enable event in the same run: Puppet syncs only ensure when ensure is out of
+# sync.
+#
+# The starting state, polkit: installed, static, running. A static unit has no
+# install section, so `systemctl disable` is a no-op on it. tuned asks for
+# org.freedesktop.PolicyKit1 at boot, and D-Bus activation starts polkit before
+# the agent runs. The catalog finds it in sync, and with Puppet 8's
+# exclude_unchanged_resources neither report carries a status for it. Both
+# agents must still agree that it is in sync. Stopping it would mean changing
+# tuned, another resource of the catalog.
+RUN mkdir -p /etc/systemd/system/auditd.service.d /etc/systemd/system/polkit.service.d \
+ && printf '%s\n' '[Service]' Type=oneshot RemainAfterExit=yes PIDFile= ExecStart= ExecStart=/usr/bin/true \
+      >/etc/systemd/system/auditd.service.d/voxagent-gate.conf \
+ && printf '%s\n' '[Service]' SystemCallFilter= SystemCallArchitectures= RestrictAddressFamilies= \
+      RestrictNamespaces=no RestrictRealtime=no RestrictSUIDSGID=no LockPersonality=no \
+      MemoryDenyWriteExecute=no PrivateDevices=no ProtectKernelTunables=no ProtectKernelModules=no \
+      ProtectKernelLogs=no ProtectClock=no ProtectHostname=no \
+      >/etc/systemd/system/polkit.service.d/voxagent-gate.conf \
+ && systemctl disable auditd

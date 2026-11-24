@@ -2,10 +2,15 @@ package transaction
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
 	"reflect"
+	"regexp"
 	"slices"
+	"sort"
 	"strings"
 	"testing"
 
@@ -89,6 +94,10 @@ type recorder struct {
 	// mutant that hard-coded false in the Refresh call survived the entire
 	// suite while executing commands under --noop.
 	noopSeen *[]string
+
+	// sourcesSeen records the ral.Sources each Apply and Refresh call's context
+	// carried, when the test cares.
+	sourcesSeen *[]ral.Sources
 }
 
 func (p recorder) recordNoop(call, ref string, noop bool) {
@@ -111,8 +120,11 @@ func (p recorder) Attrs() ral.Attrs {
 	return ral.NewAttrs("message", "command", "ensure", "content")
 }
 
-func (p recorder) Apply(_ context.Context, r catalog.Resource, noop bool) ([]ral.Change, []ral.Warning, error) {
+func (p recorder) Apply(ctx context.Context, r catalog.Resource, noop bool) ([]ral.Change, []ral.Warning, error) {
 	*p.applied = append(*p.applied, r.Ref())
+	if p.sourcesSeen != nil {
+		*p.sourcesSeen = append(*p.sourcesSeen, ral.SourcesFrom(ctx))
+	}
 	p.recordNoop("Apply", r.Ref(), noop)
 	if p.primedSeen != nil {
 		*p.primedSeen = append(*p.primedSeen, fmt.Sprintf("%s primed=%t", r.Ref(), p.primed))
@@ -144,6 +156,68 @@ func (p recorder) Apply(_ context.Context, r catalog.Resource, noop bool) ([]ral
 			Name: "executed_command",
 			Err:  errors.New("'/bin/false' returned 1 instead of one of [0]"),
 		}}, p.warn, nil
+	case "invalidate":
+		// service's start: ensure => running carries invalidate_refreshes
+		// (type/service.rb:109), so the resource's own pending refresh is
+		// dropped.
+		return []ral.Change{{
+			Property: "ensure", Was: "stopped", Is: "running",
+			Name: "service_started", Message: "ensure changed 'stopped' to 'running'",
+			InvalidateRefreshes: true,
+		}}, p.warn, nil
+	case "invalidate-failed":
+		// The same change, failed. Ruby queues events only for a resource
+		// that did not fail, so nothing is dequeued and the refresh still runs.
+		return []ral.Change{{
+			Property: "ensure", Was: "stopped", Is: "running",
+			Name: "service_started", InvalidateRefreshes: true,
+			Err: errors.New("Systemd start for svc failed!\njournalctl log for svc:\n"),
+		}}, p.warn, nil
+	case "pathnotice":
+		// file's purge of a directory: a resource-level notice beside a
+		// successful ensure change (type/file.rb:1040).
+		return []ral.Change{{
+			Property: "ensure", Was: "directory", Is: "absent",
+			Name: "file_removed", Message: "removed",
+			PathNotices: []string{"Not removing directory; use 'force' to override"},
+		}}, p.warn, nil
+	case "twonotices":
+		// remove_existing runs twice on one failed ensure => file over a
+		// directory (I-3): the notice twice, then the failure.
+		notice := "Not removing directory; use 'force' to override"
+		return []ral.Change{{
+			Property: "ensure", Was: "directory", Is: "file", Name: "file_created",
+			PathNotices: []string{notice, notice},
+			Err:         errors.New("Could not set 'file' on ensure: Is a directory"),
+		}}, p.warn, nil
+	case "pathwarnings":
+		// file's backup over a directory without force (type/file.rb:803),
+		// warned each time remove_existing runs, beside a successful change
+		// and beside a failed one.
+		warning := "Could not back up file of type directory"
+		return []ral.Change{
+			{Property: "ensure", Was: "directory", Is: "absent",
+				Name: "file_removed", Message: "removed",
+				PathWarnings: []string{warning},
+				PathNotices:  []string{"Not removing directory; use 'force' to override"}},
+			{Property: "content", Was: "{sha256}a", Is: "{sha256}b",
+				PathWarnings: []string{warning, warning},
+				Err:          errors.New("boom")},
+		}, p.warn, nil
+	case "propertynotices":
+		// Exec's logged output (type/exec.rb sync): notices at the returns
+		// property, logged during the sync that then records the event.
+		return []ral.Change{{
+			Property: "returns", Name: "executed_command", Was: "notrun", Is: []string{"0"},
+			Message: "executed successfully", PathNotices: []string{"path notice"},
+			PropertyNotices: []string{"a", "", "b"},
+		}}, p.warn, nil
+	case "propertynoticesfail":
+		return []ral.Change{{
+			Property: "returns", Name: "executed_command", Was: "notrun", Is: []string{"0"},
+			PathNotices: []string{"path notice"}, PropertyNotices: []string{"a"},
+			Err: errors.New("'x' returned 2 instead of one of [0]"),
+		}}, p.warn, nil
 	case "mixed":
 		// One property that moved and one that was attempted and failed --
 		// the shape that distinguishes add_event's two counters. A
@@ -166,8 +240,11 @@ func (p recorder) Apply(_ context.Context, r catalog.Resource, noop bool) ([]ral
 	return out, p.warn, nil
 }
 
-func (p recorder) Refresh(_ context.Context, r catalog.Resource, noop bool) (bool, error) {
+func (p recorder) Refresh(ctx context.Context, r catalog.Resource, noop bool) (bool, error) {
 	*p.refreshed = append(*p.refreshed, r.Ref())
+	if p.sourcesSeen != nil {
+		*p.sourcesSeen = append(*p.sourcesSeen, ral.SourcesFrom(ctx))
+	}
 	p.recordNoop("Refresh", r.Ref(), noop)
 	if p.refreshErr[r.Ref()] {
 		return false, errors.New("refresh refused")
@@ -271,12 +348,17 @@ func txWithPrefetch(applied, refreshed *[]string, probe prefetchProbe) *Transact
 
 func runCatalog(t *testing.T, tx *Transaction, c *catalog.Catalog) *report.Report {
 	t.Helper()
-	g, err := BuildGraph(c, tx.Registry)
+	return runCatalogCtx(t, context.Background(), tx, c)
+}
+
+func runCatalogCtx(t *testing.T, ctx context.Context, tx *Transaction, c *catalog.Catalog) *report.Report {
+	t.Helper()
+	g, err := BuildGraph(ctx, c, tx.Registry)
 	if err != nil {
 		t.Fatalf("BuildGraph returned error: %v", err)
 	}
 	rep := report.New("n", "production", tx.Noop)
-	if err := tx.Run(context.Background(), c, g, rep); err != nil {
+	if err := tx.Run(ctx, c, g, rep); err != nil {
 		t.Fatalf("Run returned error: %v", err)
 	}
 	rep.Finalize()
@@ -590,7 +672,7 @@ func TestRunRejectsUnregisteredType(t *testing.T) {
 	var applied, refreshed []string
 	tx := newTx(&applied, &refreshed, nil, nil, 1)
 	c := &catalog.Catalog{Resources: []catalog.Resource{res("Service", "nginx", nil)}}
-	g, err := BuildGraph(c, tx.Registry)
+	g, err := BuildGraph(context.Background(), c, tx.Registry)
 	if err != nil {
 		t.Fatalf("BuildGraph returned error: %v", err)
 	}
@@ -2012,5 +2094,1477 @@ func TestPrefetchFailureWithAFailedDependencyKeepsTheDependencyReason(t *testing
 	if !slices.Equal(prefetchSkips, []string{"/File[/head]"}) {
 		t.Errorf("prefetch skip warnings = %v, want only File[/head] -- File[/tail]"+
 			" is skipped for its failed dependency instead", prefetchSkips)
+	}
+}
+
+// A relationship that names a defined type reaches the define's contents. If
+// the instance were an ordinary vertex the subscribe would attach to a vertex
+// that never changes, Exec[svc] would never refresh, and nothing would fail.
+func TestDefinedTypeInstanceIsAContainer(t *testing.T) {
+	var applied, refreshed []string
+	tx := newTx(&applied, &refreshed, nil, nil, 1)
+	c := &catalog.Catalog{
+		Resources: []catalog.Resource{
+			{Type: "Wrap::It", Title: "w", Kind: "defined_type",
+				Parameters: map[string]any{"m": "x"}},
+			res("File", "z", nil),
+			res("Exec", "svc", map[string]any{"subscribe": []any{"Wrap::It[w]"}}),
+		},
+		Edges: []catalog.Edge{{Source: "Wrap::It[w]", Target: "File[z]"}},
+	}
+	rep := runCatalog(t, tx, c)
+	if _, ok := rep.ResourceStatuses["Wrap::It[w]"]; ok {
+		t.Error("the defined-type instance has a report status; Puppet's report lists none")
+	}
+	for _, ref := range applied {
+		if ref == "Wrap::It[w]" {
+			t.Error("the defined-type instance was applied")
+		}
+	}
+	if len(refreshed) != 1 || refreshed[0] != "Exec[svc]" {
+		t.Errorf("refreshed = %v, want [Exec[svc]] (File[z] inside the define changed)", refreshed)
+	}
+}
+
+// A resource started this run is not also refreshed by its notifiers
+// (event_manager.rb:82). A failed start dequeues nothing, so its refresh
+// still runs, and noop invalidates exactly as a live run does.
+func TestInvalidateRefreshesDropsTheResourcesOwnRefresh(t *testing.T) {
+	for _, tc := range []struct {
+		name        string
+		mode        string
+		noop        bool
+		wantRefresh bool
+	}{
+		{"started this run", "invalidate", false, false},
+		{"started this run, noop", "invalidate", true, false},
+		{"start failed", "invalidate-failed", false, true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var applied, refreshed []string
+			tx := txWithFailChange(&applied, &refreshed, map[string]string{"Exec[svc]": tc.mode})
+			tx.Noop = tc.noop
+			c := &catalog.Catalog{Resources: []catalog.Resource{
+				res("File", "conf", map[string]any{"notify": []any{"Exec[svc]"}}),
+				res("Exec", "svc", nil),
+			}}
+			rep := runCatalog(t, tx, c)
+			if got := len(refreshed) == 1; got != tc.wantRefresh {
+				t.Errorf("refreshed = %v, want refresh=%v", refreshed, tc.wantRefresh)
+			}
+			for _, ev := range rep.ResourceStatuses["Exec[svc]"].Events {
+				if ev.Name != nil && *ev.Name == "refresh" && !tc.wantRefresh {
+					t.Error("a refresh event was reported for a refresh that was invalidated")
+				}
+			}
+		})
+	}
+}
+
+// transaction.rb:305-322 and :418-424. Measured on Puppet 8.10.0 with a
+// failing File and a chain of two dependents: the first logs "Dependency
+// File[...] has failures: true" (notice) and "Skipping because of failed
+// dependencies" (warning); the second logs only the warning, because
+// @failed_dependencies_already_notified names each failed resource once per
+// run.
+func TestSkippedResourcesLogPuppetsDependencyLines(t *testing.T) {
+	var applied, refreshed []string
+	tx := newTx(&applied, &refreshed, map[string]bool{"File[a]": true}, nil, 1)
+	rep := runCatalog(t, tx, &catalog.Catalog{Resources: []catalog.Resource{
+		res("File", "a", nil),
+		res("File", "b", map[string]any{"require": []any{"File[a]"}}),
+		res("File", "c", map[string]any{"require": []any{"File[b]"}}),
+	}})
+	var got []string
+	for _, l := range rep.Logs {
+		if l.Source == "/File[b]" || l.Source == "/File[c]" {
+			got = append(got, l.Level+" "+l.Source+" "+l.Message)
+		}
+	}
+	want := []string{
+		"notice /File[b] Dependency File[a] has failures: true",
+		"warning /File[b] Skipping because of failed dependencies",
+		"warning /File[c] Skipping because of failed dependencies",
+	}
+	if !slices.Equal(got, want) {
+		t.Errorf("logs =\n%s\nwant\n%s", strings.Join(got, "\n"), strings.Join(want, "\n"))
+	}
+}
+
+// propagate_failure (transaction.rb:333-350) collects every failed resource
+// behind a dependent, so one blocked by two failures names both, each once,
+// and a resource further down names neither again.
+func TestASkippedResourceNamesEveryFailedDependencyOnce(t *testing.T) {
+	var applied, refreshed []string
+	tx := newTx(&applied, &refreshed, map[string]bool{"File[a]": true, "File[b]": true}, nil, 1)
+	rep := runCatalog(t, tx, &catalog.Catalog{Resources: []catalog.Resource{
+		res("File", "a", nil),
+		res("File", "b", nil),
+		res("File", "c", map[string]any{"require": []any{"File[a]", "File[b]"}}),
+		res("File", "d", map[string]any{"require": []any{"File[c]"}}),
+	}})
+	var got []string
+	for _, l := range rep.Logs {
+		if l.Source == "/File[c]" || l.Source == "/File[d]" {
+			got = append(got, l.Level+" "+l.Source+" "+l.Message)
+		}
+	}
+	want := []string{
+		"notice /File[c] Dependency File[a] has failures: true",
+		"notice /File[c] Dependency File[b] has failures: true",
+		"warning /File[c] Skipping because of failed dependencies",
+		"warning /File[d] Skipping because of failed dependencies",
+	}
+	if !slices.Equal(got, want) {
+		t.Errorf("logs =\n%s\nwant\n%s", strings.Join(got, "\n"), strings.Join(want, "\n"))
+	}
+}
+
+// A failed member blocks the class's
+// dependent through the class's completed whit, which skips silently
+// (transaction.rb:293-323, :401-424), so the dependent names the member.
+func TestFailedMemberSkipsTheClassDependentWithTheMembersName(t *testing.T) {
+	var applied, refreshed []string
+	tx := newTx(&applied, &refreshed, map[string]bool{"Exec[cf_fail]": true}, nil, 1)
+	rep := runCatalog(t, tx, &catalog.Catalog{
+		Resources: []catalog.Resource{
+			res("Class", "cf", nil), res("Exec", "cf_fail", nil), res("Notify", "cf_ok", nil),
+			res("Exec", "x_cf", map[string]any{"subscribe": "Class[cf]"}),
+		},
+		Edges: []catalog.Edge{{Source: "Class[cf]", Target: "Exec[cf_fail]"}, {Source: "Class[cf]", Target: "Notify[cf_ok]"}},
+	})
+	var got []string
+	for _, l := range rep.Logs {
+		if l.Source == "/Exec[x_cf]" {
+			got = append(got, l.Level+" "+l.Message)
+		}
+		if strings.Contains(l.Source, "Whit") || strings.TrimPrefix(l.Source, "/") == "Class[Cf]" {
+			t.Errorf("a whit logged: %s %s %s", l.Level, l.Source, l.Message)
+		}
+	}
+	want := []string{"notice Dependency Exec[cf_fail] has failures: true", "warning Skipping because of failed dependencies"}
+	if !slices.Equal(got, want) {
+		t.Errorf("Exec[x_cf] logs =\n%s\nwant\n%s", strings.Join(got, "\n"), strings.Join(want, "\n"))
+	}
+	if slices.Contains(refreshed, "Exec[x_cf]") {
+		t.Error("Exec[x_cf] was refreshed despite its failed dependency")
+	}
+}
+
+// resource/status.rb:176 names the provider on every status it builds, so a
+// File skipped for a failed dependency carries "posix" in Ruby's report.
+func TestASkippedResourceNamesItsProvider(t *testing.T) {
+	var applied, refreshed []string
+	file := recorder{typ: "file", applied: &applied, refreshed: &refreshed,
+		failOn: map[string]bool{"File[a]": true}, providerName: "posix", changes: 1}
+	rep := runCatalog(t, &Transaction{Registry: ral.NewRegistry(file)}, &catalog.Catalog{
+		Resources: []catalog.Resource{
+			res("File", "a", nil),
+			res("File", "b", map[string]any{"require": []any{"File[a]"}}),
+		}})
+	rs := rep.ResourceStatuses["File[b]"]
+	if !rs.Skipped || rs.ProviderUsed == nil || *rs.ProviderUsed != "posix" {
+		t.Errorf("File[b] skipped = %t provider_used = %v, want skipped with \"posix\"",
+			rs.Skipped, rs.ProviderUsed)
+	}
+}
+
+// The prefetch-failed branch picks the dependency reason the same way skip?
+// does (transaction.rb:418-424 before :427), so it logs the same two lines.
+func TestAPrefetchFailedDependentLogsTheDependencyLines(t *testing.T) {
+	var applied, refreshed []string
+	tx := txWithPrefetch(&applied, &refreshed, prefetchProbe{
+		prefetchErr: map[string]error{"file": errors.New("cannot read the filesystem")},
+	})
+	rep := runCatalog(t, tx, &catalog.Catalog{Resources: []catalog.Resource{
+		res("File", "/head", nil),
+		res("File", "/tail", map[string]any{"require": []any{"File[/head]"}}),
+	}})
+	var got []string
+	for _, l := range rep.Logs {
+		if l.Source == "/File[/tail]" {
+			got = append(got, l.Level+" "+l.Message)
+		}
+	}
+	want := []string{
+		"notice Dependency File[/head] has failures: true",
+		"warning Skipping because of failed dependencies",
+	}
+	if !slices.Equal(got, want) {
+		t.Errorf("File[/tail] logs = %v, want %v", got, want)
+	}
+}
+
+// genRecorder is a recorder that also implements ral.Generator: Generate
+// returns the children configured for a parent, the way File.Generate returns
+// the paths under a recursed directory.
+type genRecorder struct {
+	recorder
+	children map[string][]catalog.Resource
+	genErr   map[string]error
+	genWarn  []ral.Warning
+	// generated records "<parent> after <n> applies" per call, which pins WHEN
+	// generation ran relative to the walk.
+	generated *[]string
+	// probes are refs asked of Generate's managed callback; answers records
+	// "<ref> <answer>" for each.
+	probes  []string
+	answers *[]string
+}
+
+func (p genRecorder) Generate(_ context.Context, r catalog.Resource, managed func(string) bool) ([]catalog.Resource, []ral.Warning, error) {
+	if p.answers != nil {
+		for _, ref := range p.probes {
+			*p.answers = append(*p.answers, fmt.Sprintf("%s %t", ref, managed(ref)))
+		}
+	}
+	if p.generated != nil {
+		*p.generated = append(*p.generated, fmt.Sprintf("%s after %d applies", r.Ref(), len(*p.applied)))
+	}
+	if err := p.genErr[r.Ref()]; err != nil {
+		return nil, p.genWarn, err
+	}
+	return p.children[r.Ref()], p.genWarn, nil
+}
+
+// Prefetch must return the genRecorder rather than the embedded recorder: the
+// promoted method would hand back the inner value, dropping Generate, and the
+// walk would never see a generator (stubValueProvider in
+// internal/ral/preflight_test.go is the same trap).
+func (p genRecorder) Prefetch(ctx context.Context, rs []catalog.Resource) (ral.Provider, error) {
+	inner, err := p.recorder.Prefetch(ctx, rs)
+	if err != nil {
+		return nil, err
+	}
+	p.recorder = inner.(recorder)
+	return p, nil
+}
+
+// generatedChildren builds what a Generator returns for parent, in the order
+// given.
+func generatedChildren(parent catalog.Resource, titles ...string) []catalog.Resource {
+	out := make([]catalog.Resource, len(titles))
+	for i, title := range titles {
+		out[i] = catalog.Resource{Type: parent.Type, Title: title, Tags: parent.Tags, GeneratedFrom: &parent}
+	}
+	return out
+}
+
+// txWithGenerator registers gen as the file provider, beside plain exec and
+// notify recorders that share its probes and failure maps.
+func txWithGenerator(gen genRecorder) *Transaction {
+	mk := func(typ string) recorder {
+		return recorder{typ: typ, applied: gen.applied, refreshed: gen.refreshed,
+			failOn: gen.failOn, noChange: gen.noChange, changes: gen.changes}
+	}
+	return &Transaction{Registry: ral.NewRegistry(gen, mk("exec"), mk("notify"))}
+}
+
+// A unit is applied at the parent's turn: generation after every resource
+// ordered before the parent, then the parent, then each child in bytewise
+// title order whatever order Generate returned, and only then anything that
+// depends on the parent.
+func TestGeneratedChildrenApplyAsAUnitAtTheParentsTurn(t *testing.T) {
+	var applied, refreshed, generated []string
+	parent := res("File", "/d", nil)
+	gen := genRecorder{
+		recorder: recorder{typ: "file", applied: &applied, refreshed: &refreshed, changes: 1},
+		children: map[string][]catalog.Resource{
+			"File[/d]": generatedChildren(parent, "/d/b", "/d/a/x", "/d/a"),
+		},
+		generated: &generated,
+	}
+	rep := runCatalog(t, txWithGenerator(gen), &catalog.Catalog{Resources: []catalog.Resource{
+		res("File", "/c", nil),
+		parent,
+		res("Notify", "after", map[string]any{"require": []any{"File[/d]"}}),
+	}})
+	wantApplied := []string{"File[/c]", "File[/d]", "File[/d/a]", "File[/d/a/x]", "File[/d/b]", "Notify[after]"}
+	if !slices.Equal(applied, wantApplied) {
+		t.Errorf("applied = %v, want %v", applied, wantApplied)
+	}
+	wantGenerated := []string{"File[/c] after 0 applies", "File[/d] after 1 applies"}
+	if !slices.Equal(generated, wantGenerated) {
+		t.Errorf("generated = %v, want %v", generated, wantGenerated)
+	}
+	for _, ref := range []string{"File[/d/a]", "File[/d/a/x]", "File[/d/b]"} {
+		if _, ok := rep.ResourceStatuses[ref]; !ok {
+			t.Errorf("no status for the generated %s", ref)
+		}
+	}
+}
+
+// A generated child's status takes the parent's provenance (measured on
+// Puppet 8.10.0): its containment path is the parent's with the last element
+// replaced, its tags and provider are the parent's, and file and line are
+// null.
+func TestGeneratedChildStatusCarriesTheParentsProvenance(t *testing.T) {
+	var applied, refreshed []string
+	parent := catalog.Resource{Type: "File", Title: "/d", Tags: []string{"file", "class"},
+		File: "/etc/site.pp", Line: 4}
+	gen := genRecorder{
+		recorder: recorder{typ: "file", applied: &applied, refreshed: &refreshed,
+			changes: 1, providerName: "posix"},
+		children: map[string][]catalog.Resource{"File[/d]": generatedChildren(parent, "/d/a")},
+	}
+	rep := runCatalog(t, txWithGenerator(gen), &catalog.Catalog{
+		Resources: []catalog.Resource{res("Stage", "main", nil), res("Class", "main", nil), parent},
+		Edges: []catalog.Edge{
+			{Source: "Stage[main]", Target: "Class[main]"},
+			{Source: "Class[main]", Target: "File[/d]"},
+		},
+	})
+	rs := rep.ResourceStatuses["File[/d/a]"]
+	if want := []string{"Stage[main]", "Main", "File[/d/a]"}; !slices.Equal(rs.ContainmentPath, want) {
+		t.Errorf("containment_path = %v, want %v", rs.ContainmentPath, want)
+	}
+	if !slices.Equal(rs.Tags, parent.Tags) || rs.ResourceType != "File" || rs.Title != "/d/a" {
+		t.Errorf("tags/type/title = %v/%s/%s, want the parent's tags, File, /d/a",
+			rs.Tags, rs.ResourceType, rs.Title)
+	}
+	if rs.ProviderUsed == nil || *rs.ProviderUsed != "posix" || !rs.Generated {
+		t.Errorf("provider_used = %v generated = %t, want posix and true", rs.ProviderUsed, rs.Generated)
+	}
+	b, err := json.Marshal(rep)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var doc struct {
+		ResourceStatuses map[string]map[string]json.RawMessage `json:"resource_statuses"`
+	}
+	if err := json.Unmarshal(b, &doc); err != nil {
+		t.Fatal(err)
+	}
+	child, declared := doc.ResourceStatuses["File[/d/a]"], doc.ResourceStatuses["File[/d]"]
+	if string(child["file"]) != "null" || string(child["line"]) != "null" {
+		t.Errorf("child file/line = %s/%s, want null/null", child["file"], child["line"])
+	}
+	if string(declared["file"]) != `"/etc/site.pp"` || string(declared["line"]) != "4" {
+		t.Errorf("parent file/line = %s/%s, want its manifest location", declared["file"], declared["line"])
+	}
+	sourced := false
+	for _, l := range rep.Logs {
+		sourced = sourced || l.Source == "/Stage[main]/Main/File[/d/a]/p"
+	}
+	if !sourced {
+		t.Errorf("no log sourced at the child's containment path: %+v", rep.Logs)
+	}
+}
+
+// A failed child skips its own descendants and the parent's dependents, and
+// the notice names the child. Measured on Puppet 8.10.0 with an unwritable
+// target: sub/b was skipped, and so were the parent's notify and require
+// dependents, with "Dependency File[.../a] has failures: true". The notice
+// goes to the first resource the failure blocks -- here the child's own
+// descendant -- and the parent's dependent only warns.
+func TestAFailedChildSkipsItsDescendantsAndTheParentsDependents(t *testing.T) {
+	var applied, refreshed []string
+	parent := res("File", "/d", nil)
+	gen := genRecorder{
+		recorder: recorder{typ: "file", applied: &applied, refreshed: &refreshed,
+			failOn: map[string]bool{"File[/d/a]": true}, changes: 1},
+		children: map[string][]catalog.Resource{
+			"File[/d]": generatedChildren(parent, "/d/a", "/d/a/x", "/d/b"),
+		},
+	}
+	rep := runCatalog(t, txWithGenerator(gen), &catalog.Catalog{Resources: []catalog.Resource{
+		parent,
+		res("Notify", "after", map[string]any{"require": []any{"File[/d]"}}),
+	}})
+	if want := []string{"File[/d]", "File[/d/a]", "File[/d/b]"}; !slices.Equal(applied, want) {
+		t.Errorf("applied = %v, want %v", applied, want)
+	}
+	for _, ref := range []string{"File[/d/a/x]", "Notify[after]"} {
+		if rs := rep.ResourceStatuses[ref]; !rs.Skipped || rs.Failed {
+			t.Errorf("%s skipped = %t failed = %t, want skipped only", ref, rs.Skipped, rs.Failed)
+		}
+	}
+	var got []string
+	for _, l := range rep.Logs {
+		if l.Source == "/File[/d/a/x]" || l.Source == "/Notify[after]" {
+			got = append(got, l.Level+" "+l.Source+" "+l.Message)
+		}
+	}
+	want := []string{
+		"notice /File[/d/a/x] Dependency File[/d/a] has failures: true",
+		"warning /File[/d/a/x] Skipping because of failed dependencies",
+		"warning /Notify[after] Skipping because of failed dependencies",
+	}
+	if !slices.Equal(got, want) {
+		t.Errorf("logs =\n%s\nwant\n%s", strings.Join(got, "\n"), strings.Join(want, "\n"))
+	}
+}
+
+// pre_process generates before the parent is evaluated, so a failed parent
+// still generates and every child is reported skipped behind it.
+func TestAFailedParentStillGeneratesAndSkipsEveryChild(t *testing.T) {
+	var applied, refreshed, generated []string
+	parent := res("File", "/d", nil)
+	gen := genRecorder{
+		recorder: recorder{typ: "file", applied: &applied, refreshed: &refreshed,
+			failOn: map[string]bool{"File[/d]": true}, changes: 1},
+		children:  map[string][]catalog.Resource{"File[/d]": generatedChildren(parent, "/d/a", "/d/b")},
+		generated: &generated,
+	}
+	rep := runCatalog(t, txWithGenerator(gen), &catalog.Catalog{Resources: []catalog.Resource{parent}})
+	if !slices.Equal(applied, []string{"File[/d]"}) || !slices.Equal(generated, []string{"File[/d] after 0 applies"}) {
+		t.Errorf("applied = %v generated = %v, want the parent applied once after generating", applied, generated)
+	}
+	for _, ref := range []string{"File[/d/a]", "File[/d/b]"} {
+		if rs := rep.ResourceStatuses[ref]; !rs.Skipped || !rs.Generated {
+			t.Errorf("%s skipped = %t generated = %t, want both", ref, rs.Skipped, rs.Generated)
+		}
+	}
+	var got []string
+	for _, l := range rep.Logs {
+		if l.Source == "/File[/d/a]" || l.Source == "/File[/d/b]" {
+			got = append(got, l.Level+" "+l.Source+" "+l.Message)
+		}
+	}
+	want := []string{
+		"notice /File[/d/a] Dependency File[/d] has failures: true",
+		"warning /File[/d/a] Skipping because of failed dependencies",
+		"warning /File[/d/b] Skipping because of failed dependencies",
+	}
+	if !slices.Equal(got, want) {
+		t.Errorf("logs =\n%s\nwant\n%s", strings.Join(got, "\n"), strings.Join(want, "\n"))
+	}
+}
+
+// A parent skipped for its own failed dependency still generates, and its
+// children inherit its reason; the failed resource was already named once.
+func TestASkippedParentStillGeneratesAndSkipsEveryChild(t *testing.T) {
+	var applied, refreshed, generated []string
+	parent := res("File", "/d", map[string]any{"require": []any{"File[/c]"}})
+	gen := genRecorder{
+		recorder: recorder{typ: "file", applied: &applied, refreshed: &refreshed,
+			failOn: map[string]bool{"File[/c]": true}, changes: 1},
+		children:  map[string][]catalog.Resource{"File[/d]": generatedChildren(parent, "/d/a")},
+		generated: &generated,
+	}
+	rep := runCatalog(t, txWithGenerator(gen), &catalog.Catalog{Resources: []catalog.Resource{
+		res("File", "/c", nil), parent,
+	}})
+	if !slices.Equal(applied, []string{"File[/c]"}) || !slices.Contains(generated, "File[/d] after 1 applies") {
+		t.Errorf("applied = %v generated = %v, want only File[/c] applied and File[/d] generated", applied, generated)
+	}
+	if !rep.ResourceStatuses["File[/d]"].Skipped || !rep.ResourceStatuses["File[/d/a]"].Skipped {
+		t.Error("the parent and its child must both be skipped")
+	}
+	var got []string
+	for _, l := range rep.Logs {
+		if l.Source == "/File[/d/a]" {
+			got = append(got, l.Level+" "+l.Message)
+		}
+	}
+	if !slices.Equal(got, []string{"warning Skipping because of failed dependencies"}) {
+		t.Errorf("child logs = %v, want only the warning", got)
+	}
+}
+
+// Puppet's completed whit (additional_resource_generator.rb:86-117) gives a
+// generating parent's subscribers exactly one event when any member of the
+// unit produced one and none failed; with nothing generated there is no whit
+// and the per-change count applies.
+func TestAUnitSendsItsSubscribersOneRefreshEvent(t *testing.T) {
+	for _, tc := range []struct {
+		name        string
+		children    []string
+		noChange    map[string]bool
+		failOn      map[string]bool
+		wantRefresh bool
+		wantMessage string
+	}{
+		{"children changed, the parent did not", []string{"/d/a", "/d/b"},
+			map[string]bool{"File[/d]": true, "Exec[svc]": true}, nil,
+			true, "Triggered 'refresh' from 1 event"},
+		{"only the parent changed", []string{"/d/a", "/d/b"},
+			map[string]bool{"File[/d/a]": true, "File[/d/b]": true, "Exec[svc]": true}, nil,
+			true, "Triggered 'refresh' from 1 event"},
+		{"nothing generated: the per-change count", nil,
+			map[string]bool{"Exec[svc]": true}, nil,
+			true, "Triggered 'refresh' from 2 events"},
+		{"nothing in the unit changed", []string{"/d/a"},
+			map[string]bool{"File[/d]": true, "File[/d/a]": true, "Exec[svc]": true}, nil,
+			false, ""},
+		{"a child failed", []string{"/d/a", "/d/b"},
+			map[string]bool{"Exec[svc]": true}, map[string]bool{"File[/d/b]": true},
+			false, ""},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var applied, refreshed []string
+			parent := res("File", "/d", nil)
+			gen := genRecorder{
+				recorder: recorder{typ: "file", applied: &applied, refreshed: &refreshed,
+					noChange: tc.noChange, failOn: tc.failOn, changes: 2},
+				children: map[string][]catalog.Resource{"File[/d]": generatedChildren(parent, tc.children...)},
+			}
+			rep := runCatalog(t, txWithGenerator(gen), &catalog.Catalog{Resources: []catalog.Resource{
+				parent,
+				res("Exec", "svc", map[string]any{"subscribe": []any{"File[/d]"}}),
+			}})
+			if got := slices.Contains(refreshed, "Exec[svc]"); got != tc.wantRefresh {
+				t.Fatalf("refreshed = %v, want Exec[svc] refreshed = %t", refreshed, tc.wantRefresh)
+			}
+			if !tc.wantRefresh {
+				return
+			}
+			var messages []string
+			for _, ev := range rep.ResourceStatuses["Exec[svc]"].Events {
+				messages = append(messages, ev.Message)
+			}
+			if !slices.Equal(messages, []string{tc.wantMessage}) {
+				t.Errorf("Exec[svc] events = %v, want [%s]", messages, tc.wantMessage)
+			}
+		})
+	}
+}
+
+// additional_resource_generator.rb:66-70: a generation failure is logged
+// against the parent, the parent still applies, and the report is failed
+// while the exit code is not.
+func TestAGenerationFailureIsLoggedAndTheParentStillApplies(t *testing.T) {
+	var applied, refreshed []string
+	parent := res("File", "/d", nil)
+	gen := genRecorder{
+		recorder: recorder{typ: "file", applied: &applied, refreshed: &refreshed, changes: 1},
+		genErr:   map[string]error{"File[/d]": errors.New("walk refused")},
+	}
+	rep := runCatalog(t, txWithGenerator(gen), &catalog.Catalog{Resources: []catalog.Resource{parent}})
+	if !slices.Equal(applied, []string{"File[/d]"}) {
+		t.Errorf("applied = %v, want the parent", applied)
+	}
+	found := false
+	for _, l := range rep.Logs {
+		found = found || (l.Level == "err" && l.Source == "/File[/d]" &&
+			l.Message == "Failed to generate additional resources using 'eval_generate': walk refused")
+	}
+	if !found {
+		t.Errorf("no generation-failure err log at the parent: %+v", rep.Logs)
+	}
+	if rep.Status != "failed" {
+		t.Errorf("Status = %q, want failed", rep.Status)
+	}
+	if s := rep.RunStatus(); s.Failures != 0 || s.Changes != 1 {
+		t.Errorf("RunStatus = %+v, want the exit code untouched: one change, no failures", s)
+	}
+}
+
+// A Generator's warnings are logged like Apply's.
+func TestGeneratorWarningsAreLogged(t *testing.T) {
+	var applied, refreshed []string
+	gen := genRecorder{
+		recorder: recorder{typ: "file", applied: &applied, refreshed: &refreshed, changes: 1},
+		genWarn:  []ral.Warning{{Source: "Puppet", Message: "soft limit"}},
+	}
+	rep := runCatalog(t, txWithGenerator(gen), &catalog.Catalog{Resources: []catalog.Resource{res("File", "/d", nil)}})
+	n := 0
+	for _, l := range rep.Logs {
+		if l.Level == "warning" && l.Source == "Puppet" && l.Message == "soft limit" {
+			n++
+		}
+	}
+	if n != 1 {
+		t.Errorf("found %d soft-limit warnings, want 1: %+v", n, rep.Logs)
+	}
+}
+
+// type/file.rb:1040's notice belongs to the resource, not a property.
+// Measured on Puppet 8.10.0 for a purged directory:
+// ".../File[/tmp/pm/tgt/unm]: Not removing directory; use 'force' to override"
+// beside ".../File[/tmp/pm/tgt/unm]/ensure: removed".
+func TestAPathNoticeIsLoggedAtTheResource(t *testing.T) {
+	var applied, refreshed []string
+	tx := txWithFailChange(&applied, &refreshed, map[string]string{"File[/d]": "pathnotice"})
+	rep := runCatalog(t, tx, &catalog.Catalog{Resources: []catalog.Resource{res("File", "/d", nil)}})
+	var got []string
+	for _, l := range rep.Logs {
+		if strings.HasPrefix(l.Source, "/File[/d]") {
+			got = append(got, l.Level+" "+l.Source+" "+l.Message)
+		}
+	}
+	want := []string{
+		"notice /File[/d] Not removing directory; use 'force' to override",
+		"notice /File[/d]/ensure removed",
+	}
+	if !slices.Equal(got, want) {
+		t.Errorf("logs = %v, want %v", got, want)
+	}
+}
+
+// File's path parameter munges its title to a clean path (type/file.rb:66-73,
+// File.join(File.split(File.expand_path(value)))), and the recursion's
+// exemption compares those paths (remove_less_specific_files, :648-673). So
+// Generate's managed callback finds File['/d/keep/'] and File['/d//keep2']
+// at their cleaned paths, and still finds an exact ref; a sibling is not
+// managed. Measured on Puppet 8.10.0: a recurse+purge parent keeps the files
+// under File['<dir>/keep/'].
+func TestGenerateSeesCatalogFilesAtTheirCleanedPaths(t *testing.T) {
+	var applied, refreshed, answers []string
+	gen := genRecorder{
+		recorder: recorder{typ: "file", applied: &applied, refreshed: &refreshed},
+		probes: []string{"File[/d/keep]", "File[/d/keep2]", "File[/d/keep/]", "File[/d/other]",
+			"Notify[/d/n]"},
+		answers: &answers,
+	}
+	runCatalog(t, txWithGenerator(gen), &catalog.Catalog{Resources: []catalog.Resource{
+		res("File", "/d", nil),
+		res("File", "/d/keep/", nil),
+		res("File", "/d//keep2", nil),
+		res("Notify", "/d/n/", nil),
+	}})
+	want := []string{"File[/d/keep] true", "File[/d/keep2] true", "File[/d/keep/] true", "File[/d/other] false",
+		"Notify[/d/n] false"}
+	// Generate runs once per File: the first call's answers are enough.
+	if len(answers) < len(want) || !slices.Equal(answers[:len(want)], want) {
+		t.Errorf("managed answers = %v, want %v", answers, want)
+	}
+}
+
+// Puppet capitalises every resource type when it builds the resource
+// (resource.rb:583, munge_type_name :602-606), so a catalog File spelled
+// "file" manages its path exactly as one spelled "File" does, and a recursing
+// parent spelled "file" sees the catalog's Files. The exemption is keyed by
+// the cleaned path, whatever the spelling of either type.
+func TestGenerateSeesCatalogFilesWhateverTheTypeSpelling(t *testing.T) {
+	var applied, refreshed, answers []string
+	gen := genRecorder{
+		recorder: recorder{typ: "file", applied: &applied, refreshed: &refreshed},
+		probes:   []string{"File[/d/low]", "file[/d/keep]", "file[/d/other]"},
+		answers:  &answers,
+	}
+	runCatalog(t, txWithGenerator(gen), &catalog.Catalog{Resources: []catalog.Resource{
+		res("File", "/d", nil),
+		res("file", "/d/low/", nil),
+		res("File", "/d/keep", nil),
+	}})
+	want := []string{"File[/d/low] true", "file[/d/keep] true", "file[/d/other] false"}
+	if len(answers) < len(want) || !slices.Equal(answers[:len(want)], want) {
+		t.Errorf("managed answers = %v, want %v", answers, want)
+	}
+}
+
+// A File managed under another title is exempt from a purge by its path
+// parameter, not its title (remove_less_specific_files compares paths).
+func TestGenerateSeesCatalogFilesByPathParameter(t *testing.T) {
+	var applied, refreshed, answers []string
+	gen := genRecorder{
+		recorder: recorder{typ: "file", applied: &applied, refreshed: &refreshed},
+		probes:   []string{"File[/x/pd/keep]", "File[/x/pd/other]", "File[keep-me]"},
+		answers:  &answers,
+	}
+	runCatalog(t, txWithGenerator(gen), &catalog.Catalog{Resources: []catalog.Resource{
+		res("File", "/x/pd", nil),
+		res("File", "keep-me", map[string]any{"path": "/x/pd/keep"}),
+	}})
+	want := []string{"File[/x/pd/keep] true", "File[/x/pd/other] false", "File[keep-me] true"}
+	if len(answers) < len(want) || !slices.Equal(answers[:len(want)], want) {
+		t.Errorf("managed answers = %v, want %v", answers, want)
+	}
+}
+
+// A backup's warning is logged at the resource path, ahead of the change's
+// notices, on a successful change and on a failed one.
+func TestPathWarningsAreLoggedAtTheResourceBeforeItsNotices(t *testing.T) {
+	var applied, refreshed []string
+	tx := txWithFailChange(&applied, &refreshed, map[string]string{"File[/d]": "pathwarnings"})
+	rep := runCatalog(t, tx, &catalog.Catalog{Resources: []catalog.Resource{res("File", "/d", nil)}})
+	var got []string
+	for _, l := range rep.Logs {
+		got = append(got, l.Level+" "+l.Source+" "+l.Message)
+	}
+	warning := "warning /File[/d] Could not back up file of type directory"
+	want := []string{
+		warning,
+		"notice /File[/d] Not removing directory; use 'force' to override",
+		"notice /File[/d]/ensure removed",
+		warning, warning,
+	}
+	if len(got) < len(want) || !slices.Equal(got[:len(want)], want) {
+		t.Errorf("logs = %v;\nwant them to start %v", got, want)
+	}
+}
+
+// remove_existing runs twice on one failed ensure => file over a directory, so
+// the same notice is logged twice at the resource path, before the failure's
+// own lines (measured, Puppet 8.10.0).
+func TestPathNoticesAreLoggedInOrderBeforeAFailure(t *testing.T) {
+	var applied, refreshed []string
+	tx := txWithFailChange(&applied, &refreshed, map[string]string{"File[/d]": "twonotices"})
+	rep := runCatalog(t, tx, &catalog.Catalog{Resources: []catalog.Resource{res("File", "/d", nil)}})
+	var got []string
+	for _, l := range rep.Logs {
+		got = append(got, l.Level+" "+l.Source+" "+l.Message)
+	}
+	notice := "notice /File[/d] Not removing directory; use 'force' to override"
+	if len(got) < 2 || got[0] != notice || got[1] != notice {
+		t.Errorf("logs = %v; want the notice twice first", got)
+	}
+}
+
+// classCatalog: Stage[main] holds Class[main] and each class in classes;
+// members maps a container to its contents; rs are the resources in order.
+func classCatalog(rs []catalog.Resource, members map[string][]string, classes ...string) *catalog.Catalog {
+	c := &catalog.Catalog{Resources: append([]catalog.Resource{res("Stage", "main", nil), res("Class", "main", nil)}, rs...)}
+	c.Edges = []catalog.Edge{{Source: "Stage[main]", Target: "Class[main]"}}
+	for _, cl := range classes {
+		c.Edges = append(c.Edges, catalog.Edge{Source: "Stage[main]", Target: cl})
+	}
+	keys := make([]string, 0, len(members))
+	for k := range members {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	for _, k := range keys {
+		for _, m := range members[k] {
+			c.Edges = append(c.Edges, catalog.Edge{Source: k, Target: m})
+		}
+	}
+	return c
+}
+
+// Three members change; Class[A] ~> Exec[x] refreshes x from ONE event.
+func TestRefreshThroughAClassIsOneEvent(t *testing.T) {
+	var applied, refreshed []string
+	tx := newTx(&applied, &refreshed, nil, nil, 1)
+	c := classCatalog([]catalog.Resource{
+		res("Class", "A", nil), res("Notify", "a1", nil), res("Notify", "a2", nil), res("Notify", "a3", nil),
+		res("Exec", "x", map[string]any{"subscribe": "Class[A]"})},
+		map[string][]string{"Class[A]": {"Notify[a1]", "Notify[a2]", "Notify[a3]"}, "Class[main]": {"Exec[x]"}},
+		"Class[A]")
+	rep := runCatalog(t, tx, c)
+	if logs := fmtLogs(rep); !strings.Contains(logs, "notice /Stage[main]/Main/Exec[x] Triggered 'refresh' from 1 event") {
+		t.Errorf("logs:\n%s", logs)
+	}
+	for ref := range rep.ResourceStatuses {
+		if strings.HasPrefix(ref, "Whit[") || strings.HasPrefix(ref, "Class[") {
+			t.Errorf("status for %s; whits and containers have none", ref)
+		}
+	}
+}
+
+// Every container whose members would change
+// logs its own line under --noop, with the raw count.
+func TestNoopWhitsLogWouldHaveTriggered(t *testing.T) {
+	var applied, refreshed []string
+	// x_an is a refreshonly exec: it changes nothing itself and contributes
+	// only its noop_restart, so Class[Main] collects 1 and Stage[main] 2.
+	quiet := map[string]bool{"Exec[x_an]": true}
+	mk := func(typ string) recorder {
+		return recorder{typ: typ, applied: &applied, refreshed: &refreshed, changes: 1, noChange: quiet}
+	}
+	tx := &Transaction{Registry: ral.NewRegistry(mk("file"), mk("exec"), mk("notify")), Noop: true}
+	c := classCatalog([]catalog.Resource{
+		res("Class", "Allnoop", nil), res("Notify", "an1", nil), res("Notify", "an2", nil), res("Notify", "an3", nil),
+		res("Exec", "x_an", map[string]any{"subscribe": "Class[Allnoop]"})},
+		map[string][]string{"Class[Allnoop]": {"Notify[an1]", "Notify[an2]", "Notify[an3]"}, "Class[main]": {"Exec[x_an]"}},
+		"Class[Allnoop]")
+	logs := fmtLogs(runCatalog(t, tx, c))
+	for _, want := range []string{
+		"notice Class[Allnoop] Would have triggered 'refresh' from 3 events",
+		"notice /Stage[main]/Main/Exec[x_an] Would have triggered 'refresh' from 1 event",
+		"notice Class[Main] Would have triggered 'refresh' from 1 event",
+		"notice Stage[main] Would have triggered 'refresh' from 2 events",
+	} {
+		if !strings.Contains(logs, want) {
+			t.Errorf("logs lack %q:\n%s", want, logs)
+		}
+	}
+}
+
+// unrefreshable is a recorder whose type defines no refresh, as Puppet's
+// File and Notify define none (ral.Refreshing).
+type unrefreshable struct{ recorder }
+
+func (unrefreshable) Refreshable(catalog.Resource) bool { return false }
+
+// Prefetch keeps the wrapper: the walk applies through the primed provider.
+func (u unrefreshable) Prefetch(ctx context.Context, rs []catalog.Resource) (ral.Provider, error) {
+	p, err := u.recorder.Prefetch(ctx, rs)
+	if err != nil {
+		return nil, err
+	}
+	return unrefreshable{p.(recorder)}, nil
+}
+
+// classTx is the registry the class cases run under, shaped as Puppet's types
+// are: File and Notify cannot be refreshed, Exec can. Every resource changes
+// once (a File fileChanges times) except those in quiet, which change nothing.
+func classTx(applied, refreshed *[]string, noop bool, quiet map[string]bool, fileChanges int) *Transaction {
+	mk := func(typ string, changes int) recorder {
+		return recorder{typ: typ, applied: applied, refreshed: refreshed, changes: changes, noChange: quiet}
+	}
+	return &Transaction{Noop: noop, Registry: ral.NewRegistry(
+		unrefreshable{mk("file", fileChanges)}, unrefreshable{mk("notify", 1)}, mk("exec", 1))}
+}
+
+// Class refresh cases, each built as the measured manifest compiles: a refreshonly exec is a quiet Exec.
+func TestClassRefreshCases(t *testing.T) {
+	type row struct {
+		name    string
+		noop    bool
+		quiet   []string
+		files   int // changes per File; 1 when zero
+		rs      []catalog.Resource
+		members map[string][]string
+		classes []string
+		// tx, when set, replaces classTx.
+		tx   func(applied, refreshed *[]string) *Transaction
+		want []string
+		// count is how often a line must appear, where once is not enough.
+		count map[string]int
+		// unrefreshed must not have been refreshed.
+		unrefreshed []string
+		check       func(t *testing.T, rep *report.Report, refreshed []string)
+	}
+	for _, tc := range []row{
+		{
+			// contain gives Inner_c a second parent; include
+			// gives Inner_i only Stage[main].
+			name:  "a contained class's changes reach its container's subscriber as one event",
+			quiet: []string{"Exec[x_outer]", "Exec[x_inner_c]", "Exec[ii_ro]"},
+			rs: []catalog.Resource{
+				res("Class", "inner_c", nil), res("Notify", "ic1", nil), res("Notify", "ic2", nil),
+				res("Class", "inner_i", nil), res("Exec", "ii_ro", nil),
+				res("Class", "outer", nil), res("Notify", "o1", nil),
+				res("Exec", "x_outer", map[string]any{"subscribe": "Class[outer]"}),
+				res("Exec", "x_inner_c", map[string]any{"subscribe": "Class[inner_c]"}),
+				res("Notify", "s", map[string]any{"notify": "Class[outer]"}),
+			},
+			members: map[string][]string{
+				"Class[inner_c]": {"Notify[ic1]", "Notify[ic2]"},
+				"Class[inner_i]": {"Exec[ii_ro]"},
+				"Class[outer]":   {"Class[inner_c]", "Notify[o1]"},
+				"Class[main]":    {"Exec[x_outer]", "Exec[x_inner_c]", "Notify[s]"},
+			},
+			classes: []string{"Class[inner_c]", "Class[inner_i]", "Class[outer]"},
+			want: []string{
+				"notice /Stage[main]/Main/Exec[x_outer] Triggered 'refresh' from 1 event",
+				"notice /Stage[main]/Main/Exec[x_inner_c] Triggered 'refresh' from 1 event",
+			},
+			unrefreshed: []string{"Exec[ii_ro]"},
+		},
+		{
+			name:  "an included class's changes do not reach the including class's subscriber",
+			quiet: []string{"Notify[o_quiet]", "Exec[x_outer2]"},
+			rs: []catalog.Resource{
+				res("Class", "inner_i", nil), res("Notify", "ii1", nil),
+				res("Class", "outer2", nil), res("Notify", "o_quiet", nil),
+				res("Exec", "x_outer2", map[string]any{"subscribe": "Class[outer2]"}),
+			},
+			members: map[string][]string{
+				"Class[inner_i]": {"Notify[ii1]"},
+				"Class[outer2]":  {"Notify[o_quiet]"},
+				"Class[main]":    {"Exec[x_outer2]"},
+			},
+			classes:     []string{"Class[inner_i]", "Class[outer2]"},
+			unrefreshed: []string{"Exec[x_outer2]"},
+		},
+		{
+			name:  "Class ~> Class refreshes the target's member from one event",
+			quiet: []string{"Exec[tgt_ro]"},
+			rs: []catalog.Resource{
+				res("Class", "outer", map[string]any{"notify": "Class[tgt]"}), res("Notify", "o1", nil),
+				res("Class", "tgt", nil), res("Exec", "tgt_ro", nil),
+			},
+			members: map[string][]string{"Class[outer]": {"Notify[o1]"}, "Class[tgt]": {"Exec[tgt_ro]"}},
+			classes: []string{"Class[outer]", "Class[tgt]"},
+			want:    []string{"notice /Stage[main]/Tgt/Exec[tgt_ro] Triggered 'refresh' from 1 event"},
+		},
+		{
+			name:  "a defined type is a container both ways",
+			quiet: []string{"Exec[x_dt]", "Exec[tdt_z_ro]"},
+			rs: []catalog.Resource{
+				{Type: "Dt", Title: "one", Kind: "defined_type"},
+				res("Notify", "dt_one_a", nil), res("Notify", "dt_one_b", nil),
+				res("Exec", "x_dt", map[string]any{"subscribe": "Dt[one]"}),
+				{Type: "Tdt", Title: "z", Kind: "defined_type"}, res("Exec", "tdt_z_ro", nil),
+				res("Notify", "s3", map[string]any{"notify": "Tdt[z]"}),
+			},
+			members: map[string][]string{
+				"Dt[one]":     {"Notify[dt_one_a]", "Notify[dt_one_b]"},
+				"Tdt[z]":      {"Exec[tdt_z_ro]"},
+				"Class[main]": {"Dt[one]", "Exec[x_dt]", "Tdt[z]", "Notify[s3]"},
+			},
+			want: []string{
+				"notice /Stage[main]/Main/Exec[x_dt] Triggered 'refresh' from 1 event",
+				"notice /Stage[main]/Main/Tdt[z]/Exec[tdt_z_ro] Triggered 'refresh' from 1 event",
+			},
+		},
+		{
+			name: "a class of two noop members logs the raw count; its subscriber one", noop: true,
+			quiet: []string{"Exec[x_nn]"},
+			rs: []catalog.Resource{
+				res("Class", "nn", nil), res("Notify", "nn1", nil), res("Notify", "nn2", nil),
+				res("Exec", "x_nn", map[string]any{"subscribe": "Class[nn]"}),
+			},
+			members: map[string][]string{"Class[nn]": {"Notify[nn1]", "Notify[nn2]"}, "Class[main]": {"Exec[x_nn]"}},
+			classes: []string{"Class[nn]"},
+			want: []string{
+				"notice Class[Nn] Would have triggered 'refresh' from 2 events",
+				"notice /Stage[main]/Main/Exec[x_nn] Would have triggered 'refresh' from 1 event",
+			},
+			check: func(t *testing.T, rep *report.Report, _ []string) {
+				// The status the report prunes as unchanged.
+				if st := rep.ResourceStatuses["Exec[x_nn]"]; len(st.Events) > 0 || st.OutOfSync {
+					t.Errorf("Exec[x_nn] = %+v; a noop refresh adds nothing to its status", st)
+				}
+			},
+		},
+		{
+			// The admissible whit, then the completed one: the same text twice.
+			name: "a noop source into a class logs at both of its whits", noop: true,
+			quiet: []string{"Exec[tn_ro]"},
+			rs: []catalog.Resource{
+				res("Class", "tn", nil), res("Exec", "tn_ro", nil),
+				res("Notify", "src_noop", map[string]any{"notify": "Class[tn]"}),
+			},
+			members: map[string][]string{"Class[tn]": {"Exec[tn_ro]"}, "Class[main]": {"Notify[src_noop]"}},
+			classes: []string{"Class[tn]"},
+			count: map[string]int{
+				"notice Class[Tn] Would have triggered 'refresh' from 1 event":                   2,
+				"notice /Stage[main]/Tn/Exec[tn_ro] Would have triggered 'refresh' from 1 event": 1,
+			},
+		},
+		{
+			name:  "one event per class edge plus every direct event",
+			quiet: []string{"Exec[x_multi]"},
+			rs: []catalog.Resource{
+				res("Class", "ca", nil), res("Notify", "ca1", nil), res("Notify", "ca2", nil),
+				res("Class", "cb", nil), res("Notify", "cb1", nil),
+				res("Notify", "direct", nil),
+				res("Exec", "x_multi", map[string]any{"subscribe": []any{"Class[ca]", "Class[cb]", "Notify[direct]"}}),
+			},
+			members: map[string][]string{
+				"Class[ca]": {"Notify[ca1]", "Notify[ca2]"}, "Class[cb]": {"Notify[cb1]"},
+				"Class[main]": {"Notify[direct]", "Exec[x_multi]"},
+			},
+			classes: []string{"Class[ca]", "Class[cb]"},
+			want:    []string{"notice /Stage[main]/Main/Exec[x_multi] Triggered 'refresh' from 3 events"},
+		},
+		{
+			name:  "a direct edge carries every event of its source",
+			quiet: []string{"Exec[x_file]"}, files: 2,
+			rs: []catalog.Resource{
+				res("File", "/tmp/f2", nil),
+				res("Exec", "x_file", map[string]any{"subscribe": "File[/tmp/f2]"}),
+			},
+			members: map[string][]string{"Class[main]": {"File[/tmp/f2]", "Exec[x_file]"}},
+			want:    []string{"notice /Stage[main]/Main/Exec[x_file] Triggered 'refresh' from 2 events"},
+		},
+		{
+			name:  "a member's direct edge and its class's edge add up",
+			quiet: []string{"Exec[x_both]"},
+			rs: []catalog.Resource{
+				res("Class", "cd", nil),
+				res("Notify", "cd1", map[string]any{"notify": "Exec[x_both]"}), res("Notify", "cd2", nil),
+				res("Exec", "x_both", map[string]any{"subscribe": "Class[cd]"}),
+			},
+			members: map[string][]string{"Class[cd]": {"Notify[cd1]", "Notify[cd2]"}, "Class[main]": {"Exec[x_both]"}},
+			classes: []string{"Class[cd]"},
+			want:    []string{"notice /Stage[main]/Main/Exec[x_both] Triggered 'refresh' from 2 events"},
+		},
+		{
+			// a_member_ro and x are refreshed; the whits, which
+			// refreshed too, are not counted.
+			name:  "restarted counts real resources only",
+			quiet: []string{"Exec[a_member_ro]", "Exec[x]"},
+			rs: []catalog.Resource{
+				res("Class", "a", nil), res("Notify", "a1", nil), res("Notify", "a2", nil), res("Notify", "a3", nil),
+				res("Exec", "a_member_ro", map[string]any{"subscribe": "Notify[a1]"}),
+				res("Exec", "x", map[string]any{"subscribe": "Class[a]"}),
+			},
+			members: map[string][]string{
+				"Class[a]":    {"Notify[a1]", "Notify[a2]", "Notify[a3]", "Exec[a_member_ro]"},
+				"Class[main]": {"Exec[x]"},
+			},
+			classes: []string{"Class[a]"},
+			want:    []string{"notice /Stage[main]/Main/Exec[x] Triggered 'refresh' from 1 event"},
+			check: func(t *testing.T, rep *report.Report, refreshed []string) {
+				found := false
+				for _, v := range rep.Metrics["resources"].Values {
+					if v[0] == "restarted" {
+						found = true
+						if v[2] != 2 {
+							t.Errorf("restarted = %v, want 2 (%v)", v[2], refreshed)
+						}
+					}
+				}
+				if !found {
+					t.Errorf("resources metric has no restarted entry: %v", rep.Metrics["resources"].Values)
+				}
+			},
+		},
+		{
+			// A case cut to
+			// two resources: a changes one property and f two, each
+			// self-refreshes, so Class[Main] collects 1+1 and 2+1.
+			name: "self-refresh noop_restarts reach Class[Main]", noop: true,
+			tx: func(applied, refreshed *[]string) *Transaction {
+				noopNamed := func(name string) report.Event {
+					ev := hostNamed(name, name+" (noop)")
+					ev.Status = "noop"
+					return ev
+				}
+				var calls []string
+				stub := evaluatorStub{typ: "vox_selfref", calls: &calls, refreshable: true, selfRefresh: true,
+					evals: map[string]ral.Evaluation{
+						"Vox_selfref[a]": {Events: []report.Event{noopNamed("value_changed")}},
+						"Vox_selfref[f]": {Events: []report.Event{noopNamed("value_changed"), noopNamed("other_changed")}},
+					}}
+				tx := evalTx(stub, applied, refreshed)
+				tx.Noop = true
+				return tx
+			},
+			rs:      []catalog.Resource{res("Vox_selfref", "a", nil), res("Vox_selfref", "f", nil)},
+			members: map[string][]string{"Class[main]": {"Vox_selfref[a]", "Vox_selfref[f]"}},
+			want: []string{
+				"notice /Stage[main]/Main/Vox_selfref[a] Would have triggered 'refresh' from 1 event",
+				"notice /Stage[main]/Main/Vox_selfref[f] Would have triggered 'refresh' from 2 events",
+				"notice Class[Main] Would have triggered 'refresh' from 5 events",
+				"notice Stage[main] Would have triggered 'refresh' from 1 event",
+			},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var applied, refreshed []string
+			var tx *Transaction
+			if tc.tx != nil {
+				tx = tc.tx(&applied, &refreshed)
+			} else {
+				quiet := map[string]bool{}
+				for _, q := range tc.quiet {
+					quiet[q] = true
+				}
+				files := tc.files
+				if files == 0 {
+					files = 1
+				}
+				tx = classTx(&applied, &refreshed, tc.noop, quiet, files)
+			}
+			rep := runCatalog(t, tx, classCatalog(tc.rs, tc.members, tc.classes...))
+			logs := fmtLogs(rep)
+			for _, want := range tc.want {
+				if !strings.Contains(logs, want+"\n") {
+					t.Errorf("logs lack %q:\n%s", want, logs)
+				}
+			}
+			for line, n := range tc.count {
+				if got := strings.Count(logs, line+"\n"); got != n {
+					t.Errorf("%q logged %d times, want %d:\n%s", line, got, n, logs)
+				}
+			}
+			for _, ref := range tc.unrefreshed {
+				if slices.Contains(refreshed, ref) {
+					t.Errorf("%s was refreshed: %v", ref, refreshed)
+				}
+			}
+			if tc.check != nil {
+				tc.check(t, rep, refreshed)
+			}
+		})
+	}
+}
+
+// Two sources notify Class[out]. out contains
+// in_c, so admissible_Class[Out] passes one event to admissible_Class[In_c]
+// and on to in_c_ro, while in_c's second parent, Stage[main], sends nothing;
+// in_i is only included, so out's refresh never reaches it.
+func TestRefreshIntoAContainedClassIsOneEvent(t *testing.T) {
+	var applied, refreshed []string
+	quiet := map[string]bool{"Exec[in_c_ro]": true, "Exec[in_i_ro]": true, "Exec[out_ro]": true}
+	tx := classTx(&applied, &refreshed, false, quiet, 1)
+	c := classCatalog([]catalog.Resource{
+		res("Class", "in_c", nil), res("Exec", "in_c_ro", nil),
+		res("Class", "in_i", nil), res("Exec", "in_i_ro", nil),
+		res("Class", "out", nil), res("Exec", "out_ro", nil),
+		res("Notify", "s1", map[string]any{"notify": "Class[out]"}),
+		res("Notify", "s2", map[string]any{"notify": "Class[out]"}),
+	}, map[string][]string{
+		"Class[in_c]": {"Exec[in_c_ro]"},
+		"Class[in_i]": {"Exec[in_i_ro]"},
+		"Class[out]":  {"Class[in_c]", "Exec[out_ro]"},
+		"Class[main]": {"Notify[s1]", "Notify[s2]"},
+	}, "Class[in_c]", "Class[in_i]", "Class[out]")
+	logs := fmtLogs(runCatalog(t, tx, c))
+	for _, want := range []string{
+		"notice /Stage[main]/In_c/Exec[in_c_ro] Triggered 'refresh' from 1 event\n",
+		"notice /Stage[main]/Out/Exec[out_ro] Triggered 'refresh' from 1 event\n",
+	} {
+		if n := strings.Count(logs, want); n != 1 {
+			t.Errorf("%q logged %d times, want once:\n%s", want, n, logs)
+		}
+	}
+	if slices.Contains(refreshed, "Exec[in_i_ro]") {
+		t.Errorf("Exec[in_i_ro] was refreshed; an included class is not under out: %v", refreshed)
+	}
+}
+
+// Retires apply-spine.md D-41: event_manager.rb:73 queues nothing for a
+// target whose type has no refresh, so a noop run logs no "Would have
+// triggered" for it.
+func TestNoopDoesNotScheduleANonRefreshableNative(t *testing.T) {
+	var applied, refreshed []string
+	tx := classTx(&applied, &refreshed, true, nil, 1)
+	rep := runCatalog(t, tx, &catalog.Catalog{Resources: []catalog.Resource{
+		res("File", "a", map[string]any{"notify": "File[b]"}),
+		res("File", "b", nil),
+	}})
+	for _, l := range rep.Logs {
+		if strings.HasPrefix(l.Message, "Would have triggered") {
+			t.Errorf("logged %q at %s; File[b] cannot be refreshed", l.Message, l.Source)
+		}
+	}
+	if len(refreshed) != 0 {
+		t.Errorf("refreshed = %v, want none", refreshed)
+	}
+}
+
+// A b_plain exec in a class, through the real Exec: its unless blocks the command, yet
+// the refresh admissible_Class[B] sends it is reported as one that happened.
+func TestGuardBlockedExecInAClassIsTriggered(t *testing.T) {
+	marker := filepath.Join(t.TempDir(), "ran")
+	var applied, refreshed []string
+	tx := &Transaction{Registry: ral.NewRegistry(
+		unrefreshable{recorder{typ: "notify", applied: &applied, refreshed: &refreshed, changes: 1}}, ral.Exec{})}
+	c := classCatalog([]catalog.Resource{
+		res("Class", "b", nil),
+		res("Exec", "b_plain", map[string]any{"command": "/usr/bin/touch " + marker, "unless": "/bin/true"}),
+		res("Notify", "src1", map[string]any{"notify": "Class[b]"}),
+	}, map[string][]string{"Class[b]": {"Exec[b_plain]"}, "Class[main]": {"Notify[src1]"}}, "Class[b]")
+	rep := runCatalog(t, tx, c)
+	if logs := fmtLogs(rep); !strings.Contains(logs, "notice /Stage[main]/B/Exec[b_plain] Triggered 'refresh' from 1 event\n") {
+		t.Errorf("logs:\n%s", logs)
+	}
+	st := rep.ResourceStatuses["Exec[b_plain]"]
+	if len(st.Events) != 1 || st.Events[0].Name == nil || *st.Events[0].Name != "refresh" || !st.Restarted {
+		t.Errorf("Exec[b_plain] = %+v, want one refresh event and restarted", st)
+	}
+	if _, err := os.Stat(marker); err == nil {
+		t.Error("the command ran though unless blocked it")
+	}
+}
+
+// Logged Exec output precedes the event's own line, on success and on
+// failure, at <source>/<property>, after the resource-level notices.
+func TestPropertyNoticesPrecedeTheChangeLine(t *testing.T) {
+	for _, tc := range []struct {
+		shape string
+		want  []string
+	}{
+		{"propertynotices", []string{
+			"notice /Exec[e] path notice",
+			"notice /Exec[e]/returns a",
+			"notice /Exec[e]/returns ",
+			"notice /Exec[e]/returns b",
+			"notice /Exec[e]/returns executed successfully",
+		}},
+		{"propertynoticesfail", []string{
+			"notice /Exec[e] path notice",
+			"notice /Exec[e]/returns a",
+			"err /Exec[e]/returns change from 'notrun' to ['0'] failed: 'x' returned 2 instead of one of [0]",
+		}},
+	} {
+		t.Run(tc.shape, func(t *testing.T) {
+			var applied, refreshed []string
+			tx := txWithFailChange(&applied, &refreshed, map[string]string{"Exec[e]": tc.shape})
+			rep := runCatalog(t, tx, &catalog.Catalog{Resources: []catalog.Resource{res("Exec", "e", nil)}})
+			var got []string
+			for _, l := range rep.Logs {
+				got = append(got, l.Level+" "+l.Source+" "+l.Message)
+			}
+			if len(got) < len(tc.want) || !slices.Equal(got[:len(tc.want)], tc.want) {
+				t.Errorf("logs = %q;\nwant them to start %q", got, tc.want)
+			}
+		})
+	}
+}
+
+// refreshLogger is a native provider whose refresh reports its own lines, as
+// Exec's does (ral.RefreshLogging).
+type refreshLogger struct {
+	recorder
+	err error
+}
+
+// Prefetch keeps the wrapper: the recorder's would return the bare recorder.
+func (p refreshLogger) Prefetch(context.Context, []catalog.Resource) (ral.Provider, error) {
+	return p, nil
+}
+
+func (p refreshLogger) RefreshLogged(_ context.Context, r catalog.Resource, _ bool) (ral.RefreshOutcome, error) {
+	*p.refreshed = append(*p.refreshed, r.Ref())
+	out := ral.RefreshOutcome{
+		PropertyNotices: []ral.PropertyNotice{{Property: "returns", Message: "refreshed"}},
+		Logs:            []report.LogEntry{{Level: "notice", Source: "/Exec[svc]", Message: "a callback line"}},
+	}
+	if p.err != nil {
+		return out, p.err
+	}
+	out.Refreshed = true
+	return out, nil
+}
+
+// A native RefreshLogging provider's lines are logged before the walk's
+// Triggered 'refresh' or Failed to call refresh line. A failure is followed by
+// resource.log_exception's line at the resource path, carrying the detail
+// alone (event_manager.rb:160-165; 7-exec-output/report.json logs 26-27).
+func TestNativeRefreshLogsBeforeTriggered(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		err  error
+		last []string
+	}{
+		{"success", nil, []string{"notice /Exec[svc] Triggered 'refresh' from 1 event"}},
+		{"failure", errors.New("'x' returned 4 instead of one of [0]"), []string{
+			"err /Exec[svc] Failed to call refresh: 'x' returned 4 instead of one of [0]",
+			"err /Exec[svc] 'x' returned 4 instead of one of [0]",
+		}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var applied, refreshed []string
+			rec := func(typ string) recorder {
+				return recorder{typ: typ, applied: &applied, refreshed: &refreshed, changes: 1,
+					noChange: map[string]bool{"Exec[svc]": true}}
+			}
+			tx := &Transaction{Registry: ral.NewRegistry(rec("file"), refreshLogger{recorder: rec("exec"), err: tc.err})}
+			rep := runCatalog(t, tx, &catalog.Catalog{Resources: []catalog.Resource{
+				res("File", "/f", nil),
+				res("Exec", "svc", map[string]any{"subscribe": []any{"File[/f]"}}),
+			}})
+			var got []string
+			for _, l := range rep.Logs {
+				if strings.HasPrefix(l.Source, "/Exec[svc]") {
+					got = append(got, l.Level+" "+l.Source+" "+l.Message)
+				}
+			}
+			want := append([]string{
+				"notice /Exec[svc]/returns refreshed",
+				"notice /Exec[svc] a callback line",
+			}, tc.last...)
+			if !slices.Equal(got, want) {
+				t.Errorf("logs = %q;\nwant %q", got, want)
+			}
+		})
+	}
+}
+
+// inMain is a catalog with the resources rs inside Stage[main] and Class[main],
+// the shape every compiled catalog has.
+func inMain(rs ...catalog.Resource) *catalog.Catalog {
+	c := &catalog.Catalog{Resources: append([]catalog.Resource{res("Stage", "main", nil), res("Class", "main", nil)}, rs...),
+		Edges: []catalog.Edge{{Source: "Stage[main]", Target: "Class[main]"}}}
+	for _, r := range rs {
+		c.Edges = append(c.Edges, catalog.Edge{Source: "Class[main]", Target: r.Ref()})
+	}
+	return c
+}
+
+// transaction.rb:282: a resource skipped for a failed dependency logs at its
+// own path, and so does each container whose completed whit inherits the
+// failure (Ruby names a whit by its container).
+func TestSkippedResourceAndContainersLogRubysDebugLine(t *testing.T) {
+	var applied, refreshed []string
+	tx := newTx(&applied, &refreshed, map[string]bool{"File[a]": true}, nil, 1)
+	ctx, got := logContext("debug")
+	runCatalogCtx(t, ctx, tx, inMain(res("File", "a", nil),
+		res("Exec", "b", map[string]any{"require": "File[a]"})))
+	lines := debugLines(*got)
+	for _, source := range []string{"/Stage[main]/Main/Exec[b]", "Class[Main]", "Stage[main]"} {
+		if want := source + ": Resource is being skipped, unscheduling all events"; !slices.Contains(lines, want) {
+			t.Errorf("lines = %q, missing %q", lines, want)
+		}
+	}
+	if slices.Contains(lines, "/Stage[main]/Main/File[a]: Resource is being skipped, unscheduling all events") {
+		t.Errorf("lines = %q: File[a] failed, it was not skipped", lines)
+	}
+}
+
+// A type whose prefetch failed is skipped too (transaction.rb:427 falls
+// through to :282).
+func TestPrefetchFailedResourceLogsRubysSkipLine(t *testing.T) {
+	var applied, refreshed []string
+	tx := txWithPrefetch(&applied, &refreshed, prefetchProbe{prefetchErr: map[string]error{"file": errors.New("no")}})
+	ctx, got := logContext("debug")
+	runCatalogCtx(t, ctx, tx, inMain(res("File", "a", nil)))
+	want := "/Stage[main]/Main/File[a]: Resource is being skipped, unscheduling all events"
+	if lines := debugLines(*got); !slices.Contains(lines, want) {
+		t.Errorf("lines = %q, missing %q", lines, want)
+	}
+}
+
+// event_manager.rb:107: a resource that changed tells its container's
+// completed whit to propagate the event; so does the whit for its own parent.
+func TestChangedResourceLogsThatItsContainerPropagatesTheRefresh(t *testing.T) {
+	var applied, refreshed []string
+	tx := newTx(&applied, &refreshed, nil, nil, 1)
+	ctx, got := logContext("debug")
+	runCatalogCtx(t, ctx, tx, inMain(res("Notify", "n", nil)))
+	lines := debugLines(*got)
+	for _, want := range []string{
+		"/Stage[main]/Main/Notify[n]: The container Class[Main] will propagate my refresh event",
+		"Class[Main]: The container Stage[main] will propagate my refresh event",
+	} {
+		if !slices.Contains(lines, want) {
+			t.Errorf("lines = %q, missing %q", lines, want)
+		}
+	}
+}
+
+// A resource that refreshed (its event is the restart) propagates too.
+func TestRefreshedResourceLogsThatItsContainerPropagatesTheRefresh(t *testing.T) {
+	var applied, refreshed []string
+	tx := newTx(&applied, &refreshed, nil, nil, 1)
+	tx.Registry = ral.NewRegistry(
+		recorder{typ: "notify", applied: &applied, refreshed: &refreshed, changes: 1},
+		recorder{typ: "exec", applied: &applied, refreshed: &refreshed, noChange: map[string]bool{"Exec[b]": true}})
+	ctx, got := logContext("debug")
+	runCatalogCtx(t, ctx, tx, inMain(res("Notify", "a", map[string]any{"notify": "Exec[b]"}), res("Exec", "b", nil)))
+	want := "/Stage[main]/Main/Exec[b]: The container Class[Main] will propagate my refresh event"
+	if lines := debugLines(*got); !slices.Contains(lines, want) {
+		t.Errorf("lines = %q, missing %q", lines, want)
+	}
+}
+
+// A resource that changed nothing queues no event, so nothing propagates.
+func TestUnchangedResourceLogsNoPropagation(t *testing.T) {
+	var applied, refreshed []string
+	tx := newTx(&applied, &refreshed, nil, nil, 0)
+	ctx, got := logContext("debug")
+	runCatalogCtx(t, ctx, tx, inMain(res("Notify", "n", nil)))
+	for _, line := range debugLines(*got) {
+		if strings.Contains(line, "will propagate") {
+			t.Errorf("line %q: nothing changed", line)
+		}
+	}
+}
+
+func TestTransactionLogsNothingBelowDebug(t *testing.T) {
+	var applied, refreshed []string
+	for _, level := range []string{"notice", "info"} {
+		tx := newTx(&applied, &refreshed, map[string]bool{"File[a]": true}, nil, 1)
+		ctx, got := logContext(level)
+		runCatalogCtx(t, ctx, tx, inMain(res("File", "a", nil), res("Exec", "b", map[string]any{"require": "File[a]"}),
+			res("Notify", "n", nil)))
+		if len(*got) != 0 {
+			t.Errorf("level %s: entries = %+v, want none", level, *got)
+		}
+	}
+}
+
+// The walk puts the resource's three names on the context before each call
+// into its provider, so a provider never rebuilds them.
+func TestWalkPutsSourcesOnTheProviderContext(t *testing.T) {
+	var applied, refreshed []string
+	var seen []ral.Sources
+	mk := func(typ, name string) recorder {
+		return recorder{typ: typ, applied: &applied, refreshed: &refreshed, providerName: name,
+			changes: 1, sourcesSeen: &seen}
+	}
+	tx := &Transaction{Registry: ral.NewRegistry(mk("exec", "posix"), mk("notify", ""))}
+	runCatalog(t, tx, inMain(res("Notify", "n", map[string]any{"notify": "Exec[x]"}), res("Exec", "x", nil)))
+	want := []ral.Sources{
+		{Resource: "/Stage[main]/Main/Notify[n]", Provider: "Notify[n]", Ref: "Notify[n]"},
+		{Resource: "/Stage[main]/Main/Exec[x]", Provider: "Exec[x](provider=posix)", Ref: "Exec[x]"},
+		{Resource: "/Stage[main]/Main/Exec[x]", Provider: "Exec[x](provider=posix)", Ref: "Exec[x]"},
+	}
+	if !reflect.DeepEqual(seen, want) {
+		t.Errorf("sources = %+v, want %+v (Notify apply, Exec apply, Exec refresh)", seen, want)
+	}
+}
+
+// event_manager.rb:107 for a recursed unit (6-failure-and-recurse/debug.txt):
+// each member, the parent included, says the unit's whit propagates its event,
+// and the unit's whit says its container does. A notice logger sees none.
+func TestGeneratedUnitLogsRubysPropagationLines(t *testing.T) {
+	var applied, refreshed []string
+	parent := res("File", "/d", nil)
+	gen := genRecorder{
+		recorder: recorder{typ: "file", applied: &applied, refreshed: &refreshed, changes: 1},
+		children: map[string][]catalog.Resource{"File[/d]": generatedChildren(parent, "/d/a", "/d/b")},
+	}
+	ctx, got := logContext("debug")
+	runCatalogCtx(t, ctx, txWithGenerator(gen), inMain(parent))
+	lines := debugLines(*got)
+	for _, want := range []string{
+		"/Stage[main]/Main/File[/d]: The container /d will propagate my refresh event",
+		"/Stage[main]/Main/File[/d/a]: The container /d will propagate my refresh event",
+		"/Stage[main]/Main/File[/d/b]: The container /d will propagate my refresh event",
+		"/d: The container Class[Main] will propagate my refresh event",
+	} {
+		if !slices.Contains(lines, want) {
+			t.Errorf("lines = %q, missing %q", lines, want)
+		}
+	}
+	if slices.Contains(lines, "/Stage[main]/Main/File[/d]: The container Class[Main] will propagate my refresh event") {
+		t.Errorf("lines = %q: the parent of a unit sends to the unit, not to its container", lines)
+	}
+
+	ctx, got = logContext("notice")
+	runCatalogCtx(t, ctx, txWithGenerator(gen), inMain(parent))
+	if len(*got) != 0 {
+		t.Errorf("entries at notice = %+v, want none", *got)
+	}
+}
+
+// Each native provider's prefetch is logged at debug: its type, how many
+// resources it covers and how long it took. Sorted by type, as the prefetch is.
+func TestPrefetchLogsTypeCountAndDuration(t *testing.T) {
+	var applied, refreshed, prefetched []string
+	tx := txWithPrefetch(&applied, &refreshed, prefetchProbe{prefetched: &prefetched})
+	ctx, got := logContext("debug")
+	runCatalogCtx(t, ctx, tx, &catalog.Catalog{Resources: []catalog.Resource{
+		res("File", "/one", nil), res("Notify", "hi", nil), res("File", "/two", nil),
+	}})
+	var lines []string
+	for _, e := range *got {
+		if e.Source == "voxagent" && strings.HasPrefix(e.Message, "prefetch ") {
+			lines = append(lines, e.Message)
+		}
+	}
+	wants := []*regexp.Regexp{
+		regexp.MustCompile(`^prefetch file: 2 resources in \d+(\.\d+)?m?s$`),
+		regexp.MustCompile(`^prefetch notify: 1 resources in \d+(\.\d+)?m?s$`),
+	}
+	if len(lines) != len(wants) {
+		t.Fatalf("prefetch lines = %q, want %d", lines, len(wants))
+	}
+	for i, re := range wants {
+		if !re.MatchString(lines[i]) {
+			t.Errorf("line %d = %q, want a match for %v", i, lines[i], re)
+		}
+	}
+}
+
+func TestPrefetchLogsNothingBelowDebug(t *testing.T) {
+	var applied, refreshed, prefetched []string
+	tx := txWithPrefetch(&applied, &refreshed, prefetchProbe{prefetched: &prefetched})
+	ctx, got := logContext("info")
+	runCatalogCtx(t, ctx, tx, &catalog.Catalog{Resources: []catalog.Resource{res("File", "/one", nil)}})
+	for _, e := range *got {
+		if strings.HasPrefix(e.Message, "prefetch ") {
+			t.Errorf("prefetch line at info: %+v", e)
+		}
+	}
+}
+
+// A type first met through a generated resource is prefetched mid-walk, and
+// logged the same way.
+func TestGeneratedChildPrefetchIsLogged(t *testing.T) {
+	var f evalGenFixture
+	parent := res("Vox_evalgen", "p", nil)
+	stub := evalGenStub{gens: map[string]ral.EvalGeneration{"Vox_evalgen[p]": {
+		Children: []catalog.Resource{made(parent, "Notify", "c")}}}}
+	ctx, got := logContext("debug")
+	runCatalogCtx(t, ctx, f.tx(stub, nil), &catalog.Catalog{Resources: []catalog.Resource{parent}})
+	re := regexp.MustCompile(`^prefetch notify: 1 resources in \d+(\.\d+)?m?s$`)
+	n := 0
+	for _, e := range *got {
+		if re.MatchString(e.Message) {
+			n++
+		}
+	}
+	if n != 1 {
+		t.Errorf("matching prefetch lines = %d, want 1: %v", n, *got)
 	}
 }

@@ -41,15 +41,25 @@ func (Notify) AutoRequires(catalog.Resource, func(string) bool) []string { retur
 // refusal list is precisely the measurement that would say so.
 func (Notify) Attrs() Attrs { return NewAttrs("message") }
 
+// Properties implements PropertyDeclaring. type/notify.rb's only property is
+// message (newproperty(:message)); name is its namevar parameter.
+func (Notify) Properties() Attrs { return NewAttrs("message") }
+
 // Apply implements Provider. It performs no I/O; the transaction turns the
 // returned change into a log entry and a report event.
 //
 // It returns no warnings. type/notify.rb has no condition it warns about, and
 // inventing one would put a line in the run log Ruby does not write.
-func (Notify) Apply(_ context.Context, r catalog.Resource, _ bool) ([]Change, []Warning, error) {
+func (n Notify) Apply(_ context.Context, r catalog.Resource, _ bool) ([]Change, []Warning, error) {
 	message := r.Title
 	if v, ok := r.Parameters["message"]; ok {
 		message = fmt.Sprintf("%v", v)
+	}
+	// A marked message logs as Ruby's bare notice (type/notify.rb:15). The
+	// event's own message is redacted by the transaction.
+	notice := message
+	if isMarked(n, r, "message") {
+		notice = "Sensitive [value redacted]"
 	}
 	return []Change{{
 		Property: "message",
@@ -61,7 +71,7 @@ func (Notify) Apply(_ context.Context, r catalog.Resource, _ bool) ([]Change, []
 		Was:     "absent",
 		Is:      message,
 		Message: fmt.Sprintf("defined 'message' as '%s'", message),
-		Notice:  message,
+		Notice:  notice,
 	}}, nil, nil
 }
 
@@ -69,6 +79,10 @@ func (Notify) Apply(_ context.Context, r catalog.Resource, _ bool) ([]Change, []
 func (Notify) Refresh(context.Context, catalog.Resource, bool) (bool, error) {
 	return false, nil
 }
+
+// Refreshable implements Refreshing. type/notify.rb defines no refresh, so
+// Puppet queues no event for a notified Notify.
+func (Notify) Refreshable(catalog.Resource) bool { return false }
 
 // Prefetch implements Provider. A notify has no state at all.
 func (p Notify) Prefetch(context.Context, []catalog.Resource) (Provider, error) { return p, nil }

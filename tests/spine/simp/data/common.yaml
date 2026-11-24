@@ -1,0 +1,25 @@
+---
+simp::scenario: simp
+simp_options::trusted_nets: ['10.0.0.0/8']
+simp_options::puppet::server: puppet.example.com
+simp_options::puppet::ca: puppet.example.com
+simp_options::dns::servers: ['10.0.0.53']
+simp_options::dns::search: ['example.com']
+simp_options::ntp::servers: ['10.0.0.123']
+simp_options::syslog::log_servers: []
+simp_options::ldap: false
+simp_options::sssd: true
+simp_options::pki: false
+simp_options::firewall: true
+simp_options::auditd: true
+simp_options::selinux: true
+simp_options::tcpwrappers: false
+simp_options::stunnel: false
+simp_options::pam: true
+simp_options::haveged: true
+simp_options::fips: false
+simp_options::libkv: false
+simp_options::clamav: false
+simp_options::logrotate: true
+simp_options::syslog: true
+sssd::domains: ['LOCAL']

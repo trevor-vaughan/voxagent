@@ -1,0 +1,12 @@
+# The QEMU host for report-diff-selinux.sh. There is no /dev/kvm here and
+# RHEL's qemu-kvm is built without TCG, so the VM is emulated by Fedora's QEMU
+# (`-accel tcg`). genisoimage builds the cloud-init seed; openssh-clients is how
+# the gate reaches the VM through QEMU's user-mode network, from inside this
+# container, so no port is published on the host.
+#
+# The base is pinned by digest (Fedora 44's manifest list as of 2026-10-06), so
+# a rebuild cannot float to another release.
+FROM registry.fedoraproject.org/fedora:44@sha256:ba35579e107f26a4c2c000390fb3ff549f3858a9584a6b5a35f7fa51f54de309
+RUN dnf -y install --setopt=install_weak_deps=False \
+      qemu-system-x86-core qemu-img genisoimage openssh-clients \
+    && dnf clean all

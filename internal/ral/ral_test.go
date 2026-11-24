@@ -2,6 +2,7 @@ package ral
 
 import (
 	"context"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -177,9 +178,50 @@ func TestSpineProvidersPrefetchToThemselves(t *testing.T) {
 		// safe -- and the list is deliberately the three production providers,
 		// never the test stubs (recorder holds maps). A provider that later
 		// gains an unexported field must revisit this assertion -- compare the
-		// field, or the identity that matters -- rather than delete it.
+		// field, or the identity that matters -- rather than delete it. File's
+		// Prefetch gives the run its own store of SELinux defaults, so that
+		// field is compared for being set and the rest for equality: File
+		// holds the agent's Sources map, so it is not comparable.
+		if f, ok := got.(File); ok {
+			if f.defaults == nil {
+				t.Errorf("file: Prefetch returned no store for the run's SELinux defaults")
+			}
+			f.defaults = nil
+			if !reflect.DeepEqual(f, p) {
+				t.Errorf("file: Prefetch returned %+v, want the receiver %+v", f, p)
+			}
+			continue
+		}
 		if got != Provider(p) {
 			t.Errorf("%s: Prefetch returned a different provider, want the receiver", p.Type())
+		}
+	}
+}
+
+// Puppet's to_ral (resource.rb:515-526): in a catalog_format 2 catalog a
+// resource whose kind is not compilable_type becomes an inert Component. Stage
+// is compilable_type yet a container (relationship_graph.rb:240), so the type
+// list still applies. A kind-less resource falls back to the type list: Puppet
+// would make it a Component, but only hand-written catalogs omit kind.
+func TestIsContainerResource(t *testing.T) {
+	for _, tc := range []struct {
+		r    catalog.Resource
+		want bool
+	}{
+		{catalog.Resource{Type: "Stage", Title: "main", Kind: "compilable_type"}, true},
+		{catalog.Resource{Type: "Class", Title: "main", Kind: "unknown"}, true},
+		{catalog.Resource{Type: "Node", Title: "default", Kind: "unknown"}, true},
+		{catalog.Resource{Type: "Bench_profile::Site", Title: "s1", Kind: "defined_type"}, true},
+		{catalog.Resource{Type: "Concat", Title: "/etc/x", Kind: "defined_type"}, true},
+		{catalog.Resource{Type: "Class", Title: "profile", Kind: "class"}, true},
+		{catalog.Resource{Type: "File", Title: "/tmp/x", Kind: "compilable_type"}, false},
+		{catalog.Resource{Type: "Concat_file", Title: "/etc/x", Kind: "compilable_type"}, false},
+		{catalog.Resource{Type: "File", Title: "/tmp/x"}, false},
+		{catalog.Resource{Type: "Class", Title: "main"}, true},
+		{catalog.Resource{Type: "Foo::Bar", Title: "x"}, false},
+	} {
+		if got := IsContainerResource(tc.r); got != tc.want {
+			t.Errorf("IsContainerResource(%s kind=%q) = %v, want %v", tc.r.Ref(), tc.r.Kind, got, tc.want)
 		}
 	}
 }

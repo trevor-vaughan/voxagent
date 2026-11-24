@@ -11,7 +11,9 @@
 // Two allowlists, kept separate on purpose. run_to_run holds the fields that
 // differ between two runs of the SAME implementation, measured by
 // tests/spine/derive-run-to-run.sh. cross_implementation holds fields that
-// legitimately differ between Ruby and Go, each with its reason as the value.
+// legitimately differ between Ruby and Go, each with its reason as the value;
+// a key of the form "logs (source: <source>)" names one log source instead of
+// a path (see logSourceKey).
 // Merging them would let a real cross-implementation divergence hide behind
 // "it varies anyway".
 //
@@ -30,6 +32,7 @@ import (
 	"fmt"
 	"io"
 	"regexp"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -42,10 +45,19 @@ import (
 // this string still diverges from an absent one.
 const absent = "<absent>"
 
+// logSourceKey opens a cross_implementation key that names one log source
+// rather than a leaf path: "logs (source: <source>)". Logs are compared as a
+// multiset, not by path, so no path pattern can reach one; this key drops,
+// from both sides, every log entry whose source is exactly <source>. Exact
+// string equality, never a pattern: a resource's log source is full of the
+// brackets fnmatch reads as character classes.
+const logSourceKey = "logs (source: "
+
 // Allowlist is the decoded allowlist.json.
 type Allowlist struct {
 	RunToRun            []string
-	CrossImplementation []string // the keys; the values are reasons
+	CrossImplementation []string // the path-pattern keys; the values are reasons
+	LogSources          []string // the sources the "logs (source: …)" keys name
 }
 
 // ParseAllowlist reads the two pattern lists out of a decoded allowlist. A
@@ -77,9 +89,18 @@ func ParseAllowlist(doc any) (Allowlist, error) {
 			return Allowlist{}, fmt.Errorf("cross_implementation is %s, not an object", pycompat.Shape(raw))
 		}
 		for k := range obj {
-			allow.CrossImplementation = append(allow.CrossImplementation, k)
+			if !strings.HasPrefix(k, logSourceKey) {
+				allow.CrossImplementation = append(allow.CrossImplementation, k)
+				continue
+			}
+			source, closed := strings.CutSuffix(strings.TrimPrefix(k, logSourceKey), ")")
+			if !closed || source == "" {
+				return Allowlist{}, fmt.Errorf("cross_implementation key %q is not of the form '%s<source>)'", k, logSourceKey)
+			}
+			allow.LogSources = append(allow.LogSources, source)
 		}
 		sort.Strings(allow.CrossImplementation)
+		sort.Strings(allow.LogSources)
 	}
 	return allow, nil
 }
@@ -297,12 +318,14 @@ func Compare(ruby, voxagent any, allow Allowlist) (Result, error) {
 		return Result{}, err
 	}
 
-	if rubyDoc, err = normalise(dropWrappedExceptionLogs(rubyDoc)); err != nil {
+	if rubyDoc, err = normalise(dropCachingCatalogLog(dropWrappedExceptionLogs(rubyDoc))); err != nil {
 		return Result{}, fmt.Errorf("the Ruby report: %w", err)
 	}
 	if goDoc, err = normalise(goDoc); err != nil {
 		return Result{}, fmt.Errorf("the voxagent report: %w", err)
 	}
+	rubyDoc = dropLogsFrom(rubyDoc, allow.LogSources)
+	goDoc = dropLogsFrom(goDoc, allow.LogSources)
 
 	rubyLogs, err := sortedLogKeys(rubyDoc, "Ruby")
 	if err != nil {
@@ -341,6 +364,26 @@ func Compare(ruby, voxagent any, allow Allowlist) (Result, error) {
 		result.Divergences = append(result.Divergences, Divergence{"logs (only in voxagent)", absent, k.String()})
 	}
 	return result, nil
+}
+
+// dropLogsFrom drops every log entry whose source is exactly one of sources.
+// An entry whose source is missing or not a string is kept, so it is still
+// compared.
+func dropLogsFrom(doc map[string]any, sources []string) map[string]any {
+	logs, ok := doc["logs"].([]any)
+	if !ok || len(sources) == 0 {
+		return doc
+	}
+	kept := make([]any, 0, len(logs))
+	for _, e := range logs {
+		if entry, ok := e.(map[string]any); ok {
+			if source, ok := entry["source"].(string); ok && slices.Contains(sources, source) {
+				continue
+			}
+		}
+		kept = append(kept, e)
+	}
+	return with(doc, "logs", kept)
 }
 
 func comparedLeaves(doc map[string]any, patterns []pattern) (map[string]any, error) {

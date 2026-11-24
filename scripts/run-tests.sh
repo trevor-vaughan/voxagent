@@ -25,6 +25,11 @@ TEST_DIR="${2:-.test-output}"
 mkdir -p "$TEST_DIR"
 LOG="$TEST_DIR/go-test.log"
 
+# The extension host's tests skip without a Ruby that can load Puppet. The
+# suite must not pass by skipping them, so the runner makes their absence a
+# failure (internal/extension/extensiontest).
+export VOXAGENT_REQUIRE_RUBY=1
+
 set +e
 go test -count=1 ./... >"$LOG" 2>&1
 rc=$?

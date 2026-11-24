@@ -130,3 +130,37 @@ func TestLeavesEqual(t *testing.T) {
 		}
 	}
 }
+
+// run-to-run derives over what Compare compares. A failure detail that varies
+// between two runs is masked by failure_detail in Compare, so run-to-run must
+// not call it uncovered; the attribution around the detail is still compared,
+// so a difference there must still be.
+func TestRunToRunDerivesOverTheNormalisedReport(t *testing.T) {
+	report := func(value, detail string) any {
+		msg := "change from 'absent' to 'file' failed: Could not set '" + value + "' on ensure: " + detail + " (file: /m.pp, line: 1)"
+		return decode(t, `{"time":"`+detail+`",
+			"resource_statuses":{"File[/x]":{"events":[{"status":"failure","message":"`+msg+`"}]}},
+			"logs":[{"source":"/File[/x]/ensure","level":"err","message":"`+msg+`"}]}`)
+	}
+	allow := Allowlist{RunToRun: []string{"time"}}
+	for _, tc := range []struct {
+		name          string
+		second        any
+		wantClean     bool
+		wantUncovered string
+	}{
+		{"only the detail differs", report("file", "lock2"), true, ""},
+		{"the value set differs", report("directory", "lock2"), false, "resource_statuses.File[/x].events.0.message"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var out strings.Builder
+			clean, err := RunToRun(report("file", "lock1"), tc.second, allow, &out)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if clean != tc.wantClean || (tc.wantUncovered != "" && !strings.Contains(out.String(), "  "+tc.wantUncovered+"\n")) {
+				t.Errorf("clean=%v, want %v (uncovered %q); output:\n%s", clean, tc.wantClean, tc.wantUncovered, out.String())
+			}
+		})
+	}
+}

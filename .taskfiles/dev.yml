@@ -19,6 +19,9 @@ tasks:
 
   build:
     desc: Build the voxdiff, voxagent and gatekit binaries into bin/
+    # Several gates dep on build and check runs them in parallel; without this
+    # one gate can read bin/ while another's build is rewriting it.
+    run: once
     cmds:
       - mkdir -p "{{.ROOT_DIR}}/bin"
       - go build -o "{{.ROOT_DIR}}/bin/voxdiff" "{{.ROOT_DIR}}/cmd/voxdiff"
@@ -49,7 +52,7 @@ tasks:
       #
       # tests/spine/*.sh is suffix-filtered for the same reason as fleet/tests:
       # the directory also holds the allowlist, which is JSON.
-      - shellcheck -x -P SCRIPTDIR {{.ROOT_DIR}}/fleet/bin/* {{.ROOT_DIR}}/fleet/tests/*.sh {{.ROOT_DIR}}/scripts/*.sh {{.ROOT_DIR}}/tests/spine/*.sh
+      - shellcheck -x -P SCRIPTDIR {{.ROOT_DIR}}/fleet/bin/* {{.ROOT_DIR}}/fleet/tests/*.sh {{.ROOT_DIR}}/scripts/*.sh {{.ROOT_DIR}}/tests/spine/*.sh {{.ROOT_DIR}}/tests/agent/*.sh
 
   adjudication:
     desc: Prove the two negative controls still judge each half before reading the other's log
@@ -98,6 +101,15 @@ tasks:
     deps: [build]
     cmd: bash "{{.ROOT_DIR}}/tests/spine/report-diff.sh"
 
+  report-diff-extension:
+    desc: Prove voxagent's report matches Ruby's for Tier 3 resources run through the extension host
+    # G1 and G2 for the extension host. Needs `puppet` and `ruby` on PATH and
+    # the vendored stdlib (fleet:vendor clones it once, from the network).
+    # Reports 2, not 1, when anything it needs is missing, so an absent oracle
+    # is never mistaken for agreement.
+    deps: [build, ':fleet:vendor']
+    cmd: bash "{{.ROOT_DIR}}/tests/spine/report-diff-extension.sh"
+
   idempotence:
     desc: Prove a second apply of the same catalog changes nothing
     # G2. Needs no Ruby, and catches a class the report differential cannot see:
@@ -133,6 +145,35 @@ tasks:
     deps: [build]
     cmd: bash "{{.ROOT_DIR}}/tests/spine/report-diff-container.sh"
 
+  report-diff-systemd:
+    desc: Compare voxagent's and Ruby's reports for service against real systemd, in containers
+    # Not in `check`, like report-diff-container: it needs images, takes
+    # minutes, and needs systemd to boot in a container, which in a nested
+    # container needs a delegated cgroup (docs/maintainers/apply-spine.md).
+    deps: [build]
+    cmd: bash "{{.ROOT_DIR}}/tests/spine/report-diff-systemd.sh"
+
+  report-diff-simp:
+    desc: Compare voxagent's and Ruby's real applies of the public SIMP catalog, in systemd containers
+    # The extension host's acceptance gate. Not in `check`:
+    # a cold run needs the network (the forge for the pinned modules, the
+    # CentOS Stream mirrors for the image; a warm run's applies were measured
+    # to compare the same offline), it boots systemd in podman, which in a
+    # nested container needs a delegated cgroup
+    # (docs/maintainers/apply-spine.md, "Running the systemd gate"), and it
+    # takes about 1 minute warm or 5 cold. DERIVE=1 runs Ruby on both sides to
+    # re-measure the run_to_run allowlist instead.
+    deps: [build]
+    cmd: bash "{{.ROOT_DIR}}/tests/spine/report-diff-simp.sh"
+
+  report-diff-selinux:
+    desc: Compare voxagent's and Ruby's reports for file SELinux contexts, on an enforcing VM
+    # Not in `check`: it boots a CentOS Stream 10 VM under QEMU's TCG emulation
+    # (no KVM here), which takes about five minutes before anything is applied,
+    # and downloads a 1 GiB image on its first run (docs/maintainers/apply-spine.md).
+    deps: [build]
+    cmd: bash "{{.ROOT_DIR}}/tests/spine/report-diff-selinux.sh"
+
   derive-run-to-run:
     desc: Re-measure the report differential's run_to_run allowlist against Ruby
     # Every entry in run_to_run is a field report-diff is blind to, so the list
@@ -144,6 +185,17 @@ tasks:
     # deps: [build] because it calls bin/gatekit, and a stale judge is a false result.
     deps: [build]
     cmd: bash "{{.ROOT_DIR}}/tests/spine/derive-run-to-run.sh"
+
+  agent-gate:
+    desc: Gate voxagent agent against a real OpenVox server, with Ruby puppet agent as the oracle
+    # Not in `check`: it starts an OpenVox server and two nodes under podman
+    # (about 30 s warm) and needs localhost/fleet-node-el:latest (`task
+    # fleet:images`). Exit 2 means it could not run -- including "the voxagent
+    # agent subcommand does not exist yet" -- never a pass. Artifacts land in
+    # .test-output/agent/. deps: [build] because the binary is copied into the
+    # node and a stale binary is a false green.
+    deps: [build]
+    cmd: bash "{{.ROOT_DIR}}/tests/agent/run.sh"
 
   fmt:
     desc: Format all Go source

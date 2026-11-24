@@ -69,6 +69,30 @@ type Change struct {
 	// path, once as bare text sourced "Puppet".
 	Notice string
 
+	// PathNotices are extra notices for the run log sourced at the resource's
+	// own path, with no property suffix: resource-level notices, as
+	// type/file.rb:1040's "Not removing directory; use 'force' to override".
+	// They are logged in order before the change's own line.
+	//
+	// There can be more than one because Puppet can log the same notice twice:
+	// remove_existing runs twice on one sync (ensure.rb:186, target.rb:36-61),
+	// which is I-3.
+	PathNotices []string
+
+	// PathWarnings are warnings for the run log sourced at the resource's own
+	// path, logged before PathNotices: type/file.rb:803's "Could not back up
+	// file of type <ftype>", which remove_existing raises each time it runs
+	// (twice on one sync, I-3) when backup is set and the type cannot be
+	// backed up.
+	PathWarnings []string
+
+	// PropertyNotices are notices for the run log sourced at the resource's
+	// path plus the property, <source>/<Property>, logged after PathNotices
+	// and before the change's own line, on the success and the failure path:
+	// Exec's logged output, which type/exec.rb sync sends from the returns
+	// property before it records the event or fails.
+	PropertyNotices []string
+
 	// Err, when non-nil, means this property was attempted and did not
 	// succeed. Was and Is then describe the transition that was TRIED, not
 	// one that happened, and Message is unused -- the transaction builds
@@ -80,6 +104,13 @@ type Change struct {
 	// and lets the next property proceed. A provider must therefore keep
 	// going after one property fails rather than returning early.
 	Err error
+	// InvalidateRefreshes drops the resource's own pending refresh when this
+	// change succeeds: Puppet's property option of the same name
+	// (property.rb:259), used by service's ensure => running
+	// (type/service.rb:109) so that a service started this run is not then
+	// restarted by its notifiers (event_manager.rb:82). Engine-internal: no
+	// report field carries it.
+	InvalidateRefreshes bool
 
 	// WasDisplay and IsDisplay override how Was and Is are rendered INTO A
 	// MESSAGE, without changing the values the event carries.
@@ -272,11 +303,11 @@ func (reg *Registry) Types() []string {
 // refuse every catalog ever compiled, so this set is load-bearing rather than
 // defensive.
 //
-// whit and component are NOT covered by that measurement. Puppet emits them for
-// anchored containment and for defined-type bodies, neither of which a one-line
-// manifest produces. They are here on the same reasoning rather than the same
-// evidence, and the distinction is recorded because "measured" is a claim this
-// codebase makes literally.
+// whit and component are Puppet's own container types. Compiled catalogs do
+// not normally carry them: a defined type's instance keeps its own type name
+// (Foo::Bar[x]) and is recognised by its kind instead -- see
+// IsContainerResource. They are listed on the same reasoning as the measured
+// three rather than the same evidence.
 var containerTypes = map[string]struct{}{
 	"stage": {}, "class": {}, "node": {}, "whit": {}, "component": {},
 }
@@ -286,6 +317,30 @@ var containerTypes = map[string]struct{}{
 func IsContainer(typ string) bool {
 	_, ok := containerTypes[strings.ToLower(typ)]
 	return ok
+}
+
+// compilableType is the kind Puppet gives a resource backed by a real type
+// (resource.rb:40).
+const compilableType = "compilable_type"
+
+// IsContainerResource reports whether a catalog resource structures the
+// catalog rather than describing state on the node.
+//
+// Puppet's to_ral (resource.rb:515-526) makes every catalog_format 2 resource
+// whose kind is not compilable_type an inert Component: classes and nodes
+// ("unknown" or "class") and defined-type instances ("defined_type"). Stage
+// is compilable_type but still a container (relationship_graph.rb:240), so the
+// type list applies as well.
+//
+// A resource with no kind at all falls back to the type list. Puppet would
+// make it a Component; voxagent applies it. Puppet 8 emits kind on every
+// resource it compiles, so only hand-written catalogs -- test fixtures -- reach
+// this branch. It is recorded in the divergence register.
+func IsContainerResource(r catalog.Resource) bool {
+	if IsContainer(r.Type) {
+		return true
+	}
+	return r.Kind != "" && r.Kind != compilableType
 }
 
 // engineAttrs are the metaparameters the engine handles rather than a provider.

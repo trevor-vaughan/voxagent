@@ -36,6 +36,33 @@ WORK="$(mktemp -d)" || exit 2
 trap 'rm -rf "$WORK"' EXIT
 mkdir -p "$WORK/target" || exit 2
 
+# Sources live beside target, and the paths the catalog reconciles rather
+# than creates are seeded before the first run: a purge with a stale file and
+# an explicitly managed child whose content is wrong, a permissions-only
+# recursion, and a mode-only file. No unmanaged directory under the purge and
+# no missing source: Puppet reports the first "removed" every run and the
+# second fails its first run, so neither can converge (both are in G1).
+mkdir -p "$WORK/src/tree/sub" "$WORK/src/pur" "$WORK/target/pur" "$WORK/target/perms/sub" || exit 2
+printf 'one\n' > "$WORK/src/one.txt" && printf 'a\n' > "$WORK/src/tree/a.txt" \
+  && printf 'b\n' > "$WORK/src/tree/sub/b.txt" && printf 'new\n' > "$WORK/src/pur/new.txt" \
+  && printf 'stale\n' > "$WORK/target/pur/stale.txt" && printf 'old\n' > "$WORK/target/pur/keep.txt" \
+  && printf 'f\n' > "$WORK/target/perms/f" && printf 'g\n' > "$WORK/target/perms/sub/g" \
+  && printf 'seed\n' > "$WORK/target/perm.txt" \
+  && printf 'keep\n' > "$WORK/target/norepl.txt" && mkdir "$WORK/target/fdir" \
+  && printf 'plain\n' > "$WORK/target/lnf" && ln -s old "$WORK/target/rt" \
+  && printf 'real\n' > "$WORK/src/real.txt" && ln -s real.txt "$WORK/src/lnk" \
+  && ln -s "$WORK/src/real.txt" "$WORK/target/flw" \
+  && chmod 0755 "$WORK/target/pur" "$WORK/target/perms" "$WORK/target/perms/sub" \
+  && chmod 0644 "$WORK/target/perms/f" "$WORK/target/perms/sub/g" "$WORK/target/perm.txt" || exit 2
+
+# The links, force and replace cases below each start from a seeded state that
+# the first run changes and the second must leave alone. Left out because they
+# never converge: keepdir, `ensure => absent` over a directory without `force`
+# (I-1, the `removed` event repeats); `ensure => file` with a `target` over an
+# existing path (I-6, it alternates between a file and a link); `ensure => link`
+# with `links => follow` over an existing link (the link is re-created every
+# run, measured); and any resource that fails.
+#
 # The exec is `creates`-guarded on purpose. An unguarded exec runs on every
 # apply, so a catalog holding one is never idempotent -- the same reason notify
 # is excluded. Guarded, it is the only resource here that can prove voxagent
@@ -52,7 +79,37 @@ cat > "$WORK/catalog.json" <<EOF || exit 2
    "parameters":{"ensure":"directory","mode":"0755"}},
   {"type":"Exec","title":"guarded","tags":[],
    "parameters":{"command":"/usr/bin/touch $WORK/target/made",
-                 "creates":"$WORK/target/made"}}
+                 "creates":"$WORK/target/made"}},
+  {"type":"File","title":"$WORK/target/from-src.txt","tags":[],
+   "parameters":{"source":"$WORK/src/one.txt"}},
+  {"type":"File","title":"$WORK/target/tree","tags":[],
+   "parameters":{"source":"file://$WORK/src/tree","recurse":true}},
+  {"type":"File","title":"$WORK/target/pur","tags":[],
+   "parameters":{"ensure":"directory","source":"$WORK/src/pur","recurse":true,"purge":true}},
+  {"type":"File","title":"$WORK/target/pur/keep.txt","tags":[],
+   "parameters":{"ensure":"file","content":"kept\n"}},
+  {"type":"File","title":"$WORK/target/perms","tags":[],
+   "parameters":{"recurse":true,"mode":"0640"}},
+  {"type":"File","title":"$WORK/target/perm.txt","tags":[],
+   "parameters":{"mode":"0600"}},
+  {"type":"File","title":"$WORK/target/perm-absent","tags":[],
+   "parameters":{"mode":"0600"}},
+  {"type":"File","title":"nsx","tags":[],
+   "parameters":{"path":"$WORK/target/ns.txt","ensure":"file","content":"ns\n"}},
+  {"type":"File","title":"$WORK/target/norepl.txt","tags":[],
+   "parameters":{"ensure":"file","content":"other\n","replace":false}},
+  {"type":"File","title":"$WORK/target/fdir","tags":[],
+   "parameters":{"ensure":"file","content":"over a directory\n","force":true}},
+  {"type":"File","title":"$WORK/target/lnf","tags":[],
+   "parameters":{"ensure":"link","target":"$WORK/src/real.txt"}},
+  {"type":"File","title":"$WORK/target/rt","tags":[],
+   "parameters":{"ensure":"link","target":"new"}},
+  {"type":"File","title":"$WORK/target/sl","tags":[],
+   "parameters":{"ensure":"symlink","target":"$WORK/src/real.txt"}},
+  {"type":"File","title":"$WORK/target/flw","tags":[],
+   "parameters":{"ensure":"file","content":"followed\n","links":"follow"}},
+  {"type":"File","title":"$WORK/target/from-link","tags":[],
+   "parameters":{"source":"$WORK/src/lnk"}}
  ]}
 EOF
 

@@ -9,7 +9,10 @@
   "run_to_run: lines are stdout with each rendered value replaced by …,",
   "because Go renders values differently by design.",
   "corrected: where Go deliberately departs from Python, the verdict it must",
-  "reach instead -- not measured, since Python cannot measure a fix to itself."
+  "reach instead -- not measured, since Python cannot measure a fix to itself.",
+  "run_to_run corrected: a delta to Python's lines rather than a copy --",
+  "the INCOMPLETE entries Go must not print, and the header and summary",
+  "it prints instead -- with the rule's reason in why."
  ],
  "compare": [
   {
@@ -1132,7 +1135,14 @@
     "    run2: …",
     "",
     "run-to-run: 64 differing leaf/leaves covered by no pattern"
-   ]
+   ],
+   "corrected": {
+    "exit": 1,
+    "masked": ["resource_statuses.File[/tmp/tmp.tk6FChWcJY/target/missing/bad.txt].events.0.message"],
+    "header": "274 leaves, 90 differing across 27 raw field shapes",
+    "summary": "run-to-run: 63 differing leaf/leaves covered by no pattern",
+    "why": "run-to-run derives over Compare's normalisations, failure_detail included, so a failure detail that varies between two runs is no longer reported uncovered; Python derived before that elision (internal/gatekit/reportcmp/runtorun.go)"
+   }
   },
   {
    "first": "corpus/spine-layer-ruby.json",
@@ -2016,7 +2026,14 @@
     "    run2: …",
     "",
     "run-to-run: 159 differing leaf/leaves covered by no pattern"
-   ]
+   ],
+   "corrected": {
+    "exit": 1,
+    "masked": ["logs.15.message", "logs.6.message", "resource_statuses.File[/tmp/target/missing/bad.txt].events.0.message", "resource_statuses.Package[voxagent-no-such-package].events.0.message"],
+    "header": "677 leaves, 218 differing across 54 raw field shapes",
+    "summary": "run-to-run: 155 differing leaf/leaves covered by no pattern",
+    "why": "run-to-run derives over Compare's normalisations, failure_detail included, so a failure detail that varies between two runs is no longer reported uncovered; Python derived before that elision (internal/gatekit/reportcmp/runtorun.go)"
+   }
   },
   {
    "first": "corpus/d14-control-ruby.json",
@@ -2354,7 +2371,14 @@
     "    run2: …",
     "",
     "run-to-run: 18 differing leaf/leaves covered by no pattern"
-   ]
+   ],
+   "corrected": {
+    "exit": 1,
+    "masked": ["resource_statuses.Package[vi].events.0.message"],
+    "header": "115 leaves, 29 differing across 16 raw field shapes",
+    "summary": "run-to-run: 17 differing leaf/leaves covered by no pattern",
+    "why": "run-to-run derives over Compare's normalisations, failure_detail included, so a failure detail that varies between two runs is no longer reported uncovered; Python derived before that elision (internal/gatekit/reportcmp/runtorun.go)"
+   }
   },
   {
    "first": "corpus/unmeasured-V3-ruby.json",
@@ -2887,7 +2911,14 @@
     "    run2: …",
     "",
     "run-to-run: 149 differing leaf/leaves covered by no pattern"
-   ]
+   ],
+   "corrected": {
+    "exit": 1,
+    "masked": ["resource_statuses.Package[nano].events.0.message"],
+    "header": "264 leaves, 181 differing across 17 raw field shapes",
+    "summary": "run-to-run: 148 differing leaf/leaves covered by no pattern",
+    "why": "run-to-run derives over Compare's normalisations, failure_detail included, so a failure detail that varies between two runs is no longer reported uncovered; Python derived before that elision (internal/gatekit/reportcmp/runtorun.go)"
+   }
   },
   {
    "first": "corpus/unmeasured-W2-ruby.json",
@@ -3362,7 +3393,14 @@
     "    run2: …",
     "",
     "run-to-run: 149 differing leaf/leaves covered by no pattern"
-   ]
+   ],
+   "corrected": {
+    "exit": 1,
+    "masked": ["resource_statuses.Package[nano].events.0.message"],
+    "header": "264 leaves, 181 differing across 17 raw field shapes",
+    "summary": "run-to-run: 148 differing leaf/leaves covered by no pattern",
+    "why": "run-to-run derives over Compare's normalisations, failure_detail included, so a failure detail that varies between two runs is no longer reported uncovered; Python derived before that elision (internal/gatekit/reportcmp/runtorun.go)"
+   }
   },
   {
    "first": "corpus/unmeasured-W3-ruby.json",
@@ -3801,7 +3839,14 @@
     "    run2: …",
     "",
     "run-to-run: 137 differing leaf/leaves covered by no pattern"
-   ]
+   ],
+   "corrected": {
+    "exit": 1,
+    "masked": ["resource_statuses.Package[nano].events.0.message"],
+    "header": "250 leaves, 167 differing across 17 raw field shapes",
+    "summary": "run-to-run: 136 differing leaf/leaves covered by no pattern",
+    "why": "run-to-run derives over Compare's normalisations, failure_detail included, so a failure detail that varies between two runs is no longer reported uncovered; Python derived before that elision (internal/gatekit/reportcmp/runtorun.go)"
+   }
   },
   {
    "first": "edge/run-clean.first.json",

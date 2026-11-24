@@ -85,6 +85,12 @@ type ResourceStatus struct {
 	// written, on every resource of every report.
 	Restarted bool `json:"-"`
 
+	// Untimed marks a status Ruby writes with a null evaluation_time because
+	// it never evaluated the resource. It is not serialised (EvaluationTime is
+	// then 0, D-36); it keeps the status out of the per-type time metric, as
+	// report.rb:502's calculate_time_metrics skips a null evaluation_time.
+	Untimed bool `json:"-"`
+
 	Changed          bool    `json:"changed"`
 	OutOfSync        bool    `json:"out_of_sync"`
 	Skipped          bool    `json:"skipped"`
@@ -93,6 +99,15 @@ type ResourceStatus struct {
 	CorrectiveChange bool    `json:"corrective_change"`
 	Events           []Event `json:"events"`
 	Time             string  `json:"time"`
+
+	// Generated marks a generated resource: one whose catalog.Resource has a
+	// GeneratedFrom, whether a Generator or EvalGenerator made it during the
+	// walk or the extension host's generate made it at load. It is not
+	// serialised itself: it makes file and line serialise as null, which is
+	// what Ruby writes for a generated resource (measured;
+	// resource/status.rb:169-170), where a catalog resource keeps its
+	// manifest location, or "" and 0 when it has none.
+	Generated bool `json:"-"`
 }
 
 // LogEntry is one line of the run's log. logs is an ordered array, and because
@@ -159,8 +174,59 @@ type Report struct {
 	// that the two phases are identical.
 	EvaluationSpan time.Duration `json:"-"`
 
+	// FailedToGenerate is Ruby's resources_failed_to_generate
+	// (transaction/additional_resource_generator.rb:66): a Generator failed
+	// this run. compute_status (transaction/report.rb:189-200) reports the run
+	// failed for it, while exit_status (:440-452) ignores it, so it changes
+	// Status and nothing RunStatus derives.
+	FailedToGenerate bool `json:"-"`
+
 	finalized bool
-	started   time.Time
+	started   time.Time      // New: catalog_application, and total unless runStart is set
+	runStart  time.Time      // StartedAt: total, when set
+	phases    []phase        // AddTime, in the order recorded
+	observer  func(LogEntry) // Observe: called after each appended log entry
+}
+
+// phase is one duration configurer.rb records with report.add_times.
+type phase struct {
+	name    string
+	seconds float64
+}
+
+// StartedAt sets when an agent run began, as Report.new's start_time does
+// (configurer.rb:305): the report's time, and the start of the total timing,
+// which configurer.rb:523 measures from it. catalog_application still runs
+// from New, where applying begins.
+func (r *Report) StartedAt(t time.Time) {
+	r.runStart = t
+	r.Time = t.UTC().Format(time.RFC3339Nano)
+}
+
+// AddTime records the duration of one phase of an agent run under Puppet's
+// name for it (configurer.rb's add_times: startup_time, node_retrieval,
+// plugin_sync, fact_generation, convert_catalog, config_retrieval). Finalize
+// emits each in the time metric; a recorded config_retrieval replaces the 0 a
+// handed-in catalog reports. A name recorded twice accumulates, as add_times
+// does by default (report.rb:163).
+func (r *Report) AddTime(name string, d time.Duration) {
+	for i := range r.phases {
+		if r.phases[i].name == name {
+			r.phases[i].seconds += d.Seconds()
+			return
+		}
+	}
+	r.phases = append(r.phases, phase{name, d.Seconds()})
+}
+
+// labelize is util/metric.rb's labelize of a metric name: capitalized,
+// underscores to spaces -- notify/Notify, file_line/File line.
+func labelize(name string) string {
+	label := strings.ReplaceAll(name, "_", " ")
+	if label != "" {
+		label = strings.ToUpper(label[:1]) + label[1:]
+	}
+	return label
 }
 
 // keepInReport reports whether a resource status survives into the serialised
@@ -175,6 +241,22 @@ type Report struct {
 // silently empty every noop report.
 func keepInReport(rs ResourceStatus) bool {
 	return rs.Failed || rs.FailedToRestart || rs.OutOfSync || rs.Skipped
+}
+
+// MarshalJSON writes a generated status's file and line as null. The outer
+// fields sit one level shallower than the embedded ones of the same JSON
+// name, and encoding/json takes the shallowest, so they replace the
+// embedded pair and every other key is unchanged.
+func (rs ResourceStatus) MarshalJSON() ([]byte, error) {
+	type plain ResourceStatus
+	if !rs.Generated {
+		return json.Marshal(plain(rs))
+	}
+	return json.Marshal(struct {
+		plain
+		File *string `json:"file"`
+		Line *int    `json:"line"`
+	}{plain: plain(rs)})
 }
 
 // MarshalJSON emits the report with unchanged resource statuses pruned.
@@ -209,7 +291,7 @@ func New(host, environment string, noop bool) *Report {
 	return &Report{
 		Host:                 host,
 		Time:                 now.Format(time.RFC3339Nano),
-		TransactionUUID:      newUUID(),
+		TransactionUUID:      NewUUID(),
 		ReportFormat:         Format,
 		PuppetVersion:        PuppetVersion,
 		Status:               "unchanged",
@@ -251,25 +333,50 @@ func (r *Report) AddResource(rs ResourceStatus) {
 	r.ResourceStatuses[rs.Resource] = rs
 }
 
+// Observe sets the one function called with each log entry right after Log or
+// AddLog appends it, in order; nil removes it. The run's console is the
+// observer, so every entry is printed as it is recorded.
+func (r *Report) Observe(f func(LogEntry)) { r.observer = f }
+
 // Log appends a log entry.
 func (r *Report) Log(level, source, message string) {
-	r.Logs = append(r.Logs, LogEntry{
-		Level:   level,
-		Message: message,
-		Source:  source,
-		Time:    time.Now().UTC().Format(time.RFC3339Nano),
-	})
+	r.AddLog(LogEntry{Level: level, Message: message, Source: source})
+}
+
+// AddLog appends whole entries: a log line another implementation already
+// worded, such as the extension host's, with its file and line. Time is
+// stamped when the entry has none.
+func (r *Report) AddLog(entries ...LogEntry) {
+	for _, e := range entries {
+		if e.Time == "" {
+			e.Time = time.Now().UTC().Format(time.RFC3339Nano)
+		}
+		r.Logs = append(r.Logs, e)
+		if r.observer != nil {
+			r.observer(e)
+		}
+	}
 }
 
 // Finalize computes the metrics and the status string. Until it is called the
 // report carries no metrics, which is exactly the state report.rb:449 answers
 // with -1; RunStatus reports that as could-not-run instead.
-func (r *Report) Finalize() {
+func (r *Report) Finalize() { r.finalize(true) }
+
+// FinalizeIncomplete finalizes the report of a transaction that stopped with an
+// error: transaction_completed stays false, which compute_status
+// (transaction/report.rb:189-200) reports as failed, and there is no "Applied
+// catalog" line, as configurer.rb's benchmark raised before logging it.
+func (r *Report) FinalizeIncomplete() { r.finalize(false) }
+
+func (r *Report) finalize(completed bool) {
 	var changes, outOfSyncCount, failed, restarts, restarted, skipped, changed, outOfSync, corrective int
 	var events, evFailure, evSuccess int
 	byType := map[string]float64{}
 	for _, rs := range r.ResourceStatuses {
-		byType[rs.ResourceType] += rs.EvaluationTime
+		if !rs.Untimed {
+			byType[rs.ResourceType] += rs.EvaluationTime
+		}
 		changes += rs.ChangeCount
 		outOfSyncCount += rs.OutOfSyncCount
 		if rs.Failed {
@@ -345,15 +452,17 @@ func (r *Report) Finalize() {
 			{"success", "Success", evSuccess},
 		},
 	}
-	// A per-resource-type breakdown, then the three phase timings, measured
-	// field for field from a live Puppet 8.10.0 report.
+	// A per-resource-type breakdown, an agent run's phases (AddTime), then the
+	// three phase timings, measured field for field from a live Puppet 8.10.0
+	// report.
 	//
 	// The differential allowlists the individual DURATIONS as run-to-run
 	// variance but compares every name and label, so the shape here is asserted
 	// rather than assumed. config_retrieval is the exception and is compared as
 	// a value: on the --catalog path neither implementation retrieves a catalog,
 	// so both must report a literal 0. Allowlisting it would throw away a real
-	// assertion in order to hide a number that never varies.
+	// assertion in order to hide a number that never varies. An agent run
+	// retrieves one and records how long that took.
 	elapsed := time.Since(r.started).Seconds()
 	types := make([]string, 0, len(byType))
 	for typ := range byType {
@@ -366,22 +475,35 @@ func (r *Report) Finalize() {
 	sort.Strings(types)
 	values := make([][]any, 0, len(byType)+4)
 	for _, typ := range types {
-		// Puppet keys the metric by the lowercased type and labels it with the
-		// type as the catalog spells it: notify/Notify, file/File.
-		values = append(values, []any{strings.ToLower(typ), typ, byType[typ]})
+		// Puppet keys the metric by the lowercased type and labels it with
+		// util/metric.rb's labelize of that key.
+		name := strings.ToLower(typ)
+		values = append(values, []any{name, labelize(name), byType[typ]})
+	}
+	retrieval := float64(0)
+	for _, p := range r.phases {
+		if p.name == "config_retrieval" {
+			retrieval = p.seconds
+			continue
+		}
+		values = append(values, []any{p.name, labelize(p.name), p.seconds})
+	}
+	totalTime := elapsed
+	if !r.runStart.IsZero() {
+		totalTime = time.Since(r.runStart).Seconds()
 	}
 	r.Metrics["time"] = Metric{
 		Name: "time", Label: "Time",
 		Values: append(values,
-			[]any{"config_retrieval", "Config retrieval", float64(0)},
+			[]any{"config_retrieval", "Config retrieval", retrieval},
 			[]any{"transaction_evaluation", "Transaction evaluation", r.EvaluationSpan.Seconds()},
 			[]any{"catalog_application", "Catalog application", elapsed},
-			[]any{"total", "Total", elapsed},
+			[]any{"total", "Total", totalTime},
 		),
 	}
 
 	switch {
-	case failed > 0 || restarts > 0:
+	case !completed || failed > 0 || restarts > 0 || r.FailedToGenerate:
 		r.Status = "failed"
 	case changes > 0:
 		r.Status = "changed"
@@ -396,7 +518,9 @@ func (r *Report) Finalize() {
 	// Logged here rather than by the command so this number and the
 	// catalog_application metric are one measurement instead of two readings of
 	// the same clock that can disagree in the last decimal place.
-	r.Log("notice", "Puppet", fmt.Sprintf("Applied catalog in %.2f seconds", elapsed))
+	if completed {
+		r.Log("notice", "Puppet", fmt.Sprintf("Applied catalog in %.2f seconds", elapsed))
+	}
 
 	r.CorrectiveChange = corrective > 0
 	// out_of_sync_count, NOT change_count: under --noop, ChangeCount is always
@@ -404,7 +528,7 @@ func (r *Report) Finalize() {
 	// events), so gating this on changes would make noop_pending permanently
 	// false and silently drop the one channel would-be changes travel in.
 	r.NoopPending = r.Noop && outOfSyncCount > 0
-	r.TransactionCompleted = true
+	r.TransactionCompleted = completed
 	r.finalized = true
 }
 
@@ -429,10 +553,10 @@ func (r *Report) RunStatus() Status {
 	return s
 }
 
-// newUUID returns a random version-4 UUID. crypto/rand.Read is documented never
+// NewUUID returns a random version-4 UUID. crypto/rand.Read is documented never
 // to return an error as of Go 1.24, so a failure here is not a runtime
 // condition to handle but a broken runtime to panic on.
-func newUUID() string {
+func NewUUID() string {
 	var b [16]byte
 	if _, err := rand.Read(b[:]); err != nil {
 		panic(fmt.Sprintf("report: crypto/rand failed: %v", err))
