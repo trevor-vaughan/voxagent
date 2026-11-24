@@ -1,0 +1,21 @@
+docs/maintainers/performance.md
+  s_edec75bbf1b7b3::t_b2671e42e29d74 28-30,145-147,168-170,174,281-283,307-309,392-394,397-399,423-425,429-430,434-436,462-464,468-470,479-481
+  s_edec75bbf1b7b3::t_8c91c55c4f579f 431-432
+  s_edec75bbf1b7b3::t_35fc98f3c146b8 3-4
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "4c8efb9b2bd0a2b2f92371436063100fd5048fe0",
+  "prompts": {},
+  "sessions": {
+    "s_edec75bbf1b7b3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f82cc920-c095-4025-9de4-ef70d9879282",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "LLM (riotbox) <llm@riotbox>"
+    }
+  }
+}
