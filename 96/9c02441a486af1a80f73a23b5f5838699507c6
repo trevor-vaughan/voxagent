@@ -1,0 +1,19 @@
+docs/maintainers/extension-host.md
+  s_87888b7b678da1::t_9ddce6493f9367 173-202
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "969c02441a486af1a80f73a23b5f5838699507c6",
+  "prompts": {},
+  "sessions": {
+    "s_87888b7b678da1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "39cc1b4e-b00b-4987-9657-3212be8ef9f3",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "LLM (riotbox) <llm@riotbox>"
+    }
+  }
+}
