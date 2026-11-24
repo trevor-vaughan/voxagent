@@ -1,0 +1,19 @@
+docs/maintainers/performance.md
+  s_820889562b7e34::t_2e890d32066dea 112-113,116,124,136,314,326,437
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "be80cf8b2e8293fc75221a40db003fc613d2ca17",
+  "prompts": {},
+  "sessions": {
+    "s_820889562b7e34": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-ae68dc1a7b96662e8",
+        "model": "unknown"
+      },
+      "human_author": "LLM (riotbox) <llm@riotbox>"
+    }
+  }
+}
