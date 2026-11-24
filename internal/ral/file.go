@@ -722,7 +722,7 @@ func applyFile(ctx context.Context, fsys fileSystem, path string, r catalog.Reso
 	}
 	hasContent := want != nil
 	if hasContent {
-		val, err := validationOf(r)
+		val, err := validationOf(r, isMarked(File{}, r, "content"))
 		if err != nil {
 			return changes, nil, err
 		}

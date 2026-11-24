@@ -3731,3 +3731,22 @@ func (p refreshBreaker) Refresh(context.Context, catalog.Resource, bool) (bool, 
 func (p refreshBreaker) Prefetch(context.Context, []catalog.Resource) (ral.Provider, error) {
 	return p, nil
 }
+
+// D-25 retired: under --noop a recursing File's unit logs the whit's notice at
+// the parent's title, counting the parent's events and each child's.
+func TestFileRecursionUnitNoopNotice(t *testing.T) {
+	var applied, refreshed []string
+	parent := res("File", "/tmp/rx/tgt", nil)
+	gen := genRecorder{
+		recorder: recorder{typ: "file", applied: &applied, refreshed: &refreshed,
+			noChange: map[string]bool{"File[/tmp/rx/tgt]": true}, changes: 1},
+		children: map[string][]catalog.Resource{"File[/tmp/rx/tgt]": generatedChildren(parent,
+			"/tmp/rx/tgt/a", "/tmp/rx/tgt/b", "/tmp/rx/tgt/c")},
+	}
+	tx := txWithGenerator(gen)
+	tx.Noop = true
+	rep := runCatalog(t, tx, &catalog.Catalog{Resources: []catalog.Resource{parent}})
+	if !logged(rep, "notice", "/tmp/rx/tgt", "Would have triggered 'refresh' from 3 events") {
+		t.Errorf("logs:\n%s", fmtLogs(rep))
+	}
+}

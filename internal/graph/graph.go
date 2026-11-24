@@ -11,6 +11,7 @@ import (
 	"container/heap"
 	"fmt"
 	"maps"
+	"slices"
 	"sort"
 	"strings"
 )
@@ -165,6 +166,7 @@ type Graph struct {
 	refs     []string // sorted
 	vertex   map[string]Vertex
 	out      map[string][]string // deduplicated, sorted
+	in       map[string][]string // deduplicated, sorted
 	refresh  map[string][]string // deduplicated, sorted
 	indegree map[string]int
 }
@@ -182,6 +184,7 @@ func New(vertices []Vertex, edges []Edge) (*Graph, error) {
 		refs:     make([]string, 0, len(vertices)),
 		vertex:   make(map[string]Vertex, len(vertices)),
 		out:      make(map[string][]string, len(vertices)),
+		in:       make(map[string][]string, len(vertices)),
 		refresh:  make(map[string][]string),
 		indegree: make(map[string]int, len(vertices)),
 	}
@@ -240,10 +243,14 @@ func New(vertices []Vertex, edges []Edge) (*Graph, error) {
 		}
 		seen[key] = true
 		g.out[e.Source] = append(g.out[e.Source], e.Target)
+		g.in[e.Target] = append(g.in[e.Target], e.Source)
 		g.indegree[e.Target]++
 	}
 	for k := range g.out {
 		sort.Strings(g.out[k])
+	}
+	for k := range g.in {
+		sort.Strings(g.in[k])
 	}
 	for k := range g.refresh {
 		sort.Strings(g.refresh[k])
@@ -499,6 +506,17 @@ func (g *Graph) Label(ref string) string {
 // RefreshTargets returns the references a refresh from ref propagates to.
 func (g *Graph) RefreshTargets(ref string) []string {
 	return append([]string(nil), g.refresh[ref]...)
+}
+
+// Predecessors returns the source of every edge into ref, sorted.
+func (g *Graph) Predecessors(ref string) []string {
+	return append([]string(nil), g.in[ref]...)
+}
+
+// HasEdge reports whether the graph has an edge from source to target.
+func (g *Graph) HasEdge(source, target string) bool {
+	_, found := slices.BinarySearch(g.out[source], target)
+	return found
 }
 
 // Dependents returns every reference reachable from ref, transitively.

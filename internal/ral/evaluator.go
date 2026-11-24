@@ -152,12 +152,41 @@ type AutoRelating interface {
 	AutoRelations(r catalog.Resource) []AutoRelation
 }
 
+// AutoRelationWarning is implemented by a provider whose type logs a warning
+// while Puppet builds the relationship graph, from inside an autorelation
+// block (concat_fragment's orphan warning). The graph build logs each string
+// at "warning", at the resource's path, in catalog order and before the
+// resource's own auto-relations are added.
+type AutoRelationWarning interface {
+	GraphWarnings(r catalog.Resource, c *catalog.Catalog) []string
+}
+
+// ContentMark is what an Override does to a File's content mark. Ruby's flag
+// has three states (true, false, nil) and the override needs a fourth, "no
+// change", so a *bool cannot carry it (concat design §5.4).
+type ContentMark uint8
+
+const (
+	// ContentMarkKeep leaves the mark alone: the zero value, and the host's.
+	ContentMarkKeep ContentMark = iota
+	// ContentMarkSensitive marks content, without cascading to ensure.
+	ContentMarkSensitive
+	// ContentMarkNotSensitive unmarks content and records it as explicitly
+	// not sensitive: its events report redacted false.
+	ContentMarkNotSensitive
+	// ContentMarkUnset unmarks content and records nothing: redacted null.
+	ContentMarkUnset
+)
+
 // Override is a generator's change to a resource that already existed.
 type Override struct {
 	Ref        string
 	Parameters map[string]any // catalog representation (float64 numbers)
 	// Sensitive names the Parameters the generator marked Sensitive.
 	Sensitive []string
+	// ContentMark sets the content mark the way Ruby's parameter flag does.
+	// Unlike Sensitive it does not cascade to a File's ensure.
+	ContentMark ContentMark
 }
 
 // EvalGeneration is what a Tier 3 eval_generate produced at the parent's
@@ -171,8 +200,13 @@ type EvalGeneration struct {
 	// spelling: add_resource contains a generated resource in its generator's
 	// container (:131-148).
 	Containers map[string]string
-	Overrides  []Override
-	Logs       []report.LogEntry
+	// Existing are the refs eval_generate returned that the catalog already
+	// held, in returned order. Puppet's completion whit waits for them as for
+	// a new resource (:80-117), so the walk applies them in the unit (§5.5 of
+	// the concat design).
+	Existing  []string
+	Overrides []Override
+	Logs      []report.LogEntry
 	// Failed is Puppet's resources_failed_to_generate: eval_generate raised,
 	// and Logs carry the line Puppet logged for it.
 	Failed bool

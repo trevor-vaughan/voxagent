@@ -679,7 +679,6 @@ func TestFileValidateCmdOutputIsLoggedLineByLine(t *testing.T) {
 			dir := t.TempDir()
 			path := filepath.Join(dir, "target")
 			r := fileRes(path, map[string]any{"content": "secret\n", "validate_cmd": tc.cmd})
-			r.SensitiveParameters = []string{"content"}
 			src := fileSources(path)
 
 			ctx, got := debugContext("debug")
@@ -716,6 +715,63 @@ func TestFileValidateCmdOutputIsLoggedLineByLine(t *testing.T) {
 		}
 		if len(*got) != 0 {
 			t.Errorf("entries = %+v, want none at notice", *got)
+		}
+	})
+}
+
+// D-78: a validator can echo the content it checks, so a marked content
+// prints none of its output, in the failure text or the debug lines.
+func TestValidateCmdOutputRedactedWhenContentMarked(t *testing.T) {
+	const failCmd = `/bin/sh -c "echo s3cret-token; exit 3" %`
+	marks := map[string]func(*catalog.Resource){
+		"SensitiveParameters": func(r *catalog.Resource) { r.SensitiveParameters = []string{"content"} },
+		"SetSensitivity":      func(r *catalog.Resource) { r.SetSensitivity = map[string]bool{"content": true} },
+	}
+	for name, mark := range marks {
+		t.Run(name+" failure", func(t *testing.T) {
+			path := filepath.Join(t.TempDir(), "target")
+			r := fileRes(path, map[string]any{"content": "x\n", "validate_cmd": failCmd})
+			mark(&r)
+			changes := applyValidated(t, r, false)
+			if len(changes) == 0 || changes[0].Err == nil {
+				t.Fatalf("changes = %+v, want a failed content change", changes)
+			}
+			wantErr := regexp.MustCompile(`^Execution of '/bin/sh -c "echo s3cret-token; exit 3" ` +
+				tempPattern(filepath.Dir(path), "target") + `' returned 3: \[output redacted\]$`)
+			if !wantErr.MatchString(changes[0].Err.Error()) {
+				t.Errorf("err = %q, want the output redacted", changes[0].Err)
+			}
+		})
+		t.Run(name+" success logs no output", func(t *testing.T) {
+			path := filepath.Join(t.TempDir(), "target")
+			src := fileSources(path)
+			r := fileRes(path, map[string]any{"content": "x\n", "validate_cmd": `/bin/sh -c 'echo s3cret-token' %`})
+			mark(&r)
+			ctx, got := debugContext("debug")
+			if _, _, err := (File{}).Apply(WithSources(ctx, src), r, false); err != nil {
+				t.Fatalf("Apply returned error: %v", err)
+			}
+			if lines := linesAt(*got, src.Resource); len(lines) != 0 {
+				t.Errorf("debug lines = %q, want none", lines)
+			}
+		})
+	}
+
+	t.Run("unmarked failure keeps the output", func(t *testing.T) {
+		path := filepath.Join(t.TempDir(), "target")
+		changes := applyValidated(t, fileRes(path, map[string]any{"content": "x\n", "validate_cmd": failCmd}), false)
+		if len(changes) == 0 || changes[0].Err == nil || !strings.HasSuffix(changes[0].Err.Error(), "returned 3: s3cret-token") {
+			t.Fatalf("changes = %+v, want a failure ending returned 3: s3cret-token", changes)
+		}
+	})
+
+	t.Run("another marked attribute does not redact", func(t *testing.T) {
+		path := filepath.Join(t.TempDir(), "target")
+		r := fileRes(path, map[string]any{"content": "x\n", "mode": "0600", "validate_cmd": failCmd})
+		r.SensitiveParameters = []string{"mode"}
+		changes := applyValidated(t, r, false)
+		if len(changes) == 0 || changes[0].Err == nil || !strings.HasSuffix(changes[0].Err.Error(), "returned 3: s3cret-token") {
+			t.Fatalf("changes = %+v, want the output kept", changes)
 		}
 	})
 }

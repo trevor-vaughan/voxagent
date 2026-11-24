@@ -197,6 +197,12 @@ func (l relationshipLog) debug(ref, suffix, format string, args ...any) {
 	runlog.Debugf(l.ctx, "/"+strings.Join(l.paths[ref], "/")+suffix, format, args...)
 }
 
+// warning logs a warning a type raises while the graph is built, at ref's
+// containment path. Unlike debug it is kept at every log level.
+func (l relationshipLog) warning(ref, message string) {
+	runlog.From(l.ctx).Log("warning", "/"+strings.Join(l.paths[ref], "/"), message)
+}
+
 // name is the reference Ruby prints for ref: Puppet's own where it differs from
 // the catalog's.
 func (l relationshipLog) name(ref string) string {
@@ -300,6 +306,11 @@ func autoRequireEdges(c *catalog.Catalog, reg *ral.Registry, known map[string]st
 			// Later auto edges, of this resource or another, see this one too.
 			statedPair[[2]string{source, target}] = struct{}{}
 			out = append(out, graph.Edge{Source: source, Target: target, Refresh: refresh})
+		}
+		if w, ok := provider.(ral.AutoRelationWarning); ok {
+			for _, message := range w.GraphWarnings(r, c) {
+				logs.warning(ref, message)
+			}
 		}
 		for _, before := range provider.AutoRequires(r, managed) {
 			add("require", before, ref, false)

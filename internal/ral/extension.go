@@ -203,11 +203,11 @@ func (e Extension) MetaparamGaps(r catalog.Resource) []Gap { return MetaparamGap
 func (e Extension) EvalGenerates(catalog.Resource) bool { return e.info.EvalGenerates }
 
 // EvalGenerate implements EvalGenerator. The host has validated every ref it
-// names. Two parts of its answer are dropped, because the walk cannot act on
-// them (docs/maintainers/apply-spine.md): Existing, the resources eval_generate
-// returned that the catalog already held, which Puppet uses to move the
-// parent's out-edges onto a completed sentinel; and Before, relationship
-// values appended mid-walk, after the walk's order was fixed.
+// names. Existing, the resources eval_generate returned that the catalog
+// already held, passes through: the walk applies them in the parent's unit.
+// Before, relationship values appended mid-walk, after the walk's order was
+// fixed, is dropped, because the walk cannot act on it
+// (docs/maintainers/apply-spine.md).
 // Children and overrides are applied natively, so their rich values are
 // resolved as Decode resolves the catalog's (catalog.ResolveRich): the host's
 // to_data_hash writes an ASCII-8BIT string as a Binary.
@@ -223,7 +223,7 @@ func (e Extension) EvalGenerate(ctx context.Context, r catalog.Resource) (EvalGe
 	if err != nil {
 		return EvalGeneration{}, err
 	}
-	out := EvalGeneration{Containers: g.Containers, Logs: ConvertLogs(g.Logs), Failed: g.Failed}
+	out := EvalGeneration{Containers: g.Containers, Existing: g.Existing, Logs: ConvertLogs(g.Logs), Failed: g.Failed}
 	for _, gr := range g.Resources {
 		child := catalog.Resource{Type: gr.Type, Title: gr.Title, Tags: gr.Tags, Kind: gr.Kind,
 			Exported: gr.Exported, GeneratedFrom: &r}

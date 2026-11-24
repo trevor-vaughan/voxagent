@@ -76,9 +76,11 @@ func (p paramRecorder) Prefetch(ctx context.Context, rs []catalog.Resource) (ral
 
 // evalGenFixture holds what an eval_generate test reads back.
 type evalGenFixture struct {
-	calls, applied, refreshed, seen, prefetched []string
+	calls, applied, refreshed, seen, prefetched, primedSeen []string
 	// prefetchErr is what Prefetch returns, per lowercase type.
 	prefetchErr map[string]error
+	// noChange names the resources whose Apply reports nothing.
+	noChange map[string]bool
 }
 
 // tx registers stub as vox_evalgen beside a parameter-recording file, and
@@ -88,7 +90,8 @@ func (f *evalGenFixture) tx(stub evalGenStub, failOn map[string]bool) *Transacti
 	stub.calls = &f.calls
 	mk := func(typ, providerName string) recorder {
 		return recorder{typ: typ, applied: &f.applied, refreshed: &f.refreshed, failOn: failOn, changes: 1,
-			providerName: providerName, prefetched: &f.prefetched, prefetchErr: f.prefetchErr[typ]}
+			noChange: f.noChange, providerName: providerName, prefetched: &f.prefetched,
+			prefetchErr: f.prefetchErr[typ], primedSeen: &f.primedSeen}
 	}
 	return &Transaction{Registry: ral.NewRegistry(stub, paramRecorder{recorder: mk("file", "posix"), seen: &f.seen},
 		mk("exec", "posix"), mk("notify", ""))}
@@ -584,5 +587,324 @@ func TestOverrideMergesSensitiveWithoutMutatingTheCatalog(t *testing.T) {
 	w.override(ral.Override{Ref: "File[/g]", Parameters: map[string]any{"content": "x"}})
 	if got := w.byRef["File[/g]"].SensitiveParameters; got != nil {
 		t.Errorf("an override without Sensitive left %v, want nil", got)
+	}
+}
+
+// existingUnit is inMain over rs with Vox_evalgen[g] first. A resource placed
+// after Notify[mid] in rs and applied before it was applied in g's unit.
+func existingUnit(gParams map[string]any, rs ...catalog.Resource) *catalog.Catalog {
+	return inMain(append([]catalog.Resource{res("Vox_evalgen", "g", gParams), res("Notify", "mid", nil)}, rs...)...)
+}
+
+// returning is a stub whose Vox_evalgen[g] returns existing as the catalog
+// resources its eval_generate made.
+func returning(existing ...string) evalGenStub {
+	return evalGenStub{gens: map[string]ral.EvalGeneration{"Vox_evalgen[g]": {Existing: existing}}}
+}
+
+func appliedBefore(applied []string, first, second string) bool {
+	i, j := slices.Index(applied, first), slices.Index(applied, second)
+	return i >= 0 && j >= 0 && i < j
+}
+
+// §5.5 (M1, M13, M14 c): an existing member is applied right after its
+// generator with its own out-edges live, so its own notify fires and its
+// container counts its event beside the whit's; the whit gives the
+// generator's notify target exactly one event.
+func TestExistingMemberKeepsOutEdgesAndRefreshesParentTargets(t *testing.T) {
+	f := evalGenFixture{noChange: map[string]bool{"Notify[mid]": true, "Exec[n]": true, "Notify[x]": true}}
+	ctx, got := logContext("debug")
+	rep := runCatalogCtx(t, ctx, f.tx(returning("File[f]"), nil), existingUnit(map[string]any{"notify": "Exec[n]"},
+		res("File", "f", map[string]any{"notify": "Notify[x]"}), res("Exec", "n", nil), res("Notify", "x", nil)))
+
+	if !appliedBefore(f.applied, "File[f]", "Notify[mid]") {
+		t.Errorf("applied = %v, want File[f] in g's unit, before Notify[mid]", f.applied)
+	}
+	if n := strings.Count(strings.Join(f.applied, " "), "File[f]"); n != 1 {
+		t.Errorf("File[f] applied %d times: %v", n, f.applied)
+	}
+	if !slices.Contains(f.refreshed, "Notify[x]") {
+		t.Errorf("refreshed = %v, want the member's own notify target", f.refreshed)
+	}
+	if n := strings.Count(strings.Join(f.refreshed, " "), "Exec[n]"); n != 1 ||
+		!logged(rep, "notice", "/Stage[main]/Main/Exec[n]", "Triggered 'refresh' from 1 event") {
+		t.Errorf("Exec[n] refreshed %d times; logs:\n%s", n, fmtLogs(rep))
+	}
+	lines := debugLines(*got)
+	container := slices.Index(lines, "/Stage[main]/Main/File[f]: The container Class[Main] will propagate my refresh event")
+	unit := slices.Index(lines, "/Stage[main]/Main/File[f]: The container g will propagate my refresh event")
+	if container < 0 || unit < container {
+		t.Errorf("lines = %q, want the container line then the unit line at File[f]", lines)
+	}
+	for _, line := range lines {
+		if strings.Contains(line, "Skipping automatic relationship") {
+			t.Errorf("line %q: no edge runs from File[f] to g", line)
+		}
+	}
+
+	// Class[Main]'s whit is sent the member's event and the unit whit's.
+	f = evalGenFixture{noChange: map[string]bool{"Notify[mid]": true}}
+	tx := f.tx(returning("File[f]"), nil)
+	tx.Noop = true
+	rep = runCatalog(t, tx, existingUnit(nil, res("File", "f", nil)))
+	if !logged(rep, "notice", "Class[Main]", "Would have triggered 'refresh' from 2 events") {
+		t.Errorf("logs:\n%s", fmtLogs(rep))
+	}
+}
+
+// The member is applied through the primed provider, prefetched once before
+// the walk, and the walker's own turn for it applies nothing.
+func TestExistingMemberAppliedOnceThroughPrimed(t *testing.T) {
+	var f evalGenFixture
+	runCatalog(t, f.tx(returning("File[f]"), nil), existingUnit(nil, res("File", "f", nil)))
+	var file []string
+	for _, line := range f.primedSeen {
+		if strings.HasPrefix(line, "File[f]") {
+			file = append(file, line)
+		}
+	}
+	if !slices.Equal(file, []string{"File[f] primed=true"}) {
+		t.Errorf("File[f] applies = %v, want one through the primed provider", file)
+	}
+	if !slices.Equal(f.seen, []string{"File[f] content=<nil>"}) {
+		t.Errorf("file applies = %v, want File[f] once", f.seen)
+	}
+	if n := strings.Count(strings.Join(f.prefetched, "\n"), "file "); n != 1 {
+		t.Errorf("prefetched = %v, want file once", f.prefetched)
+	}
+}
+
+// M21 a: a member an edge put before its generator was applied at its own
+// turn and is not applied again. It sends the whit nothing, so the
+// generator's notify target is not refreshed, and the generator logs
+// Puppet's line for the edge it did not add, before it is evaluated. The
+// override reaches a resource already applied, so it changes nothing.
+func TestExistingMemberAlreadyVisitedIsNotReapplied(t *testing.T) {
+	f := evalGenFixture{noChange: map[string]bool{"Notify[mid]": true, "Exec[n]": true}}
+	stub := evalGenStub{gens: map[string]ral.EvalGeneration{"Vox_evalgen[g]": {Existing: []string{"File[f]"},
+		Overrides: []ral.Override{{Ref: "File[f]", Parameters: map[string]any{"content": "concat\n"}}}}}}
+	stub.evals = map[string]ral.Evaluation{"Vox_evalgen[g]": {
+		Logs: []report.LogEntry{{Level: "notice", Source: "/Stage[main]/Main/Vox_evalgen[g]", Message: "evaluated"}}}}
+	ctx, got := logContext("debug")
+	rep := runCatalogCtx(t, ctx, f.tx(stub, nil), inMain(
+		res("File", "f", map[string]any{"content": "declared\n", "before": "Vox_evalgen[g]"}),
+		res("Vox_evalgen", "g", map[string]any{"notify": "Exec[n]"}), res("Exec", "n", nil)))
+
+	if !slices.Equal(f.seen, []string{"File[f] content=declared\n"}) {
+		t.Errorf("file applies = %v, want the declared content once", f.seen)
+	}
+	if slices.Contains(f.refreshed, "Exec[n]") {
+		t.Errorf("refreshed = %v: the whit had no event", f.refreshed)
+	}
+	skipping := slices.IndexFunc(*got, func(e report.LogEntry) bool {
+		return e.Level == "debug" && e.Source == "/Stage[main]/Main/Vox_evalgen[g]" &&
+			e.Message == "Skipping automatic relationship to File[f]"
+	})
+	evaluated := slices.IndexFunc(*got, func(e report.LogEntry) bool { return e.Message == "evaluated" })
+	if skipping < 0 || evaluated < skipping {
+		t.Errorf("want the skip line before g is evaluated; lines = %q", debugLines(*got))
+	}
+	if slices.Contains(debugLines(*got), "/Stage[main]/Main/File[f]: The container g will propagate my refresh event") {
+		t.Errorf("lines = %q: File[f] is not in g's unit", debugLines(*got))
+	}
+	if st := rep.ResourceStatuses["File[f]"]; st.Failed || st.Skipped {
+		t.Errorf("File[f] status = %+v", st)
+	}
+}
+
+// The D-43 residue: a member with an unvisited predecessor other than its
+// generator stays at its own turn, outside the unit.
+func TestExistingMemberNotReadyStaysAtItsTurn(t *testing.T) {
+	f := evalGenFixture{noChange: map[string]bool{"Notify[mid]": true, "Notify[late]": true, "Exec[n]": true}}
+	ctx, got := logContext("debug")
+	runCatalogCtx(t, ctx, f.tx(returning("File[f]"), nil), existingUnit(map[string]any{"notify": "Exec[n]"},
+		res("File", "f", map[string]any{"require": "Notify[late]"}), res("Notify", "late", nil), res("Exec", "n", nil)))
+	if !appliedBefore(f.applied, "Notify[late]", "File[f]") {
+		t.Errorf("applied = %v, want File[f] after Notify[late]", f.applied)
+	}
+	if n := strings.Count(strings.Join(f.applied, " "), "File[f]"); n != 1 {
+		t.Errorf("File[f] applied %d times: %v", n, f.applied)
+	}
+	if slices.Contains(f.refreshed, "Exec[n]") {
+		t.Errorf("refreshed = %v: File[f] was not in g's unit", f.refreshed)
+	}
+	if slices.Contains(debugLines(*got), "/Stage[main]/Main/File[f]: The container g will propagate my refresh event") {
+		t.Errorf("lines = %q: File[f] is not in g's unit", debugLines(*got))
+	}
+}
+
+// A member whose visited predecessor failed is skipped in the unit, as at its
+// own turn, and the skip blocks the generator's dependents.
+func TestExistingMemberWithFailedPredecessorIsSkipped(t *testing.T) {
+	f := evalGenFixture{noChange: map[string]bool{"Notify[mid]": true}}
+	rep := runCatalog(t, f.tx(returning("File[f]"), map[string]bool{"Exec[fail]": true}), inMain(
+		res("Exec", "fail", nil), res("Vox_evalgen", "g", nil), res("Notify", "mid", nil),
+		res("File", "f", map[string]any{"require": "Exec[fail]"}),
+		res("Notify", "dep", map[string]any{"require": "Vox_evalgen[g]"})))
+	if st := rep.ResourceStatuses["File[f]"]; !st.Skipped || slices.Contains(f.applied, "File[f]") {
+		t.Errorf("File[f] status = %+v, applied = %v", st, f.applied)
+	}
+	if !logged(rep, "notice", "/Stage[main]/Main/File[f]", "Dependency Exec[fail] has failures: true") {
+		t.Errorf("logs:\n%s", fmtLogs(rep))
+	}
+	if st := rep.ResourceStatuses["Notify[dep]"]; !st.Skipped || slices.Contains(f.applied, "Notify[dep]") {
+		t.Errorf("g's dependent status = %+v, applied = %v", st, f.applied)
+	}
+}
+
+// M10: a failed member blocks its generator's dependents, which name it.
+func TestExistingMemberFailureBlocksParentDependents(t *testing.T) {
+	var f evalGenFixture
+	rep := runCatalog(t, f.tx(returning("File[f]"), map[string]bool{"File[f]": true}), existingUnit(nil,
+		res("File", "f", nil), res("Notify", "dep", map[string]any{"require": "Vox_evalgen[g]"})))
+	if !rep.ResourceStatuses["File[f]"].Failed {
+		t.Errorf("File[f] status = %+v", rep.ResourceStatuses["File[f]"])
+	}
+	if st := rep.ResourceStatuses["Notify[dep]"]; !st.Skipped ||
+		!logged(rep, "notice", "/Stage[main]/Main/Notify[dep]", "Dependency File[f] has failures: true") {
+		t.Errorf("g's dependent status = %+v; logs:\n%s", st, fmtLogs(rep))
+	}
+}
+
+// A generator skipped for a failed dependency still generates, and a member
+// is skipped with it, its own dependents too: Puppet's member depends on its
+// generator (ARG:119-128).
+func TestExistingMemberOfASkippedParentIsSkipped(t *testing.T) {
+	var f evalGenFixture
+	rep := runCatalog(t, f.tx(returning("File[f]"), map[string]bool{"Exec[fail]": true}), inMain(
+		res("Exec", "fail", nil), res("Vox_evalgen", "g", map[string]any{"require": "Exec[fail]"}),
+		res("Notify", "mid", nil), res("File", "f", nil),
+		res("Notify", "fdep", map[string]any{"require": "File[f]"})))
+	if !slices.Contains(f.calls, "eval_generate Vox_evalgen[g]") {
+		t.Errorf("calls = %v, want g to generate", f.calls)
+	}
+	for _, ref := range []string{"File[f]", "Notify[fdep]"} {
+		if st := rep.ResourceStatuses[ref]; !st.Skipped || slices.Contains(f.applied, ref) {
+			t.Errorf("%s status = %+v, applied = %v", ref, st, f.applied)
+		}
+	}
+	if !slices.Contains(f.applied, "Notify[mid]") {
+		t.Errorf("applied = %v, want Notify[mid]", f.applied)
+	}
+}
+
+// The rules are type-neutral: a host generator may return any catalog
+// resource.
+func TestExistingMemberOfAnyType(t *testing.T) {
+	f := evalGenFixture{noChange: map[string]bool{"Notify[mid]": true, "Exec[n]": true, "Notify[x]": true}}
+	ctx, got := logContext("debug")
+	rep := runCatalogCtx(t, ctx, f.tx(returning("Notify[m]"), nil), existingUnit(map[string]any{"notify": "Exec[n]"},
+		res("Notify", "m", map[string]any{"notify": "Notify[x]"}), res("Exec", "n", nil), res("Notify", "x", nil)))
+	if !appliedBefore(f.applied, "Notify[m]", "Notify[mid]") {
+		t.Errorf("applied = %v, want Notify[m] in g's unit", f.applied)
+	}
+	if !slices.Contains(f.refreshed, "Notify[x]") ||
+		!logged(rep, "notice", "/Stage[main]/Main/Exec[n]", "Triggered 'refresh' from 1 event") {
+		t.Errorf("refreshed = %v; logs:\n%s", f.refreshed, fmtLogs(rep))
+	}
+	if !slices.Contains(debugLines(*got), "/Stage[main]/Main/Notify[m]: The container g will propagate my refresh event") {
+		t.Errorf("lines = %q", debugLines(*got))
+	}
+}
+
+// A member is applied as at its own turn, so a native Generator's resource
+// generates and is applied with what it made, all inside the unit.
+func TestExistingMemberGeneratesAsAtItsTurn(t *testing.T) {
+	var calls, applied, refreshed []string
+	member := res("File", "/d", nil)
+	stub := returning("File[/d]")
+	stub.typ, stub.calls = "vox_evalgen", &calls
+	gen := genRecorder{recorder: recorder{typ: "file", applied: &applied, refreshed: &refreshed, changes: 1},
+		children: map[string][]catalog.Resource{"File[/d]": generatedChildren(member, "/d/a")}}
+	tx := &Transaction{Registry: ral.NewRegistry(stub, gen,
+		recorder{typ: "notify", applied: &applied, refreshed: &refreshed, changes: 1})}
+	runCatalog(t, tx, existingUnit(nil, member))
+	if want := []string{"File[/d]", "File[/d/a]", "Notify[mid]"}; !slices.Equal(applied, want) {
+		t.Errorf("applied = %v, want %v", applied, want)
+	}
+}
+
+// An eval_generate that failed made nothing: Existing is not read, and the
+// resource is applied at its own turn.
+func TestEvalGenerateFailedHasNoMembers(t *testing.T) {
+	f := evalGenFixture{noChange: map[string]bool{"Notify[mid]": true, "Exec[n]": true}}
+	stub := evalGenStub{gens: map[string]ral.EvalGeneration{"Vox_evalgen[g]": {Failed: true, Existing: []string{"File[f]"}}}}
+	runCatalog(t, f.tx(stub, nil), existingUnit(map[string]any{"notify": "Exec[n]"},
+		res("File", "f", nil), res("Exec", "n", nil)))
+	if !appliedBefore(f.applied, "Notify[mid]", "File[f]") {
+		t.Errorf("applied = %v, want File[f] at its own turn", f.applied)
+	}
+	if slices.Contains(f.refreshed, "Exec[n]") {
+		t.Errorf("refreshed = %v: there was no unit", f.refreshed)
+	}
+}
+
+// A member set aside as unsuitable at its own turn has not had it, so the
+// unit takes it; the unit cannot defer it, and fails it at once (D-56). The
+// walk's later offer of it does nothing.
+func TestExistingMemberDeferredIsFailedInTheUnit(t *testing.T) {
+	var f evalGenFixture
+	stub := evalGenStub{evaluatorStub: evaluatorStub{
+		evals: map[string]ral.Evaluation{"Vox_evalgen[u]": {Failed: true, Unsuitable: true}},
+	}, gens: map[string]ral.EvalGeneration{"Vox_evalgen[g]": {Existing: []string{"Vox_evalgen[u]"}}}}
+	rep := runCatalog(t, f.tx(stub, nil), &catalog.Catalog{Resources: []catalog.Resource{
+		res("Vox_evalgen", "u", nil), res("Vox_evalgen", "g", nil)}})
+	want := []string{"evaluate Vox_evalgen[u]", "eval_generate Vox_evalgen[g]", "evaluate Vox_evalgen[g]",
+		"evaluate Vox_evalgen[u]", "fail_unsuitable Vox_evalgen[u]"}
+	if !slices.Equal(f.calls, want) {
+		t.Errorf("calls = %q, want %q", f.calls, want)
+	}
+	if st := rep.ResourceStatuses["Vox_evalgen[u]"]; !st.Failed || st.Skipped {
+		t.Errorf("status = %+v", st)
+	}
+}
+
+// §0 row 8, §5.5 (D-25 retired): under --noop the unit's whit logs "Would have
+// triggered" at the generator's title, once, after the members' lines, counting
+// the parent's events and every member's.
+func TestUnitNoopNoticeCountsEvents(t *testing.T) {
+	const title = "/etc/c09exist.conf"
+	for _, tc := range []struct {
+		name    string
+		noop    bool
+		changes int    // events the member's Apply reports
+		want    string // empty: no notice
+	}{
+		{"four events", true, 4, "Would have triggered 'refresh' from 4 events"},
+		{"one event", true, 1, "Would have triggered 'refresh' from 1 event"},
+		{"no events", true, 0, ""},
+		{"live run", false, 4, ""},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var f evalGenFixture
+			stub := evalGenStub{gens: map[string]ral.EvalGeneration{"Vox_evalgen[" + title + "]": {Existing: []string{"File[f]"}}}}
+			stub.typ, stub.calls = "vox_evalgen", &f.calls
+			file := recorder{typ: "file", applied: &f.applied, refreshed: &f.refreshed, changes: tc.changes}
+			tx := &Transaction{Registry: ral.NewRegistry(stub, file), Noop: tc.noop}
+			rep := runCatalog(t, tx, inMain(res("Vox_evalgen", title, nil), res("File", "f", nil)))
+			var notices []int
+			for i, l := range rep.Logs {
+				if strings.Contains(l.Message, "Would have triggered") && l.Source == title {
+					notices = append(notices, i)
+					if l.Message != tc.want {
+						t.Errorf("message = %q, want %q", l.Message, tc.want)
+					}
+				}
+			}
+			if tc.want == "" {
+				if len(notices) != 0 {
+					t.Errorf("notice logged, want none; logs:\n%s", fmtLogs(rep))
+				}
+				return
+			}
+			if len(notices) != 1 {
+				t.Fatalf("notices = %d, want 1; logs:\n%s", len(notices), fmtLogs(rep))
+			}
+			for i, l := range rep.Logs {
+				if strings.Contains(l.Source, "File[f]") && i > notices[0] {
+					t.Errorf("member line %q follows the notice; logs:\n%s", l.Message, fmtLogs(rep))
+				}
+			}
+		})
 	}
 }

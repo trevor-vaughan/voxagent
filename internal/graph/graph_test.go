@@ -845,3 +845,58 @@ func TestCycleErrorNamesVerticesByLabel(t *testing.T) {
 		t.Errorf("Cycle = %v, want the vertices' refs; only the message uses labels", ce.Cycle)
 	}
 }
+
+// Predecessors names the source of every in-edge once, sorted, and is a copy.
+func TestGraphPredecessors(t *testing.T) {
+	g, err := New(
+		vertices("File[t]", "File[b]", "File[a]", "File[loner]"),
+		[]Edge{
+			{Source: "File[b]", Target: "File[t]"},
+			{Source: "File[a]", Target: "File[t]", Refresh: true},
+			{Source: "File[a]", Target: "File[t]"},
+			{Source: "File[t]", Target: "File[loner]"},
+		},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := g.Predecessors("File[t]")
+	if !slices.Equal(got, []string{"File[a]", "File[b]"}) {
+		t.Errorf("Predecessors(File[t]) = %v, want [File[a] File[b]]", got)
+	}
+	got[0] = "MUTATED"
+	if slices.Contains(g.Predecessors("File[t]"), "MUTATED") {
+		t.Error("Predecessors returns the graph's own slice")
+	}
+	if got := g.Predecessors("File[a]"); len(got) != 0 {
+		t.Errorf("Predecessors(File[a]) = %v, want none", got)
+	}
+	if got := g.Predecessors("File[unknown]"); len(got) != 0 {
+		t.Errorf("Predecessors(File[unknown]) = %v, want none", got)
+	}
+}
+
+// HasEdge is directional and direct: a transitive path is not an edge.
+func TestGraphHasEdge(t *testing.T) {
+	g, err := New(
+		vertices("File[a]", "File[b]", "File[c]"),
+		[]Edge{{Source: "File[a]", Target: "File[b]"}, {Source: "File[b]", Target: "File[c]", Refresh: true}},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		source, target string
+		want           bool
+	}{
+		{"File[a]", "File[b]", true},
+		{"File[b]", "File[c]", true},
+		{"File[b]", "File[a]", false},
+		{"File[a]", "File[c]", false},
+		{"File[a]", "File[unknown]", false},
+	} {
+		if got := g.HasEdge(tc.source, tc.target); got != tc.want {
+			t.Errorf("HasEdge(%s, %s) = %v, want %v", tc.source, tc.target, got, tc.want)
+		}
+	}
+}

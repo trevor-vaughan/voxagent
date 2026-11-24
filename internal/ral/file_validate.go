@@ -29,13 +29,17 @@ import (
 type validation struct {
 	cmd         string
 	replacement string
+	// outputRedacted is set when the File's content is marked Sensitive: a
+	// validator can echo the content it checks, so its output is never
+	// printed (D-78).
+	outputRedacted bool
 }
 
 // validationOf returns r's validation, or nil when it declares no
-// validate_cmd. validate_replacement defaults to % (type/file.rb:379-384).
+// validate_cmd. outputRedacted says whether r's content is marked. validate_replacement defaults to % (type/file.rb:379-384).
 // Validate refuses a parameter that is not a string; the error here keeps a
 // resource that reached Apply without Validate from writing unvalidated.
-func validationOf(r catalog.Resource) (*validation, error) {
+func validationOf(r catalog.Resource, outputRedacted bool) (*validation, error) {
 	raw, ok := r.Parameters["validate_cmd"]
 	if !ok {
 		return nil, nil
@@ -44,7 +48,7 @@ func validationOf(r catalog.Resource) (*validation, error) {
 	if !ok {
 		return nil, fmt.Errorf("validate_cmd is %T, not a string", raw)
 	}
-	v := &validation{cmd: cmd, replacement: "%"}
+	v := &validation{cmd: cmd, replacement: "%", outputRedacted: outputRedacted}
 	if raw, ok := r.Parameters["validate_replacement"]; ok {
 		if v.replacement, ok = raw.(string); !ok {
 			return nil, fmt.Errorf("validate_replacement is %T, not a string", raw)
@@ -99,14 +103,18 @@ func (v *validation) run(ctx context.Context, tmpPath string) error {
 	}
 	if status == 0 {
 		// type/file.rb:940: each line of the output, in Ruby's split, is a
-		// debug line at the resource's path. validate_cmd is a plain
-		// parameter, so the lines are never redacted.
-		if l := runlog.From(ctx); l.Enabled("debug") {
+		// debug line at the resource's path. A marked content prints none
+		// (D-78); Exec's one "[output redacted]" line is not copied, as the
+		// validator's output is not a command result the user asked to see.
+		if l := runlog.From(ctx); !v.outputRedacted && l.Enabled("debug") {
 			for _, out := range splitOutput(output) {
 				l.Log("debug", SourcesFrom(ctx).Resource, out)
 			}
 		}
 		return nil
+	}
+	if v.outputRedacted {
+		output = "[output redacted]"
 	}
 	return &executionFailure{command: line, status: status, output: output}
 }

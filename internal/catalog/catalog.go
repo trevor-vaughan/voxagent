@@ -48,6 +48,12 @@ type Resource struct {
 	// as the catalog gives them. ral.MarkSensitive judges the names, because
 	// only there is the resource's type known.
 	SensitiveParameters []string `json:"sensitive_parameters,omitempty"`
+	// SetSensitivity records an attribute's sensitivity as a generator set it
+	// directly, as Ruby's parameter flag: true is marked, with no cascade to
+	// other attributes (ral.MarkSensitive), and false is explicitly not
+	// sensitive, so the attribute's events report redacted false. Absent means
+	// no record. Never decoded: a catalog carries marks in SensitiveParameters.
+	SetSensitivity map[string]bool `json:"-"`
 	// GeneratedFrom is the resource that generated this one, and nil for
 	// every resource the catalog declares: a native provider's children at
 	// apply time (ral.Generator), the extension host's eval_generate output at

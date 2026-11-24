@@ -35,6 +35,7 @@ type applyOptions struct {
 	start                           time.Time             // an agent run's start; zero for apply, which times no agent phases
 	phases                          []agent.Phase         // an agent run's phases timed before applying
 	console                         func(report.LogEntry) // prints a Puppet console line; nil prints none
+	providers                       []ral.Provider        // joins the native providers; tests only
 }
 
 // nativeProviders lists the providers voxagent applies itself for cat. User
@@ -51,7 +52,7 @@ func nativeProviders(cat *catalog.Catalog, o applyOptions, p ral.Platform) []ral
 	if group {
 		natives = append(natives, ral.Group{})
 	}
-	return natives
+	return append(natives, o.providers...)
 }
 
 // applyCatalog applies raw (exact catalog bytes) and returns the run's status
@@ -131,6 +132,13 @@ func applyCatalog(raw []byte, o applyOptions) (report.Status, *report.Report) {
 			fmt.Fprintf(os.Stderr, "voxagent: %s\n", i)
 		}
 		fmt.Fprintf(os.Stderr, "voxagent: %d invalid resource(s); nothing applied\n", len(invalid))
+		return done(report.Status{CouldNotRun: true}), nil
+	}
+
+	// Load-time generation the host did not run (spec §0): Ruby's generate ran
+	// on every vertex when the host loaded the catalog, so only without it do
+	// native generators build their resources, judged like the catalog's own.
+	if !ext.hostLoaded && loadGenerate(cat, registry) {
 		return done(report.Status{CouldNotRun: true}), nil
 	}
 

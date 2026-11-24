@@ -25,10 +25,11 @@ type extensionConfig struct {
 // extensionIngest is what the extension host contributed to a run. A zero
 // value (host == nil) means the catalog needed no host.
 type extensionIngest struct {
-	host      *extension.Host
-	load      extension.LoadResult
-	loadTook  time.Duration // how long host.Load took
-	providers []ral.Provider
+	host       *extension.Host
+	load       extension.LoadResult
+	loadTook   time.Duration // how long host.Load took
+	hostLoaded bool          // host.Load returned: Ruby's generate already ran on every vertex
+	providers  []ral.Provider
 	// invalid are Puppet's own validation refusals, for the validation block.
 	invalid []extension.Refusal
 }
@@ -68,12 +69,17 @@ func ingestExtensions(cfg extensionConfig, raw []byte, cat *catalog.Catalog,
 		return in, fmt.Sprintf("voxagent: the extension host could not load the catalog: %v; nothing applied", err)
 	}
 	in.load = load
-	if err := mergeGeneration(cat, load.Generated); err != nil {
+	in.hostLoaded = true
+	generated, err := convertGeneration(load.Generated)
+	if err == nil {
+		err = catalog.MergeGeneration(cat, generated, catalog.PlaceAppend)
+	}
+	if err != nil {
 		return in, fmt.Sprintf("voxagent: the extension host's generated resources could not be merged: %v; nothing applied", err)
 	}
 	// A refused load's order omits what Puppet refused, and its run never starts.
 	if len(load.Invalid) == 0 {
-		if err := applyOrder(cat, load.Order); err != nil {
+		if err := catalog.ApplyOrder(cat, load.Order); err != nil {
 			return in, fmt.Sprintf("voxagent: the extension host's catalog order could not be applied: %v; nothing applied", err)
 		}
 	}

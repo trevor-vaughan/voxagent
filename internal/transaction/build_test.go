@@ -1067,3 +1067,51 @@ func TestBuildGraphLogsNothingBelowDebug(t *testing.T) {
 		}
 	}
 }
+
+// warnStub raises "w-<title>" at graph build for every resource it is asked
+// about, as concat_fragment raises its orphan warning (concat design §6).
+type warnStub struct{ evaluatorStub }
+
+func (warnStub) GraphWarnings(r catalog.Resource, _ *catalog.Catalog) []string {
+	return []string{"w-" + r.Title}
+}
+
+// A warning a type raises while the graph is built is logged at "warning", at
+// the resource's containment path, in catalog order, and before anything is
+// applied -- with or without --debug.
+func TestGraphWarningsLoggedInCatalogOrder(t *testing.T) {
+	for _, level := range []string{"notice", "debug"} {
+		t.Run(level, func(t *testing.T) {
+			ctx, got := logContext(level)
+			c := topScope([]catalog.Resource{res("Vox_w", "a", nil), res("Vox_w", "b", nil)},
+				[2]string{"Class[main]", "Vox_w[a]"}, [2]string{"Class[main]", "Vox_w[b]"})
+			if _, err := BuildGraph(ctx, c, ral.NewRegistry(warnStub{evaluatorStub{typ: "vox_w", calls: new([]string)}})); err != nil {
+				t.Fatalf("BuildGraph: %v", err)
+			}
+			var warnings []string
+			for _, e := range *got {
+				if e.Level == "warning" {
+					warnings = append(warnings, e.Source+": "+e.Message)
+				}
+			}
+			want := []string{"/Stage[main]/Main/Vox_w[a]: w-a", "/Stage[main]/Main/Vox_w[b]: w-b"}
+			if !slices.Equal(warnings, want) {
+				t.Errorf("warnings = %q; want %q", warnings, want)
+			}
+		})
+	}
+}
+
+// A provider without the hook logs no warning.
+func TestNoGraphWarningsWithoutTheHook(t *testing.T) {
+	ctx, got := logContext("debug")
+	c := &catalog.Catalog{Resources: []catalog.Resource{res("Vox_value", "a", nil)}}
+	if _, err := BuildGraph(ctx, c, ral.NewRegistry(voxStub(nil, nil))); err != nil {
+		t.Fatalf("BuildGraph: %v", err)
+	}
+	for _, e := range *got {
+		if e.Level == "warning" {
+			t.Errorf("unexpected warning %q", e.Message)
+		}
+	}
+}

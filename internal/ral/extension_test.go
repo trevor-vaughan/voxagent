@@ -237,7 +237,7 @@ func TestExtensionSelfRefreshesFollowsTheTypesInfo(t *testing.T) {
 
 // The host's answer becomes catalog resources as Decode would make them:
 // numbers are float64, each child carries its generator, and the overrides
-// and logs pass through. Existing and Before are dropped (apply-spine.md).
+// and logs pass through. Before is dropped (apply-spine.md).
 func TestExtensionEvalGenerateConvertsTheHostsAnswer(t *testing.T) {
 	host := &fakeHost{gen: extension.EvalGeneration{
 		Generation: extension.Generation{
@@ -285,6 +285,20 @@ func TestExtensionEvalGenerateConvertsTheHostsAnswer(t *testing.T) {
 	}
 	if !slices.Equal(host.calls, []string{"eval_generate Vox_value[a]"}) {
 		t.Errorf("calls = %v", host.calls)
+	}
+}
+
+// The resources eval_generate returned that the catalog already held pass
+// through in the host's order: the walk applies them in the parent's unit.
+func TestExtensionEvalGeneratePassesExisting(t *testing.T) {
+	host := &fakeHost{gen: extension.EvalGeneration{Existing: []string{"File[/z]", "Notify[a]"}}}
+	e := NewExtension("vox_value", host, load, nil, cat(nil))
+	gen, err := e.EvalGenerate(context.Background(), catalog.Resource{Type: "Vox_value", Title: "a"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !slices.Equal(gen.Existing, []string{"File[/z]", "Notify[a]"}) {
+		t.Errorf("existing = %v, want [File[/z] Notify[a]]", gen.Existing)
 	}
 }
 

@@ -3,6 +3,8 @@ package transaction
 import (
 	"context"
 	"errors"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -172,5 +174,116 @@ func TestMarkedPropertyLeavesNoticesAlone(t *testing.T) {
 	}
 	if l := logAt(rep, "notice", "/File[/f]"); l == nil || l.Message != "path notice" {
 		t.Errorf("path notice = %+v", l)
+	}
+}
+
+// contentMarkRun applies a declared File through the real native provider
+// after an eval_generate override carrying mark (design §5.4). existing is
+// the file's prior content, or nil for a file that does not exist yet.
+func contentMarkRun(t *testing.T, existing *string, mark ral.ContentMark, catalogMarked ...string) []report.Event {
+	t.Helper()
+	return contentMarkRunWith(t, map[string]any{"ensure": "file", "content": "declared"}, existing, mark, catalogMarked...)
+}
+
+// contentMarkRunWith is contentMarkRun for a File declared with params.
+func contentMarkRunWith(t *testing.T, params map[string]any, existing *string, mark ral.ContentMark, catalogMarked ...string) []report.Event {
+	t.Helper()
+	path := filepath.Join(t.TempDir(), "f")
+	if existing != nil {
+		if err := os.WriteFile(path, []byte(*existing), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	ref := "File[" + path + "]"
+	var calls []string
+	stub := evalGenStub{evaluatorStub: evaluatorStub{typ: "vox_evalgen", calls: &calls},
+		gens: map[string]ral.EvalGeneration{"Vox_evalgen[p]": {Overrides: []ral.Override{{
+			Ref: ref, Parameters: map[string]any{"content": "public\ns3cret-token\n"}, ContentMark: mark}}}}}
+	file := res("File", path, params)
+	file.SensitiveParameters = catalogMarked
+	tx := &Transaction{Registry: ral.NewRegistry(stub, ral.File{})}
+	rep := runCatalog(t, tx, &catalog.Catalog{Resources: []catalog.Resource{
+		res("Vox_evalgen", "p", map[string]any{"before": ref}), file}})
+	return rep.ResourceStatuses[ref].Events
+}
+
+func eventFor(t *testing.T, evs []report.Event, property string) report.Event {
+	t.Helper()
+	for _, e := range evs {
+		if e.Property == property {
+			return e
+		}
+	}
+	t.Fatalf("no %q event in %+v", property, evs)
+	return report.Event{}
+}
+
+// v10-12c: Ruby sets the content flag directly, bypassing set_sensitive_
+// parameters, so a new file's ensure event keeps its hash and redacted: null.
+func TestContentMarkSensitiveDoesNotCascadeToEnsure(t *testing.T) {
+	evs := contentMarkRun(t, nil, ral.ContentMarkSensitive)
+	e := eventFor(t, evs, "ensure")
+	want := "defined content as '{sha256}ee990bd4314b9f288249b8bf860abd636e5f4aa2aaea57926558ad7eb516fcf3'"
+	if e.Message != want || e.Redacted != nil {
+		t.Errorf("ensure event = %q redacted %v, want %q and nil", e.Message, e.Redacted, want)
+	}
+
+	old := "old\n"
+	c := eventFor(t, contentMarkRun(t, &old, ral.ContentMarkSensitive), "content")
+	if c.Message != "changed [redacted] to [redacted]" || c.PreviousValue != "[redacted]" ||
+		c.DesiredValue != "[redacted]" || c.Redacted != true {
+		t.Errorf("content event = %+v, want redacted values and Redacted true", c)
+	}
+}
+
+// v10-07: a File with no fragments is explicitly not sensitive.
+func TestContentMarkNotSensitiveGivesRedactedFalse(t *testing.T) {
+	old := "old\n"
+	c := eventFor(t, contentMarkRun(t, &old, ral.ContentMarkNotSensitive), "content")
+	prefix := "content changed '{sha256}"
+	if !strings.HasPrefix(c.Message, prefix) || strings.Contains(c.Message, "[redacted]") || c.Redacted != false {
+		t.Errorf("content event = %q redacted %v, want the hash message and false", c.Message, c.Redacted)
+	}
+	if !strings.HasSuffix(c.Message, "' to '{sha256}ee990bd4314b9f288249b8bf860abd636e5f4aa2aaea57926558ad7eb516fcf3'") {
+		t.Errorf("message = %q lacks the new content's hash", c.Message)
+	}
+}
+
+// A declared File whose catalog marks content: Unset removes that mark, but
+// the cascade the catalog already applied to ensure stays.
+func TestContentMarkUnsetRemovesCatalogMark(t *testing.T) {
+	old := "old\n"
+	evs := contentMarkRun(t, &old, ral.ContentMarkUnset, "content")
+	c := eventFor(t, evs, "content")
+	if !strings.HasPrefix(c.Message, "content changed '{sha256}") || c.Redacted != nil {
+		t.Errorf("content event = %q redacted %v, want the hash message and nil", c.Message, c.Redacted)
+	}
+	if got := contentMarkRun(t, nil, ral.ContentMarkUnset, "content"); eventFor(t, got, "ensure").Redacted != true {
+		t.Errorf("ensure event lost its catalog cascade mark: %+v", got)
+	}
+}
+
+func TestContentMarkKeepChangesNothing(t *testing.T) {
+	old := "old\n"
+	c := eventFor(t, contentMarkRun(t, &old, ral.ContentMarkKeep, "content"), "content")
+	if c.Redacted != true || c.Message != "changed [redacted] to [redacted]" {
+		t.Errorf("kept catalog mark: %+v", c)
+	}
+	c = eventFor(t, contentMarkRun(t, &old, ral.ContentMarkKeep), "content")
+	if c.Redacted != nil || !strings.HasPrefix(c.Message, "content changed '{sha256}") {
+		t.Errorf("unmarked keep: %+v", c)
+	}
+}
+
+// Ruby's cascade marks ensure whether or not the catalog gave one
+// (type/file.rb:989), so removing the content mark must keep it.
+func TestContentMarkRemovalKeepsEnsureMarkWithoutAnEnsureParameter(t *testing.T) {
+	for name, mark := range map[string]ral.ContentMark{"unset": ral.ContentMarkUnset, "not sensitive": ral.ContentMarkNotSensitive} {
+		t.Run(name, func(t *testing.T) {
+			evs := contentMarkRunWith(t, map[string]any{"content": "declared"}, nil, mark, "content")
+			if e := eventFor(t, evs, "ensure"); e.Redacted != true {
+				t.Errorf("ensure event = %q redacted %v, want the catalog cascade mark kept", e.Message, e.Redacted)
+			}
+		})
 	}
 }

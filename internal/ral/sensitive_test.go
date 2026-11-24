@@ -72,3 +72,32 @@ func TestMarkSensitive(t *testing.T) {
 		})
 	}
 }
+
+// A directly set content flag marks content alone: the File cascade belongs
+// to the catalog's sensitive_parameters (design §5.4).
+func TestMarkSensitiveHonoursSetSensitivityWithoutCascade(t *testing.T) {
+	cases := []struct {
+		name string
+		set  map[string]bool
+		want []string
+	}{
+		{"set true marks content only", map[string]bool{"content": true}, []string{"content"}},
+		{"set false marks nothing", map[string]bool{"content": false}, nil},
+		{"no record marks nothing", nil, nil},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			r := fileRes("/f", map[string]any{"ensure": "file", "content": "x"})
+			r.SetSensitivity = tc.set
+			marked, logs := MarkSensitive(File{}, r)
+			if len(logs) != 0 || len(marked) != len(tc.want) {
+				t.Fatalf("marked %v logs %v, want %v", marked, logs, tc.want)
+			}
+			for _, n := range tc.want {
+				if _, ok := marked[n]; !ok {
+					t.Errorf("%s not marked: %v", n, marked)
+				}
+			}
+		})
+	}
+}

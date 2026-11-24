@@ -75,6 +75,14 @@ func MarkSensitive(p Provider, r catalog.Resource) (Attrs, []report.LogEntry) {
 		}
 	}
 
+	// A generator that set the flag directly marks only that attribute: no
+	// cascade, since the cascade lives in set_sensitive_parameters (§5.4).
+	for name, set := range r.SetSensitivity {
+		if set {
+			marked[name] = struct{}{}
+		}
+	}
+
 	for _, name := range names {
 		// An override already marked it: Ruby's newattr created the property.
 		if _, done := marked[name]; done {

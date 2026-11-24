@@ -88,10 +88,12 @@ type walk struct {
 	// queue_events_for_resource concatenates the notifier's events onto the
 	// target's queue rather than setting a bit.
 	pendingRefresh map[string]int
-	// visited holds every ref the walk has taken its turn for. A generator's
-	// override of one of them has no effect, as Puppet's edit of a resource
-	// it has already evaluated has none. A deferred ref leaves it until its
-	// next turn.
+	// visited holds every ref the walk has taken its turn for, whits
+	// included, and every catalog resource a unit applied before its turn
+	// (§5.5 of the concat design), whose turn then does nothing. A
+	// generator's override of one of them has no effect, as Puppet's edit of
+	// a resource it has already evaluated has none. A deferred ref leaves it
+	// until its next turn.
 	visited map[string]struct{}
 	// deferred holds, for each catalog resource the walk set aside because
 	// its provider is not suitable, the subject and the Evaluator that said
@@ -106,7 +108,9 @@ type walk struct {
 	display map[string]string
 	titles  map[string]string
 	// broken is the ral.ErrStagingBroken a provider returned: the agent's cwd
-	// is wrong, so the walk applies nothing more and Run returns it.
+	// is wrong, so the walk applies nothing more and Run returns it. It also
+	// carries take's could-not-run error for a member of a unit, which has no
+	// error return of its own.
 	broken error
 }
 
@@ -220,13 +224,15 @@ func (tx *Transaction) Run(ctx context.Context, c *catalog.Catalog, g *graph.Gra
 	}
 }
 
-// visit takes one vertex of the walk: it passes a whit's refresh on, refuses
-// a type whose prefetch failed, skips a resource with a failed dependency, and
-// otherwise applies the resource through its primed provider. deferred
-// reports a resource whose provider is not suitable, which it records nothing
-// for and keeps in w.deferred.
+// visit takes one vertex of the walk: it passes a whit's refresh on, and
+// takes a resource no unit has applied already (take). deferred reports a
+// resource whose provider is not suitable, which it records nothing for and
+// keeps in w.deferred.
 func (w *walk) visit(ref string) (deferred bool, err error) {
 	if w.g.IsWhit(ref) {
+		// Recorded so that a unit can tell its member's predecessors have
+		// all had their turn.
+		w.visited[ref] = struct{}{}
 		// A container's whit applies nothing and has no status: Puppet's
 		// report lists no container.
 		// With a failed dependency it is skipped silently, names no
@@ -260,11 +266,28 @@ func (w *walk) visit(ref string) (deferred bool, err error) {
 		}
 		return false, nil
 	}
+	if _, applied := w.visited[ref]; applied {
+		// An eval_generate returned it, and its generator's unit applied it.
+		return false, nil
+	}
 	r, ok := w.byRef[ref]
 	if !ok {
 		return false, fmt.Errorf("graph names %s, which is not in the catalog", ref)
 	}
-	w.visited[ref] = struct{}{}
+	s := w.subject(ref, r)
+	res, err := w.take(s)
+	if err != nil {
+		return false, err
+	}
+	if res.unsuitable != nil {
+		w.deferred[ref] = deferral{s: s, ev: res.unsuitable}
+		return true, nil
+	}
+	return false, nil
+}
+
+// subject is catalog resource r, at ref, as the walk applies it.
+func (w *walk) subject(ref string, r catalog.Resource) subject {
 	// Ruby sources every log line for a resource at its full containment
 	// path -- "/Stage[main]/Main/Node[default]/File[x]" -- with the property
 	// appended for a property change. The leading slash and the containers
@@ -275,6 +298,18 @@ func (w *walk) visit(ref string) (deferred bool, err error) {
 	if display, ok := w.display[ref]; ok {
 		s.display, s.title = display, w.titles[ref]
 	}
+	return s
+}
+
+// take applies catalog resource s, at its turn or as a member of a unit: it
+// refuses a type whose prefetch failed, skips a resource with a failed
+// dependency, and otherwise applies the resource through its primed provider,
+// as a unit when it generates. Its result is what its dependents, and a unit
+// around it, see; result.unsuitable is set, and nothing recorded, for a
+// provider that is not suitable.
+func (w *walk) take(s subject) (result, error) {
+	ref, r := s.ref, s.r
+	w.visited[ref] = struct{}{}
 
 	// A type whose prefetch failed is refused WHOLE: nothing of that type is
 	// applied, and every resource of it reports the same failure. This is
@@ -296,7 +331,7 @@ func (w *walk) visit(ref string) (deferred bool, err error) {
 	// (see ral.Generator), so the difference cannot arise.
 	if failure, failedType := w.prefetchFailed[strings.ToLower(r.Type)]; failedType {
 		w.failPrefetched(s, failure)
-		return false, nil
+		return result{blocks: map[string]struct{}{ref: {}}}, nil
 	}
 
 	// The PRIMED provider, never the registry's. dnf's Apply reads an
@@ -315,12 +350,10 @@ func (w *walk) visit(ref string) (deferred bool, err error) {
 		provider, hasProvider = refuse(provider, r, errors.New(message)), true
 	}
 	if eg, ok := provider.(ral.EvalGenerator); hasProvider && ok && eg.EvalGenerates(r) {
-		w.visitHostUnit(eg, provider, s)
-		return false, w.broken
+		return w.visitHostUnit(eg, provider, s), w.broken
 	}
 	if gen, ok := provider.(ral.Generator); hasProvider && ok {
-		w.visitUnit(gen, provider, s)
-		return false, w.broken
+		return w.visitUnit(gen, provider, s), w.broken
 	}
 	var res result
 	if deps := w.failedDeps[ref]; len(deps) > 0 {
@@ -329,18 +362,11 @@ func (w *walk) visit(ref string) (deferred bool, err error) {
 		// Pre-flight should have refused this catalog. Reaching here means
 		// it was skipped or is wrong, and either way the run cannot make a
 		// claim about a catalog it did not understand.
-		return false, fmt.Errorf("no provider for %s; pre-flight did not run or is incomplete", ref)
+		return result{}, fmt.Errorf("no provider for %s; pre-flight did not run or is incomplete", ref)
 	} else {
 		res = w.apply(provider, s, true)
 	}
-	if w.broken != nil {
-		return false, w.broken
-	}
-	if res.unsuitable != nil {
-		w.deferred[ref] = deferral{s: s, ev: res.unsuitable}
-		return true, nil
-	}
-	return false, nil
+	return res, w.broken
 }
 
 // failPrefetched records s, a resource of a type whose prefetch failed: the
@@ -613,6 +639,9 @@ func (w *walk) apply(provider ral.Provider, s subject, propagate bool) result {
 			_, redact := marked[ch.Property]
 			was, is := ch.Was, ch.Is
 			var redacted any
+			if set, ok := r.SetSensitivity[ch.Property]; ok && !set {
+				redacted = false // explicitly not sensitive (design §5.4)
+			}
 			if redact {
 				// create_change_event (resource_harness.rb:183-184) keeps a nil
 				// value nil; the message text redacts either way (property.rb
@@ -1087,13 +1116,13 @@ func distinctEventNames(events []report.Event) int {
 // it, and runs even when the parent is about to be skipped: pre_process runs
 // for every ready resource and the skip is decided afterwards. applyUnit does
 // the rest.
-func (w *walk) visitUnit(gen ral.Generator, provider ral.Provider, parent subject) {
+func (w *walk) visitUnit(gen ral.Generator, provider ral.Provider, parent subject) result {
 	children := w.generate(gen, parent)
 	// Bytewise title order puts every generated ancestor before its
 	// descendants.
 	sort.SliceStable(children, func(i, j int) bool { return children[i].Title < children[j].Title })
 	base := parent.path[:len(parent.path)-1]
-	w.applyUnit(provider, parent, children,
+	return w.applyUnit(provider, parent, children, nil,
 		func(subject) (ral.Provider, error) { return provider, nil },
 		// Ruby's pathbuilder for a generated child is the parent's containers
 		// and then the child (type/file.rb:608-626). Measured:
@@ -1143,8 +1172,50 @@ func (w *walk) managed(ref string) bool {
 // Puppet contains a new resource in its generator's container
 // (additional_resource_generator.rb:131-148), so a child's path is that
 // container's and then the child.
-func (w *walk) visitHostUnit(eg ral.EvalGenerator, provider ral.Provider, parent subject) {
+//
+// The catalog resources eval_generate returned (Existing) are in Puppet's
+// made too, so its completion whit waits for them (:80-117), and each depends
+// on the parent unless an edge already runs the other way
+// (add_conditional_directed_dependency, :216-224). One already visited is not
+// applied again, and logs Puppet's line for that edge; one every other
+// predecessor of which has had its turn joins the unit as a member; the rest
+// keep their own turn (concat design §5.5). A failed eval_generate made
+// nothing.
+func (w *walk) visitHostUnit(eg ral.EvalGenerator, provider ral.Provider, parent subject) result {
 	gen := w.evalGenerate(eg, parent)
+	existing := gen.Existing
+	if gen.Failed {
+		existing = nil
+	}
+	var members []string
+	for _, ref := range existing {
+		r, ok := w.byRef[ref]
+		if !ok || ral.IsContainerResource(r) {
+			// An earlier unit's new resource, already applied, or a
+			// container, which is not applied at all.
+			continue
+		}
+		if _, done := w.visited[ref]; done {
+			if w.g.HasEdge(ref, parent.ref) {
+				name := ref
+				if shown, ok := w.display[ref]; ok {
+					name = shown
+				}
+				runlog.Debugf(w.ctx, parent.source, "Skipping automatic relationship to %s", name)
+			}
+			continue
+		}
+		ready := true
+		for _, pred := range w.g.Predecessors(ref) {
+			if _, done := w.visited[pred]; !done && pred != parent.ref {
+				ready = false
+				break
+			}
+		}
+		if ready {
+			members = append(members, ref)
+		}
+	}
 	base := parent.path[:len(parent.path)-1]
 	pathFor := func(c catalog.Resource) []string {
 		if containerPath, ok := w.paths[gen.Containers[c.Ref()]]; ok {
@@ -1169,7 +1240,7 @@ func (w *walk) visitHostUnit(eg ral.EvalGenerator, provider ral.Provider, parent
 		}
 		return p, nil
 	}
-	w.applyUnit(provider, parent, ancestorsFirst(gen.Children, "/"), providerFor, pathFor, "/")
+	return w.applyUnit(provider, parent, ancestorsFirst(gen.Children, "/"), members, providerFor, pathFor, "/")
 }
 
 // ancestorsFirst orders an eval_generate's new resources as Puppet applies
@@ -1303,6 +1374,7 @@ func (w *walk) override(o ral.Override) {
 	maps.Copy(params, o.Parameters)
 	r.Parameters = params
 	r.MarkSensitive(o.Sensitive)
+	applyContentMark(&r, o.ContentMark)
 	w.byRef[o.Ref] = r
 	if _, done := w.visited[o.Ref]; done {
 		return
@@ -1311,6 +1383,35 @@ func (w *walk) override(o ral.Override) {
 	if err := judge(w.primed[strings.ToLower(r.Type)], r); err != nil {
 		w.refused[o.Ref] = err.Error()
 	}
+}
+
+// applyContentMark sets r's content mark as Ruby's parameter flag (design
+// §5.4). Setting it never cascades to ensure, but removing a catalog mark
+// keeps the ensure mark the catalog's own cascade already made. It never
+// writes the map or slice r held: catalogs share them between copies.
+func applyContentMark(r *catalog.Resource, mark ral.ContentMark) {
+	if mark == ral.ContentMarkKeep {
+		return
+	}
+	set := maps.Clone(r.SetSensitivity)
+	if set == nil {
+		set = make(map[string]bool, 2)
+	}
+	switch mark {
+	case ral.ContentMarkSensitive:
+		set["content"] = true
+	case ral.ContentMarkNotSensitive:
+		set["content"] = false
+	case ral.ContentMarkUnset:
+		delete(set, "content")
+	}
+	if mark != ral.ContentMarkSensitive && slices.Contains(r.SensitiveParameters, "content") {
+		// Ruby's cascade marked ensure whether or not the catalog gave one
+		// (type/file.rb:989), so the mark is set, not asked for by name.
+		set["ensure"] = true
+		r.SensitiveParameters = slices.DeleteFunc(slices.Clone(r.SensitiveParameters), func(n string) bool { return n == "content" })
+	}
+	r.SetSensitivity = set
 }
 
 // judge is pre-flight's judgement of one resource the catalog did not hold as
@@ -1354,20 +1455,31 @@ func judge(p ral.Provider, r catalog.Resource) error {
 // "Dependency File[/tmp/rx/tgt/a] has failures: true" on the parent's
 // dependent); otherwise the parent's subscribers get exactly one event when
 // any member produced one, because the whit's own refresh queues a single
-// restarted event (event_manager.rb:52-83). With no children nothing differs
-// from an ordinary resource: Puppet builds no whit for an empty set (:66).
-func (w *walk) applyUnit(provider ral.Provider, parent subject, children []catalog.Resource,
-	providerFor func(subject) (ral.Provider, error), pathFor func(catalog.Resource) []string, stop string) {
+// restarted event (event_manager.rb:52-83). With no children and no members
+// nothing differs from an ordinary resource: Puppet builds no whit for an
+// empty set (:66).
+//
+// members are catalog resources the unit applies after the children, each
+// taken as at its own turn (take) but with the parent's failure or skip
+// blocking it and its dependents, as Puppet's member depends on the parent.
+// Unlike a child, a member keeps its own out-edges: its container and its own
+// subscribers get its events, and the whit is sent them too.
+//
+// The result is the unit's, for a unit it is itself a member of: every
+// failure in it, or the whit's one event.
+func (w *walk) applyUnit(provider ral.Provider, parent subject, children []catalog.Resource, members []string,
+	providerFor func(subject) (ral.Provider, error), pathFor func(catalog.Resource) []string, stop string) result {
+	unit := len(children) > 0 || len(members) > 0
 	var parentResult result
 	if deps := w.failedDeps[parent.ref]; len(deps) > 0 {
 		parentResult = w.skip(parent, deps)
 	} else {
-		parentResult = w.apply(provider, parent, len(children) == 0)
+		parentResult = w.apply(provider, parent, !unit)
 	}
 	if w.broken != nil {
-		return
+		return result{}
 	}
-	if len(children) > 0 {
+	if unit {
 		w.logUnitMember(parent, parent, parentResult)
 	}
 	// Puppet would have deferred an unsuitable member; the unit cannot
@@ -1375,8 +1487,8 @@ func (w *walk) applyUnit(provider ral.Provider, parent subject, children []catal
 	if parentResult.unsuitable != nil {
 		parentResult = w.failUnsuitable(parent, parentResult.unsuitable)
 	}
-	if len(children) == 0 {
-		return
+	if !unit {
+		return parentResult
 	}
 
 	unitBlocks := map[string]struct{}{}
@@ -1414,7 +1526,7 @@ func (w *walk) applyUnit(provider ral.Provider, parent subject, children []catal
 				res = w.apply(p, s, false)
 			}
 			if w.broken != nil {
-				return
+				return result{}
 			}
 		}
 		if res.unsuitable != nil {
@@ -1430,20 +1542,57 @@ func (w *walk) applyUnit(provider ral.Provider, parent subject, children []catal
 		sent += res.sent
 	}
 
+	for _, ref := range members {
+		if _, done := w.visited[ref]; done {
+			// A nested unit took it first.
+			continue
+		}
+		if len(parentResult.blocks) > 0 {
+			blocked := w.g.Dependents(ref)
+			blocked[ref] = struct{}{}
+			for failed := range parentResult.blocks {
+				block(w.failedDeps, blocked, failed)
+			}
+		}
+		s := w.subject(ref, w.byRef[ref])
+		res, err := w.take(s)
+		if err != nil {
+			w.broken = err
+		}
+		if w.broken != nil {
+			return result{}
+		}
+		if res.unsuitable != nil {
+			res = w.failUnsuitable(s, res.unsuitable)
+		}
+		for failed := range res.blocks {
+			unitBlocks[failed] = struct{}{}
+		}
+		w.logUnitMember(parent, s, res)
+		sent += res.sent
+	}
+
 	if len(unitBlocks) > 0 {
 		dependents := w.g.Dependents(parent.ref)
 		for failed := range unitBlocks {
 			block(w.failedDeps, dependents, failed)
 		}
-		return
+		return result{blocks: unitBlocks}
 	}
-	if sent > 0 {
-		// The unit's own whit, named by the parent's title, queues one event.
-		w.logContainerPropagation(parent.title, parent.ref, 1)
-		for _, target := range w.g.RefreshTargets(parent.ref) {
-			w.pendingRefresh[target]++
-		}
+	if sent == 0 {
+		return result{}
 	}
+	// The unit's own whit, named by the parent's title, queues one event. Under
+	// --noop its process_noop_events logs the notice instead of refreshing, at
+	// the parent's title and counting every event the whit collected.
+	if w.tx.Noop {
+		w.rep.Log("notice", parent.title, refreshMessage("Would have triggered", sent))
+	}
+	w.logContainerPropagation(parent.title, parent.ref, 1)
+	for _, target := range w.g.RefreshTargets(parent.ref) {
+		w.pendingRefresh[target]++
+	}
+	return result{sent: 1, eventNames: 1}
 }
 
 // refusedProvider stands in for the provider of a resource the walk refuses,
