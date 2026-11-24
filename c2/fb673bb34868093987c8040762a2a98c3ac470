@@ -1,0 +1,19 @@
+docs/maintainers/fleet.md
+  s_c107ecedab04a8::t_913db7e607bbad 247-249
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "c2fb673bb34868093987c8040762a2a98c3ac470",
+  "prompts": {},
+  "sessions": {
+    "s_c107ecedab04a8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-ac9e3727214ded7b1",
+        "model": "unknown"
+      },
+      "human_author": "LLM (riotbox) <llm@riotbox>"
+    }
+  }
+}
