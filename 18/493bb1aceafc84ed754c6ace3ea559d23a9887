@@ -1,0 +1,19 @@
+docs/maintainers/extension-host.md
+  s_c107ecedab04a8::t_3bd89a39e64a5e 9-11,59,250,278-279,281,517-520
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "18493bb1aceafc84ed754c6ace3ea559d23a9887",
+  "prompts": {},
+  "sessions": {
+    "s_c107ecedab04a8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-ac9e3727214ded7b1",
+        "model": "unknown"
+      },
+      "human_author": "LLM (riotbox) <llm@riotbox>"
+    }
+  }
+}
