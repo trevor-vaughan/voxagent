@@ -100,8 +100,9 @@ type LineType struct {
 	// the parse with a ParseError for that line; any other error aborts the
 	// parse and is returned as is, as an error raised there does.
 	PostParse func(*Record) error
-	// PreGen runs on a shallow copy before generating (fp:341-344).
-	PreGen func(*Record)
+	// PreGen runs on a shallow copy before generating (fp:341-344). An error
+	// aborts the generation and is returned as is, as one raised there does.
+	PreGen func(*Record) error
 	// ToLine replaces the join and RTS; its result is used verbatim (fp:349).
 	ToLine func(Record) (string, error)
 }
@@ -307,7 +308,9 @@ func (g *Grammar) ToLine(r Record) (string, error) {
 	if lt.PreGen != nil {
 		r.Fields = cloneOrNew(r.Fields)
 		r.Flags = cloneOrNew(r.Flags)
-		lt.PreGen(&r)
+		if err := lt.PreGen(&r); err != nil {
+			return "", err
+		}
 	}
 	if lt.Text {
 		return r.Line, nil

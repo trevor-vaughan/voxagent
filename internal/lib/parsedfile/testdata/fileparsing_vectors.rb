@@ -14,7 +14,8 @@
 # (record definitions copied from cron_core 1.3.0
 # lib/puppet/provider/cron/crontab.rb:9-98) and host's (host_core
 # lib/puppet/provider/host/parsed.rb:21-48) and sshkey's (sshkeys_core
-# lib/puppet/provider/sshkey/parsed.rb:10-24) and ssh_authorized_key's
+# lib/puppet/provider/sshkey/parsed.rb:10-24), mount's (mount_core
+# lib/puppet/provider/mount/parsed.rb:20-44,185-233) and ssh_authorized_key's
 # (sshkeys_core lib/puppet/provider/ssh_authorized_key/parsed.rb:11-35,105-124
 # and lib/puppet/type/ssh_authorized_key.rb:168-177). internal/lib/parsedfile's
 # vectors_test.go defines the generic ones again in Go and
@@ -176,6 +177,49 @@ GRAMMARS = {
                   optional: ['options'],
                   rts: %r{^\s+},
                   match: %r{^(?:(.+) )?(\d+) (\d+) (\d+)(?: (.+))?$}
+  },
+  # mount_core lib/puppet/provider/mount/parsed.rb:20-44,185-233 (the Linux
+  # branch; the prefetch_hook (:253-272) is not a grammar matter: the unit tests
+  # it).
+  'mount' => lambda { |g|
+    fields = %i[device name fstype options dump pass]
+    g.text_line :comment, match: %r{^\s*#}
+    g.text_line :blank, match: %r{^\s*$}
+    g.text_line :incomplete, match: %r{^(?!(\s*(?>\S+)){2})}
+    g.record_line :parsed,
+                  fields: fields,
+                  separator: %r{\s+},
+                  joiner: "\t",
+                  optional: fields - %i[device name blockdevice],
+                  block_eval: :instance do
+      def to_line(record)
+        result = record.dup
+        %i[device name].each do |param|
+          if record[param].is_a?(String)
+            result[param] = result[param].gsub(' ', '\\\040') if result[param].include?(' ')
+          end
+        end
+        join(result)
+      end
+
+      def post_parse(record)
+        %i[device name].each do |param|
+          if record[param].is_a?(String)
+            record[param].gsub!('\040', ' ') if record[param].include?('\040')
+          end
+        end
+        record
+      end
+
+      def pre_gen(record)
+        record[:options] = 'defaults' if !record[:options] || record[:options].empty?
+        if !record[:fstype] || record[:fstype].empty?
+          raise Puppet::Error, "Mount[#{record[:name]}]: Field 'fstype' is required"
+        end
+
+        record
+      end
+    end
   },
   # cron_core 1.3.0 crontab.rb:9-98.
   'cron' => lambda { |g|

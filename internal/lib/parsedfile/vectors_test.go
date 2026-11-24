@@ -195,7 +195,7 @@ func genericGrammars(t *testing.T) map[string]*Grammar {
 		"order": {
 			text("c1", `a`), text("c2", `a`), text("c3", `b`),
 		},
-		"pregen": {{Name: "t", Text: true, Match: re(`.`), PreGen: func(r *Record) { r.Line = "X" + r.Line }}},
+		"pregen": {{Name: "t", Text: true, Match: re(`.`), PreGen: func(r *Record) error { r.Line = "X" + r.Line; return nil }}},
 		"hook": {{Name: "h", Fields: []string{"a", "b"}, Separator: sp, RTS: regexp.MustCompile(Space + `+$`),
 			PostParse: func(r *Record) error { r.Fields["seen"] = Value{Kind: Str, S: "yes"}; return nil },
 			ToLine: func(r Record) (string, error) {
@@ -215,15 +215,16 @@ func genericGrammars(t *testing.T) map[string]*Grammar {
 
 // TestGrammarMatchesSharedVectors runs every generic-grammar case of
 // testdata/vectors.json (wants produced by the real fileparsing.rb). Cases of
-// the "cron", "host", "sshkey" and "sak" grammars are read by cron_core's,
-// host_core's and sshkeys_core's tests, which own those grammars.
+// the "cron", "host", "sshkey", "sak" and "mount" grammars are read by
+// cron_core's, host_core's, sshkeys_core's and mount_core's tests, which own
+// those grammars.
 func TestGrammarMatchesSharedVectors(t *testing.T) {
 	grammars := genericGrammars(t)
 	ran := 0
 	for _, c := range readVectors(t) {
 		g, ok := grammars[c.Grammar]
 		if !ok {
-			if c.Grammar != "cron" && c.Grammar != "host" && c.Grammar != "sshkey" && c.Grammar != "sak" {
+			if c.Grammar != "cron" && c.Grammar != "host" && c.Grammar != "sshkey" && c.Grammar != "sak" && c.Grammar != "mount" {
 				t.Errorf("%s: unknown grammar %q", c.Name, c.Grammar)
 			}
 			continue

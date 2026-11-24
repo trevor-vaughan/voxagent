@@ -71,13 +71,19 @@
 # half runs after the sshkey half, on the same image; tests/spine/sak/g5.sh
 # holds it and says how.
 #
+# mount follows for the same reason: its cases change /etc/fstab and, in
+# containers given SYS_ADMIN, mount, remount and unmount real tmpfs file
+# systems. That half runs after the sak half, on the same image, once with the
+# vendored mount_core and once with the SIMP release's; tests/spine/mount/g5.sh
+# holds it and says how.
+#
 # The comparator and the allowlist are `gatekit compare-reports` and
 # tests/spine/allowlist.json, used unchanged. A second comparator would be a
 # second thing to keep in step with Ruby.
 #
 #   0  the reports agree outside the allowlist and the walk order agrees, for
 #      the live run, for the account cases' noop run, and for every concat,
-#      augeas, cron, host, sshkey and sak case's live, rerun and noop runs
+#      augeas, cron, host, sshkey, sak and mount case's live, rerun and noop runs
 #      (or both agents refuse its catalog alike), and every compared end
 #      state agrees
 #   1  they diverge -- a result about voxagent
@@ -253,6 +259,8 @@ require_fresh report-diff-container "$ROOT" "$VOXAGENT" "$GATEKIT"
 . "$HERE/sshkey/g5.sh" || exit 2
 # shellcheck source=sak/g5.sh
 . "$HERE/sak/g5.sh" || exit 2
+# shellcheck source=mount/g5.sh
+. "$HERE/mount/g5.sh" || exit 2
 
 got_puppet="$(podman run --rm "$IMAGE" /opt/puppetlabs/bin/puppet --version 2>/dev/null)" || {
   echo "report-diff-container: cannot read the image's puppet version" >&2
@@ -289,7 +297,8 @@ trap 'rm -rf "$WORK"; podman rm -f -t 0 "$RUBY_SIDE" "$GO_SIDE" "$COMPILER" "$RU
   cron-compile-$$ cron-{ruby,voxagent}-{live,noop}-$$ \
   host-compile-$$ host-{ruby,voxagent}-{live,noop}-$$ \
   sshkey-compile-$$ sshkey-{ruby,voxagent}-{live,noop}-$$ \
-  sak-compile-$$ sak-{ruby,voxagent}-{live,noop}-$$ >/dev/null 2>&1' EXIT
+  sak-compile-$$ sak-{ruby,voxagent}-{live,noop}-$$ \
+  mount-compile-$$ mount-{ruby,voxagent}-{live,noop}-$$ >/dev/null 2>&1' EXIT
 
 if ! podman run --rm "$IMAGE" sh -c "
   if ! $SEED_LATEST; then
@@ -1040,4 +1049,8 @@ sshkey_rc=$?
 sak_gate
 sak_rc=$?
 [ "$sak_rc" -gt "$rc" ] && rc=$sak_rc
+
+mount_gate
+mount_rc=$?
+[ "$mount_rc" -gt "$rc" ] && rc=$mount_rc
 exit "$rc"

@@ -55,6 +55,14 @@ puppet/provider/host/parsed.rb) are redistributed unmodified as test fixtures
 under internal/units/host_core/testdata; they remain under the Apache License,
 Version 2.0, a copy of which is in LICENSE.md.
 
+voxagent's native mount (internal/units/mount_core) reproduces the behaviour and
+messages of Puppet, Inc.'s puppetlabs-mount_core 1.3.0 and 2.1.0 (Apache-2.0).
+The three files whose digests voxagent checks (puppet/type/mount.rb,
+puppet/provider/mount/parsed.rb and puppet/provider/mount.rb) are redistributed
+unmodified, for each release, as test fixtures under
+internal/units/mount_core/testdata; they remain under the Apache License,
+Version 2.0, a copy of which is in LICENSE.md.
+
 voxagent's native sshkey (internal/units/sshkeys_core) reproduces the behaviour
 and messages of Puppet, Inc.'s puppetlabs-sshkeys_core 2.5.0 and 3.1.0
 (Apache-2.0). The four files whose digests voxagent checks

@@ -18,8 +18,14 @@
 # extension host: both are native on this catalog (concat design §1). The
 # same holds for sysctl, ssh_config, sshd_config, sshd_config_subsystem and
 # augeas, against the fifteen augeas fingerprints (augeas design §1 item 5;
-# augeas generic design §1 item 4), and for cron, against cron_core 2.1.0's
-# three fingerprints (cron design §1 item 6).
+# augeas generic design §1 item 4), for cron, against cron_core 2.1.0's
+# three fingerprints (cron design §1 item 6), and for host, mount, sshkey and
+# ssh_authorized_key, against host_core 2.1.0's, mount_core 2.1.0's and
+# sshkeys_core 3.1.0's fingerprints (parsedfile-types design §1 item 6). The
+# catalog holds 1 Host and 5 Mounts, no Sshkey or Ssh_authorized_key; the
+# mounts are already-mounted pseudo-filesystems with `remounts => true`, and
+# the default capabilities refuse `mount -o remount`, so every remount fails
+# alike on both sides.
 # The merged libdir holds SIMP's ssh.aug and resolv.aug in augeas/lenses, so
 # the 49 Ssh_config resources take the custom-lens path. Its Sysctl coverage
 # is mostly the failure path: rootless, the real `sysctl -w` is refused for 62
@@ -212,6 +218,12 @@ augeasproviders_fingerprints report-diff-simp "$WORK/libdir" || exit 2
 # Likewise puppetlabs-cron_core 2.1.0, whose three files route cron natively
 # (cron design §1 item 6).
 cron_core_fingerprints report-diff-simp "$WORK/libdir" || exit 2
+# Likewise host_core 2.1.0, mount_core 2.1.0 and sshkeys_core 3.1.0, whose
+# files route host, mount, sshkey and ssh_authorized_key natively
+# (parsedfile-types design §1 item 6, §2.2).
+host_core_fingerprints report-diff-simp "$WORK/libdir" || exit 2
+mount_core_fingerprints report-diff-simp "$WORK/libdir" || exit 2
+sshkeys_core_fingerprints report-diff-simp "$WORK/libdir" || exit 2
 
 mkdir -p "$WORK/compile" || exit 2
 simp_boot "$COMPILER" "$IMAGE" || exit 2
@@ -375,14 +387,16 @@ if grep -E '^voxagent: [0-9]+ concat_(file|fragment) resource\(s\) applied via e
   rc=1
 fi
 
-# Native augeasproviders types, augeas and cron (the four Cron resources, with
-# cron_core 2.1.0 in the libdir): none of the six may be among them either.
+# Native augeasproviders types, augeas, cron (the four Cron resources, with
+# cron_core 2.1.0 in the libdir), host, mount, sshkey and ssh_authorized_key
+# (with host_core 2.1.0, mount_core 2.1.0 and sshkeys_core 3.1.0): none of the
+# ten may be among them either.
 # The catalog's Sysctl coverage is mostly of the failure path: rootless, the
 # real `sysctl -w` is refused, so the success paths (`-w` succeeding, then the
 # save) are gated only by G5's shim cases.
-if grep -E '^voxagent: [0-9]+ (sysctl|ssh_config|sshd_config|sshd_config_subsystem|augeas|cron) resource\(s\) applied via extension host' \
+if grep -E '^voxagent: [0-9]+ (sysctl|ssh_config|sshd_config|sshd_config_subsystem|augeas|cron|host|mount|sshkey|ssh_authorized_key) resource\(s\) applied via extension host' \
   "$WORK/$LABEL_B/apply.out" >&2; then
-  echo "report-diff-simp: voxagent applied an augeasproviders type, augeas or cron through the extension host, not natively" >&2
+  echo "report-diff-simp: voxagent applied an augeasproviders type, augeas, cron, host, mount, sshkey or ssh_authorized_key through the extension host, not natively" >&2
   rc=1
 fi
 

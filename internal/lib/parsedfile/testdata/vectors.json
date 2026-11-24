@@ -9666,6 +9666,1604 @@
       "want": {
         "line": "x\ny 1 2 3 n"
       }
+    },
+    {
+      "name": "mount-parse-six",
+      "grammar": "mount",
+      "op": "parse",
+      "text": "/dev/sda1\t/\text4\tdefaults\t1\t1",
+      "want": {
+        "records": [
+          {
+            "type": "parsed",
+            "line": "",
+            "fields": {
+              "device": {
+                "s": "/dev/sda1"
+              },
+              "name": {
+                "s": "/"
+              },
+              "fstype": {
+                "s": "ext4"
+              },
+              "options": {
+                "s": "defaults"
+              },
+              "dump": {
+                "s": "1"
+              },
+              "pass": {
+                "s": "1"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "mount-parse-spaces",
+      "grammar": "mount",
+      "op": "parse",
+      "text": "/dev/sda1   /   ext4  defaults  0  2",
+      "want": {
+        "records": [
+          {
+            "type": "parsed",
+            "line": "",
+            "fields": {
+              "device": {
+                "s": "/dev/sda1"
+              },
+              "name": {
+                "s": "/"
+              },
+              "fstype": {
+                "s": "ext4"
+              },
+              "options": {
+                "s": "defaults"
+              },
+              "dump": {
+                "s": "0"
+              },
+              "pass": {
+                "s": "2"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "mount-parse-two",
+      "grammar": "mount",
+      "op": "parse",
+      "text": "/dev/x\t/mnt/a",
+      "want": {
+        "records": [
+          {
+            "type": "parsed",
+            "line": "",
+            "fields": {
+              "device": {
+                "s": "/dev/x"
+              },
+              "name": {
+                "s": "/mnt/a"
+              },
+              "fstype": {
+                "absent": true
+              },
+              "options": {
+                "absent": true
+              },
+              "dump": {
+                "absent": true
+              },
+              "pass": {
+                "absent": true
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "mount-parse-three",
+      "grammar": "mount",
+      "op": "parse",
+      "text": "/dev/x\t/mnt/a\text4",
+      "want": {
+        "records": [
+          {
+            "type": "parsed",
+            "line": "",
+            "fields": {
+              "device": {
+                "s": "/dev/x"
+              },
+              "name": {
+                "s": "/mnt/a"
+              },
+              "fstype": {
+                "s": "ext4"
+              },
+              "options": {
+                "absent": true
+              },
+              "dump": {
+                "absent": true
+              },
+              "pass": {
+                "absent": true
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "mount-parse-four",
+      "grammar": "mount",
+      "op": "parse",
+      "text": "/dev/x\t/mnt/a\text4\tdefaults",
+      "want": {
+        "records": [
+          {
+            "type": "parsed",
+            "line": "",
+            "fields": {
+              "device": {
+                "s": "/dev/x"
+              },
+              "name": {
+                "s": "/mnt/a"
+              },
+              "fstype": {
+                "s": "ext4"
+              },
+              "options": {
+                "s": "defaults"
+              },
+              "dump": {
+                "absent": true
+              },
+              "pass": {
+                "absent": true
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "mount-parse-five",
+      "grammar": "mount",
+      "op": "parse",
+      "text": "/dev/x\t/mnt/a\text4\tdefaults\t0",
+      "want": {
+        "records": [
+          {
+            "type": "parsed",
+            "line": "",
+            "fields": {
+              "device": {
+                "s": "/dev/x"
+              },
+              "name": {
+                "s": "/mnt/a"
+              },
+              "fstype": {
+                "s": "ext4"
+              },
+              "options": {
+                "s": "defaults"
+              },
+              "dump": {
+                "s": "0"
+              },
+              "pass": {
+                "absent": true
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "mount-parse-seven-rolled",
+      "grammar": "mount",
+      "op": "parse",
+      "text": "/dev/x /mnt/a ext4 defaults 0 0  extra  more",
+      "want": {
+        "records": [
+          {
+            "type": "parsed",
+            "line": "",
+            "fields": {
+              "device": {
+                "s": "/dev/x"
+              },
+              "name": {
+                "s": "/mnt/a"
+              },
+              "fstype": {
+                "s": "ext4"
+              },
+              "options": {
+                "s": "defaults"
+              },
+              "dump": {
+                "s": "0"
+              },
+              "pass": {
+                "s": "0\textra\tmore"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "mount-parse-eight-rolled",
+      "grammar": "mount",
+      "op": "parse",
+      "text": "/dev/x /mnt/a ext4 defaults 0 0 e1 e2 e3",
+      "want": {
+        "records": [
+          {
+            "type": "parsed",
+            "line": "",
+            "fields": {
+              "device": {
+                "s": "/dev/x"
+              },
+              "name": {
+                "s": "/mnt/a"
+              },
+              "fstype": {
+                "s": "ext4"
+              },
+              "options": {
+                "s": "defaults"
+              },
+              "dump": {
+                "s": "0"
+              },
+              "pass": {
+                "s": "0\te1\te2\te3"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "mount-parse-one-field",
+      "grammar": "mount",
+      "op": "parse",
+      "text": "/dev/x",
+      "want": {
+        "records": [
+          {
+            "type": "incomplete",
+            "line": "/dev/x",
+            "fields": {
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "mount-parse-one-field-trailing",
+      "grammar": "mount",
+      "op": "parse",
+      "text": "/dev/x   ",
+      "want": {
+        "records": [
+          {
+            "type": "incomplete",
+            "line": "/dev/x   ",
+            "fields": {
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "mount-parse-leading-ws-one",
+      "grammar": "mount",
+      "op": "parse",
+      "text": "  /dev/x",
+      "want": {
+        "records": [
+          {
+            "type": "incomplete",
+            "line": "  /dev/x",
+            "fields": {
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "mount-parse-leading-ws-two",
+      "grammar": "mount",
+      "op": "parse",
+      "text": "  /dev/x /mnt/a",
+      "want": {
+        "records": [
+          {
+            "type": "parsed",
+            "line": "",
+            "fields": {
+              "device": {
+                "absent": true
+              },
+              "name": {
+                "s": "/dev/x"
+              },
+              "fstype": {
+                "s": "/mnt/a"
+              },
+              "options": {
+                "absent": true
+              },
+              "dump": {
+                "absent": true
+              },
+              "pass": {
+                "absent": true
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "mount-parse-leading-ws-six",
+      "grammar": "mount",
+      "op": "parse",
+      "text": "\t/dev/x /mnt/a ext4 defaults 0 0",
+      "want": {
+        "records": [
+          {
+            "type": "parsed",
+            "line": "",
+            "fields": {
+              "device": {
+                "absent": true
+              },
+              "name": {
+                "s": "/dev/x"
+              },
+              "fstype": {
+                "s": "/mnt/a"
+              },
+              "options": {
+                "s": "ext4"
+              },
+              "dump": {
+                "s": "defaults"
+              },
+              "pass": {
+                "s": "0\t0"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "mount-parse-trailing-ws",
+      "grammar": "mount",
+      "op": "parse",
+      "text": "/dev/x /mnt/a ext4 defaults 0 0   ",
+      "want": {
+        "records": [
+          {
+            "type": "parsed",
+            "line": "",
+            "fields": {
+              "device": {
+                "s": "/dev/x"
+              },
+              "name": {
+                "s": "/mnt/a"
+              },
+              "fstype": {
+                "s": "ext4"
+              },
+              "options": {
+                "s": "defaults"
+              },
+              "dump": {
+                "s": "0"
+              },
+              "pass": {
+                "s": "0"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "mount-parse-trailing-ws-two",
+      "grammar": "mount",
+      "op": "parse",
+      "text": "/dev/x /mnt/a  ",
+      "want": {
+        "records": [
+          {
+            "type": "parsed",
+            "line": "",
+            "fields": {
+              "device": {
+                "s": "/dev/x"
+              },
+              "name": {
+                "s": "/mnt/a"
+              },
+              "fstype": {
+                "absent": true
+              },
+              "options": {
+                "absent": true
+              },
+              "dump": {
+                "absent": true
+              },
+              "pass": {
+                "absent": true
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "mount-parse-vtab-sep",
+      "grammar": "mount",
+      "op": "parse",
+      "text": "/dev/x\u000b/mnt/a\u000bext4",
+      "want": {
+        "records": [
+          {
+            "type": "parsed",
+            "line": "",
+            "fields": {
+              "device": {
+                "s": "/dev/x"
+              },
+              "name": {
+                "s": "/mnt/a"
+              },
+              "fstype": {
+                "s": "ext4"
+              },
+              "options": {
+                "absent": true
+              },
+              "dump": {
+                "absent": true
+              },
+              "pass": {
+                "absent": true
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "mount-parse-octal-space",
+      "grammar": "mount",
+      "op": "parse",
+      "text": "/dev/disk/by-label/my\\040disk /mnt/my\\040disk ext4 defaults 0 0",
+      "want": {
+        "records": [
+          {
+            "type": "parsed",
+            "line": "",
+            "fields": {
+              "device": {
+                "s": "/dev/disk/by-label/my disk"
+              },
+              "name": {
+                "s": "/mnt/my disk"
+              },
+              "fstype": {
+                "s": "ext4"
+              },
+              "options": {
+                "s": "defaults"
+              },
+              "dump": {
+                "s": "0"
+              },
+              "pass": {
+                "s": "0"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "mount-parse-octal-twice",
+      "grammar": "mount",
+      "op": "parse",
+      "text": "a\\040b\\040c /m\\040n",
+      "want": {
+        "records": [
+          {
+            "type": "parsed",
+            "line": "",
+            "fields": {
+              "device": {
+                "s": "a b c"
+              },
+              "name": {
+                "s": "/m n"
+              },
+              "fstype": {
+                "absent": true
+              },
+              "options": {
+                "absent": true
+              },
+              "dump": {
+                "absent": true
+              },
+              "pass": {
+                "absent": true
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "mount-parse-octal-in-options",
+      "grammar": "mount",
+      "op": "parse",
+      "text": "/dev/x /mnt/a ext4 a\\040b 0 0",
+      "want": {
+        "records": [
+          {
+            "type": "parsed",
+            "line": "",
+            "fields": {
+              "device": {
+                "s": "/dev/x"
+              },
+              "name": {
+                "s": "/mnt/a"
+              },
+              "fstype": {
+                "s": "ext4"
+              },
+              "options": {
+                "s": "a\\040b"
+              },
+              "dump": {
+                "s": "0"
+              },
+              "pass": {
+                "s": "0"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "mount-parse-comment",
+      "grammar": "mount",
+      "op": "parse",
+      "text": "# comment",
+      "want": {
+        "records": [
+          {
+            "type": "comment",
+            "line": "# comment",
+            "fields": {
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "mount-parse-comment-indented",
+      "grammar": "mount",
+      "op": "parse",
+      "text": "  # comment",
+      "want": {
+        "records": [
+          {
+            "type": "comment",
+            "line": "  # comment",
+            "fields": {
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "mount-parse-blank",
+      "grammar": "mount",
+      "op": "parse",
+      "text": "",
+      "want": {
+        "records": [
+
+        ]
+      }
+    },
+    {
+      "name": "mount-parse-blank-spaces",
+      "grammar": "mount",
+      "op": "parse",
+      "text": "   \t ",
+      "want": {
+        "records": [
+          {
+            "type": "blank",
+            "line": "   \t ",
+            "fields": {
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "mount-parse-tmpfs-dash-o",
+      "grammar": "mount",
+      "op": "parse",
+      "text": "tmpfs\t-o\ttmpfs\tdefaults\t0\t0",
+      "want": {
+        "records": [
+          {
+            "type": "parsed",
+            "line": "",
+            "fields": {
+              "device": {
+                "s": "tmpfs"
+              },
+              "name": {
+                "s": "-o"
+              },
+              "fstype": {
+                "s": "tmpfs"
+              },
+              "options": {
+                "s": "defaults"
+              },
+              "dump": {
+                "s": "0"
+              },
+              "pass": {
+                "s": "0"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "mount-parse-many-lines",
+      "grammar": "mount",
+      "op": "parse",
+      "text": "# c\n/dev/x /mnt/a ext4\n\n/dev/y\n  /dev/z /m\n",
+      "want": {
+        "records": [
+          {
+            "type": "comment",
+            "line": "# c",
+            "fields": {
+            }
+          },
+          {
+            "type": "parsed",
+            "line": "",
+            "fields": {
+              "device": {
+                "s": "/dev/x"
+              },
+              "name": {
+                "s": "/mnt/a"
+              },
+              "fstype": {
+                "s": "ext4"
+              },
+              "options": {
+                "absent": true
+              },
+              "dump": {
+                "absent": true
+              },
+              "pass": {
+                "absent": true
+              }
+            }
+          },
+          {
+            "type": "blank",
+            "line": "",
+            "fields": {
+            }
+          },
+          {
+            "type": "incomplete",
+            "line": "/dev/y",
+            "fields": {
+            }
+          },
+          {
+            "type": "parsed",
+            "line": "",
+            "fields": {
+              "device": {
+                "absent": true
+              },
+              "name": {
+                "s": "/dev/z"
+              },
+              "fstype": {
+                "s": "/m"
+              },
+              "options": {
+                "absent": true
+              },
+              "dump": {
+                "absent": true
+              },
+              "pass": {
+                "absent": true
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "mount-parse-crlf",
+      "grammar": "mount",
+      "op": "parse",
+      "text": "/dev/x /mnt/a ext4 defaults 0 0\r\n",
+      "want": {
+        "records": [
+          {
+            "type": "parsed",
+            "line": "",
+            "fields": {
+              "device": {
+                "s": "/dev/x"
+              },
+              "name": {
+                "s": "/mnt/a"
+              },
+              "fstype": {
+                "s": "ext4"
+              },
+              "options": {
+                "s": "defaults"
+              },
+              "dump": {
+                "s": "0"
+              },
+              "pass": {
+                "s": "0"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "mount-parse-nbsp-not-space",
+      "grammar": "mount",
+      "op": "parse",
+      "text": "/dev/x /mnt/a ext4",
+      "want": {
+        "records": [
+          {
+            "type": "parsed",
+            "line": "",
+            "fields": {
+              "device": {
+                "s": "/dev/x /mnt/a"
+              },
+              "name": {
+                "s": "ext4"
+              },
+              "fstype": {
+                "absent": true
+              },
+              "options": {
+                "absent": true
+              },
+              "dump": {
+                "absent": true
+              },
+              "pass": {
+                "absent": true
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "mount-parse-empty-text",
+      "grammar": "mount",
+      "op": "parse",
+      "text": "",
+      "want": {
+        "records": [
+
+        ]
+      }
+    },
+    {
+      "name": "mount-to_line-six",
+      "grammar": "mount",
+      "op": "to_line",
+      "record": {
+        "type": "parsed",
+        "fields": {
+          "device": {
+            "s": "/dev/x"
+          },
+          "name": {
+            "s": "/mnt/a"
+          },
+          "fstype": {
+            "s": "ext4"
+          },
+          "options": {
+            "s": "ro"
+          },
+          "dump": {
+            "s": "1"
+          },
+          "pass": {
+            "s": "2"
+          }
+        }
+      },
+      "want": {
+        "line": "/dev/x\t/mnt/a\text4\tro\t1\t2"
+      }
+    },
+    {
+      "name": "mount-to_line-two-absent",
+      "grammar": "mount",
+      "op": "to_line",
+      "record": {
+        "type": "parsed",
+        "fields": {
+          "device": {
+            "s": "/dev/x"
+          },
+          "name": {
+            "s": "/mnt/a"
+          },
+          "fstype": {
+            "absent": true
+          },
+          "options": {
+            "absent": true
+          },
+          "dump": {
+            "absent": true
+          },
+          "pass": {
+            "absent": true
+          }
+        }
+      },
+      "want": {
+        "line": "/dev/x\t/mnt/a\t\t\t\t"
+      }
+    },
+    {
+      "name": "mount-to_line-options-nil",
+      "grammar": "mount",
+      "op": "to_line",
+      "record": {
+        "type": "parsed",
+        "fields": {
+          "device": {
+            "s": "/dev/x"
+          },
+          "name": {
+            "s": "/mnt/a"
+          },
+          "fstype": {
+            "s": "ext4"
+          },
+          "options": null,
+          "dump": {
+            "s": "1"
+          },
+          "pass": {
+            "s": "2"
+          }
+        }
+      },
+      "want": {
+        "line": "/dev/x\t/mnt/a\text4\tdefaults\t1\t2"
+      }
+    },
+    {
+      "name": "mount-to_line-options-empty",
+      "grammar": "mount",
+      "op": "to_line",
+      "record": {
+        "type": "parsed",
+        "fields": {
+          "device": {
+            "s": "/dev/x"
+          },
+          "name": {
+            "s": "/mnt/a"
+          },
+          "fstype": {
+            "s": "ext4"
+          },
+          "options": {
+            "s": ""
+          },
+          "dump": {
+            "s": "1"
+          },
+          "pass": {
+            "s": "2"
+          }
+        }
+      },
+      "want": {
+        "line": "/dev/x\t/mnt/a\text4\tdefaults\t1\t2"
+      }
+    },
+    {
+      "name": "mount-to_line-options-absent",
+      "grammar": "mount",
+      "op": "to_line",
+      "record": {
+        "type": "parsed",
+        "fields": {
+          "device": {
+            "s": "/dev/x"
+          },
+          "name": {
+            "s": "/mnt/a"
+          },
+          "fstype": {
+            "s": "ext4"
+          },
+          "options": {
+            "absent": true
+          },
+          "dump": {
+            "s": "1"
+          },
+          "pass": {
+            "s": "2"
+          }
+        }
+      },
+      "want": {
+        "line": "/dev/x\t/mnt/a\text4\t\t1\t2"
+      }
+    },
+    {
+      "name": "mount-to_line-fstype-nil",
+      "grammar": "mount",
+      "op": "to_line",
+      "record": {
+        "type": "parsed",
+        "fields": {
+          "device": {
+            "s": "/dev/x"
+          },
+          "name": {
+            "s": "/mnt/a"
+          },
+          "fstype": null,
+          "options": {
+            "s": "ro"
+          },
+          "dump": {
+            "s": "1"
+          },
+          "pass": {
+            "s": "2"
+          }
+        }
+      },
+      "want": {
+        "error": "Mount[/mnt/a]: Field 'fstype' is required"
+      }
+    },
+    {
+      "name": "mount-to_line-fstype-empty",
+      "grammar": "mount",
+      "op": "to_line",
+      "record": {
+        "type": "parsed",
+        "fields": {
+          "device": {
+            "s": "/dev/x"
+          },
+          "name": {
+            "s": "/mnt/a"
+          },
+          "fstype": {
+            "s": ""
+          },
+          "options": {
+            "s": "ro"
+          },
+          "dump": {
+            "s": "1"
+          },
+          "pass": {
+            "s": "2"
+          }
+        }
+      },
+      "want": {
+        "error": "Mount[/mnt/a]: Field 'fstype' is required"
+      }
+    },
+    {
+      "name": "mount-to_line-fstype-absent",
+      "grammar": "mount",
+      "op": "to_line",
+      "record": {
+        "type": "parsed",
+        "fields": {
+          "device": {
+            "s": "/dev/x"
+          },
+          "name": {
+            "s": "/mnt/a"
+          },
+          "fstype": {
+            "absent": true
+          },
+          "options": {
+            "s": "ro"
+          },
+          "dump": {
+            "s": "1"
+          },
+          "pass": {
+            "s": "2"
+          }
+        }
+      },
+      "want": {
+        "line": "/dev/x\t/mnt/a\t\tro\t1\t2"
+      }
+    },
+    {
+      "name": "mount-to_line-fstype-missing",
+      "grammar": "mount",
+      "op": "to_line",
+      "record": {
+        "type": "parsed",
+        "fields": {
+          "device": {
+            "s": "/dev/x"
+          },
+          "name": {
+            "s": "/mnt/a"
+          }
+        }
+      },
+      "want": {
+        "error": "Mount[/mnt/a]: Field 'fstype' is required"
+      }
+    },
+    {
+      "name": "mount-to_line-dump-nil-pass-nil",
+      "grammar": "mount",
+      "op": "to_line",
+      "record": {
+        "type": "parsed",
+        "fields": {
+          "device": {
+            "s": "/dev/x"
+          },
+          "name": {
+            "s": "/mnt/a"
+          },
+          "fstype": {
+            "s": "ext4"
+          },
+          "options": {
+            "s": "ro"
+          },
+          "dump": null,
+          "pass": null
+        }
+      },
+      "want": {
+        "line": "/dev/x\t/mnt/a\text4\tro\t\t"
+      }
+    },
+    {
+      "name": "mount-to_line-dump-absent-pass-set",
+      "grammar": "mount",
+      "op": "to_line",
+      "record": {
+        "type": "parsed",
+        "fields": {
+          "device": {
+            "s": "/dev/x"
+          },
+          "name": {
+            "s": "/mnt/a"
+          },
+          "fstype": {
+            "s": "ext4"
+          },
+          "options": {
+            "s": "ro"
+          },
+          "dump": {
+            "absent": true
+          },
+          "pass": {
+            "s": "2"
+          }
+        }
+      },
+      "want": {
+        "line": "/dev/x\t/mnt/a\text4\tro\t\t2"
+      }
+    },
+    {
+      "name": "mount-to_line-device-space",
+      "grammar": "mount",
+      "op": "to_line",
+      "record": {
+        "type": "parsed",
+        "fields": {
+          "device": {
+            "s": "/dev/my disk"
+          },
+          "name": {
+            "s": "/mnt/a"
+          },
+          "fstype": {
+            "s": "ext4"
+          },
+          "options": {
+            "s": "ro"
+          },
+          "dump": {
+            "s": "1"
+          },
+          "pass": {
+            "s": "2"
+          }
+        }
+      },
+      "want": {
+        "line": "/dev/my\\040disk\t/mnt/a\text4\tro\t1\t2"
+      }
+    },
+    {
+      "name": "mount-to_line-name-space",
+      "grammar": "mount",
+      "op": "to_line",
+      "record": {
+        "type": "parsed",
+        "fields": {
+          "device": {
+            "s": "/dev/x"
+          },
+          "name": {
+            "s": "/mnt/my disk"
+          },
+          "fstype": {
+            "s": "ext4"
+          },
+          "options": {
+            "s": "ro"
+          },
+          "dump": {
+            "s": "1"
+          },
+          "pass": {
+            "s": "2"
+          }
+        }
+      },
+      "want": {
+        "line": "/dev/x\t/mnt/my\\040disk\text4\tro\t1\t2"
+      }
+    },
+    {
+      "name": "mount-to_line-name-spaces-both",
+      "grammar": "mount",
+      "op": "to_line",
+      "record": {
+        "type": "parsed",
+        "fields": {
+          "device": {
+            "s": "a b c"
+          },
+          "name": {
+            "s": "d e"
+          },
+          "fstype": {
+            "s": "ext4"
+          },
+          "options": {
+            "s": "ro"
+          },
+          "dump": {
+            "s": "1"
+          },
+          "pass": {
+            "s": "2"
+          }
+        }
+      },
+      "want": {
+        "line": "a\\040b\\040c\td\\040e\text4\tro\t1\t2"
+      }
+    },
+    {
+      "name": "mount-to_line-device-absent",
+      "grammar": "mount",
+      "op": "to_line",
+      "record": {
+        "type": "parsed",
+        "fields": {
+          "device": {
+            "absent": true
+          },
+          "name": {
+            "s": "/mnt/a"
+          },
+          "fstype": {
+            "s": "ext4"
+          },
+          "options": {
+            "s": "ro"
+          },
+          "dump": {
+            "s": "1"
+          },
+          "pass": {
+            "s": "2"
+          }
+        }
+      },
+      "want": {
+        "error": "Field 'device' is required"
+      }
+    },
+    {
+      "name": "mount-to_line-device-nil",
+      "grammar": "mount",
+      "op": "to_line",
+      "record": {
+        "type": "parsed",
+        "fields": {
+          "device": null,
+          "name": {
+            "s": "/mnt/a"
+          },
+          "fstype": {
+            "s": "ext4"
+          },
+          "options": {
+            "s": "ro"
+          },
+          "dump": {
+            "s": "1"
+          },
+          "pass": {
+            "s": "2"
+          }
+        }
+      },
+      "want": {
+        "error": "Field 'device' is required"
+      }
+    },
+    {
+      "name": "mount-to_line-name-absent",
+      "grammar": "mount",
+      "op": "to_line",
+      "record": {
+        "type": "parsed",
+        "fields": {
+          "device": {
+            "s": "/dev/x"
+          },
+          "name": {
+            "absent": true
+          },
+          "fstype": {
+            "s": "ext4"
+          },
+          "options": {
+            "s": "ro"
+          },
+          "dump": {
+            "s": "1"
+          },
+          "pass": {
+            "s": "2"
+          }
+        }
+      },
+      "want": {
+        "error": "Field 'name' is required"
+      }
+    },
+    {
+      "name": "mount-to_line-name-nil-fstype-nil",
+      "grammar": "mount",
+      "op": "to_line",
+      "record": {
+        "type": "parsed",
+        "fields": {
+          "device": {
+            "s": "/dev/x"
+          },
+          "name": null,
+          "fstype": null,
+          "options": {
+            "s": "ro"
+          },
+          "dump": {
+            "s": "1"
+          },
+          "pass": {
+            "s": "2"
+          }
+        }
+      },
+      "want": {
+        "error": "Mount[]: Field 'fstype' is required"
+      }
+    },
+    {
+      "name": "mount-to_line-options-has-space",
+      "grammar": "mount",
+      "op": "to_line",
+      "record": {
+        "type": "parsed",
+        "fields": {
+          "device": {
+            "s": "/dev/x"
+          },
+          "name": {
+            "s": "/mnt/a"
+          },
+          "fstype": {
+            "s": "ext4"
+          },
+          "options": {
+            "s": "a b"
+          },
+          "dump": {
+            "s": "1"
+          },
+          "pass": {
+            "s": "2"
+          }
+        }
+      },
+      "want": {
+        "line": "/dev/x\t/mnt/a\text4\ta b\t1\t2"
+      }
+    },
+    {
+      "name": "mount-to_line-tab-in-device",
+      "grammar": "mount",
+      "op": "to_line",
+      "record": {
+        "type": "parsed",
+        "fields": {
+          "device": {
+            "s": "a\tb"
+          },
+          "name": {
+            "s": "/mnt/a"
+          },
+          "fstype": {
+            "s": "ext4"
+          },
+          "options": {
+            "s": "ro"
+          },
+          "dump": {
+            "s": "1"
+          },
+          "pass": {
+            "s": "2"
+          }
+        }
+      },
+      "want": {
+        "line": "a\tb\t/mnt/a\text4\tro\t1\t2"
+      }
+    },
+    {
+      "name": "mount-to_line-dash-o",
+      "grammar": "mount",
+      "op": "to_line",
+      "record": {
+        "type": "parsed",
+        "fields": {
+          "device": {
+            "s": "tmpfs"
+          },
+          "name": {
+            "s": "-o"
+          },
+          "fstype": {
+            "s": "tmpfs"
+          },
+          "options": {
+            "s": "defaults"
+          },
+          "dump": {
+            "s": "0"
+          },
+          "pass": {
+            "s": "0"
+          }
+        }
+      },
+      "want": {
+        "line": "tmpfs\t-o\ttmpfs\tdefaults\t0\t0"
+      }
+    },
+    {
+      "name": "mount-to_file-mixed",
+      "grammar": "mount",
+      "op": "to_file",
+      "records": [
+        {
+          "type": "comment",
+          "line": "# c",
+          "fields": {
+          }
+        },
+        {
+          "type": "parsed",
+          "fields": {
+            "device": {
+              "s": "/dev/x"
+            },
+            "name": {
+              "s": "/mnt/a"
+            },
+            "fstype": {
+              "s": "ext4"
+            },
+            "options": {
+              "s": "ro"
+            },
+            "dump": {
+              "s": "1"
+            },
+            "pass": {
+              "s": "2"
+            }
+          }
+        },
+        {
+          "type": "blank",
+          "line": "",
+          "fields": {
+          }
+        },
+        {
+          "type": "parsed",
+          "fields": {
+            "device": {
+              "s": "/dev/y"
+            },
+            "name": {
+              "s": "/mnt/b"
+            },
+            "fstype": {
+              "s": "xfs"
+            },
+            "options": {
+              "absent": true
+            },
+            "dump": {
+              "absent": true
+            },
+            "pass": {
+              "absent": true
+            }
+          }
+        }
+      ],
+      "want": {
+        "text": "# c\n/dev/x\t/mnt/a\text4\tro\t1\t2\n\n/dev/y\t/mnt/b\txfs\t\t\t\n"
+      }
+    },
+    {
+      "name": "mount-to_file-fstype-error",
+      "grammar": "mount",
+      "op": "to_file",
+      "records": [
+        {
+          "type": "parsed",
+          "fields": {
+            "device": {
+              "s": "/dev/x"
+            },
+            "name": {
+              "s": "/mnt/a"
+            },
+            "fstype": {
+              "s": "ext4"
+            },
+            "options": {
+              "s": "ro"
+            },
+            "dump": {
+              "s": "1"
+            },
+            "pass": {
+              "s": "2"
+            }
+          }
+        },
+        {
+          "type": "parsed",
+          "fields": {
+            "device": {
+              "s": "/dev/x"
+            },
+            "name": {
+              "s": "/mnt/a"
+            },
+            "fstype": null,
+            "options": {
+              "s": "ro"
+            },
+            "dump": {
+              "s": "1"
+            },
+            "pass": {
+              "s": "2"
+            }
+          }
+        }
+      ],
+      "want": {
+        "error": "Mount[/mnt/a]: Field 'fstype' is required"
+      }
+    },
+    {
+      "name": "mount-to_file-empty",
+      "grammar": "mount",
+      "op": "to_file",
+      "records": [
+
+      ],
+      "want": {
+        "text": "\n"
+      }
     }
   ]
 }

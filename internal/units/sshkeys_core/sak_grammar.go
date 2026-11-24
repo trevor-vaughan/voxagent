@@ -113,7 +113,7 @@ func parseOptions(options string) []string {
 // joined with ",". Ruby's include? raises on a record without options; no record
 // reaches here without them (the grammar and the type's default give [Absent]),
 // so that state is left alone.
-func sakPreGen(r *parsedfile.Record) {
+func sakPreGen(r *parsedfile.Record) error {
 	if r.Flags["unnamed"] {
 		r.Fields["name"] = parsedfile.Value{Kind: parsedfile.Str}
 	}
@@ -123,6 +123,7 @@ func sakPreGen(r *parsedfile.Record) {
 	case parsedfile.List:
 		r.Fields["options"] = parsedfile.Value{Kind: parsedfile.Str, S: strings.Join(options.L, ",")}
 	}
+	return nil
 }
 
 // sakPrefetchHook is kp:126-137, run per target: each parsed record without a

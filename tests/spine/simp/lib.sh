@@ -261,6 +261,25 @@ concat_fingerprints() {
   done
 }
 
+# check_sha256_pins GATE LIBDIR LABEL ARRAY
+#
+# Returns 0 when every file named by a key of the associative array ARRAY (a
+# variable name, read by nameref) exists under LIBDIR with the sha256 in its
+# value. Otherwise it prints "GATE: LIBDIR/FILE is not LABEL (sha256 GOT, want
+# WANT)" to stderr and returns 2.
+check_sha256_pins() {
+  local gate="$1" libdir="$2" label="$3" file got
+  local -n pins="$4"
+  for file in "${!pins[@]}"; do
+    got="$(sha256sum "$libdir/$file" 2>/dev/null)"
+    got="${got%% *}"
+    if [ "$got" != "${pins[$file]}" ]; then
+      echo "$gate: $libdir/$file is not $label (sha256 ${got:-unreadable}, want ${pins[$file]})" >&2
+      return 2
+    fi
+  done
+}
+
 # augeasproviders_fingerprints GATE LIBDIR
 #
 # Returns 0 when LIBDIR carries the fifteen files voxagent routes sysctl,
@@ -276,7 +295,7 @@ concat_fingerprints() {
 # send the five types to the extension host, and the gate would compare Ruby
 # with Ruby while looking green. GATE prefixes the messages.
 augeasproviders_fingerprints() {
-  local gate="$1" libdir="$2" file got
+  local gate="$1" libdir="$2"
   local -A sums=(
     [puppet/provider/augeasprovider/default.rb]=3900c7e789d651b9f5271087ef3a3b3a9b08cfef2b725d30b559bfff280af42a
     [puppet/type/augeasprovider.rb]=0cd37a04489790a03adcae071cf3ee62a81ba238c4ce4959314092d1ab69e795
@@ -294,14 +313,7 @@ augeasproviders_fingerprints() {
     [puppet/provider/augeas/augeas.rb]=4eedaf2d530bc89909b97f36f552cf820bfbe9808040e6c9caa748a10df31c93
     [puppet_x/augeas/util/parser.rb]=586daa7ddf5a741286f805c90c5e9fc464bb91f184c0c746231bbc5ca0374a7a
   )
-  for file in "${!sums[@]}"; do
-    got="$(sha256sum "$libdir/$file" 2>/dev/null)"
-    got="${got%% *}"
-    if [ "$got" != "${sums[$file]}" ]; then
-      echo "$gate: $libdir/$file is not the measured augeasproviders file (sha256 ${got:-unreadable}, want ${sums[$file]})" >&2
-      return 2
-    fi
-  done
+  check_sha256_pins "$gate" "$libdir" "the measured augeasproviders file" sums
 }
 
 # cron_core_fingerprints GATE LIBDIR
@@ -313,18 +325,65 @@ augeasproviders_fingerprints() {
 # host, and the gate would compare Ruby with Ruby while looking green. GATE
 # prefixes the messages.
 cron_core_fingerprints() {
-  local gate="$1" libdir="$2" file got
+  local gate="$1" libdir="$2"
   local -A sums=(
     [puppet/type/cron.rb]=a5f7712895d0370077b24e8cfcd47ab16f57e4df9016257258fa7b01168a903c
     [puppet/provider/cron/crontab.rb]=e823f00e5155c87d2f2acaedf109be12c0b13b3781e6bc05d7285f1cdc4dba4a
     [puppet/provider/cron/filetype.rb]=f82a87886c2ff0b72a0e43ebd0bb6edecda0362ddcbc672bc51245f2b88266ce
   )
-  for file in "${!sums[@]}"; do
-    got="$(sha256sum "$libdir/$file" 2>/dev/null)"
-    got="${got%% *}"
-    if [ "$got" != "${sums[$file]}" ]; then
-      echo "$gate: $libdir/$file is not cron_core 2.1.0's (sha256 ${got:-unreadable}, want ${sums[$file]})" >&2
-      return 2
-    fi
-  done
+  check_sha256_pins "$gate" "$libdir" "cron_core 2.1.0's" sums
+}
+
+# host_core_fingerprints GATE LIBDIR
+#
+# Returns 0 when LIBDIR carries puppetlabs-host_core 2.1.0's type and provider
+# files with their sha256, which equal the vendored 1.3.0's voxagent routes
+# host on (internal/units/host_core/manifest.go; parsedfile-types design §2.2).
+# Otherwise it names the file and returns 2: a changed pin would send host to
+# the extension host, and the gate would compare Ruby with Ruby while looking
+# green. GATE prefixes the messages.
+host_core_fingerprints() {
+  local gate="$1" libdir="$2"
+  local -A sums=(
+    [puppet/type/host.rb]=e0d448a5835a12a2565d309b348ed071c0f849aeec87372777c948acc6bf1e35
+    [puppet/provider/host/parsed.rb]=a396f906038d718f6c69cb7a836f13eed16de5e9b2cf9d39a020eed9e9685f7d
+  )
+  check_sha256_pins "$gate" "$libdir" "host_core 2.1.0's" sums
+}
+
+# mount_core_fingerprints GATE LIBDIR
+#
+# Returns 0 when LIBDIR carries puppetlabs-mount_core 2.1.0's type and two
+# provider files with their sha256, a release voxagent routes mount on
+# (internal/units/mount_core/manifest.go; parsedfile-types design §2.2).
+# Otherwise it names the file and returns 2: a changed pin would send mount to
+# the extension host, and the gate would compare Ruby with Ruby while looking
+# green. GATE prefixes the messages.
+mount_core_fingerprints() {
+  local gate="$1" libdir="$2"
+  local -A sums=(
+    [puppet/type/mount.rb]=ad59cd27fb9611a38407ece68e1d128c05fe6dba6f5be5af979c4c50eda43d7e
+    [puppet/provider/mount/parsed.rb]=9ce69a02f80ad9e04c014bec2d555240dca26e5226e77f2ea0695bc96c293230
+    [puppet/provider/mount.rb]=9c2ce747e83d5398ac51cd5f5f9abe80860c75c61f7650ddc3fe39bf3c07bea1
+  )
+  check_sha256_pins "$gate" "$libdir" "mount_core 2.1.0's" sums
+}
+
+# sshkeys_core_fingerprints GATE LIBDIR
+#
+# Returns 0 when LIBDIR carries puppetlabs-sshkeys_core 3.1.0's sshkey and
+# ssh_authorized_key type and provider files with their sha256, the release
+# voxagent routes both types on (internal/units/sshkeys_core/manifest.go;
+# parsedfile-types design §2.2). Otherwise it names the file and returns 2: a
+# changed pin would send both types to the extension host, and the gate would
+# compare Ruby with Ruby while looking green. GATE prefixes the messages.
+sshkeys_core_fingerprints() {
+  local gate="$1" libdir="$2"
+  local -A sums=(
+    [puppet/type/sshkey.rb]=a16318375affd95b2e368d69b5ede6cae8d8639fcad85277bdabca0d0e2ed8da
+    [puppet/provider/sshkey/parsed.rb]=2f8d4fe1dc69c2c5f362cfbe044e5bd477c4700d079a817557ca7e08d660e1cf
+    [puppet/type/ssh_authorized_key.rb]=48dd2f61019e1e163e7d354c4618e7466dfd93784c38b9b9afe2180002ea1a06
+    [puppet/provider/ssh_authorized_key/parsed.rb]=86f01f5ed68cb89e193b70291712bd2417df7b6a7a9e382cfeecfb4ea1810334
+  )
+  check_sha256_pins "$gate" "$libdir" "sshkeys_core 3.1.0's" sums
 }

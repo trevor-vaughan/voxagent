@@ -6,7 +6,7 @@ unit is, how units are laid out and routed, and how to add one. Go citations are
 ## What a unit is
 
 A unit is a Go package under `internal/units/<name>` that reproduces one Ruby origin: either Puppet itself (one unit per
-core type: `exec`, `file`, `group`, `notify`, `package`, `service`, `user`) or one Ruby module (`concat`, `cron_core`, `host_core`, `sshkeys_core`, `augeas_core`,
+core type: `exec`, `file`, `group`, `notify`, `package`, `service`, `user`) or one Ruby module (`concat`, `cron_core`, `host_core`, `sshkeys_core`, `mount_core`, `augeas_core`,
 `augeasproviders_sysctl`, `augeasproviders_ssh`). `augeasproviders_core` is a library unit: it serves no type, and holds
 the run object, mixin and fingerprinted files its two dependents share. A unit supplies two things through
 `unit.Unit` (`internal/unit/unit.go`):
@@ -65,7 +65,7 @@ Consequences worth knowing before you move code:
 | `sources` | the per-resource `Sources` context value |
 | `command` | running external commands, output capping, shadow and argv runners, `ExecFailure`, executable checks, `RubyWhich` (`Puppet::Util.which`, shared by sysctl and cron) |
 | `nameservice` | libc NSS access through cgo (`nss_linux.go`) for `user`, `group` and `cron` (`PosixUID`, `UserByID`, `AllUsers`) |
-| `parsedfile` | Puppet's ParsedFile engine: a line grammar, per-run records, targets, and the crontab and flat filetypes. It knows no catalog or unit; `cron_core` (crontab filetype), `host_core` and `sshkeys_core` (flat filetype) are its consumers (`docs/maintainers/apply-spine.md`, "`cron` and the ParsedFile engine", "`host`", "`sshkey`", "`ssh_authorized_key`"). `LineType.PostParse` is `func(*Record) error`: `ErrNoRecord` makes the line a parse error, any other error aborts the parse (sshkey's leading-whitespace abort); `Run.FlushTargets` writes only the targets a record touched (D-102) |
+| `parsedfile` | Puppet's ParsedFile engine: a line grammar, per-run records, targets, and the crontab and flat filetypes. It knows no catalog or unit; `cron_core` (crontab filetype), `host_core`, `sshkeys_core` and `mount_core` (flat filetype) are its consumers (`docs/maintainers/apply-spine.md`, "`cron` and the ParsedFile engine", "`host`", "`sshkey`", "`ssh_authorized_key`", "`mount`"). A consumer's `LineType` (`grammar.go`) may carry two hooks, both `func(*Record) error`. `PostParse` runs on every record of the type after the line parses (Ruby's `fp:276`): returning `ErrNoRecord` makes the line not a record, which fails the parse with a `ParseError` for that line; any other error aborts the whole parse and is returned unchanged (sshkey's leading-whitespace abort, spec §8 item 5). `PreGen` runs on a shallow copy of the record before its line is generated (`fp:341-344`), so it may edit `Fields` and `Flags` without touching the stored record; an error aborts the generation and is returned unchanged (`Grammar.ToLine`). `Run.Flush(ctx, rec, shouldTarget, hasShould)` writes every modified target, as Ruby does; `Run.FlushTargets(ctx, rec, shouldTarget, hasShould, own)` writes only the modified targets in `own` or equal to `rec.Target`, and leaves the others marked for a later flush (D-102). Only `sshkeys_core`'s sak flush calls `FlushTargets` |
 | `plugintree` | `LibdirTree`, reading the plugin tree under `--libdir` |
 | `augeas` | the libaugeas `dlopen` probe and `Session` (the probe is made at most once per run) |
 | `raltest` | test support: fakes, catalog builders, the libaugeas trace replay (`trace.go`). Never imports `ral` or a unit |
@@ -82,7 +82,7 @@ live in `lib`.
 | `Name` | the unit; equals its directory name under `internal/units` |
 | `Version` | the unit's own semver, independent of voxagent's (see "Versioning") |
 | `Source` | `Origin{Implementation, Version}`: the Ruby implementation reproduced. Core units: `puppet` `8.10.0`. Module units: the module name and an empty `Version` (the versions are in `Releases`) |
-| `Oracle` | `Origin` the behaviour was measured against: `openvox` `8.33.0` for every unit but `host_core` and `sshkeys_core`, measured on `8.34.0` |
+| `Oracle` | `Origin` the behaviour was measured against: `openvox` `8.33.0` for every unit but `host_core`, `sshkeys_core` and `mount_core`, measured on `8.34.0` |
 | `Types` | the catalog types the unit serves, lower case. Empty for a library unit |
 | `Requires` | names of units this one imports; the layering test allows imports of exactly these |
 | `Releases` | `[]Release{Version, Files, Types}`: one entry per measured version of the module's Ruby files |
@@ -169,6 +169,15 @@ Each unit's remaining checks are its own, and every failure is a `Delegated` rea
   (`rubyvalue.UnimplementedValue`) under the release found. Each type is fingerprinted by its own two files; the
   release found selects 3.1.0's `sshkey` `key` check and is passed to the provider
   (`sshkeys_core/manifest.go:Route`, `routeSshkeyType`, `routeSakType`).
+- `mount_core`: the measured platform (`ral.MeasuredRelease`), executable `mount` and then `umount` (`command.RubyWhich`
+  over `PATH`, as the provider's `commands` confine resolves them; the resolved paths are passed to the provider), a
+  `provider` other than `parsed` (`group.ForeignProvider`; the unit requires `group`, and `file` for
+  `file.BucketBackup` and `file.RelabelHook`), the plugin tree (none of the three files is the vendored 1.3.0, else
+  `MatchFiles` for 1.3.0 or 2.1.0, and no provider file under `puppet/provider/mount/` but `parsed.rb`:
+  `pluginRelease`), a `Resources` purge of `mount`, value shapes (`rubyvalue.UnimplementedValue`), then, when the
+  catalog holds a `File`, every valid Mount's munged name a portable regular expression (`portablePattern`: Ruby
+  compiles it into each `File`'s autobefore pattern). A Mount that fails validation is skipped in that last check:
+  Ruby refuses it at catalog conversion, before compiling any pattern (`mount_core/manifest.go:Route`).
 - `exec`, `file`, `notify`, `package`, `service`: native on every run.
 
 D-87, D-89, D-91 and D-94 in [apply-spine.md](apply-spine.md) say what is measured and why each condition delegates.

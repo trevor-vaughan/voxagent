@@ -49,6 +49,8 @@ func canaryBase(typ, dir string) (title string, params map[string]any) {
 		return "voxcanary", map[string]any{"ensure": "present"}
 	case "host":
 		return "voxcanary", map[string]any{"ip": "127.0.0.1", "target": filepath.Join(dir, "hosts")}
+	case "mount":
+		return "/mnt/voxcanary", map[string]any{"device": "/dev/null", "fstype": "ext4", "target": filepath.Join(dir, "fstab")}
 	case "notify":
 		return "canary-notify", map[string]any{}
 	case "package":
@@ -82,7 +84,7 @@ func canaryBase(typ, dir string) (title string, params map[string]any) {
 // in voxagent records namevars.
 var canaryNamevars = map[string]string{
 	"augeas": "name", "ssh_config": "name", "sshd_config": "name", "sshd_config_subsystem": "name", "sysctl": "name",
-	"concat_file": "path", "concat_fragment": "name", "cron": "name", "exec": "command", "file": "path", "group": "name", "host": "name",
+	"concat_file": "path", "concat_fragment": "name", "cron": "name", "exec": "command", "file": "path", "group": "name", "host": "name", "mount": "name",
 	"notify": "name", "package": "name", "service": "name", "ssh_authorized_key": "name", "sshkey": "name", "user": "name",
 	"vox_conf": "name", "vox_deep": "name", "vox_die": "name", "vox_evalgen": "name", "vox_gen": "name",
 	"vox_prefetch": "name", "vox_rapi": "name", "vox_secret": "name", "vox_selfref": "name", "vox_titled": "name",

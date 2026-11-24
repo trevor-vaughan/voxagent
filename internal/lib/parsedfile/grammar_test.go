@@ -81,9 +81,10 @@ func TestParseNoTypes(t *testing.T) {
 func TestToLineCopiesBeforePreGen(t *testing.T) {
 	g, err := NewGrammar(LineType{
 		Name: "r", Fields: []string{"a"},
-		PreGen: func(r *Record) {
+		PreGen: func(r *Record) error {
 			r.Fields["a"] = Value{Kind: Str, S: "changed"}
 			r.Flags["seen"] = true
+			return nil
 		},
 	})
 	if err != nil {
@@ -153,7 +154,7 @@ func TestHooksMayWriteFlags(t *testing.T) {
 	g, err := NewGrammar(
 		LineType{Name: "t", Text: true, Match: RE2(regexp.MustCompile(`.`)),
 			PostParse: func(r *Record) error { r.Flags["parsed"] = true; return nil },
-			PreGen:    func(r *Record) { r.Flags["gen"] = true; r.Fields["f"] = Value{Kind: Str, S: "x"} }},
+			PreGen:    func(r *Record) error { r.Flags["gen"] = true; r.Fields["f"] = Value{Kind: Str, S: "x"}; return nil }},
 	)
 	if err != nil {
 		t.Fatal(err)
@@ -239,5 +240,39 @@ func TestValueDisplayAndReportValue(t *testing.T) {
 		if got := tc.v.ReportValue(); !reflect.DeepEqual(got, tc.report) {
 			t.Errorf("ReportValue(%+v) = %#v, want %#v", tc.v, got, tc.report)
 		}
+	}
+}
+
+// TestPreGenErrorAbortsGeneration: an error from PreGen is returned as is, for
+// a record line and a text line, and ToFile stops at it.
+func TestPreGenErrorAbortsGeneration(t *testing.T) {
+	boom := errors.New("pre_gen failed")
+	g, err := NewGrammar(
+		LineType{Name: "t", Text: true, Match: RE2(regexp.MustCompile(`^#`)),
+			PreGen: func(*Record) error { return boom }},
+		LineType{Name: "r", Fields: []string{"a"},
+			PreGen: func(r *Record) error {
+				if r.Fields["a"].S == "bad" {
+					return boom
+				}
+				return nil
+			}},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	bad := Record{Type: "r", Fields: map[string]Value{"a": {Kind: Str, S: "bad"}}}
+	if got, err := g.ToLine(bad); got != "" || err != boom {
+		t.Errorf("ToLine(bad) = %q, %v; want the PreGen error", got, err)
+	}
+	if _, err := g.ToLine(Record{Type: "t", Line: "# x"}); err != boom {
+		t.Errorf("text ToLine err = %v, want the PreGen error", err)
+	}
+	good := Record{Type: "r", Fields: map[string]Value{"a": {Kind: Str, S: "ok"}}}
+	if got, err := g.ToLine(good); err != nil || got != "ok" {
+		t.Errorf("ToLine(good) = %q, %v", got, err)
+	}
+	if got, err := g.ToFile([]*Record{&good, &bad}); got != "" || err != boom {
+		t.Errorf("ToFile = %q, %v; want the PreGen error", got, err)
 	}
 }

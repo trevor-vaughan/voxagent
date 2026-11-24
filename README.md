@@ -145,6 +145,26 @@ shapes Ruby fails with Ruby-version-specific texts (a non-String `command`, and 
 `environment` entry that is not a String), send the type to the extension host. Elsewhere `cron` needs the extension
 host, and `--no-ruby` refuses a catalog that has it. `--debug` logs why. Values are written as Puppet writes them:
 a line break in a `cron` value becomes extra crontab lines, as under Puppet.
+`host`, `sshkey`, `ssh_authorized_key` and `mount` (puppetlabs-host_core, sshkeys_core and
+mount_core, over voxagent's ParsedFile engine) are applied natively on a RHEL-family host of major release 10 or
+later that is not Fedora. Each is decided on its own, and it needs: for `host`, `/etc/hosts` to exist; for `mount`,
+`mount` and `umount` on `PATH`, `/usr/sbin` or `/sbin`, and, when the catalog holds a `File`, mount names that hold none
+of `\`, `(?`, `{` and `[`; no resource naming a `provider` other than `parsed`; a libdir that holds none of the module
+(openvox's vendored release applies) or a measured one (host_core 2.1.0, mount_core 1.3.0 or 2.1.0, sshkeys_core 2.5.0
+or 3.1.0, identified by file digests), and no other provider of the type; no `Resources` resource that may purge the
+type; for `ssh_authorized_key`, no `User` whose `purge_ssh_keys` would purge; and no value shape the native parser
+does not implement. Elsewhere the type needs the extension host, and `--no-ruby` refuses a catalog that has it.
+`--debug` logs why. As under Puppet, a line break in a value Puppet does not refuse is written verbatim
+(`improvements.md`, I-39).
+
+**Security note: `voxagent asuser`.** `ssh_authorized_key` writes a user's `authorized_keys` as that user, as Puppet
+does. voxagent does it by starting a child, a hidden subcommand it runs from its own binary
+(`/proc/self/exe asuser`), with the user's real and effective ids. The child creates the directory, writes the file
+and sets its mode, and prints one `<step> <errno>` result line; the parent parses only that line and quotes nothing
+else from the child. The child never runs as uid 0 and refuses to start when its effective uid is 0. When voxagent
+itself is not root, or already runs as the target user, the work happens in the parent with no child. The child's
+environment is `PATH` and `TMPDIR` only. It is not a command to run by hand. Maintainer detail:
+`docs/maintainers/apply-spine.md`, "Privilege drop (`voxagent asuser`)".
 `concat_file` and `concat_fragment` (puppetlabs-concat) are applied natively
 when the synced module under `--libdir` is release 9.1.0 or 10.0.1 (voxagent
 identifies it by the digests of its two type files) and every one of them in the
@@ -574,7 +594,7 @@ task dev:report-diff-extension  # the same for Tier 3 types, run through the ext
 task dev:idempotence         # a second apply must change nothing
 task dev:derive-run-to-run   # re-measure report-diff's allowlist against Ruby
 task dev:state-diff          # both agents, two containers, same resulting state
-task dev:report-diff-container  # the report comparison for package, exec, user, group, concat, the Augeas types and cron, in a container
+task dev:report-diff-container  # the report comparison for package, exec, user, group, concat, the Augeas types, cron, host, sshkey, ssh_authorized_key and mount, in a container
 task dev:report-diff-systemd    # the report comparison for service, in a systemd container
 task dev:report-diff-simp       # both agents apply the public SIMP catalog, in systemd containers
 task dev:augeas-lib             # the libaugeas binding against openvox's real library, in a container
@@ -594,7 +614,14 @@ built on first use; a cold build needs the network), and that half, like
 (`tests/spine/cron/g5.sh`) on `localhost/cron-measure-el`, the same base plus cronie
 (`tests/spine/images/Containerfile.cron`, also built on first use): 21 cases,
 each applied live, rerun and under `--noop` by both agents, with the end state of the crontabs compared,
-and one catalog both agents must refuse alike. The container report
+and one catalog both agents must refuse alike. Then the four ParsedFile types' halves, one after
+another on `localhost/parsedfile-measure-el`, an image derived from the same base
+(`tests/spine/images/Containerfile.parsedfile-types`, also built on first use): `host`
+(`tests/spine/host/g5.sh`), `sshkey` (`tests/spine/sshkey/g5.sh`, once with the vendored sshkeys_core and once
+with the SIMP release's), `ssh_authorized_key` (`tests/spine/sak/g5.sh`) and `mount` (`tests/spine/mount/g5.sh`, with the vendored
+mount_core and the SIMP release's, in containers given `SYS_ADMIN` so the cases mount real tmpfs file systems).
+Each case is applied live, rerun and under `--noop` by both agents, and the end state of the files is compared,
+as for cron. The container report
 differential exists because the host is not a valid oracle for `package` or for
 `exec`, and for one underlying reason: the host's Ruby cannot fork under Puppet.
 So Puppet's `dnf` provider confines itself out and falls back to `dnfmodule`,

@@ -428,6 +428,75 @@
     ]
   },
   {
+    "name": "mount_core",
+    "version": "1.0.0",
+    "source": {
+      "implementation": "puppetlabs-mount_core",
+      "version": ""
+    },
+    "oracle": {
+      "implementation": "openvox",
+      "version": "8.34.0"
+    },
+    "types": [
+      "mount"
+    ],
+    "requires": [
+      "group",
+      "file"
+    ],
+    "releases": [
+      {
+        "version": "1.3.0",
+        "files": [
+          {
+            "path": "puppet/type/mount.rb",
+            "sha256": "0939199693c7c8f3bfe76c4dce93b62623011b1de4e34606df054422d09a5a25"
+          },
+          {
+            "path": "puppet/provider/mount/parsed.rb",
+            "sha256": "583208bfca8e5afac71efec73cd715b49155ffe6a73af2eb50e8a775f60ec168"
+          },
+          {
+            "path": "puppet/provider/mount.rb",
+            "sha256": "9c2ce747e83d5398ac51cd5f5f9abe80860c75c61f7650ddc3fe39bf3c07bea1"
+          }
+        ],
+        "types": {
+          "mount": [
+            "puppet/type/mount.rb",
+            "puppet/provider/mount/parsed.rb",
+            "puppet/provider/mount.rb"
+          ]
+        }
+      },
+      {
+        "version": "2.1.0",
+        "files": [
+          {
+            "path": "puppet/type/mount.rb",
+            "sha256": "ad59cd27fb9611a38407ece68e1d128c05fe6dba6f5be5af979c4c50eda43d7e"
+          },
+          {
+            "path": "puppet/provider/mount/parsed.rb",
+            "sha256": "9ce69a02f80ad9e04c014bec2d555240dca26e5226e77f2ea0695bc96c293230"
+          },
+          {
+            "path": "puppet/provider/mount.rb",
+            "sha256": "9c2ce747e83d5398ac51cd5f5f9abe80860c75c61f7650ddc3fe39bf3c07bea1"
+          }
+        ],
+        "types": {
+          "mount": [
+            "puppet/type/mount.rb",
+            "puppet/provider/mount/parsed.rb",
+            "puppet/provider/mount.rb"
+          ]
+        }
+      }
+    ]
+  },
+  {
     "name": "notify",
     "version": "1.0.0",
     "source": {

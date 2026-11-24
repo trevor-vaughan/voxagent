@@ -70,10 +70,10 @@ func splitHostAliases(r *parsedfile.Record) error {
 // and host_aliases goes. Ruby's join renders nil as "" and :absent as "absent"
 // (so an Absent host_aliases adds an alias "absent"); a missing field and Nil
 // leave the record alone.
-func joinHostAliases(r *parsedfile.Record) {
+func joinHostAliases(r *parsedfile.Record) error {
 	aliases, ok := r.Fields["host_aliases"]
 	if !ok || aliases.Kind == parsedfile.Nil {
-		return
+		return nil
 	}
 	parts := []string{rubyJoinText(r.Fields["name"])}
 	switch aliases.Kind {
@@ -84,6 +84,7 @@ func joinHostAliases(r *parsedfile.Record) {
 	}
 	r.Fields["name"] = parsedfile.Value{Kind: parsedfile.Str, S: strings.Join(parts, ",")}
 	delete(r.Fields, "host_aliases")
+	return nil
 }
 
 // rubyJoinText is how Array#join renders a scalar element: a String as is,
