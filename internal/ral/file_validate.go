@@ -134,13 +134,18 @@ func (e *executionFailure) Error() string {
 // rubyEnvDropped are the variables Puppet deletes in the child before every
 // command it executes: util/posix.rb:6-7's LOCALE_ENV_VARS, which
 // util/execution.rb:372-379 replaces with LANG=C and LC_ALL=C, and :11's
-// USER_ENV_VARS (:386). Exec does not do this (D-23); validate_cmd does,
-// because its environment is new behaviour and can start out matching.
-var rubyEnvDropped = map[string]struct{}{
-	"LANG": {}, "LC_ALL": {}, "LC_MESSAGES": {}, "LANGUAGE": {}, "LC_COLLATE": {},
-	"LC_CTYPE": {}, "LC_MONETARY": {}, "LC_NUMERIC": {}, "LC_TIME": {},
-	"HOME": {}, "USER": {}, "LOGNAME": {},
-}
+// USER_ENV_VARS (:386), the userEnvVars. Exec and the argv runners drop only
+// the userEnvVars; validate_cmd drops both.
+var rubyEnvDropped = func() map[string]struct{} {
+	dropped := map[string]struct{}{
+		"LANG": {}, "LC_ALL": {}, "LC_MESSAGES": {}, "LANGUAGE": {}, "LC_COLLATE": {},
+		"LC_CTYPE": {}, "LC_MONETARY": {}, "LC_NUMERIC": {}, "LC_TIME": {},
+	}
+	for _, name := range userEnvVars {
+		dropped[name] = struct{}{}
+	}
+	return dropped
+}()
 
 // runAsRubyExec runs line as Puppet's execute_posix does
 // (util/execution.rb:354-395) with :failonfail and :combine: in a new
@@ -185,7 +190,7 @@ func runAsRubyExec(ctx context.Context, line string) (int, string, error) {
 		// A file with no #! line: Ruby retries it as a /bin/sh script
 		// (process.c proc_exec_cmd), measured with Ruby 3.4.9.
 		retry := rubyChild("/bin/sh", "sh", append([]string{cmd.Path}, cmd.Args[1:]...)...)
-		return runCapped(ctx, retry, quoteOrRedact(line, false))
+		return runCapped(ctx, retry, quoteOrRedact(line, false), (*exec.Cmd).Run)
 	}
 	return 1, couldNotExecute(errno, argv0), nil
 }

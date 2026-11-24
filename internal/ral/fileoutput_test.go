@@ -174,7 +174,7 @@ func TestRunCapturingToFileCaps(t *testing.T) {
 		{"rune straddles the cap", `printf 'abcdefghi\342\202\254'`, "abcdefghi", true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			code, out, truncated, err := runCapturingToFile(exec.Command("/bin/sh", "-c", tc.script), "sh")
+			code, out, truncated, err := runCapturingToFile(exec.Command("/bin/sh", "-c", tc.script), "sh", (*exec.Cmd).Run)
 			if err != nil {
 				t.Fatalf("err = %v", err)
 			}
@@ -188,7 +188,7 @@ func TestRunCapturingToFileCaps(t *testing.T) {
 // A command that fails still has its exit status when its output is cut.
 func TestRunCapturingToFileKeepsExitStatusWhenTruncated(t *testing.T) {
 	withOutputCap(t, 4)
-	code, out, truncated, err := runCapturingToFile(exec.Command("/bin/sh", "-c", "printf 'abcdefgh'; exit 3"), "sh")
+	code, out, truncated, err := runCapturingToFile(exec.Command("/bin/sh", "-c", "printf 'abcdefgh'; exit 3"), "sh", (*exec.Cmd).Run)
 	if err != nil || code != 3 || out != "abcd" || !truncated {
 		t.Errorf("got (%d, %q, %v, %v), want (3, %q, true, nil)", code, out, truncated, err, "abcd")
 	}

@@ -105,6 +105,9 @@ type walk struct {
 	// resource whose type overrides title, by catalog ref (puppetNames).
 	display map[string]string
 	titles  map[string]string
+	// broken is the ral.ErrStagingBroken a provider returned: the agent's cwd
+	// is wrong, so the walk applies nothing more and Run returns it.
+	broken error
 }
 
 // subject is one resource the walk applies: a catalog resource, or a child a
@@ -162,6 +165,7 @@ func (tx *Transaction) Run(ctx context.Context, c *catalog.Catalog, g *graph.Gra
 	// reporting zero would say it did not happen.
 	walkStarted := time.Now()
 	defer func() { rep.EvaluationSpan = time.Since(walkStarted) }()
+	ctx = ral.WithUniqueWarnings(ctx)
 
 	byRef := make(map[string]catalog.Resource, len(c.Resources))
 	filePaths := make(map[string]struct{})
@@ -312,11 +316,11 @@ func (w *walk) visit(ref string) (deferred bool, err error) {
 	}
 	if eg, ok := provider.(ral.EvalGenerator); hasProvider && ok && eg.EvalGenerates(r) {
 		w.visitHostUnit(eg, provider, s)
-		return false, nil
+		return false, w.broken
 	}
 	if gen, ok := provider.(ral.Generator); hasProvider && ok {
 		w.visitUnit(gen, provider, s)
-		return false, nil
+		return false, w.broken
 	}
 	var res result
 	if deps := w.failedDeps[ref]; len(deps) > 0 {
@@ -328,6 +332,9 @@ func (w *walk) visit(ref string) (deferred bool, err error) {
 		return false, fmt.Errorf("no provider for %s; pre-flight did not run or is incomplete", ref)
 	} else {
 		res = w.apply(provider, s, true)
+	}
+	if w.broken != nil {
+		return false, w.broken
 	}
 	if res.unsuitable != nil {
 		w.deferred[ref] = deferral{s: s, ev: res.unsuitable}
@@ -495,6 +502,11 @@ func (w *walk) apply(provider ral.Provider, s subject, propagate bool) result {
 		}
 	} else {
 		changes, warnings, applyErr = provider.Apply(ctx, r, w.tx.Noop)
+	}
+	// §4.2 item 5 of the exec design: stop at once, recording nothing.
+	if errors.Is(applyErr, ral.ErrStagingBroken) {
+		w.broken = fmt.Errorf("%s: %w", ref, applyErr)
+		return result{}
 	}
 
 	// Logged here -- immediately after the apply, before the resource's own
@@ -816,11 +828,10 @@ func (w *walk) apply(provider ral.Provider, s subject, propagate bool) result {
 	// ran anyway. Ruby reported failed=true alongside a refresh/success
 	// event with change_count=1.
 	//
-	// voxagent's own exec does not implement `refresh` -- it is outside the
-	// bounded attribute set -- so the reachable shape here is the other one
-	// Ruby produces: the refresh re-runs the same failing command and also
-	// fails, giving failed_to_restart and a second failure event where
-	// voxagent previously emitted one event and no flag.
+	// voxagent's exec implements `refresh`, so both shapes are reachable: a
+	// `refresh` command runs in place of the failed one, as measured above,
+	// and an exec without one re-runs its failing command, which fails again,
+	// giving failed_to_restart and a second failure event.
 	chained := false
 	if pending, due := w.pendingRefresh[ref]; due {
 		delete(w.pendingRefresh, ref)
@@ -845,6 +856,10 @@ func (w *walk) apply(provider ral.Provider, s subject, propagate bool) result {
 				runlog.AddLogs(w.ctx, w.rep, out.Logs...)
 			} else {
 				refreshed, err = provider.Refresh(ctx, r, w.tx.Noop)
+			}
+			if errors.Is(err, ral.ErrStagingBroken) {
+				w.broken = fmt.Errorf("%s: %w", ref, err)
+				return result{}
 			}
 			switch {
 			case err != nil:
@@ -1349,6 +1364,9 @@ func (w *walk) applyUnit(provider ral.Provider, parent subject, children []catal
 	} else {
 		parentResult = w.apply(provider, parent, len(children) == 0)
 	}
+	if w.broken != nil {
+		return
+	}
 	if len(children) > 0 {
 		w.logUnitMember(parent, parent, parentResult)
 	}
@@ -1394,6 +1412,9 @@ func (w *walk) applyUnit(provider ral.Provider, parent subject, children []catal
 				res = w.apply(refuse(p, c, err), s, false)
 			default:
 				res = w.apply(p, s, false)
+			}
+			if w.broken != nil {
+				return
 			}
 		}
 		if res.unsuitable != nil {

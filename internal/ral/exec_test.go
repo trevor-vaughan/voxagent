@@ -2,8 +2,10 @@ package ral
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
+	"os/user"
 	"path/filepath"
 	"slices"
 	"strconv"
@@ -1273,6 +1275,46 @@ func TestExecAutoRequiresFollowPuppet(t *testing.T) {
 	}
 }
 
+// An exec autorequires its user's User[...] after its file edges, when the
+// catalog manages that user.
+func TestExecAutorequiresUser(t *testing.T) {
+	managed := map[string]bool{"File[/usr/bin/touch]": true, "User[app]": true}
+	got := Exec{}.AutoRequires(
+		execRes("a", map[string]any{"command": "/usr/bin/touch /opt/x", "user": "app"}),
+		func(ref string) bool { return managed[ref] },
+	)
+	want := []string{"File[/usr/bin/touch]", "User[app]"}
+	if !slices.Equal(got, want) {
+		t.Errorf("AutoRequires = %v, want %v", got, want)
+	}
+}
+
+// A numeric user is a uid, not a name, so no User[...] edge (type/exec.rb:642-648
+// skips /^\d+$/).
+func TestExecNoAutorequireNumericUser(t *testing.T) {
+	managed := func(string) bool { return true }
+	for _, user := range []any{"1000", int64(1000), float64(1000)} {
+		got := Exec{}.AutoRequires(
+			execRes("a", map[string]any{"command": "make", "user": user}),
+			managed,
+		)
+		if len(got) != 0 {
+			t.Errorf("user %v (%T): AutoRequires = %v, want none", user, user, got)
+		}
+	}
+}
+
+// An unmanaged user is no edge: autorequire is soft.
+func TestExecNoAutorequireUnmanagedUser(t *testing.T) {
+	got := Exec{}.AutoRequires(
+		execRes("a", map[string]any{"command": "make", "user": "app"}),
+		func(string) bool { return false },
+	)
+	if len(got) != 0 {
+		t.Errorf("AutoRequires = %v, want none", got)
+	}
+}
+
 // A string command runs before its returns is read, as it always has; an
 // argv's returns is read first, because a checkexe failure carries the list.
 func TestExecReturnsIsReadAfterAStringRunsAndBeforeAnArgv(t *testing.T) {
@@ -1686,6 +1728,68 @@ func TestExecDebugLinesAreRedactedWhenMarked(t *testing.T) {
 	})
 }
 
+// util/execution.rb:167-180 (M16): a set user or group names the identity in
+// execution.rb's line, which is logged before the identity is resolved, so an
+// unknown one still shows it. A marked user or group is [redacted] (D-78).
+func TestExecDebugLineNamesIdentity(t *testing.T) {
+	setAgentRoot(t, true)
+	for _, tc := range []struct {
+		name    string
+		params  map[string]any
+		marked  []string
+		command any
+		want    string
+	}{
+		{"user", map[string]any{"user": "12345"}, nil, "/usr/bin/id", "Executing with uid=12345: '/usr/bin/id'"},
+		{"group", map[string]any{"group": "4242"}, nil, "/usr/bin/id", "Executing with gid=4242: '/usr/bin/id'"},
+		{"both", map[string]any{"user": "12345", "group": "4242"}, nil, "/usr/bin/id", "Executing with uid=12345 gid=4242: '/usr/bin/id'"},
+		{"integer user", map[string]any{"user": float64(12345)}, nil, "/usr/bin/id", "Executing with uid=12345: '/usr/bin/id'"},
+		{"name", map[string]any{"user": "nosuch"}, nil, []any{"/usr/bin/id", "-u"}, "Executing with uid=nosuch: '/usr/bin/id -u'"},
+		{"marked user", map[string]any{"user": "secretname", "group": "4242"}, []string{"user"}, "/usr/bin/id", "Executing with uid=[redacted] gid=4242: '/usr/bin/id'"},
+		{"marked group", map[string]any{"user": "12345", "group": "secretgroup"}, []string{"group"}, "/usr/bin/id", "Executing with uid=12345 gid=[redacted]: '/usr/bin/id'"},
+		{"marked command", map[string]any{"user": "12345"}, []string{"command"}, "/usr/bin/id", "Executing with uid=12345: '[redacted]'"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			tc.params["command"] = tc.command
+			r := markedExec(tc.params, tc.marked...)
+			ctx, got := debugContext("debug")
+			changes, _, err := (Exec{}).Apply(WithSources(ctx, debugSources), r, false)
+			if err != nil || len(changes) != 1 || changes[0].Err == nil {
+				t.Fatalf("Apply = (%+v, %v), want one failed change", changes, err)
+			}
+			if lines := linesAt(*got, "Puppet"); !slices.Equal(lines, []string{tc.want}) {
+				t.Errorf("Puppet debug lines = %q, want %q", lines, []string{tc.want})
+			}
+			wantOutput := "Error: Could not execute posix command: Invalid "
+			if slices.Contains(tc.marked, "command") {
+				wantOutput = "[output redacted]"
+			}
+			if notices := changes[0].PropertyNotices; len(notices) != 1 || !strings.HasPrefix(notices[0], wantOutput) {
+				t.Errorf("output = %q, want the identity failure", notices)
+			}
+			for _, e := range *got {
+				for _, secret := range []string{"secretname", "secretgroup"} {
+					if strings.Contains(e.Message, secret) {
+						t.Errorf("%q leaks %q", e.Message, secret)
+					}
+				}
+			}
+		})
+	}
+}
+
+// A user equal to the agent's own runs; the line names it all the same.
+func TestExecDebugLineNamesAgentUser(t *testing.T) {
+	self, err := user.LookupId(strconv.Itoa(os.Getuid()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := execDebugLines(t, "debug", execRes("x", map[string]any{"command": "/bin/true", "user": self.Username}))
+	if lines, want := linesAt(got, "Puppet"), []string{"Executing with uid=" + self.Username + ": '/bin/true'"}; !slices.Equal(lines, want) {
+		t.Errorf("Puppet debug lines = %q, want %q", lines, want)
+	}
+}
+
 // type/exec.rb:511-514: one debug line per output line of the guard, at the
 // guard parameter's path; the check form of the provider line.
 func TestExecDebugLinesForAnUnlessGuard(t *testing.T) {
@@ -1860,5 +1964,325 @@ func TestExecENOEXECRetryLogsExecutingOnce(t *testing.T) {
 	}
 	if n != 1 {
 		t.Errorf("Puppet Executing: lines = %d (%+v), want 1", n, got)
+	}
+}
+
+// triesCtx is a debug-logging context with the sources a resource at
+// /Stage[main]/Main/Exec[x] carries.
+func triesCtx() (context.Context, *[]report.LogEntry, string) {
+	ctx, entries := debugContext("debug")
+	const resource = "/Stage[main]/Main/Exec[x]"
+	return WithSources(ctx, Sources{Resource: resource, Provider: "Exec[x](provider=posix)", Ref: "Exec[x]"}), entries, resource + "/returns"
+}
+
+// countingCommand appends to a counter file and exits with the new count
+// unless it has reached succeedAt, when it exits 0.
+func countingCommand(counter string, succeedAt int) string {
+	return fmt.Sprintf(`n=$(cat %[1]s 2>/dev/null || echo 0); n=$((n+1)); echo $n > %[1]s; echo attempt-$n; [ $n -ge %[2]d ] && exit 0; exit $n`, counter, succeedAt)
+}
+
+// M2: a command that fails twice and succeeds on the third try logs each try and
+// the sleep between them, and no sleep once it has succeeded.
+func TestExecTriesSucceedsOnThird(t *testing.T) {
+	ctx, entries, returns := triesCtx()
+	counter := filepath.Join(t.TempDir(), "n")
+	changes, _, err := Exec{}.Apply(ctx, execRes("x", map[string]any{
+		"command": countingCommand(counter, 3), "tries": 3.0, "try_sleep": 0.1}), false)
+	if err != nil || len(changes) != 1 || changes[0].Err != nil {
+		t.Fatalf("Apply = %v, %v; want success", changes, err)
+	}
+	want := []string{"Exec try 1/3", "Sleeping for 0.1 seconds between tries",
+		"Exec try 2/3", "Sleeping for 0.1 seconds between tries", "Exec try 3/3"}
+	if got := linesAt(*entries, returns); !slices.Equal(got, want) {
+		t.Errorf("debug lines at %s = %q, want %q", returns, got, want)
+	}
+}
+
+// M6, M7: the sleep follows the last failed try (I-32), and the failure carries
+// the last try's status and output.
+func TestExecTriesNeverSucceeds(t *testing.T) {
+	ctx, entries, returns := triesCtx()
+	counter := filepath.Join(t.TempDir(), "n")
+	changes, _, err := Exec{}.Apply(ctx, execRes("x", map[string]any{
+		"command": countingCommand(counter, 99), "tries": 2.0, "try_sleep": 0.1, "logoutput": "on_failure"}), false)
+	if err != nil || len(changes) != 1 {
+		t.Fatalf("Apply = %v, %v", changes, err)
+	}
+	if changes[0].Err == nil || !strings.HasSuffix(changes[0].Err.Error(), "returned 2 instead of one of [0]") {
+		t.Errorf("Err = %v, want the second try's status 2", changes[0].Err)
+	}
+	if want := []string{"attempt-2"}; !slices.Equal(changes[0].PropertyNotices, want) {
+		t.Errorf("PropertyNotices = %q, want %q", changes[0].PropertyNotices, want)
+	}
+	want := []string{"Exec try 1/2", "Sleeping for 0.1 seconds between tries",
+		"Exec try 2/2", "Sleeping for 0.1 seconds between tries"}
+	if got := linesAt(*entries, returns); !slices.Equal(got, want) {
+		t.Errorf("debug lines = %q, want %q", got, want)
+	}
+}
+
+// tries 1 logs neither the try nor the sleep, whatever try_sleep says.
+func TestExecTriesNoDebugWhenOne(t *testing.T) {
+	ctx, entries, returns := triesCtx()
+	changes, _, err := Exec{}.Apply(ctx, execRes("x", map[string]any{
+		"command": "exit 3", "try_sleep": 0.1}), false)
+	if err != nil || len(changes) != 1 || changes[0].Err == nil {
+		t.Fatalf("Apply = %v, %v; want a returns failure", changes, err)
+	}
+	if got := linesAt(*entries, returns); len(got) != 0 {
+		t.Errorf("debug lines at %s = %q, want none", returns, got)
+	}
+}
+
+// An Integer try_sleep prints without a fraction; a string or Float uses
+// Float#to_s (M2: '1' is 1.0 but Integer 1 is 1).
+func TestExecTrySleepIntegerShown(t *testing.T) {
+	for _, tc := range []struct {
+		name  string
+		sleep any
+		want  string
+	}{
+		{"integer", int64(1), "Sleeping for 1 seconds between tries"},
+		{"whole float", 1.0, "Sleeping for 1 seconds between tries"},
+		{"string", "0.5", "Sleeping for 0.5 seconds between tries"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx, entries, returns := triesCtx()
+			cctx, cancel := context.WithCancel(ctx)
+			defer cancel()
+			time.AfterFunc(200*time.Millisecond, cancel)
+			Exec{}.Apply(cctx, execRes("x", map[string]any{
+				"command": "exit 1", "tries": 2.0, "try_sleep": tc.sleep}), false)
+			got := linesAt(*entries, returns)
+			if len(got) < 2 || got[1] != tc.want {
+				t.Errorf("debug lines = %q, want second line %q", got, tc.want)
+			}
+		})
+	}
+}
+
+// M19: a Float tries fails returns before anything runs.
+func TestExecTriesFloat(t *testing.T) {
+	marker := filepath.Join(t.TempDir(), "ran")
+	ch := execChange(t, execRes("x", map[string]any{"command": "touch " + marker, "tries": 2.5}))
+	if ch.Err == nil || ch.Err.Error() != "undefined method `times' for 2.5:Float" {
+		t.Errorf("Err = %v, want the Ruby NoMethodError text", ch.Err)
+	}
+	if _, err := os.Stat(marker); err == nil {
+		t.Error("the command ran")
+	}
+}
+
+// A cancelled run stops sleeping between tries and returns the context error.
+func TestExecTrySleepCancelled(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	time.AfterFunc(200*time.Millisecond, cancel)
+	start := time.Now()
+	_, _, err := Exec{}.Apply(ctx, execRes("x", map[string]any{
+		"command": "exit 1", "tries": 3.0, "try_sleep": 30.0}), false)
+	if !errors.Is(err, context.Canceled) {
+		t.Errorf("err = %v, want context.Canceled", err)
+	}
+	if elapsed := time.Since(start); elapsed > 5*time.Second {
+		t.Errorf("Apply took %v; want it to stop sleeping on cancel", elapsed)
+	}
+}
+
+// M2: a timeout ends the loop; the remaining tries do not run.
+func TestExecTimeoutEndsTries(t *testing.T) {
+	counter := filepath.Join(t.TempDir(), "n")
+	start := time.Now()
+	ch := execChange(t, execRes("x", map[string]any{
+		"command": "echo x >> " + counter + "; sleep 5", "tries": 3.0, "timeout": 0.3}))
+	if ch.Err == nil || ch.Err.Error() != "Command exceeded timeout" {
+		t.Errorf("Err = %v, want Command exceeded timeout", ch.Err)
+	}
+	if elapsed := time.Since(start); elapsed > 3*time.Second {
+		t.Errorf("Apply took %v; want one 0.3s timeout", elapsed)
+	}
+	if b, _ := os.ReadFile(counter); string(b) != "x\n" {
+		t.Errorf("command ran %q times, want once", b)
+	}
+}
+
+// Review Focus 3: a guard evaluated under noop still runs as the resource's
+// user and is still bounded by its timeout.
+func TestExecNoopGuardHonoursUserAndTimeout(t *testing.T) {
+	t.Run("timeout", func(t *testing.T) {
+		start := time.Now()
+		changes, _, err := Exec{}.Apply(context.Background(), execRes("x", map[string]any{
+			"command": "true", "onlyif": "sleep 5", "timeout": 0.3}), true)
+		if err != nil || len(changes) != 0 {
+			t.Errorf("Apply = %v, %v; want a blocked command and no change", changes, err)
+		}
+		if elapsed := time.Since(start); elapsed > 3*time.Second {
+			t.Errorf("Apply took %v; want the guard cut at 0.3s", elapsed)
+		}
+	})
+	t.Run("user", func(t *testing.T) {
+		needRoot(t, "the guard runs as user nobody")
+		lookupNobody(t)
+		changes, _, err := Exec{}.Apply(context.Background(), execRes("x", map[string]any{
+			"command": "true", "user": "nobody", "onlyif": `test "$(id -un)" = nobody`}), true)
+		if err != nil || len(changes) != 1 {
+			t.Errorf("Apply = %v, %v; want the guard to pass as nobody and a noop change", changes, err)
+		}
+	})
+}
+
+// M12: a refresh command's status never fails the refresh, logoutput prints
+// nothing for it, and tries does not repeat it.
+func TestExecRefreshCommandExit1Succeeds(t *testing.T) {
+	counter := filepath.Join(t.TempDir(), "n")
+	r := execRes("x", map[string]any{
+		"command": "/bin/true", "tries": 3.0, "logoutput": true,
+		"refresh": fmt.Sprintf(`/bin/sh -c "echo r >> %s; echo refreshed-out; exit 1"`, counter)})
+	out, err := Exec{}.RefreshLogged(context.Background(), r, false)
+	if err != nil || !out.Refreshed {
+		t.Fatalf("RefreshLogged = %+v, %v; want Refreshed", out, err)
+	}
+	if len(out.PropertyNotices) != 0 {
+		t.Errorf("PropertyNotices = %+v, want none", out.PropertyNotices)
+	}
+	if got, _ := os.ReadFile(counter); string(got) != "r\n" {
+		t.Errorf("refresh ran %q, want once", got)
+	}
+}
+
+// M12, M20: a refresh that exits 127 fails with its output; the walk adds
+// "Failed to call refresh: ".
+func TestExecRefreshCommand127Fails(t *testing.T) {
+	r := execRes("x", map[string]any{"command": "/bin/true", "refresh": `/bin/sh -c "echo gone; exit 127"`})
+	out, err := Exec{}.RefreshLogged(context.Background(), r, false)
+	if err == nil || err.Error() != "gone\n" || out.Refreshed {
+		t.Errorf("RefreshLogged = %+v, %v; want error %q", out, err, "gone\n")
+	}
+}
+
+// M12: the refresh command's executable is checked before it runs, with no
+// Executing line.
+func TestExecRefreshCommandMissingExe(t *testing.T) {
+	ctx, got := debugContext("debug")
+	ctx = WithSources(ctx, debugSources)
+	r := execRes("x", map[string]any{"command": "/bin/true", "refresh": "/no/such/refresh"})
+	out, err := Exec{}.RefreshLogged(ctx, r, false)
+	if err == nil || err.Error() != "Could not find command '/no/such/refresh'" || out.Refreshed {
+		t.Errorf("RefreshLogged = %+v, %v; want Could not find command", out, err)
+	}
+	if len(*got) != 0 {
+		t.Errorf("debug lines = %+v, want none", *got)
+	}
+}
+
+func TestExecRefreshCommandTimeout(t *testing.T) {
+	r := execRes("x", map[string]any{"command": "/bin/true", "refresh": "/bin/sleep 5", "timeout": 0.2})
+	start := time.Now()
+	out, err := Exec{}.RefreshLogged(context.Background(), r, false)
+	if err == nil || err.Error() != "execution expired" || out.Refreshed {
+		t.Errorf("RefreshLogged = %+v, %v; want execution expired", out, err)
+	}
+	if elapsed := time.Since(start); elapsed > time.Second {
+		t.Errorf("took %v; want the 0.2s timeout", elapsed)
+	}
+}
+
+// M12: a blocking guard skips the refresh command, and the refresh still counts.
+func TestExecRefreshCommandGuardsBlock(t *testing.T) {
+	ran := filepath.Join(t.TempDir(), "ran")
+	r := execRes("x", map[string]any{"command": "/bin/true", "unless": "/bin/true", "refresh": "/bin/touch " + ran})
+	out, err := Exec{}.RefreshLogged(context.Background(), r, false)
+	if err != nil || !out.Refreshed {
+		t.Fatalf("RefreshLogged = %+v, %v; want Refreshed", out, err)
+	}
+	if _, err := os.Stat(ran); !os.IsNotExist(err) {
+		t.Errorf("refresh command ran despite the guard (stat err %v)", err)
+	}
+}
+
+// The refresh command replaces the main command during a refresh.
+func TestExecRefreshCommandReplacesMain(t *testing.T) {
+	dir := t.TempDir()
+	r := execRes("x", map[string]any{
+		"command": "/bin/touch " + filepath.Join(dir, "main"), "refresh": "/bin/touch " + filepath.Join(dir, "refresh")})
+	if _, err := (Exec{}).RefreshLogged(context.Background(), r, false); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(filepath.Join(dir, "refresh")); err != nil {
+		t.Errorf("refresh command did not run: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(dir, "main")); !os.IsNotExist(err) {
+		t.Errorf("main command ran on refresh (stat err %v)", err)
+	}
+}
+
+// Under noop the guards run and the refresh command does not.
+func TestExecRefreshCommandNoop(t *testing.T) {
+	ran := filepath.Join(t.TempDir(), "ran")
+	r := execRes("x", map[string]any{"command": "/bin/true", "refresh": "/bin/touch " + ran})
+	out, err := Exec{}.RefreshLogged(context.Background(), r, true)
+	if err != nil || !out.Refreshed {
+		t.Fatalf("RefreshLogged = %+v, %v; want Refreshed", out, err)
+	}
+	if _, err := os.Stat(ran); !os.IsNotExist(err) {
+		t.Errorf("refresh command ran under noop (stat err %v)", err)
+	}
+}
+
+// M12: the debug line names the refresh command, [redacted] when command is marked.
+func TestExecRefreshCommandDebugLine(t *testing.T) {
+	for _, marked := range []bool{false, true} {
+		ctx, got := debugContext("debug")
+		ctx = WithSources(ctx, debugSources)
+		params := map[string]any{"command": "/bin/true", "refresh": "/bin/echo hi"}
+		var r catalog.Resource
+		want := "Executing '/bin/echo hi'"
+		wantRun := "Executing: '/bin/echo hi'"
+		if marked {
+			r = markedExec(params, "command")
+			want, wantRun = "Executing '[redacted]'", "Executing: '[redacted]'"
+		} else {
+			r = execRes("x", params)
+		}
+		if _, err := (Exec{}).RefreshLogged(ctx, r, false); err != nil {
+			t.Fatal(err)
+		}
+		assertWarnings(t, *got, []report.LogEntry{
+			dbg("Exec[x](provider=posix)", want),
+			dbg("Puppet", wantRun),
+		})
+	}
+}
+
+// Without a refresh command, a refresh runs the main command with tries.
+func TestExecRefreshWithoutRefreshUsesTries(t *testing.T) {
+	counter := filepath.Join(t.TempDir(), "n")
+	r := execRes("x", map[string]any{"command": countingCommand(counter, 3), "tries": 3.0})
+	out, err := Exec{}.RefreshLogged(context.Background(), r, false)
+	if err != nil || !out.Refreshed {
+		t.Fatalf("RefreshLogged = %+v, %v; want Refreshed", out, err)
+	}
+	if got, _ := os.ReadFile(counter); string(got) != "3\n" {
+		t.Errorf("counter = %q, want 3 tries", got)
+	}
+}
+
+// D-78: a catalog that marks only refresh redacts it in the Executing lines and
+// in the missing-executable failure.
+func TestExecRefreshMarkedOnlyIsRedacted(t *testing.T) {
+	ctx, got := debugContext("debug")
+	ctx = WithSources(ctx, debugSources)
+	r := markedExec(map[string]any{"command": "/bin/true", "refresh": "/bin/echo D8SECRET-refresh"}, "refresh")
+	if _, err := (Exec{}).RefreshLogged(ctx, r, false); err != nil {
+		t.Fatal(err)
+	}
+	assertWarnings(t, *got, []report.LogEntry{
+		dbg("Exec[x](provider=posix)", "Executing '[redacted]'"),
+		dbg("Puppet", "Executing: '[redacted]'"),
+	})
+
+	r = markedExec(map[string]any{"command": "/bin/true", "refresh": "/no/such/D8SECRET-refresh"}, "refresh")
+	_, err := Exec{}.RefreshLogged(context.Background(), r, false)
+	if err == nil || err.Error() != "Could not find command [command redacted]" {
+		t.Errorf("err = %v, want Could not find command [command redacted]", err)
 	}
 }

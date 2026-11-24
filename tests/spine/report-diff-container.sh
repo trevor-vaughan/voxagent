@@ -109,6 +109,11 @@ SEED_SENSITIVE="printf 'old\\n' > /tmp/target/s-change &&
   printf 'plain\\n' > /tmp/target/s-mode && chmod 0644 /tmp/target/s-mode &&
   touch /tmp/target/s-owner && printf 'g\\n' > /tmp/target/s-absent"
 
+# The exec identity fixture's starting state: a root-owned directory nobody
+# cannot search, which a user => nobody exec can start in only because cwd is
+# entered as root before the identity drop.
+SEED_EXEC="mkdir -m 0700 /tmp/target/private"
+
 RUBY_SIDE="report-ruby-$$"
 GO_SIDE="report-go-$$"
 COMPILER="report-compile-$$"
@@ -194,7 +199,13 @@ if ! podman run --rm "$IMAGE" sh -c "
     echo '/bin/false exits 0, so the failing exec does not reach the failure path'; exit 1
   fi
   if ! id nobody >/dev/null 2>&1; then
-    echo 'there is no user nobody, so the Sensitive owner change cannot apply'; exit 1
+    echo 'there is no user nobody, so the Sensitive owner change and the user => nobody execs cannot apply'; exit 1
+  fi
+  if ! getent group nobody >/dev/null 2>&1; then
+    echo 'there is no group nobody, so the group => nobody execs fail instead of running'; exit 1
+  fi
+  if id nosuchuser >/dev/null 2>&1; then
+    echo 'the user nosuchuser exists, so the unknown-user exec does not reach the failure path'; exit 1
   fi
   if [ -e /usr/bin/nosuchcmd ]; then
     echo '/usr/bin/nosuchcmd exists, so the missing argv command is not missing'; exit 1
@@ -401,6 +412,53 @@ node default {
   exec { 'refresh-fail': command => '/bin/sh -c "echo refresh-broke; exit 4"', refreshonly => true, subscribe => Notify['kick'] }
   exec { 'rs-true': command => Sensitive('/bin/sh -c "echo rs"'), refreshonly => true, logoutput => true, subscribe => Notify['kick'] }
   exec { 'rs-fail': command => Sensitive('/bin/sh -c "echo rsf; exit 3"'), refreshonly => true, subscribe => Notify['kick'] }
+
+  # exec's run parameters. Timeouts are sub-second to keep the gate fast, and
+  # no timed-out command backgrounds a grandchild: voxagent TERMs the whole
+  # process group where Ruby TERMs only the child (D-83), so a grandchild's
+  # survival is a state difference this report gate cannot see. These commands
+  # write only into /tmp/target, which each side's container starts empty.
+  exec { 'to-main':    command => '/bin/sleep 3', timeout => 0.3 }
+  exec { 'to-guard':   command => '/bin/true', unless => '/bin/sleep 3', timeout => 0.3 }
+  exec { 'to-refresh': command => '/bin/true', refresh => '/bin/sleep 3', timeout => 0.3,
+    refreshonly => true, subscribe => Notify['kick'] }
+  # Fails twice, then succeeds on the third try, counted in a file.
+  exec { 'tries-third':
+    command   => '/bin/sh -c "echo t >> /tmp/target/tries.count; test $(wc -l < /tmp/target/tries.count) -ge 3"',
+    tries     => 3,
+    try_sleep => 0.2,
+  }
+  # Every environment warning: unparsable, overriding, overriding PATH while
+  # path is set, and empty (whose message carries this file's line). The guard
+  # sees the same environment, and the empty warning is still logged once.
+  exec { 'env-warn':
+    command     => '/bin/sh -c "echo FOO=$FOO EMPTY=$EMPTY"',
+    path        => ['/usr/bin', '/bin'],
+    environment => ['FOO=bar', 'A-B=c', 'FOO=again', 'PATH=/usr/bin:/bin', 'EMPTY='],
+    onlyif      => '/bin/true',
+    logoutput   => true,
+  }
+  # The file's mode reaches the report only through the printed output.
+  exec { 'umask-0027':
+    command   => '/bin/sh -c "umask; touch /tmp/target/umask-file; stat -c %a /tmp/target/umask-file"',
+    umask     => '0027',
+    logoutput => true,
+  }
+  # A refresh command's exit 1 is a successful refresh; 127 fails it (I-31).
+  exec { 'refresh-1':   command => '/bin/true', refresh => '/bin/sh -c "exit 1"', refreshonly => true, subscribe => Notify['kick'] }
+  exec { 'refresh-127': command => '/bin/true', refresh => '/bin/sh -c "exit 127"', refreshonly => true, subscribe => Notify['kick'] }
+  # Identity. group alone keeps root's supplementary groups; the unknown user
+  # fails before the command starts; private-cwd is the seed's root-owned 0700
+  # directory, entered as root before the drop to nobody.
+  exec { 'as-user':     command => '/usr/bin/id', user => 'nobody', logoutput => true }
+  exec { 'as-group':    command => '/usr/bin/id', group => 'nobody', logoutput => true }
+  exec { 'as-both':     command => '/usr/bin/id', user => 'nobody', group => 'nobody', logoutput => true }
+  exec { 'as-unknown':  command => '/usr/bin/id', user => 'nosuchuser', logoutput => true }
+  exec { 'private-cwd': command => '/bin/pwd', cwd => '/tmp/target/private', user => 'nobody', logoutput => true }
+  # Exit 127: the command's output is the failure detail, and a guard's makes
+  # the resource fail to evaluate.
+  exec { 'main-127':   command => '/bin/sh -c "echo gone >&2; exit 127"' }
+  exec { 'unless-127': command => '/bin/true', unless => '/bin/sh -c "echo u; exit 127"' }
 EOF
 
 cat >> "$WORK/site.pp" <<EOF || exit 2
@@ -462,6 +520,7 @@ start_side() {
   podman exec "$name" sh -c "$SEED_LATEST" || return 2
   podman exec "$name" sh -c "$SEED_VALIDATE" || return 2
   podman exec "$name" sh -c "$SEED_SENSITIVE" || return 2
+  podman exec "$name" sh -c "$SEED_EXEC" || return 2
   return 0
 }
 
@@ -469,9 +528,13 @@ start_side "$RUBY_SIDE" || {
   echo "report-diff-container: could not start the Ruby side" >&2
   exit 2
 }
+# --color=false: a forked child's error is logged through Ruby's console
+# destination into the captured output, so a coloured console puts ANSI codes
+# into the report message. voxagent never colours (D-85).
 podman exec "$RUBY_SIDE" sh -c '
   /opt/puppetlabs/bin/puppet apply --catalog /tmp/catalog.json \
-    --report --reports gatejson --libdir /tmp/gatelib --reportdir /tmp/ruby
+    --report --reports gatejson --libdir /tmp/gatelib --reportdir /tmp/ruby \
+    --color=false
 ' >"$WORK/ruby.out" 2>&1
 
 # Ruby's report is captured by tests/spine/lib/puppet/reports/gatejson.rb as

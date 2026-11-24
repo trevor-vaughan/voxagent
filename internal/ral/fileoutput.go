@@ -67,7 +67,9 @@ func withRedactedCommands(ctx context.Context) context.Context {
 func runArgv(ctx context.Context, name string, args ...string) (int, string, error) {
 	line := strings.Join(append([]string{name}, args...), " ")
 	redact, _ := ctx.Value(redactCommandKey{}).(bool)
-	return runLogged(ctx, exec.CommandContext(ctx, name, args...), quoteOrRedact(line, redact), redactIf(redact, "%s", line))
+	cmd := exec.CommandContext(ctx, name, args...)
+	cmd.Env = withoutUserEnv(os.Environ())
+	return runLogged(ctx, cmd, quoteOrRedact(line, redact), redactIf(redact, "%s", line))
 }
 
 // maxCommandOutput caps the output kept from one command, so a command that
@@ -83,21 +85,21 @@ var outputCap = maxCommandOutput
 // source Puppet). executing is the command as Ruby's command_str has it, the
 // words joined by a space, or "[redacted]" when Sensitive marks the command
 // (redactIf), which Ruby shows as '[redacted]' (:162). Every command runner
-// comes through here, so Exec, its guards, validate_cmd, Package, Service and
-// SELinux commands all log it; a retry of the same command (ENOEXEC) goes to
-// runCapped and does not log it again.
+// comes through here, so validate_cmd, Package, Service and SELinux commands
+// all log it, and Exec logs it itself before runExec; a retry of the same
+// command (ENOEXEC) goes to runCapped or runExec and does not log it again.
 func runLogged(ctx context.Context, cmd *exec.Cmd, what, executing string) (int, string, error) {
 	runlog.Debugf(ctx, "Puppet", "Executing: '%s'", executing)
-	return runCapped(ctx, cmd, what)
+	return runCapped(ctx, cmd, what, (*exec.Cmd).Run)
 }
 
 // runCapped is runCapturingToFile for a caller that has a context: when the
 // output was cut it logs the D-80 warning, which is never a failure. what is
 // the string runCapturingToFile gets, so a command Sensitive marks stays
 // redacted. Type-wide prefetch runs with no resource in the context, so the
-// warning then has no reference prefix.
-func runCapped(ctx context.Context, cmd *exec.Cmd, what string) (int, string, error) {
-	code, out, truncated, err := runCapturingToFile(cmd, what)
+// warning then has no reference prefix. run is runCapturingToFile's.
+func runCapped(ctx context.Context, cmd *exec.Cmd, what string, run func(*exec.Cmd) error) (int, string, error) {
+	code, out, truncated, err := runCapturingToFile(cmd, what, run)
 	if truncated {
 		msg := fmt.Sprintf("output of %s truncated at 64 MiB", what)
 		if ref := SourcesFrom(ctx).Ref; ref != "" {
@@ -117,7 +119,12 @@ func runCapped(ctx context.Context, cmd *exec.Cmd, what string) (int, string, er
 // At most outputCap bytes of output are kept (cutOutput); truncated says the
 // command wrote more. The command still runs to its end and its exit status is
 // reported as usual. Callers report the truncation through runCapped.
-func runCapturingToFile(cmd *exec.Cmd, what string) (code int, out string, truncated bool, err error) {
+//
+// run runs cmd to its end, (*exec.Cmd).Run or runExec's timed wait. An error
+// from it other than an *exec.ExitError is returned with no output: the
+// command did not start, or it was given up on (runExec), and Ruby discards
+// the output of a timed-out command.
+func runCapturingToFile(cmd *exec.Cmd, what string, run func(*exec.Cmd) error) (code int, out string, truncated bool, err error) {
 	f, err := os.CreateTemp("", "voxagent-output-")
 	if err != nil {
 		return 0, "", false, fmt.Errorf("run %s: capture output: %w", what, err)
@@ -127,7 +134,11 @@ func runCapturingToFile(cmd *exec.Cmd, what string) (code int, out string, trunc
 
 	cmd.Stdout = f
 	cmd.Stderr = f
-	runErr := cmd.Run()
+	runErr := run(cmd)
+	var ee *exec.ExitError
+	if runErr != nil && !errors.As(runErr, &ee) {
+		return 0, "", false, fmt.Errorf("run %s: %w", what, runErr)
+	}
 
 	if _, err := f.Seek(0, io.SeekStart); err != nil {
 		return 0, "", false, fmt.Errorf("run %s: read output: %w", what, err)
@@ -138,12 +149,8 @@ func runCapturingToFile(cmd *exec.Cmd, what string) (code int, out string, trunc
 		return 0, "", false, fmt.Errorf("run %s: read output: %w", what, err)
 	}
 	kept, truncated := cutOutput(all, outputCap)
-	if runErr != nil {
-		var ee *exec.ExitError
-		if errors.As(runErr, &ee) {
-			return ee.ExitCode(), string(kept), truncated, nil
-		}
-		return 0, string(kept), truncated, fmt.Errorf("run %s: %w", what, runErr)
+	if ee != nil {
+		return ee.ExitCode(), string(kept), truncated, nil
 	}
 	return 0, string(kept), truncated, nil
 }

@@ -3568,3 +3568,135 @@ func TestGeneratedChildPrefetchIsLogged(t *testing.T) {
 		t.Errorf("matching prefetch lines = %d, want 1: %v", n, *got)
 	}
 }
+
+// M1 and M20 as the console shows them: a timed-out or exit-127 main command
+// logs its detail bare at Puppet and fails returns with it.
+func TestExecTimeoutAndExit127Logs(t *testing.T) {
+	tx := &Transaction{Registry: ral.NewRegistry(ral.Exec{})}
+	rep := runCatalog(t, tx, &catalog.Catalog{Resources: []catalog.Resource{
+		res("Exec", "slow", map[string]any{"command": "sleep 5", "timeout": 0.2}),
+		res("Exec", "gone", map[string]any{"command": "echo gone >&2; exit 127"}),
+		res("Exec", "empty", map[string]any{"command": "exit 127", "returns": []any{127.0}}),
+	}})
+	logs := fmtLogs(rep)
+	for _, want := range []string{
+		"err Puppet Command exceeded timeout\n",
+		"err /Exec[slow]/returns change from 'notrun' to ['0'] failed: Command exceeded timeout\n",
+		"err Puppet gone\n\n",
+		"err /Exec[gone]/returns change from 'notrun' to ['0'] failed: gone\n\n",
+		"err Puppet \n",
+		"err /Exec[empty]/returns change from 'notrun' to ['127'] failed: \n",
+	} {
+		if !strings.Contains(logs, want) {
+			t.Errorf("logs lack %q:\n%s", want, logs)
+		}
+	}
+}
+
+// Puppet.warn_once's set is the run's (util/logging.rb:181-201): two execs,
+// one with a guard, that set E empty warn once per run, and the next run warns
+// again.
+func TestExecEmptyEnvironmentWarnsOncePerRun(t *testing.T) {
+	tx := &Transaction{Registry: ral.NewRegistry(ral.Exec{})}
+	c := &catalog.Catalog{Resources: []catalog.Resource{
+		res("Exec", "a", map[string]any{"command": "/bin/true", "onlyif": "/bin/true", "environment": []any{"E="}}),
+		res("Exec", "b", map[string]any{"command": "/bin/true", "environment": []any{"E="}}),
+	}}
+	ctx, got := logContext("warning")
+	for run := 1; run <= 2; run++ {
+		runCatalogCtx(t, ctx, tx, c)
+		n := 0
+		for _, e := range *got {
+			if strings.HasPrefix(e.Message, "Empty environment setting 'E'") {
+				n++
+			}
+		}
+		if n != run {
+			t.Errorf("after run %d: %d empty-setting warnings, want %d", run, n, run)
+		}
+	}
+}
+
+// stagingBreaker is a recorder whose Apply for one resource fails as Exec's
+// does when the agent's cwd could not be restored.
+type stagingBreaker struct {
+	recorder
+	breakOn string
+}
+
+func (p stagingBreaker) Apply(ctx context.Context, r catalog.Resource, noop bool) ([]ral.Change, []ral.Warning, error) {
+	if r.Ref() == p.breakOn {
+		*p.applied = append(*p.applied, r.Ref())
+		return nil, nil, fmt.Errorf("run '/bin/true': %w: permission denied", ral.ErrStagingBroken)
+	}
+	return p.recorder.Apply(ctx, r, noop)
+}
+
+func (p stagingBreaker) Prefetch(context.Context, []catalog.Resource) (ral.Provider, error) {
+	return p, nil
+}
+
+// §4.2 item 5: a run whose cwd could not be restored applies nothing more;
+// Run returns the error, which the command reports as could_not_run.
+func TestRunStopsOnStagingBroken(t *testing.T) {
+	var applied, refreshed []string
+	tx := &Transaction{Registry: ral.NewRegistry(stagingBreaker{
+		recorder: recorder{typ: "exec", applied: &applied, refreshed: &refreshed, changes: 1},
+		breakOn:  "Exec[a]",
+	})}
+	c := &catalog.Catalog{Resources: []catalog.Resource{
+		res("Exec", "a", map[string]any{"command": "/bin/true"}),
+		res("Exec", "b", map[string]any{"command": "/bin/true", "require": []any{"Exec[a]"}}),
+		res("Exec", "c", map[string]any{"command": "/bin/true"}),
+	}}
+	g, err := BuildGraph(context.Background(), c, tx.Registry)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rep := report.New("n", "production", false)
+	err = tx.Run(context.Background(), c, g, rep)
+	if !errors.Is(err, ral.ErrStagingBroken) {
+		t.Fatalf("Run returned %v, want ErrStagingBroken", err)
+	}
+	if !strings.Contains(err.Error(), "Exec[a]") {
+		t.Errorf("Run's error %q does not name the resource", err)
+	}
+	if i := slices.Index(applied, "Exec[a]"); i < 0 || len(applied) != i+1 {
+		t.Errorf("applied %v; want nothing after Exec[a]", applied)
+	}
+}
+
+// The same stop when the breakage comes from the refresh Exec[a] runs.
+func TestRunStopsOnStagingBrokenRefresh(t *testing.T) {
+	var applied, refreshed []string
+	tx := &Transaction{Registry: ral.NewRegistry(
+		recorder{typ: "notify", applied: &applied, refreshed: &refreshed, changes: 1},
+		refreshBreaker{recorder{typ: "exec", applied: &applied, refreshed: &refreshed, noChange: map[string]bool{"Exec[a]": true}}},
+	)}
+	c := &catalog.Catalog{Resources: []catalog.Resource{
+		res("Notify", "n", map[string]any{"notify": []any{"Exec[a]"}}),
+		res("Exec", "a", map[string]any{"command": "/bin/true"}),
+		res("Exec", "b", map[string]any{"command": "/bin/true", "require": []any{"Exec[a]"}}),
+	}}
+	g, err := BuildGraph(context.Background(), c, tx.Registry)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = tx.Run(context.Background(), c, g, report.New("n", "production", false))
+	if !errors.Is(err, ral.ErrStagingBroken) {
+		t.Fatalf("Run returned %v, want ErrStagingBroken", err)
+	}
+	if slices.Contains(applied, "Exec[b]") {
+		t.Errorf("applied %v; Exec[b] came after the breakage", applied)
+	}
+}
+
+type refreshBreaker struct{ recorder }
+
+func (p refreshBreaker) Refresh(context.Context, catalog.Resource, bool) (bool, error) {
+	return false, fmt.Errorf("run '/bin/true': %w: permission denied", ral.ErrStagingBroken)
+}
+
+func (p refreshBreaker) Prefetch(context.Context, []catalog.Resource) (ral.Provider, error) {
+	return p, nil
+}

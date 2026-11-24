@@ -64,8 +64,9 @@ replaces the file, run against a temp file beside it whose path replaces every
 `selrange` and `selinux_ignore_defaults` manage SELinux contexts, see below),
 `exec` (`command`,
 `path`, `cwd`, `returns`, `refreshonly`, `creates`, `onlyif`, `unless`,
-`logoutput`; a `command`, or an `onlyif` or `unless` check, given as an argv array
-runs with no shell, a string through `/bin/sh -c`; `logoutput` is `true`,
+`logoutput`, `refresh`, `environment`, `umask`, `timeout`, `tries`,
+`try_sleep`, `user`, `group`, described below; a `command`, or an `onlyif`
+or `unless` check, given as an argv array runs with no shell, a string through `/bin/sh -c`; `logoutput` is `true`,
 `false` or `on_failure`, the default, and logs the command's output a line at a
 time at notice level, whenever it is `true` and when the exit status is not in
 `returns` if it is `on_failure`; output that is not valid in the locale's
@@ -94,6 +95,41 @@ voxagent also refuses, before anything is applied, a `file` whose `source`
 names a host, a `file` with `content` and `recurse => true`, a `file` with
 `links => follow` and `recurse => true`, and a static catalog carrying inlined
 file metadata.
+
+`exec` runs each command, each `onlyif` or `unless` check and the `refresh`
+command as Puppet does:
+
+- `timeout` is in seconds, default 300, and `0` means none. Each run of a
+  command gets the whole budget: every try, every check, the `refresh`
+  command. On expiry the command's process group gets SIGTERM once, with no
+  escalation, and the exec fails with `Command exceeded timeout`. A command
+  that traps TERM keeps running. Only cancelling the run while a command is
+  still running sends its process group SIGKILL (D-83 in
+  `docs/maintainers/apply-spine.md`).
+- `tries` (default 1) runs the command until its exit status is in `returns`,
+  sleeping `try_sleep` seconds (default 0) after each failed try, the last one
+  included, as Puppet does. Checks and the `refresh` command are not retried.
+- `environment` is a `NAME=value` string or a list of them, set after `path`.
+  Puppet's three warnings are reproduced: an element it cannot parse, a
+  variable set twice (or `PATH` while `path` is set), and an empty value
+  (once per variable per run, as Puppet does).
+  Every command voxagent starts, including `service`'s and `package`'s, runs
+  without `HOME`, `USER` and `LOGNAME`, as under Puppet.
+- `umask` is an octal string (`'0027'`) for the command and its checks.
+- `user` and `group` are names or numeric ids, and need the agent to run as
+  root (a non-root agent may name only its own user). `cwd` is entered as
+  root first, so a `user` command can start in a directory that user cannot
+  enter. No `HOME` is set for the user. `user` gives the command the user's
+  groups and its primary group, or `group`'s; `group` alone changes the
+  primary group and keeps the agent's supplementary groups. An unknown user or
+  group fails the exec without starting the command.
+- `refresh` is run instead of `command` when the exec is refreshed: once, with
+  no `tries` and no `logoutput`, after the same checks. Its exit status is
+  ignored, so a `refresh` command that exits 1 is reported as a successful
+  refresh. Only exit 127 (command not found) fails it. This is Puppet's rule,
+  logged as I-31 in `docs/maintainers/improvements.md`.
+- Exit status 127 from any of these commands fails the exec with the
+  command's output as the message, whatever `returns` says.
 
 A `Sensitive` value is redacted as Puppet redacts it. The properties it marks
 show `[redacted]` in the report and the log, and an `exec` with a marked

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"math"
 	"os"
 	"os/exec"
 	"regexp"
@@ -12,6 +13,7 @@ import (
 	"strconv"
 	"strings"
 	"syscall"
+	"time"
 
 	"github.com/voxagent/voxagent/internal/catalog"
 	"github.com/voxagent/voxagent/internal/runlog"
@@ -43,8 +45,9 @@ func (Exec) ProviderUsed() *string { return &posix }
 // an exec merely PASSES to a command into a dependency, so `/bin/cp /etc/src
 // /etc/dst` would claim to depend on files it only reads or writes.
 var (
-	execPath   = regexp.MustCompile(`(?m)^(/\S+)`)
-	execQuoted = regexp.MustCompile(`(?m)^"([^"]+)"`)
+	execPath    = regexp.MustCompile(`(?m)^(/\S+)`)
+	execQuoted  = regexp.MustCompile(`(?m)^"([^"]+)"`)
+	execNumeric = regexp.MustCompile(`^\d+$`)
 )
 
 // AutoRequires implements Provider.
@@ -54,7 +57,8 @@ var (
 // with execPath and then execQuoted; then each onlyif and unless command (a
 // scalar is a one-element list), or an argv check's first element, scanned
 // with execPath only. A guard's quoted path is no edge (measured).
-// Only managed paths become edges.
+// Only managed paths become edges. A user that is not a uid then adds its
+// User[...] edge last (type/exec.rb:642-648).
 func (e Exec) AutoRequires(r catalog.Resource, managed func(string) bool) []string {
 	var out []string
 	seen := map[string]struct{}{}
@@ -107,6 +111,12 @@ func (e Exec) AutoRequires(r catalog.Resource, managed func(string) bool) []stri
 			}
 		}
 	}
+	// type/exec.rb:642-648: a name, not a uid, autorequires its User.
+	if user, ok := r.Parameters["user"].(string); ok && !execNumeric.MatchString(user) {
+		if ref := "User[" + user + "]"; managed(ref) {
+			out = append(out, ref)
+		}
+	}
 	return out
 }
 
@@ -117,7 +127,8 @@ func (Exec) Properties() Attrs { return NewAttrs("returns") }
 
 // Attrs implements Provider.
 func (Exec) Attrs() Attrs {
-	return NewAttrs("command", "path", "cwd", "logoutput", "returns", "refreshonly", "creates", "onlyif", "unless")
+	return NewAttrs("command", "path", "user", "group", "cwd", "logoutput", "refresh", "environment", "umask",
+		"timeout", "tries", "try_sleep", "returns", "refreshonly", "creates", "onlyif", "unless")
 }
 
 // quotedExe is provider/exec.rb extractexe's pattern. Ruby's ^ matches at every
@@ -186,6 +197,10 @@ func (e Exec) Validate(r catalog.Resource) error {
 			}
 		}
 	}
+	var params execParams
+	if err := params.parseIdentity(r); err != nil {
+		return err
+	}
 	if cwd, ok := r.Parameters["cwd"]; ok {
 		if _, isArray := cwd.([]any); isArray {
 			return fmt.Errorf("Parameter cwd failed on %s: cwd only accepts a single path, not an array of paths", r.Ref())
@@ -195,6 +210,9 @@ func (e Exec) Validate(r catalog.Resource) error {
 		}
 	}
 	if _, err := logoutputMode(r); err != nil {
+		return err
+	}
+	if err := params.parseRun(e, r); err != nil {
 		return err
 	}
 	if creates, ok := r.Parameters["creates"]; ok && !absolutePaths(creates) {
@@ -280,20 +298,27 @@ func unqualifiedMessage(exe string, redact bool) string {
 // executable and true when the command is NOT qualified. A shape validatecmd
 // cannot read returns false; the apply-time type check reports it.
 func unqualifiedExe(command any) (string, bool) {
-	var exe string
-	switch c := command.(type) {
-	case string:
-		if m := quotedExe.FindStringSubmatch(c); m != nil {
-			exe = m[1] + m[2]
-		} else {
-			exe, _, _ = strings.Cut(c, " ")
-		}
-	case []any:
-		exe = argvExe(c)
-	default:
+	exe, ok := extractExe(command)
+	if !ok {
 		return "", false
 	}
 	return exe, !strings.HasPrefix(exe, "/")
+}
+
+// extractExe is provider/exec.rb extractexe: the executable of a string or an
+// argv command. ok is false for a shape it cannot read.
+func extractExe(command any) (exe string, ok bool) {
+	switch c := command.(type) {
+	case string:
+		if m := quotedExe.FindStringSubmatch(c); m != nil {
+			return m[1] + m[2], true
+		}
+		exe, _, _ = strings.Cut(c, " ")
+		return exe, true
+	case []any:
+		return argvExe(c), true
+	}
+	return "", false
 }
 
 // absolutePaths is parameter/path.rb validate_path's test: Array(paths).all?
@@ -350,6 +375,13 @@ func (e Exec) Refresh(ctx context.Context, r catalog.Resource, noop bool) (bool,
 // Under noop the guards run and the command does not, as in Apply.
 func (e Exec) RefreshLogged(ctx context.Context, r catalog.Resource, noop bool) (RefreshOutcome, error) {
 	var out RefreshOutcome
+	if refresh := r.Parameters["refresh"]; refresh != nil {
+		if err := e.refreshCommand(ctx, r, refresh, noop); err != nil {
+			return out, err
+		}
+		out.Refreshed = true
+		return out, nil
+	}
 	changes, err := e.run(ctx, r, noop)
 	if err != nil {
 		return out, err
@@ -373,6 +405,34 @@ func (e Exec) RefreshLogged(ctx context.Context, r catalog.Resource, noop bool) 
 	}
 	out.Refreshed = true
 	return out, nil
+}
+
+// refreshCommand is type/exec.rb:690-699 with a refresh parameter: when the
+// guards pass, provider.run(refresh) runs once instead of the main command (M12).
+// Its status is not read, except that 127 raises its output (M20); it logs no
+// output and does no tries. A guard that blocks it still reports a refresh, as
+// in RefreshLogged. Its executable is checked first (posix.rb checkexe), before
+// the Executing line, and a marked command shows redacted as for the main command.
+func (e Exec) refreshCommand(ctx context.Context, r catalog.Resource, refresh any, noop bool) error {
+	redact := commandsMarked(e, r)
+	if passed, err := e.guardsPass(ctx, r, r.Parameters["command"], redact); err != nil || !passed {
+		return err
+	}
+	// A marked refresh is redacted too (D-78: Ruby leaks it), as parseRun does.
+	redact = redact || slices.Contains(r.SensitiveParameters, "refresh")
+	if noop {
+		return nil
+	}
+	exe, _ := extractExe(refresh)
+	path, err := pathParam(r)
+	if err != nil {
+		return err
+	}
+	if err := checkExe(exe, path, redact); err != nil {
+		return err
+	}
+	_, _, err = e.execute(ctx, r, refresh, redact, false)
+	return err
 }
 
 // Prefetch implements Provider. An exec has no state to pre-read.
@@ -418,53 +478,8 @@ func (e Exec) run(ctx context.Context, r catalog.Resource, noop bool) ([]Change,
 		return nil, err
 	}
 
-	creates, err := stringListParam(r, "creates")
-	if err != nil {
+	if passed, err := e.guardsPass(ctx, r, command, redact); err != nil || !passed {
 		return nil, err
-	}
-	for _, path := range creates {
-		// type/exec.rb:454, source <resource>/creates. creates is a parameter,
-		// which Sensitive cannot mark (MarkSensitive), so the path shows as is.
-		runlog.Debugf(ctx, SourcesFrom(ctx).Resource+"/creates", "Checking that 'creates' path '%s' exists", path)
-		if _, err := os.Stat(path); err == nil {
-			debugBlocked(ctx, command, redact, "creates")
-			return nil, nil
-		} else if !os.IsNotExist(err) {
-			// "we could not check" is not "the path is missing". Treating an
-			// EACCES (or any other stat failure) as missing would re-run the
-			// command every time, silently, on every agent run.
-			return nil, fmt.Errorf("stat creates path %s: %w", path, err)
-		}
-	}
-
-	onlyifs, err := commandList(r, "onlyif")
-	if err != nil {
-		return nil, err
-	}
-	for _, guard := range onlyifs {
-		ok, err := e.guardPasses(ctx, r, "onlyif", guard, redact)
-		if err != nil {
-			return nil, err
-		}
-		if !ok {
-			debugBlocked(ctx, command, redact, "onlyif")
-			return nil, nil
-		}
-	}
-
-	unlesses, err := commandList(r, "unless")
-	if err != nil {
-		return nil, err
-	}
-	for _, guard := range unlesses {
-		ok, err := e.guardPasses(ctx, r, "unless", guard, redact)
-		if err != nil {
-			return nil, err
-		}
-		if ok {
-			debugBlocked(ctx, command, redact, "unless")
-			return nil, nil
-		}
 	}
 
 	// noop is evaluated AFTER the guards above, deliberately: noop cannot
@@ -533,14 +548,57 @@ func (e Exec) run(ctx context.Context, r catalog.Resource, noop bool) ([]Change,
 	// true, or on_failure and the status is not accepted; see outputNotices.
 	// Appending it to the detail instead, as this once did, put text in the
 	// message that Ruby's does not hold.
+	//
+	// A timeout or an exit status of 127 fails returns too, with no output
+	// logged: type/exec.rb sync rescues Timeout::Error as "Command exceeded
+	// timeout" (M1), and provider.run raises the 127 output before sync has
+	// any output to log (M20).
+	p, err := parseExecParams(e, r)
+	if err != nil {
+		return nil, err
+	}
+	// Tries (type/exec.rb:123-164) loops `tries.times`, which a Float does not
+	// have (M19): returns fails before anything runs.
+	if p.Tries != math.Trunc(p.Tries) {
+		exeErr = fmt.Errorf("undefined method `times' for %s:Float", rubyFloat(p.Tries))
+	}
 	var code int
 	var output string
-	if exeErr == nil {
-		if code, output, err = e.execute(ctx, r, command, redact, false); err != nil {
+	for try := 1.0; exeErr == nil && try <= p.Tries; try++ {
+		if p.Tries > 1 {
+			runlog.Debugf(ctx, SourcesFrom(ctx).Resource+"/returns", "Exec try %.0f/%.0f", try, p.Tries)
+		}
+		code, output, err = e.execute(ctx, r, command, redact, false)
+		var e127 exit127Error
+		switch {
+		case errors.Is(err, errExecTimeout):
+			exeErr = errors.New("Command exceeded timeout")
+			continue
+		case errors.As(err, &e127):
+			exeErr = err
+			continue
+		case err != nil:
 			return nil, err
 		}
+		if !isArgv && accepted == nil {
+			if accepted, err = acceptable(); err != nil {
+				return nil, err
+			}
+		}
+		if slices.Contains(accepted, code) {
+			break
+		}
+		// The sleep follows the last failed try too (M6, I-32).
+		if p.TrySleep > 0 && p.Tries > 1 {
+			runlog.Debugf(ctx, SourcesFrom(ctx).Resource+"/returns", "Sleeping for %s seconds between tries", p.TrySleepShown)
+			select {
+			case <-ctx.Done():
+				return nil, ctx.Err()
+			case <-time.After(time.Duration(min(p.TrySleep*float64(time.Second), 1<<62))):
+			}
+		}
 	}
-	if !isArgv {
+	if !isArgv && accepted == nil {
 		if accepted, err = acceptable(); err != nil {
 			return nil, err
 		}
@@ -600,6 +658,62 @@ func (e Exec) run(ctx context.Context, r catalog.Resource, noop bool) ([]Change,
 	return []Change{change}, nil
 }
 
+// guardsPass is check_all_attributes (type/exec.rb:657-675): whether creates,
+// onlyif and unless all let the command run. It logs the blocked line itself.
+// A refresh reuses it, so a guard blocks the refresh command as it blocks the
+// main one.
+func (e Exec) guardsPass(ctx context.Context, r catalog.Resource, command any, redact bool) (bool, error) {
+	creates, err := stringListParam(r, "creates")
+	if err != nil {
+		return false, err
+	}
+	for _, path := range creates {
+		// type/exec.rb:454, source <resource>/creates. creates is a parameter,
+		// which Sensitive cannot mark (MarkSensitive), so the path shows as is.
+		runlog.Debugf(ctx, SourcesFrom(ctx).Resource+"/creates", "Checking that 'creates' path '%s' exists", path)
+		if _, err := os.Stat(path); err == nil {
+			debugBlocked(ctx, command, redact, "creates")
+			return false, nil
+		} else if !os.IsNotExist(err) {
+			// "we could not check" is not "the path is missing". Treating an
+			// EACCES (or any other stat failure) as missing would re-run the
+			// command every time, silently, on every agent run.
+			return false, fmt.Errorf("stat creates path %s: %w", path, err)
+		}
+	}
+
+	onlyifs, err := commandList(r, "onlyif")
+	if err != nil {
+		return false, err
+	}
+	for _, guard := range onlyifs {
+		ok, err := e.guardPasses(ctx, r, "onlyif", guard, redact)
+		if err != nil {
+			return false, err
+		}
+		if !ok {
+			debugBlocked(ctx, command, redact, "onlyif")
+			return false, nil
+		}
+	}
+
+	unlesses, err := commandList(r, "unless")
+	if err != nil {
+		return false, err
+	}
+	for _, guard := range unlesses {
+		ok, err := e.guardPasses(ctx, r, "unless", guard, redact)
+		if err != nil {
+			return false, err
+		}
+		if !ok {
+			debugBlocked(ctx, command, redact, "unless")
+			return false, nil
+		}
+	}
+	return true, nil
+}
+
 // debugBlocked logs that check stopped the command (type/exec.rb:672), at the
 // resource. Ruby prints @parameters[:command].value, so an argv shows as
 // Array#inspect (commandDisplay), and "[command redacted]" for a marked one.
@@ -611,7 +725,8 @@ func debugBlocked(ctx context.Context, command any, redact bool, check string) {
 	runlog.Debugf(ctx, SourcesFrom(ctx).Resource, "'%s' won't be executed because of failed check '%s'", shown, check)
 }
 
-// guardPasses runs the named onlyif or unless command and reports whether it exited 0.
+// guardPasses runs the named onlyif or unless command and reports whether it
+// lets the command run: an onlyif that exited 0, an unless that did not.
 // A guard that cannot be started at all is an error, not a false: "we could not
 // check" is not the same claim as "the condition does not hold", and treating
 // the first as the second would silently skip the command. An argv check's
@@ -632,6 +747,18 @@ func (e Exec) guardPasses(ctx context.Context, r catalog.Resource, name string, 
 		}
 	}
 	code, out, err := e.execute(ctx, r, command, redact, true)
+	// A timed-out guard blocks the command, whichever guard it is: type/exec.rb
+	// check rescues Timeout::Error, logs it at the guard and returns false (M1,
+	// M4). An exit of 127 fails the resource with the output alone (M20).
+	if errors.Is(err, errExecTimeout) {
+		runlog.From(ctx).Log("err", SourcesFrom(ctx).Resource+"/"+name,
+			"Check "+redactIf(redact, "%s", rubyInspectValue(command))+" exceeded timeout")
+		return false, nil
+	}
+	var e127 exit127Error
+	if errors.As(err, &e127) {
+		return false, err
+	}
 	if err != nil {
 		return false, fmt.Errorf("guard %s: %w", quoteOrRedact(commandDisplay(command), redact), err)
 	}
@@ -645,7 +772,7 @@ func (e Exec) guardPasses(ctx context.Context, r catalog.Resource, name string, 
 			}
 		}
 	}
-	return code == 0, nil
+	return (code == 0) == (name == "onlyif"), nil
 }
 
 // execute runs a command and returns its exit status. A non-zero status is a
@@ -684,26 +811,81 @@ func (e Exec) execute(ctx context.Context, r catalog.Resource, command any, reda
 	if err != nil {
 		return 0, "", err
 	}
-	child := func(name string, args ...string) *exec.Cmd {
-		cmd := exec.CommandContext(ctx, name, args...)
-		// CommandContext alone kills only the shell. Whether that stops the
-		// work depends on which shell /bin/sh is -- see exec_unix.go for the
-		// measurement.
-		setupProcessGroup(cmd)
-		cmd.Dir = cwd
-		if path != "" {
-			cmd.Env = append(os.Environ(), "PATH="+path)
+	p, err := parseExecParams(e, r)
+	if err != nil {
+		return 0, "", err
+	}
+	env := execEnv(ctx, r, p, path, slices.Contains(r.SensitiveParameters, "environment"))
+	marked := func(kind string) bool { return slices.Contains(r.SensitiveParameters, kind) }
+	argv, isArgv := command.([]any)
+	var words []string
+	display, _ := command.(string)
+	if isArgv {
+		words = argvOf(argv)
+		display = strings.Join(words, " ")
+	}
+	// util/execution.rb:167-180 logs this before the child resolves the
+	// identity or the program, so an unknown user or group still shows it (M16).
+	var as string
+	for _, xid := range []struct {
+		field, kind string
+		value       any
+	}{{"uid", "user", p.User}, {"gid", "group", p.Group}} {
+		if xid.value == nil {
+			continue
 		}
+		s, ok := xid.value.(string)
+		if !ok {
+			s = rubyInspectValue(xid.value)
+		}
+		as += " " + xid.field + "=" + redactIf(marked(xid.kind), "%s", s)
+	}
+	if as != "" {
+		as = " with" + as
+	}
+	runlog.Debugf(ctx, "Puppet", "Executing%s: '%s'", as, redactIf(redact, "%s", display))
+	id, err := resolveIdentity(p.User, p.Group, marked)
+	var invalid invalidIdentityError
+	if errors.As(err, &invalid) {
+		// Raised in Ruby's child, before exec: its rescue logs the error to
+		// the output and exits 1 (util/execution.rb:393-395, M6, M18).
+		return 1, "Error: Could not execute posix command: " + invalid.Error() + "\n", nil
+	}
+	if err != nil {
+		return 0, "", err
+	}
+	stage := staging{cwd: cwd, umask: p.Umask, id: id}
+	start := (*exec.Cmd).Start
+	if stage.needed() {
+		start = stage.start
+	}
+	child := func(name string, args ...string) *exec.Cmd {
+		// runExec signals the group this makes; see there. Dir stays empty:
+		// stage.start enters cwd for the child.
+		cmd := exec.Command(name, args...)
+		cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+		cmd.Env = env
 		return cmd
 	}
-	argv, isArgv := command.([]any)
+	// Status 127 is an error whatever returns accepts (provider/exec.rb:80-83).
+	// Its text is the output, so a marked command's is "[output redacted]",
+	// as its logged output is (D-78: a missing executable's shell error names
+	// it).
+	run := func(cmd *exec.Cmd, what string) (int, string, error) {
+		code, out, err := runExec(ctx, cmd, start, p.Timeout, what)
+		if err == nil && code == 127 {
+			if redact {
+				return code, out, exit127Error{output: "[output redacted]"}
+			}
+			return code, out, exit127Error{output: out}
+		}
+		return code, out, err
+	}
 	if !isArgv {
-		line := command.(string)
-		return runLogged(ctx, child("/bin/sh", "-c", line), quoteOrRedact(line, redact), redactIf(redact, "%s", line))
+		return run(child("/bin/sh", "-c", display), quoteOrRedact(display, redact))
 	}
 
 	line := quoteOrRedact(commandDisplay(command), redact)
-	words := argvOf(argv)
 	if len(words) == 0 {
 		return 1, "", nil
 	}
@@ -716,23 +898,22 @@ func (e Exec) execute(ctx context.Context, r catalog.Resource, command any, reda
 		prog = hit
 	}
 	// prog holds a slash, so exec.Command does no LookPath of its own (and
-	// raises no ErrDot); a relative prog is resolved against cmd.Dir.
+	// raises no ErrDot); a relative prog resolves in the cwd stage.start enters, or in the
+	// agent's own when there is none.
 	cmd := child(prog, words[1:]...)
 	cmd.Args[0] = words[0]
-	code, out, err := runLogged(ctx, cmd, line, redactIf(redact, "%s", strings.Join(words, " ")))
+	code, out, err := run(cmd, line)
 	var startErr *fs.PathError
 	if err == nil || !errors.As(err, &startErr) || startErr.Op != "fork/exec" {
 		return code, out, err
 	}
-	// A cwd that cannot be entered reaches here as Op "fork/exec" only
-	// because setupProcessGroup sets SysProcAttr: without it os/exec
-	// pre-checks Dir itself and returns Op "chdir", bypassing this mapping.
+	// A cwd that cannot be entered reaches here from stage.start.
 	if errors.Is(startErr.Err, syscall.ENOEXEC) {
 		// The script path and the argv go to sh as separate positional
 		// arguments, no -c: the shell reads the file, never parses the argv.
 		retry := child("/bin/sh", append([]string{prog}, words[1:]...)...)
 		retry.Args[0] = "sh"
-		return runCapped(ctx, retry, line)
+		return run(retry, line)
 	}
 	return 1, out, nil
 }
