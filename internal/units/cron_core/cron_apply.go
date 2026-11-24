@@ -9,7 +9,6 @@ import (
 
 	"github.com/voxagent/voxagent/internal/catalog"
 	"github.com/voxagent/voxagent/internal/lib/parsedfile"
-	"github.com/voxagent/voxagent/internal/lib/rubyvalue"
 	"github.com/voxagent/voxagent/internal/lib/sources"
 	"github.com/voxagent/voxagent/internal/ral"
 	"github.com/voxagent/voxagent/internal/runlog"
@@ -44,7 +43,7 @@ func (Cron) PrefetchAtTurn() {}
 func (c Cron) Prefetch(ctx context.Context, rs []catalog.Resource) (ral.Provider, error) {
 	// transaction.rb:379.
 	runlog.Debugf(ctx, "Puppet", "Prefetching %s resources for %s", crontabProvider, c.Type())
-	st := &cronRun{records: make(map[string]*parsedfile.Record, len(rs)), targetDefault: c.typeTargetDefault()}
+	st := &cronRun{targetDefault: c.typeTargetDefault()}
 	resources := make([]parsedfile.Resource, 0, len(rs))
 	for _, r := range rs {
 		p, err := parseCron(r, c.release, c.encoding, st.targetDefault)
@@ -60,18 +59,11 @@ func (c Cron) Prefetch(ctx context.Context, rs []catalog.Resource) (ral.Provider
 	class := cronClass(c.release, providerTarget, c.spoolDir, func(target string) (parsedfile.FileType, error) {
 		return parsedfile.NewCrontab(ctx, target, c.crontab, c.run, c.ns, c.stderr, c.encoding)
 	}, c.now)
-	st.run = parsedfile.NewRun(class)
-	matched, err := st.run.Prefetch(ctx, resources)
+	pf, err := ral.PrefetchParsedFile(ctx, class, resources)
 	if err != nil {
 		return c, err
 	}
-	for _, res := range resources {
-		rec, ok := matched[res.Name()]
-		if !ok {
-			rec = &parsedfile.Record{Type: crontabProvider, Ensure: "absent", Fields: map[string]parsedfile.Value{}, Flags: map[string]bool{}}
-		}
-		st.records[res.Name()] = rec
-	}
+	st.run, st.records = pf.Run, pf.Records
 	c.state = st
 	return c, nil
 }
@@ -234,11 +226,11 @@ func (c Cron) syncProperties(p cronParams, rec *parsedfile.Record, noop bool, su
 		if inSync(prop, is, should) {
 			continue
 		}
-		isShow, shouldShow := display(is), display(should)
+		isShow, shouldShow := is.Display(), should.Display()
 		if prop == "environment" {
 			shouldShow = strings.Join(should.L, ",") // type:340-346
 		}
-		ch := ral.Change{Property: prop, Was: reportValue(is), Is: reportValue(should),
+		ch := ral.Change{Property: prop, Was: is.ReportValue(), Is: should.ReportValue(),
 			WasDisplay: isShow, IsDisplay: shouldShow, DisplayVerbatim: true}
 		switch {
 		case is.Kind == parsedfile.Absent:
@@ -275,35 +267,5 @@ func inSync(prop string, is, should parsedfile.Value) bool {
 	case "user", "target":
 		return is.S == should.S
 	}
-	return display(is) == display(should)
-}
-
-// display is format_value_for_display (%#p, spec 6.1, M2): a String through
-// PuppetQuote, a list as its quoted elements in brackets, :absent bare. The
-// CronParam rule that shows a list's first element when it is a Symbol
-// (type:110-130) is the Absent kind here, and command is never a list.
-func display(v parsedfile.Value) string {
-	switch v.Kind {
-	case parsedfile.Str:
-		return rubyvalue.PuppetQuote(v.S)
-	case parsedfile.List:
-		quoted := make([]string, len(v.L))
-		for i, s := range v.L {
-			quoted[i] = rubyvalue.PuppetQuote(s)
-		}
-		return "[" + strings.Join(quoted, ", ") + "]"
-	}
-	return "absent"
-}
-
-// reportValue is an event's previous or desired value: a string, a list
-// (never nil, so an empty one is [] in the report) or "absent".
-func reportValue(v parsedfile.Value) any {
-	switch v.Kind {
-	case parsedfile.Str:
-		return v.S
-	case parsedfile.List:
-		return append([]string{}, v.L...)
-	}
-	return "absent"
+	return is.Display() == should.Display()
 }

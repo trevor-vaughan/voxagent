@@ -479,6 +479,82 @@
     "releases": []
   },
   {
+    "name": "sshkeys_core",
+    "version": "1.0.0",
+    "source": {
+      "implementation": "puppetlabs-sshkeys_core",
+      "version": ""
+    },
+    "oracle": {
+      "implementation": "openvox",
+      "version": "8.34.0"
+    },
+    "types": [
+      "sshkey"
+    ],
+    "requires": [
+      "group",
+      "file",
+      "user"
+    ],
+    "releases": [
+      {
+        "version": "2.5.0",
+        "files": [
+          {
+            "path": "puppet/type/sshkey.rb",
+            "sha256": "1583904b917788b8f8a80304089c8971f572b851a2a557a0e1fa8736e57dedf8"
+          },
+          {
+            "path": "puppet/provider/sshkey/parsed.rb",
+            "sha256": "2f8d4fe1dc69c2c5f362cfbe044e5bd477c4700d079a817557ca7e08d660e1cf"
+          },
+          {
+            "path": "puppet/type/ssh_authorized_key.rb",
+            "sha256": "694d7468678ebe894fa022b7f4f38f9c64031a5235bc462d4af41f6ad758de5a"
+          },
+          {
+            "path": "puppet/provider/ssh_authorized_key/parsed.rb",
+            "sha256": "86f01f5ed68cb89e193b70291712bd2417df7b6a7a9e382cfeecfb4ea1810334"
+          }
+        ],
+        "types": {
+          "sshkey": [
+            "puppet/type/sshkey.rb",
+            "puppet/provider/sshkey/parsed.rb"
+          ]
+        }
+      },
+      {
+        "version": "3.1.0",
+        "files": [
+          {
+            "path": "puppet/type/sshkey.rb",
+            "sha256": "a16318375affd95b2e368d69b5ede6cae8d8639fcad85277bdabca0d0e2ed8da"
+          },
+          {
+            "path": "puppet/provider/sshkey/parsed.rb",
+            "sha256": "2f8d4fe1dc69c2c5f362cfbe044e5bd477c4700d079a817557ca7e08d660e1cf"
+          },
+          {
+            "path": "puppet/type/ssh_authorized_key.rb",
+            "sha256": "48dd2f61019e1e163e7d354c4618e7466dfd93784c38b9b9afe2180002ea1a06"
+          },
+          {
+            "path": "puppet/provider/ssh_authorized_key/parsed.rb",
+            "sha256": "86f01f5ed68cb89e193b70291712bd2417df7b6a7a9e382cfeecfb4ea1810334"
+          }
+        ],
+        "types": {
+          "sshkey": [
+            "puppet/type/sshkey.rb",
+            "puppet/provider/sshkey/parsed.rb"
+          ]
+        }
+      }
+    ]
+  },
+  {
     "name": "user",
     "version": "1.0.0",
     "source": {

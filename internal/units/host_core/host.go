@@ -30,7 +30,7 @@ type Host struct {
 	backup, relabel func(ctx context.Context, path string) error
 	now             func() time.Time
 
-	state *hostRun
+	state *ral.ParsedFileRun
 }
 
 // newHost is the provider for one run, on the local time, which the header's

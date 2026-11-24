@@ -17,11 +17,12 @@ import (
 	"github.com/voxagent/voxagent/internal/units/notify"
 	pkg "github.com/voxagent/voxagent/internal/units/package"
 	"github.com/voxagent/voxagent/internal/units/service"
+	sshkeyscore "github.com/voxagent/voxagent/internal/units/sshkeys_core"
 	"github.com/voxagent/voxagent/internal/units/user"
 )
 
 // All returns every native unit. Each unit appends itself here, sorted by
 // name.
 func All() []unit.Unit {
-	return []unit.Unit{augeascore.Unit, augeasproviderscore.Unit, augeasprovidersssh.Unit, augeasproviderssysctl.Unit, concat.Unit, croncore.Unit, exec.Unit, file.Unit, group.Unit, hostcore.Unit, notify.Unit, pkg.Unit, service.Unit, user.Unit}
+	return []unit.Unit{augeascore.Unit, augeasproviderscore.Unit, augeasprovidersssh.Unit, augeasproviderssysctl.Unit, concat.Unit, croncore.Unit, exec.Unit, file.Unit, group.Unit, hostcore.Unit, notify.Unit, pkg.Unit, service.Unit, sshkeyscore.Unit, user.Unit}
 }

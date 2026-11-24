@@ -8,7 +8,6 @@ import (
 	"github.com/voxagent/voxagent/internal/catalog"
 	"github.com/voxagent/voxagent/internal/lib/parsedfile"
 	"github.com/voxagent/voxagent/internal/lib/rubyvalue"
-	"github.com/voxagent/voxagent/internal/lib/sources"
 	"github.com/voxagent/voxagent/internal/ral"
 	"github.com/voxagent/voxagent/internal/runlog"
 )
@@ -17,15 +16,6 @@ import (
 // provider/parsedfile.rb, list: and olist: property/list.rb and
 // property/ordered_list.rb; resource_harness.rb and property.rb are Puppet's
 // transaction/resource_harness.rb and property.rb (openvox 8.34.0).
-
-// hostRun is one run's state, held by the primed provider and mutated only by
-// the walk goroutine (D-96). records binds each resource name to its record:
-// the one Prefetch matched, else a fresh absent one (pf:464-471), which a
-// create fills and Flush appends.
-type hostRun struct {
-	run     *parsedfile.Run
-	records map[string]*parsedfile.Record
-}
 
 // hostResource adapts a munged Host resource to parsedfile.Resource.
 type hostResource struct{ p hostParams }
@@ -56,7 +46,6 @@ func (Host) PrefetchAtTurn() {}
 func (h Host) Prefetch(ctx context.Context, rs []catalog.Resource) (ral.Provider, error) {
 	// transaction.rb:379.
 	runlog.Debugf(ctx, "Puppet", "Prefetching %s resources for %s", parsedProvider, h.Type())
-	st := &hostRun{records: make(map[string]*parsedfile.Record, len(rs))}
 	resources := make([]parsedfile.Resource, 0, len(rs))
 	for _, r := range rs {
 		p, err := parseHost(r, h.encoding)
@@ -68,94 +57,39 @@ func (h Host) Prefetch(ctx context.Context, rs []catalog.Resource) (ral.Provider
 	class := hostClass(func(target string) (parsedfile.FileType, error) {
 		return parsedfile.NewFlat(target, 0, h.backup, h.relabel, h.encoding)
 	}, h.now)
-	st.run = parsedfile.NewRun(class)
-	matched, err := st.run.Prefetch(ctx, resources)
+	st, err := ral.PrefetchParsedFile(ctx, class, resources)
 	if err != nil {
 		return h, err
-	}
-	for _, res := range resources {
-		rec, ok := matched[res.Name()]
-		if !ok {
-			rec = &parsedfile.Record{Type: parsedProvider, Ensure: "absent", Fields: map[string]parsedfile.Value{}, Flags: map[string]bool{}}
-		}
-		st.records[res.Name()] = rec
 	}
 	h.state = st
 	return h, nil
 }
 
-// Apply implements ral.Provider (resource_harness.rb:84-99 perform_changes):
-// ensure first, and when it changes nothing else is synced; otherwise every
-// out-of-sync property in sync order. Live, a resource with a change is then
-// flushed (resource_harness.rb:25-28), and a flush failure is a
-// ral.FlushError after the changes. Under noop nothing is stored or written.
-// A Sensitive value is passed raw: the transaction redacts the marked
-// properties.
+// hostEnsurable is the host type for ral.ParsedFileRun.Apply. Its create
+// copies host_aliases as OrderedList#should gives it, joined (storeField), and
+// does not check a missing ip: the flush's to_line refuses it (spec 5.1).
+var hostEnsurable = ral.ParsedFileEnsurable{
+	Name:       "host",
+	Properties: hostProperties[1:],
+	Current:    current,
+	Change:     propertyChange,
+	Store:      storeField,
+}
+
+// Apply implements ral.Provider through ral.ParsedFileRun.Apply; the name is
+// the key attribute the flush fills in (pf:448-462). A Sensitive value is
+// passed raw: the transaction redacts the marked properties.
 func (h Host) Apply(ctx context.Context, r catalog.Resource, noop bool) ([]ral.Change, []ral.Warning, error) {
-	st := h.state
 	p, err := parseHost(r, h.encoding)
 	if err != nil {
 		return nil, nil, err
 	}
-	rec := st.records[p.Name]
-	suffix := ""
-	if noop {
-		suffix = " (noop)"
-	}
-	// exists? (pf:443-445).
-	exists := rec.Ensure != "absent" && rec.Ensure != ""
-	var changes []ral.Change
-	switch {
-	case p.Ensure == "present" && !exists:
-		changes = []ral.Change{{Property: "ensure", Was: "absent", Is: "present", Message: "created" + suffix, Name: "host_created"}}
-		if !noop {
-			h.create(p, rec)
-		}
-	case p.Ensure == "absent" && exists:
-		changes = []ral.Change{{Property: "ensure", Was: "present", Is: "absent", Message: "removed" + suffix, Name: "host_removed"}}
-		if !noop {
-			// destroy (pf:437-441) through the ensure setter.
-			h.markModified(p, rec)
-			rec.Ensure = "absent"
-		}
-	case !exists:
-		runlog.Debugf(ctx, sources.SourcesFrom(ctx).Resource, "Nothing to manage: no ensure and the resource doesn't exist")
-		return nil, nil, nil
-	default:
-		changes = h.syncProperties(p, rec, noop, suffix)
-	}
-	if noop || len(changes) == 0 {
-		return changes, nil, nil
-	}
-	// flush (pf:448-462): the name is the key attribute it fills in.
-	if rec.Fields["name"].Kind == parsedfile.Nil {
-		rec.Fields["name"] = parsedfile.Value{Kind: parsedfile.Str, S: p.Name}
-	}
-	target, hasTarget := p.shouldTarget()
-	if err := st.run.Flush(ctx, rec, target, hasTarget); err != nil {
-		return changes, nil, &ral.FlushError{Err: err}
-	}
-	return changes, nil, nil
-}
-
-// create is pf:426-435: every property's should is copied into the record
-// (host_aliases as OrderedList#should gives it, joined) and the target marked.
-// A missing ip is not checked here: the flush's to_line refuses it (spec 5.1).
-func (h Host) create(p hostParams, rec *parsedfile.Record) {
-	rec.Ensure = "present"
-	for _, prop := range hostProperties[1:] {
-		if should, ok := p.Should[prop]; ok {
-			storeField(rec, prop, should)
-		}
-	}
-	h.markModified(p, rec)
-}
-
-// markModified is mark_target_modified (pf:487-493) with the resource's
-// target should.
-func (h Host) markModified(p hostParams, rec *parsedfile.Record) {
-	target, ok := p.shouldTarget()
-	h.state.run.MarkModified(rec, target, ok)
+	return h.state.Apply(ctx, &hostEnsurable, ral.ParsedFileShould{
+		Resource: hostResource{p},
+		Ensure:   p.Ensure,
+		Should:   p.Should,
+		Keys:     map[string]parsedfile.Value{"name": {Kind: parsedfile.Str, S: p.Name}},
+	}, noop)
 }
 
 // storeField puts a should value where the getters read it: target is the
@@ -189,38 +123,6 @@ func current(rec *parsedfile.Record, prop string) parsedfile.Value {
 		})}
 	}
 	return v
-}
-
-// syncProperties syncs each property with a should that is out of sync, in
-// sync order, with property.rb:205-219's messages; live, each setter marks
-// the targets and then stores (mk_resource_methods).
-func (h Host) syncProperties(p hostParams, rec *parsedfile.Record, noop bool, suffix string) []ral.Change {
-	// Ruby retrieves every current value before the first sync
-	// (resource_harness.rb:22, 315).
-	currents := map[string]parsedfile.Value{}
-	for _, prop := range hostProperties[1:] {
-		currents[prop] = current(rec, prop)
-	}
-	var changes []ral.Change
-	for _, prop := range hostProperties[1:] {
-		should, ok := p.Should[prop]
-		if !ok {
-			continue
-		}
-		is := currents[prop]
-		ch := propertyChange(prop, is, should)
-		if ch == nil {
-			continue
-		}
-		ch.Message += suffix
-		changes = append(changes, *ch)
-		if noop {
-			continue
-		}
-		h.markModified(p, rec)
-		storeField(rec, prop, should)
-	}
-	return changes
 }
 
 // propertyChange is the change of prop from is to should, nil when in sync.

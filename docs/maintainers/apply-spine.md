@@ -1613,6 +1613,29 @@ file, the same for both agents, not podman's bind mount (M2).
 - **Native, not delegated.** voxagent's output must not name `host` among the types `applied via extension host`.
 - **Errors.** As the cron half. The half runs after it.
 
+### G5's sshkey half
+
+`dev:report-diff-container` ends with an sshkey half (`tests/spine/sshkey/g5.sh`) on the host half's image and with
+its `--no-hosts` containers; the image's openssh owns `/etc/ssh`, the default target's directory. It runs every case
+under one of two libdirs, as the cron half does: `cases/` with no sshkeys_core (openvox's vendored 2.5.0), and
+`cases-3.1.0/` with sshkeys_core 3.1.0's `lib/` from the SIMP gate's pinned module cache, for the `key` check that
+release adds.
+
+- **Cases.** 19 native cases and 7 refusals.
+  - Native under 2.5.0 (18): `create`, `refs` (title `name@type`, a type alias, ed25519), `existing` (0600
+    `nobody` file kept), `aliases-reordered`, `aliases-empty`, `aliases-empty-create`, `alias-string`,
+    `comment-key-in-sync`, `comment-key-dropped`, `modify-key` (tabs rewritten as spaces), `remove`,
+    `absent-no-type`, `leading-whitespace` (prefetch failure), `no-type` (flush error), `missing-target-dir`,
+    `target`, `key-whitespace` and `line-break-key` (I-39: written verbatim, re-applied on the rerun).
+  - Native under 3.1.0 (1): `create`.
+  - Refused at catalog conversion: `name-whitespace`, `name-comma`, `alias-whitespace`, `alias-comma` and `bad-type`
+    under 2.5.0, and `key-whitespace` and `line-break-key` under 3.1.0.
+- **Judging.** As the host half, end state and clientbucket included. `metrics.time.values.sshkey.value` is in the
+  allowlist's `run_to_run`, measured Ruby against Ruby like the other per-type time leaves.
+- **Native, not delegated.** voxagent's output must not name `sshkey` among the types `applied via extension host`.
+  Because voxagent routes natively only on §2.2's digests, a changed SIMP pin fails the half here.
+- **Errors.** As the cron half. The half runs after the host half.
+
 **Run the gates one at a time.** Concurrent gate runs on one machine
 coincided with flakes in the SIMP gate's polkit start and systemd boot. The
 cause was not isolated; the gates may contend for podman's storage, the
@@ -2191,7 +2214,8 @@ and `olist:` (`property/list.rb`, `property/ordered_list.rb`).
   flush fails `ip is a required attribute for hosts` (`hostToLine`) and the target is not written (M6).
 - **Running.** As cron's: `ensure` first, then each out-of-sync property, with Ruby's messages (`ip changed`,
   `host_aliases changed <is> to '<should>'`, `defined 'host_aliases' as`, `comment changed '' to`); a changed resource
-  is flushed inside `Apply` (`host_apply.go:Apply`).
+  is flushed inside `Apply`. The run is `ral.ParsedFileRun` (`internal/ral/parsedfile_provider.go`, shared with
+  sshkey); `host_apply.go` supplies host's properties, retrieve, change text and setter as `hostEnsurable`.
 - **Kept from Ruby.** Parity is the contract, so these stay (spec §8 items 1–4):
   1. Every flush rewrites the whole target with a fresh header, so one changed host rewrites `/etc/hosts` even when its
      line is the only change. Parsed lines are re-serialised (fields tab-separated, aliases space-joined), and a
@@ -2209,6 +2233,65 @@ and `olist:` (`property/list.rb`, `property/ordered_list.rb`).
 - **Tests and gates.** `internal/units/host_core/*_test.go` (Ruby's texts in `host_params_test.go`, the shared grammar
   vectors in `host_grammar_test.go`, the run in `host_apply_test.go`, routing in `route_test.go`) and "G5's host half"
   above.
+
+### `sshkey`
+
+`sshkeyscore.Sshkey` (`internal/units/sshkeys_core/`: `sshkey.go` the identity and attribute set, `sshkey_params.go`
+validation and munge, `sshkey_grammar.go` the known_hosts grammar, `sshkey_apply.go` the run) reproduces the `parsed`
+provider of puppetlabs-sshkeys_core, measured on openvox 8.34.0 (M3, M4, M7, M13, M17, 2026-11-23). Like `host` it
+reads and writes through the flat filetype and runs on `ral.ParsedFileRun` (`internal/ral/parsedfile_provider.go`),
+supplying its properties, retrieve, change text and setter as `sshkeyEnsurable`. Line references in the code are
+`type:<n>` (`puppet/type/sshkey.rb`), `sp:<n>` (`provider/sshkey/parsed.rb`) and `pf:<n>` (`provider/parsedfile.rb`).
+
+- **Routing.** `Route` (`internal/units/sshkeys_core/manifest.go`) delegates with the first failing condition's reason:
+  platform (`ral.MeasuredRelease`; the type has no confine), `provider` (`group.ForeignProvider`), plugin tree
+  (`sshkeyRelease`), purge (`unit.ResourcesPurge`), value shapes (`parseSshkey`'s `rubyvalue.UnimplementedValue`,
+  under the release found).
+- **Two releases.** openvox 8.34.0 vendors sshkeys_core 2.5.0; SIMP pins 3.1.0. Their providers are the same bytes and
+  their `sshkey` types differ only in `key`'s validation, which 3.1.0 adds (`Key must not contain whitespace:
+  <inspect>`, a line break included). A tree with neither of `puppet/type/sshkey.rb` and
+  `puppet/provider/sshkey/parsed.rb` is the vendored release; a tree with either must match one release's two digests
+  (`unit.MatchFiles`), and `puppet/provider/sshkey/` may hold no `.rb` but `parsed.rb` (`another sshkey provider in
+  libdir`). The release found is passed to the provider and selects only that check.
+- **Identity.** The title is `<name>@<munged type>`, so `sshkey { 'foo': type => rsa }` reports as
+  `Sshkey[foo@ssh-rsa]`, and a title `bar@rsa` gives name `bar`, type `ssh-rsa` (M7). `type`'s aliases (`rsa`, `dsa`,
+  `ed25519`, `ecdsa-sk`, `ed25519-sk`) munge to the full names. `Sshkey` implements `ral.Retitling`
+  (`PuppetRef`, `Unresolvable`) and `ral.Aliasing` so reports and relationships name the resource as Ruby does.
+- **Validation.** Ruby's texts, each a whole-run refusal at catalog conversion naming the resource as Ruby has built
+  it so far (`Sshkey[@ssh-rsa]` for a name failure, `Sshkey[@]` for a type failure; `sshkey_params.go`, M7):
+  `Resourcename cannot include whitespaces`, `No comma in resourcename allowed. If you want to specify aliases use the
+  host_aliases property`, `Aliases cannot include whitespace`, `Aliases must be provided as an array, not a
+  comma-separated list`, `Invalid value "<v>". Valid values are ssh-dss, …` and, under 3.1.0 only, the `key` text
+  above. A `host_aliases` given as one string is one alias. A resource with no `type` is not refused: it is
+  `Sshkey[<name>@]`, logs `created`, then the flush fails `Field 'type' is required` and the target is not written; with
+  `ensure => absent` it finds no record, logs `Nothing to manage`, and the line stays (M7, M17).
+- **Reading and writing.** The target is `/etc/ssh/ssh_known_hosts` unless `target` says otherwise, read and written
+  through `parsedfile.NewFlat` with `file.BucketBackup` and `file.RelabelHook`. Comment and blank lines are kept. A
+  new target is `0644` less the umask (`newFileMode`; M4, M17); an existing one keeps its mode, owner and inode and
+  gains the header. A missing directory is not created: `Puppet::Util::FileType::FileTypeFlat could not write <t>: No
+  such file or directory @ rb_sysopen - <t>`, then `Could not evaluate: <same>` on the resource (M4).
+- **Running.** `ensure`, then `key`, `host_aliases`, `target` (`sshkeyProperties`), with Ruby's messages (`key changed
+  'A' to 'B'`, `host_aliases changed ['a1', 'a2'] to ['a2', 'a1']`). `host_aliases` is in sync only element by element
+  and in order, so a reorder is a change; `[]` writes the bare name and is in sync against a line with no aliases.
+- **Kept from Ruby.** Parity is the contract, so these stay (spec §8 items 1, 5, 6 and 16):
+  1. Every flush rewrites the whole target with a fresh header (as `host`).
+  2. A line with leading whitespace aborts every `Sshkey`'s prefetch: `Could not prefetch sshkey provider 'parsed':
+     undefined method `split' for :absent:Symbol` (ruby 3.2.11's text, `absentNameError`), and each `Sshkey` of the run
+     is `Skipping because provider prefetch failed`; other types still apply and the file is untouched (M7).
+  3. The key field runs to the end of the line, so it swallows a trailing comment: a manifest `key` that includes the
+     comment is in sync, and setting the bare key drops the comment from the file. Any write re-serialises every
+     record with single spaces, so tabs between fields become spaces on every line (M7).
+  4. Under 2.5.0 a `key` holding whitespace or a line break is written verbatim (`foo ssh-rsa a b`). A line break adds
+     lines to a root-read known_hosts: the next prefetch parses the injected text as records of their own with no
+     error, and the resource is re-applied, appending the lines again, on every run (M13, I-39 in
+     [improvements.md](improvements.md)). 3.1.0 refuses both.
+- **Root writes through a user's target.** The write follows a symlink at the target, as `host`'s does (`flat.Write`;
+  spec §11). With the default target only root controls the path. An `sshkey` `target` in a user's home, or any
+  directory another user can write, lets that user point root's write at any file by replacing the target with a
+  symlink, as in Ruby; nothing refuses it.
+- **Tests and gates.** `internal/units/sshkeys_core/*_test.go` (Ruby's texts in `sshkey_params_test.go`, the shared
+  grammar vectors and the leading-whitespace abort in `sshkey_grammar_test.go`, the run in `sshkey_apply_test.go`,
+  routing and both releases in `route_test.go`) and "G5's sshkey half" above.
 
 ### `concat_file` and `concat_fragment`
 

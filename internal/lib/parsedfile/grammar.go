@@ -34,6 +34,35 @@ type Value struct {
 	L    []string
 }
 
+// Display is format_value_for_display (%#p, M2): a String through
+// rubyvalue.PuppetQuote, a list as its quoted elements in brackets, anything
+// else (:absent) bare as "absent".
+func (v Value) Display() string {
+	switch v.Kind {
+	case Str:
+		return rubyvalue.PuppetQuote(v.S)
+	case List:
+		quoted := make([]string, len(v.L))
+		for i, s := range v.L {
+			quoted[i] = rubyvalue.PuppetQuote(s)
+		}
+		return "[" + strings.Join(quoted, ", ") + "]"
+	}
+	return "absent"
+}
+
+// ReportValue is a change event's previous or desired value: a string, a list
+// (never nil, so an empty one is [] in the report) or "absent".
+func (v Value) ReportValue() any {
+	switch v.Kind {
+	case Str:
+		return v.S
+	case List:
+		return append([]string{}, v.L...)
+	}
+	return "absent"
+}
+
 // Record is a parsed line, or a record to generate a line from.
 type Record struct {
 	Type   string           // the LineType name (Ruby's record_type)

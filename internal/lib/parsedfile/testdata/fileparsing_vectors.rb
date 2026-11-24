@@ -13,7 +13,8 @@
 # The grammars below are the generic ones of the engine's tests, cron's
 # (record definitions copied from cron_core 1.3.0
 # lib/puppet/provider/cron/crontab.rb:9-98) and host's (host_core
-# lib/puppet/provider/host/parsed.rb:21-48). internal/lib/parsedfile's
+# lib/puppet/provider/host/parsed.rb:21-48) and sshkey's (sshkeys_core
+# lib/puppet/provider/sshkey/parsed.rb:10-24). internal/lib/parsedfile's
 # vectors_test.go defines the generic ones again in Go and
 # TestRubyMatchesSharedVectors re-runs this script and compares.
 # String#inspect escapes non-ASCII unless the external encoding is UTF-8;
@@ -103,6 +104,25 @@ GRAMMARS = {
                                     }
 
     g.text_line :incomplete, match: %r{(?! (#{hosts_pattern}))}
+  },
+  # sshkeys_core lib/puppet/provider/sshkey/parsed.rb:10-24. A line with
+  # leading whitespace parses with name :absent, so post_parse raises
+  # NoMethodError (run rescues it as an error want).
+  'sshkey' => lambda { |g|
+    g.text_line :comment, match: %r{^#}
+    g.text_line :blank, match: %r{^\s*$}
+    g.record_line :parsed, fields: ['name', 'type', 'key'],
+                           post_parse: proc { |hash|
+                                         names = hash[:name].split(',', -1)
+                                         hash[:name] = names.shift
+                                         hash[:host_aliases] = names
+                                       },
+                           pre_gen: proc { |hash|
+                                      if hash[:host_aliases]
+                                        hash[:name] = [hash[:name], hash[:host_aliases]].flatten.join(',')
+                                        hash.delete(:host_aliases)
+                                      end
+                                    }
   },
   # cron_core 1.3.0 crontab.rb:9-98.
   'cron' => lambda { |g|
@@ -232,7 +252,7 @@ def run(c)
   end
 rescue Puppet::ResourceError => e
   { 'error' => e.to_s }
-rescue ArgumentError, Puppet::Error => e
+rescue ArgumentError, Puppet::Error, NoMethodError => e
   { 'error' => e.message }
 end
 

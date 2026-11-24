@@ -17,7 +17,13 @@ import (
 const (
 	vectorsPath   = "testdata/vectors.json"
 	generatorPath = "testdata/fileparsing_vectors.rb"
+
+	// oracleRubyVersion is the ruby of the oracle image (openvox 8.34.0).
+	oracleRubyVersion = "3.2.11"
 )
+
+// noMethodWant matches a want that is a NoMethodError's text.
+var noMethodWant = regexp.MustCompile(`"error":\s*"undefined method`)
 
 // Ruby fileparsing.rb digests the parity test accepts: openvox 8.33.0 (the
 // version the wants are generated on) and the puppet 8.10.0 gem, which differs
@@ -209,15 +215,15 @@ func genericGrammars(t *testing.T) map[string]*Grammar {
 
 // TestGrammarMatchesSharedVectors runs every generic-grammar case of
 // testdata/vectors.json (wants produced by the real fileparsing.rb). Cases of
-// the "cron" and "host" grammars are read by cron_core's and host_core's tests,
-// which own those grammars.
+// the "cron", "host" and "sshkey" grammars are read by cron_core's, host_core's
+// and sshkeys_core's tests, which own those grammars.
 func TestGrammarMatchesSharedVectors(t *testing.T) {
 	grammars := genericGrammars(t)
 	ran := 0
 	for _, c := range readVectors(t) {
 		g, ok := grammars[c.Grammar]
 		if !ok {
-			if c.Grammar != "cron" && c.Grammar != "host" {
+			if c.Grammar != "cron" && c.Grammar != "host" && c.Grammar != "sshkey" {
 				t.Errorf("%s: unknown grammar %q", c.Name, c.Grammar)
 			}
 			continue
@@ -331,8 +337,17 @@ func TestRubyMatchesSharedVectors(t *testing.T) {
 	if len(got.Cases) != len(cases) {
 		t.Fatalf("ruby returned %d cases, want %d", len(got.Cases), len(cases))
 	}
+	version, err := exec.Command(ruby, "-e", "print RUBY_VERSION").Output()
+	if err != nil {
+		t.Fatalf("ruby version: %v", err)
+	}
 	for i, c := range cases {
 		t.Run(c.Name, func(t *testing.T) {
+			// A NoMethodError's text is the Ruby version's: the committed wants
+			// carry the oracle's (3.2.11), so another Ruby cannot confirm them.
+			if string(version) != oracleRubyVersion && noMethodWant.Match(c.Want) {
+				t.Skipf("NoMethodError text of ruby %s differs from the oracle's %s", version, oracleRubyVersion)
+			}
 			if got.Cases[i].Name != c.Name {
 				t.Fatalf("case %d is %q, want %q", i, got.Cases[i].Name, c.Name)
 			}

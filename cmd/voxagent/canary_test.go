@@ -55,6 +55,8 @@ func canaryBase(typ, dir string) (title string, params map[string]any) {
 		return "voxcanary-none", map[string]any{"ensure": "present"}
 	case "service":
 		return "voxcanary", map[string]any{"ensure": "running"}
+	case "sshkey":
+		return "voxcanary", map[string]any{"type": "rsa", "key": "AAAA", "target": filepath.Join(dir, "known_hosts")}
 	case "user":
 		return "voxcanary", map[string]any{"ensure": "present"}
 	case "vox_conf", "vox_die", "vox_titled":
@@ -79,7 +81,7 @@ func canaryBase(typ, dir string) (title string, params map[string]any) {
 var canaryNamevars = map[string]string{
 	"augeas": "name", "ssh_config": "name", "sshd_config": "name", "sshd_config_subsystem": "name", "sysctl": "name",
 	"concat_file": "path", "concat_fragment": "name", "cron": "name", "exec": "command", "file": "path", "group": "name", "host": "name",
-	"notify": "name", "package": "name", "service": "name", "user": "name",
+	"notify": "name", "package": "name", "service": "name", "sshkey": "name", "user": "name",
 	"vox_conf": "name", "vox_deep": "name", "vox_die": "name", "vox_evalgen": "name", "vox_gen": "name",
 	"vox_prefetch": "name", "vox_rapi": "name", "vox_secret": "name", "vox_selfref": "name", "vox_titled": "name",
 	"vox_value": "name",

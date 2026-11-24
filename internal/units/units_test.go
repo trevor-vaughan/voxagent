@@ -174,6 +174,7 @@ var nativeFixtures = map[string]catalog.Resource{
 	"notify":                {Type: "Notify", Title: "n"},
 	"package":               {Type: "Package", Title: "p"},
 	"service":               {Type: "Service", Title: "s"},
+	"sshkey":                {Type: "Sshkey", Title: "k"},
 	"user":                  {Type: "User", Title: "u"},
 }
 

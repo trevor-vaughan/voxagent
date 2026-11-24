@@ -1,0 +1,1 @@
+sshkey { 'foo': key => 'A' }

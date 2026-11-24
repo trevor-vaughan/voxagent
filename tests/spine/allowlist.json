@@ -75,6 +75,13 @@
     "with every other gate and is left as it is; docs/maintainers/apply-spine.md,",
     "'The SIMP gate', records why.",
     "",
+    "metrics.time.values.sshkey.value, the last entry, is UNUSED on every fixture but",
+    "G5's sshkey half (tests/spine/sshkey/g5.sh). Its provenance is that half's",
+    "cases/create catalog applied twice with Ruby (`puppet apply --catalog --libdir`, no",
+    "sshkeys_core in the libdir) in two fresh localhost/parsedfile-measure-el",
+    "containers (measured 2026-11-23), `gatekit run-to-run` naming it the only",
+    "differing leaf no pattern covered -- 0.004020294 against 0.003916684.",
+    "",
     "The metrics.time entries are named, not indexed, because the comparator",
     "re-keys each metric group from Puppet's positional [name, label, value]",
     "triples before flattening. Indexed, the only usable pattern was",
@@ -141,7 +148,8 @@
     "metrics.time.values.sshd_config_subsystem.value",
     "metrics.time.values.svckill.value",
     "metrics.time.values.sysctl.value",
-    "metrics.time.values.user.value"
+    "metrics.time.values.user.value",
+    "metrics.time.values.sshkey.value"
   ],
   "cross_implementation": {
     "puppet_version": "Ruby reports its own version; Go cannot match it and must not pretend to",

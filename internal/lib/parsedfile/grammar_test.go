@@ -3,6 +3,7 @@ package parsedfile
 import (
 	"errors"
 	"os"
+	"reflect"
 	"regexp"
 	"strings"
 	"testing"
@@ -212,5 +213,31 @@ func TestPostParseErrorAbortsParse(t *testing.T) {
 	var pe *ParseError
 	if err != sentinel || errors.As(err, &pe) {
 		t.Errorf("err = %#v; want the sentinel itself, not a ParseError", err)
+	}
+}
+
+// TestValueDisplayAndReportValue pins the change formatting cron's tests relied
+// on (spec 6.1, M2): quoted strings, bracketed quoted lists, bare absent, and
+// report values that are never a nil list.
+func TestValueDisplayAndReportValue(t *testing.T) {
+	for _, tc := range []struct {
+		v       Value
+		display string
+		report  any
+	}{
+		{Value{Kind: Str, S: "a b"}, "'a b'", "a b"},
+		{Value{Kind: Str, S: ""}, "''", ""},
+		{Value{Kind: Str, S: "it's"}, `'it\'s'`, "it's"},
+		{Value{Kind: List, L: []string{"a1", "a2"}}, "['a1', 'a2']", []string{"a1", "a2"}},
+		{Value{Kind: List}, "[]", []string{}},
+		{Value{Kind: Absent}, "absent", "absent"},
+		{Value{Kind: Nil}, "absent", "absent"},
+	} {
+		if got := tc.v.Display(); got != tc.display {
+			t.Errorf("Display(%+v) = %q, want %q", tc.v, got, tc.display)
+		}
+		if got := tc.v.ReportValue(); !reflect.DeepEqual(got, tc.report) {
+			t.Errorf("ReportValue(%+v) = %#v, want %#v", tc.v, got, tc.report)
+		}
 	}
 }

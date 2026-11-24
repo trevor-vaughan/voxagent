@@ -298,6 +298,18 @@ func leakCases() []leakCase {
 				markedResource("Cron", "voxagent-leak-cron", map[string]any{"command": "/bin/true D8SECRET-Cron-command", "minute": "5"}, "command"),
 			}
 		}},
+		// A Sensitive key on a change of an existing known_hosts line (whose old
+		// key, unmarked, must not show either: plain) and on a create: the change logs
+		// "changed [redacted] to [redacted]" and the create shows no value.
+		{name: "sshkey-key", seed: func(t *testing.T, dir string) {
+			writeSeed(t, filepath.Join(dir, "known_hosts"), "voxagent-leak-sshkey ssh-rsa voxagent-plain-old-sshkey-key\n", 0o644)
+		}, plain: []string{"voxagent-plain-old-sshkey-key"}, resources: func(dir string) []map[string]any {
+			target := filepath.Join(dir, "known_hosts")
+			return []map[string]any{
+				markedResource("Sshkey", "voxagent-leak-sshkey@ssh-rsa", map[string]any{"key": "D8SECRET-Sshkey-key", "target": target}, "key"),
+				markedResource("Sshkey", "voxagent-leak-sshkey2@ssh-rsa", map[string]any{"key": "D8SECRET-Sshkey-key-create", "target": target}, "key"),
+			}
+		}},
 		// A Sensitive fragment under each measured concat version, in a file
 		// that applies and in one whose validate_cmd fails after printing the
 		// file it validated, so the content reaches the validator's output.

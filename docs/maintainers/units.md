@@ -6,7 +6,7 @@ unit is, how units are laid out and routed, and how to add one. Go citations are
 ## What a unit is
 
 A unit is a Go package under `internal/units/<name>` that reproduces one Ruby origin: either Puppet itself (one unit per
-core type: `exec`, `file`, `group`, `notify`, `package`, `service`, `user`) or one Ruby module (`concat`, `cron_core`, `host_core`, `augeas_core`,
+core type: `exec`, `file`, `group`, `notify`, `package`, `service`, `user`) or one Ruby module (`concat`, `cron_core`, `host_core`, `sshkeys_core`, `augeas_core`,
 `augeasproviders_sysctl`, `augeasproviders_ssh`). `augeasproviders_core` is a library unit: it serves no type, and holds
 the run object, mixin and fingerprinted files its two dependents share. A unit supplies two things through
 `unit.Unit` (`internal/unit/unit.go`):
@@ -42,7 +42,9 @@ Consequences worth knowing before you move code:
 - `internal/ral` is the engine: providers' interface, evaluator, transaction support, the extension-host type
   (`extension.go`). `TestRalHoldsNoTypes` fails if any other non-test file declares a `Type() string` method.
   `internal/ral/augeas_checks.go` is the one place type-neutral augeas routing checks live (`AugeasRunChecks`,
-  `AugeasProviderDir`, `HeldAugeas`), because both augeas units use them.
+  `AugeasProviderDir`, `HeldAugeas`), because both augeas units use them. `internal/ral/parsedfile_provider.go` is
+  the ensurable ParsedFile provider's run (`PrefetchParsedFile`, `ParsedFileRun.Apply`) for the same reason: host and
+  sshkey share it (cron only its prefetch binding), and `lib/parsedfile` cannot hold it because it returns `ral.Change`.
 - `internal/unit` cannot import `internal/units`, so `unit.RouteAll` takes the list as a parameter and
   `internal/units/units.go` (`units.All()`) supplies it. `units` is the only package that imports every unit.
 - A library cannot import `ral`, so a helper a library needs that is pure (no engine state, no engine-owned interface)
@@ -62,7 +64,7 @@ Consequences worth knowing before you move code:
 | `sources` | the per-resource `Sources` context value |
 | `command` | running external commands, output capping, shadow and argv runners, `ExecFailure`, executable checks, `RubyWhich` (`Puppet::Util.which`, shared by sysctl and cron) |
 | `nameservice` | libc NSS access through cgo (`nss_linux.go`) for `user`, `group` and `cron` (`PosixUID`, `UserByID`, `AllUsers`) |
-| `parsedfile` | Puppet's ParsedFile engine: a line grammar, per-run records, targets, and the crontab and flat filetypes. It knows no catalog or unit; `cron_core` (crontab filetype) and `host_core` (flat filetype) are its consumers (`docs/maintainers/apply-spine.md`, "`cron` and the ParsedFile engine", "`host`") |
+| `parsedfile` | Puppet's ParsedFile engine: a line grammar, per-run records, targets, and the crontab and flat filetypes. It knows no catalog or unit; `cron_core` (crontab filetype), `host_core` and `sshkeys_core` (flat filetype) are its consumers (`docs/maintainers/apply-spine.md`, "`cron` and the ParsedFile engine", "`host`", "`sshkey`") |
 | `plugintree` | `LibdirTree`, reading the plugin tree under `--libdir` |
 | `augeas` | the libaugeas `dlopen` probe and `Session` (the probe is made at most once per run) |
 | `raltest` | test support: fakes, catalog builders, the libaugeas trace replay (`trace.go`). Never imports `ral` or a unit |
@@ -79,7 +81,7 @@ live in `lib`.
 | `Name` | the unit; equals its directory name under `internal/units` |
 | `Version` | the unit's own semver, independent of voxagent's (see "Versioning") |
 | `Source` | `Origin{Implementation, Version}`: the Ruby implementation reproduced. Core units: `puppet` `8.10.0`. Module units: the module name and an empty `Version` (the versions are in `Releases`) |
-| `Oracle` | `Origin` the behaviour was measured against: `openvox` `8.33.0` for every unit but `host_core`, measured on `8.34.0` |
+| `Oracle` | `Origin` the behaviour was measured against: `openvox` `8.33.0` for every unit but `host_core` and `sshkeys_core`, measured on `8.34.0` |
 | `Types` | the catalog types the unit serves, lower case. Empty for a library unit |
 | `Requires` | names of units this one imports; the layering test allows imports of exactly these |
 | `Releases` | `[]Release{Version, Files, Types}`: one entry per measured version of the module's Ruby files |
@@ -157,6 +159,14 @@ Each unit's remaining checks are its own, and every failure is a `Delegated` rea
   `parsed.rb`: `checkTree`), a `Resources` purge of `host`, then value shapes (`rubyvalue.UnimplementedValue`). One
   release covers both openvox's vendored 1.3.0 and SIMP's 2.1.0, whose two files are the same bytes
   (`host_core/manifest.go:Route`).
+- `sshkeys_core` (`sshkey` only so far): the measured platform (`ral.MeasuredRelease`; the type has no confine), a
+  `provider` other than `parsed` (`group.ForeignProvider`; the unit requires `group`, `file` for `file.BucketBackup`
+  and `file.RelabelHook`, and `user` for `ssh_authorized_key`'s purge condition), the plugin tree (neither of sshkey's
+  two files is the vendored 2.5.0, else `MatchFiles` for 2.5.0 or 3.1.0, and no provider file under
+  `puppet/provider/sshkey/` but `parsed.rb`: `sshkeyRelease`), a `Resources` purge of `sshkey`, then value shapes
+  (`rubyvalue.UnimplementedValue`) under the release found. Each type of the module is fingerprinted by its own two
+  files; the release found selects 3.1.0's `key` check and is passed to the provider
+  (`sshkeys_core/manifest.go:Route`).
 - `exec`, `file`, `notify`, `package`, `service`: native on every run.
 
 D-87, D-89, D-91 and D-94 in [apply-spine.md](apply-spine.md) say what is measured and why each condition delegates.
