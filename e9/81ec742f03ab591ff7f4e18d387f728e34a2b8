@@ -1,0 +1,21 @@
+internal/ral/platform_test.go
+  s_a5ae08ab9db009::t_3602173f02d3ab 4-5,9-10,73-184
+internal/ral/platform.go
+  s_a5ae08ab9db009::t_9b96bdc80d7933 5-6,37-94
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "e981ec742f03ab591ff7f4e18d387f728e34a2b8",
+  "prompts": {},
+  "sessions": {
+    "s_a5ae08ab9db009": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2c38b644-c932-4d6d-958b-f95b9f72ad0a",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "peiriannydd <peiriannydd@gmail.com>"
+    }
+  }
+}
