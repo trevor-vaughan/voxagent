@@ -1,0 +1,19 @@
+docs/usage/backups.md
+  s_c107ecedab04a8::t_5fe7952583d2f3 37
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "1eb21f19d518b4ea40b0633f5a517c931d7541f7",
+  "prompts": {},
+  "sessions": {
+    "s_c107ecedab04a8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-ac9e3727214ded7b1",
+        "model": "unknown"
+      },
+      "human_author": "LLM (riotbox) <llm@riotbox>"
+    }
+  }
+}
