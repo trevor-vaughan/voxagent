@@ -1,0 +1,141 @@
+{
+  "host": "spine.example",
+  "time": "2026-10-02T19:55:02.377101048Z",
+  "configuration_version": 1790970865,
+  "transaction_uuid": "f530de4c-76ed-4751-a07c-fefe671fb54e",
+  "report_format": 12,
+  "puppet_version": "8.10.0",
+  "status": "unchanged",
+  "transaction_completed": true,
+  "noop": false,
+  "noop_pending": false,
+  "environment": "production",
+  "corrective_change": false,
+  "catalog_uuid": "7d002e8b-39aa-4e07-a430-1c181ae60f88",
+  "cached_catalog_status": "not_used",
+  "resource_statuses": {},
+  "logs": [
+    {
+      "level": "notice",
+      "message": "Applied catalog in 0.14 seconds",
+      "source": "Puppet",
+      "time": "2026-10-02T19:55:02.52026356Z"
+    }
+  ],
+  "metrics": {
+    "changes": {
+      "name": "changes",
+      "label": "Changes",
+      "values": [
+        [
+          "total",
+          "Total",
+          0
+        ]
+      ]
+    },
+    "events": {
+      "name": "events",
+      "label": "Events",
+      "values": [
+        [
+          "total",
+          "Total",
+          0
+        ],
+        [
+          "failure",
+          "Failure",
+          0
+        ],
+        [
+          "success",
+          "Success",
+          0
+        ]
+      ]
+    },
+    "resources": {
+      "name": "resources",
+      "label": "Resources",
+      "values": [
+        [
+          "total",
+          "Total",
+          1
+        ],
+        [
+          "skipped",
+          "Skipped",
+          0
+        ],
+        [
+          "failed",
+          "Failed",
+          0
+        ],
+        [
+          "failed_to_restart",
+          "Failed to restart",
+          0
+        ],
+        [
+          "restarted",
+          "Restarted",
+          0
+        ],
+        [
+          "changed",
+          "Changed",
+          0
+        ],
+        [
+          "out_of_sync",
+          "Out of sync",
+          0
+        ],
+        [
+          "scheduled",
+          "Scheduled",
+          0
+        ],
+        [
+          "corrective_change",
+          "Corrective change",
+          0
+        ]
+      ]
+    },
+    "time": {
+      "name": "time",
+      "label": "Time",
+      "values": [
+        [
+          "package",
+          "Package",
+          0.033012233
+        ],
+        [
+          "config_retrieval",
+          "Config retrieval",
+          0
+        ],
+        [
+          "transaction_evaluation",
+          "Transaction evaluation",
+          0.143120022
+        ],
+        [
+          "catalog_application",
+          "Catalog application",
+          0.143149492
+        ],
+        [
+          "total",
+          "Total",
+          0.143149492
+        ]
+      ]
+    }
+  }
+}

@@ -1,0 +1,191 @@
+{
+  "host": "spine.example",
+  "time": "2026-10-01T21:50:04.113103926Z",
+  "configuration_version": 1790891392,
+  "transaction_uuid": "a99f1f39-4b28-4585-bfcc-56d2e09f77e4",
+  "report_format": 12,
+  "puppet_version": "8.10.0",
+  "status": "changed",
+  "transaction_completed": true,
+  "noop": false,
+  "noop_pending": false,
+  "environment": "production",
+  "corrective_change": false,
+  "catalog_uuid": "9999d30c-ec1f-478d-afaf-51b449058070",
+  "cached_catalog_status": "not_used",
+  "resource_statuses": {
+    "Package[kernel-core]": {
+      "resource": "Package[kernel-core]",
+      "resource_type": "Package",
+      "title": "kernel-core",
+      "file": "/tmp/e/production/manifests/site.pp",
+      "line": 1,
+      "provider_used": "dnf",
+      "containment_path": [
+        "Stage[main]",
+        "Main",
+        "Package[kernel-core]"
+      ],
+      "tags": [
+        "package",
+        "kernel-core",
+        "class"
+      ],
+      "evaluation_time": 61.993699318,
+      "failed": false,
+      "failed_to_restart": false,
+      "changed": true,
+      "out_of_sync": true,
+      "skipped": false,
+      "change_count": 1,
+      "out_of_sync_count": 1,
+      "corrective_change": false,
+      "events": [
+        {
+          "audited": false,
+          "property": "ensure",
+          "previous_value": "purged",
+          "desired_value": "6.12.0-267.el10",
+          "historical_value": null,
+          "message": "created",
+          "name": "package_changed",
+          "status": "success",
+          "time": "2026-10-01T21:51:06.199803732Z",
+          "redacted": null,
+          "corrective_change": false
+        }
+      ],
+      "time": "2026-10-01T21:51:06.199810632Z"
+    }
+  },
+  "logs": [
+    {
+      "level": "notice",
+      "message": "created",
+      "source": "/Stage[main]/Main/Package[kernel-core]/ensure",
+      "time": "2026-10-01T21:51:06.199808062Z"
+    },
+    {
+      "level": "notice",
+      "message": "Applied catalog in 62.09 seconds",
+      "source": "Puppet",
+      "time": "2026-10-01T21:51:06.199836772Z"
+    }
+  ],
+  "metrics": {
+    "changes": {
+      "name": "changes",
+      "label": "Changes",
+      "values": [
+        [
+          "total",
+          "Total",
+          1
+        ]
+      ]
+    },
+    "events": {
+      "name": "events",
+      "label": "Events",
+      "values": [
+        [
+          "total",
+          "Total",
+          1
+        ],
+        [
+          "failure",
+          "Failure",
+          0
+        ],
+        [
+          "success",
+          "Success",
+          1
+        ]
+      ]
+    },
+    "resources": {
+      "name": "resources",
+      "label": "Resources",
+      "values": [
+        [
+          "total",
+          "Total",
+          1
+        ],
+        [
+          "skipped",
+          "Skipped",
+          0
+        ],
+        [
+          "failed",
+          "Failed",
+          0
+        ],
+        [
+          "failed_to_restart",
+          "Failed to restart",
+          0
+        ],
+        [
+          "restarted",
+          "Restarted",
+          0
+        ],
+        [
+          "changed",
+          "Changed",
+          1
+        ],
+        [
+          "out_of_sync",
+          "Out of sync",
+          1
+        ],
+        [
+          "scheduled",
+          "Scheduled",
+          0
+        ],
+        [
+          "corrective_change",
+          "Corrective change",
+          0
+        ]
+      ]
+    },
+    "time": {
+      "name": "time",
+      "label": "Time",
+      "values": [
+        [
+          "package",
+          "Package",
+          61.993699318
+        ],
+        [
+          "config_retrieval",
+          "Config retrieval",
+          0
+        ],
+        [
+          "transaction_evaluation",
+          "Transaction evaluation",
+          62.086683186
+        ],
+        [
+          "catalog_application",
+          "Catalog application",
+          62.086714696
+        ],
+        [
+          "total",
+          "Total",
+          62.086714696
+        ]
+      ]
+    }
+  }
+}

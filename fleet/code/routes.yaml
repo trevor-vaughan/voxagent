@@ -1,0 +1,40 @@
+# Facts come from facter on every compile, not from whatever OpenVoxDB stored
+# last.
+#
+# `storeconfigs = true` installs OpenVoxDB as a read-through CACHE on the
+# Puppet::Node::Facts indirection: puppet/defaults.rb's storeconfigs hook calls
+# `set_global_setting(:cache_class, :store_configs)`. The indirector consults
+# the cache before the terminus (indirector/indirection.rb:222), and the
+# PuppetDB facts terminus builds `Puppet::Node::Facts.new(key, facts)` with no
+# expiration (indirector/facts/puppetdb.rb:77), so `expired?` is false forever.
+# Once a node's facts are in OpenVoxDB they are replayed on every later compile
+# and facter is never consulted again. Gate check 4 mutates an external fact on
+# node-el between two compiles; that cache would silently discard it, and the
+# check would report no divergence no matter what the fact said.
+#
+# `puppetdb_apply` is the cache terminus the PuppetDB/OpenVoxDB termini ship for
+# `puppet apply` -- it comes from the `openvoxdb-termini` package, not from core
+# Puppet. Its `find` returns nil so the real terminus (facter) is used, while
+# `save` still submits the facts to OpenVoxDB. Exported resources are stored and
+# collected exactly as before.
+#
+# The top-level key is the APPLICATION name, not the run mode:
+# Puppet::Application#configure_indirector_routes passes `name.to_s`, which is
+# `catalog` for `puppet catalog find`. A `user:` key here is silently ignored.
+#
+# Mounted on ALL THREE nodes, not just the exporter. Scoping it to node-el left
+# the other two with facts frozen in OpenVoxDB after their first storeconfigs
+# compile, which produced two problems. Gate checks 1-3 pass a throwaway
+# `--confdir` and so resolve facts through facter, while check 4 uses the
+# default confdir and would have replayed the stored set -- so editing a node's
+# fleet.yaml would have changed what three of the four checks saw and silently
+# not the fourth, until someone dropped the Postgres volume. It also made the
+# two collector compiles asymmetric on a cold database, where the first misses
+# the cache and the second hits it.
+#
+# Read only when the default confdir is in use, so gate checks 1-3 never see
+# this file at all.
+catalog:
+  facts:
+    terminus: facter
+    cache: puppetdb_apply

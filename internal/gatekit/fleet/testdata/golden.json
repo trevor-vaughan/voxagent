@@ -1,0 +1,548 @@
+{
+ "_comment": [
+  "Verdicts of the fleet gates' Python checks as committed at",
+  "the last commit before the fleet switch -- the gate-axes.sh and gate-compliance.sh heredocs",
+  "over the shared catalog reader then in fleet/lib, and gate-implementations.sh's fact-capture",
+  "check -- measured by running them over each case; never hand-derived. Each",
+  "{expr!r} was rewritten to render values the way pycompat.Render does.",
+  "\"could-not-run\" is a crash or the heredocs' own exit-2 read failure. Raw",
+  "catalogs derive from a live fleet run's .test-output/fleet. Frozen: generated",
+  "once by a script that is not kept in the repository."
+ ],
+ "axes": [
+  {
+   "name": "el",
+   "catalog": "catalogs/axes-el.txt",
+   "want": [
+    "from RedHat/true/false",
+    "primary",
+    "fleet-pkg-base-curl,fleet-pkg-base-openssl,fleet-pkg-extra-tmux,fleet-pkg-extra-vim"
+   ],
+   "python": {
+    "exit": 0,
+    "lines": []
+   }
+  },
+  {
+   "name": "el-alt",
+   "catalog": "catalogs/axes-el-alt.txt",
+   "want": [
+    "from RedHat/true/false",
+    "secondary",
+    "fleet-pkg-base-curl,fleet-pkg-base-openssl,fleet-pkg-extra-screen,fleet-pkg-extra-vim"
+   ],
+   "python": {
+    "exit": 0,
+    "lines": []
+   }
+  },
+  {
+   "name": "deb",
+   "catalog": "catalogs/axes-deb.txt",
+   "want": [
+    "from Debian/true/false",
+    "primary",
+    "fleet-pkg-base-curl,fleet-pkg-base-gnupg,fleet-pkg-extra-vim"
+   ],
+   "python": {
+    "exit": 0,
+    "lines": []
+   }
+  },
+  {
+   "name": "el-against-alt",
+   "catalog": "catalogs/axes-el-against-alt.txt",
+   "want": [
+    "from RedHat/true/false",
+    "secondary",
+    "fleet-pkg-base-curl,fleet-pkg-base-openssl,fleet-pkg-extra-screen,fleet-pkg-extra-vim"
+   ],
+   "python": {
+    "exit": 1,
+    "lines": [
+     "    fleet-tier: expected \"secondary\", got \"primary\"",
+     "    fleet-pkg-*: expected \"fleet-pkg-base-curl,fleet-pkg-base-openssl,fleet-pkg-extra-screen,fleet-pkg-extra-vim\", got \"fleet-pkg-base-curl,fleet-pkg-base-openssl,fleet-pkg-extra-tmux,fleet-pkg-extra-vim\""
+    ]
+   }
+  },
+  {
+   "name": "deb-against-el",
+   "catalog": "catalogs/axes-deb-against-el.txt",
+   "want": [
+    "from RedHat/true/false",
+    "primary",
+    "fleet-pkg-base-curl,fleet-pkg-base-openssl,fleet-pkg-extra-tmux,fleet-pkg-extra-vim"
+   ],
+   "python": {
+    "exit": 1,
+    "lines": [
+     "    fleet-message: expected \"from RedHat/true/false\", got \"from Debian/true/false\"",
+     "    fleet-pkg-*: expected \"fleet-pkg-base-curl,fleet-pkg-base-openssl,fleet-pkg-extra-tmux,fleet-pkg-extra-vim\", got \"fleet-pkg-base-curl,fleet-pkg-base-gnupg,fleet-pkg-extra-vim\""
+    ]
+   }
+  },
+  {
+   "name": "message-changed",
+   "catalog": "catalogs/axes-message-changed.txt",
+   "want": [
+    "from RedHat/true/false",
+    "primary",
+    "fleet-pkg-base-curl,fleet-pkg-base-openssl,fleet-pkg-extra-tmux,fleet-pkg-extra-vim"
+   ],
+   "python": {
+    "exit": 1,
+    "lines": [
+     "    fleet-message: expected \"from RedHat/true/false\", got \"from Debian/true/false\""
+    ]
+   }
+  },
+  {
+   "name": "message-absent",
+   "catalog": "catalogs/axes-message-absent.txt",
+   "want": [
+    "from RedHat/true/false",
+    "primary",
+    "fleet-pkg-base-curl,fleet-pkg-base-openssl,fleet-pkg-extra-tmux,fleet-pkg-extra-vim"
+   ],
+   "python": {
+    "exit": 1,
+    "lines": [
+     "    fleet-message: expected \"from RedHat/true/false\", got null"
+    ]
+   }
+  },
+  {
+   "name": "message-number",
+   "catalog": "catalogs/axes-message-number.txt",
+   "want": [
+    "from RedHat/true/false",
+    "primary",
+    "fleet-pkg-base-curl,fleet-pkg-base-openssl,fleet-pkg-extra-tmux,fleet-pkg-extra-vim"
+   ],
+   "python": {
+    "exit": 1,
+    "lines": [
+     "    fleet-message: expected \"from RedHat/true/false\", got 5"
+    ]
+   }
+  },
+  {
+   "name": "tier-content-null",
+   "catalog": "catalogs/axes-tier-content-null.txt",
+   "want": [
+    "from RedHat/true/false",
+    "primary",
+    "fleet-pkg-base-curl,fleet-pkg-base-openssl,fleet-pkg-extra-tmux,fleet-pkg-extra-vim"
+   ],
+   "python": {
+    "exit": 1,
+    "lines": [
+     "    fleet-tier: expected \"primary\", got \"\""
+    ]
+   }
+  },
+  {
+   "name": "tier-content-padded",
+   "catalog": "catalogs/axes-tier-content-padded.txt",
+   "want": [
+    "from RedHat/true/false",
+    "primary",
+    "fleet-pkg-base-curl,fleet-pkg-base-openssl,fleet-pkg-extra-tmux,fleet-pkg-extra-vim"
+   ],
+   "python": {
+    "exit": 0,
+    "lines": []
+   }
+  },
+  {
+   "name": "tier-absent",
+   "catalog": "catalogs/axes-tier-absent.txt",
+   "want": [
+    "from RedHat/true/false",
+    "primary",
+    "fleet-pkg-base-curl,fleet-pkg-base-openssl,fleet-pkg-extra-tmux,fleet-pkg-extra-vim"
+   ],
+   "python": {
+    "exit": 1,
+    "lines": [
+     "    fleet-tier: expected \"primary\", got null"
+    ]
+   }
+  },
+  {
+   "name": "tier-content-number",
+   "catalog": "catalogs/axes-tier-content-number.txt",
+   "want": [
+    "from RedHat/true/false",
+    "primary",
+    "fleet-pkg-base-curl,fleet-pkg-base-openssl,fleet-pkg-extra-tmux,fleet-pkg-extra-vim"
+   ],
+   "python": "could-not-run"
+  },
+  {
+   "name": "package-extra",
+   "catalog": "catalogs/axes-package-extra.txt",
+   "want": [
+    "from RedHat/true/false",
+    "primary",
+    "fleet-pkg-base-curl,fleet-pkg-base-openssl,fleet-pkg-extra-tmux,fleet-pkg-extra-vim"
+   ],
+   "python": {
+    "exit": 1,
+    "lines": [
+     "    fleet-pkg-*: expected \"fleet-pkg-base-curl,fleet-pkg-base-openssl,fleet-pkg-extra-tmux,fleet-pkg-extra-vim\", got \"fleet-pkg-base-curl,fleet-pkg-base-openssl,fleet-pkg-extra-tmux,fleet-pkg-extra-vim,fleet-pkg-extra-zsh\""
+    ]
+   }
+  },
+  {
+   "name": "package-title-number",
+   "catalog": "catalogs/axes-package-title-number.txt",
+   "want": [
+    "from RedHat/true/false",
+    "primary",
+    "fleet-pkg-base-curl,fleet-pkg-base-openssl,fleet-pkg-extra-tmux,fleet-pkg-extra-vim"
+   ],
+   "python": {
+    "exit": 0,
+    "lines": []
+   }
+  },
+  {
+   "name": "message-params-list",
+   "catalog": "catalogs/axes-message-params-list.txt",
+   "want": [
+    "from RedHat/true/false",
+    "primary",
+    "fleet-pkg-base-curl,fleet-pkg-base-openssl,fleet-pkg-extra-tmux,fleet-pkg-extra-vim"
+   ],
+   "python": "could-not-run"
+  },
+  {
+   "name": "package-params-list",
+   "catalog": "catalogs/axes-package-params-list.txt",
+   "want": [
+    "from Debian/true/false",
+    "primary",
+    "fleet-pkg-base-curl,fleet-pkg-base-gnupg,fleet-pkg-extra-vim"
+   ],
+   "python": {
+    "exit": 1,
+    "lines": [
+     "    fleet-message: expected \"from Debian/true/false\", got \"from RedHat/true/false\"",
+     "    fleet-pkg-*: expected \"fleet-pkg-base-curl,fleet-pkg-base-gnupg,fleet-pkg-extra-vim\", got \"fleet-pkg-base-curl,fleet-pkg-base-openssl,fleet-pkg-extra-tmux,fleet-pkg-extra-vim,fleet-pkg-zz\""
+    ]
+   }
+  },
+  {
+   "name": "message-twice-last-wins",
+   "catalog": "catalogs/axes-message-twice-last-wins.txt",
+   "want": [
+    "from RedHat/true/false",
+    "primary",
+    "fleet-pkg-base-curl,fleet-pkg-base-openssl,fleet-pkg-extra-tmux,fleet-pkg-extra-vim"
+   ],
+   "python": {
+    "exit": 1,
+    "lines": [
+     "    fleet-message: expected \"from RedHat/true/false\", got \"later\""
+    ]
+   }
+  },
+  {
+   "name": "resources-absent",
+   "catalog": "catalogs/axes-resources-absent.txt",
+   "want": [
+    "from RedHat/true/false",
+    "primary",
+    "fleet-pkg-base-curl,fleet-pkg-base-openssl,fleet-pkg-extra-tmux,fleet-pkg-extra-vim"
+   ],
+   "python": {
+    "exit": 1,
+    "lines": [
+     "    fleet-message: expected \"from RedHat/true/false\", got null",
+     "    fleet-tier: expected \"primary\", got null",
+     "    fleet-pkg-*: expected \"fleet-pkg-base-curl,fleet-pkg-base-openssl,fleet-pkg-extra-tmux,fleet-pkg-extra-vim\", got \"\""
+    ]
+   }
+  },
+  {
+   "name": "resources-object",
+   "catalog": "catalogs/axes-resources-object.txt",
+   "want": [
+    "from RedHat/true/false",
+    "primary",
+    "fleet-pkg-base-curl,fleet-pkg-base-openssl,fleet-pkg-extra-tmux,fleet-pkg-extra-vim"
+   ],
+   "python": "could-not-run"
+  },
+  {
+   "name": "resource-not-object",
+   "catalog": "catalogs/axes-resource-not-object.txt",
+   "want": [
+    "from RedHat/true/false",
+    "primary",
+    "fleet-pkg-base-curl,fleet-pkg-base-openssl,fleet-pkg-extra-tmux,fleet-pkg-extra-vim"
+   ],
+   "python": "could-not-run"
+  },
+  {
+   "name": "no-json-line",
+   "catalog": "catalogs/axes-no-json-line.txt",
+   "want": [
+    "from RedHat/true/false",
+    "primary",
+    "fleet-pkg-base-curl,fleet-pkg-base-openssl,fleet-pkg-extra-tmux,fleet-pkg-extra-vim"
+   ],
+   "python": "could-not-run"
+  },
+  {
+   "name": "brace-in-notice",
+   "catalog": "catalogs/axes-brace-in-notice.txt",
+   "want": [
+    "from RedHat/true/false",
+    "primary",
+    "fleet-pkg-base-curl,fleet-pkg-base-openssl,fleet-pkg-extra-tmux,fleet-pkg-extra-vim"
+   ],
+   "python": {
+    "exit": 0,
+    "lines": []
+   }
+  },
+  {
+   "name": "indented-object",
+   "catalog": "catalogs/axes-indented-object.txt",
+   "want": [
+    "from RedHat/true/false",
+    "primary",
+    "fleet-pkg-base-curl,fleet-pkg-base-openssl,fleet-pkg-extra-tmux,fleet-pkg-extra-vim"
+   ],
+   "python": {
+    "exit": 0,
+    "lines": []
+   }
+  },
+  {
+   "name": "top-level-list",
+   "catalog": "catalogs/axes-top-level-list.txt",
+   "want": [
+    "from RedHat/true/false",
+    "primary",
+    "fleet-pkg-base-curl,fleet-pkg-base-openssl,fleet-pkg-extra-tmux,fleet-pkg-extra-vim"
+   ],
+   "python": "could-not-run"
+  },
+  {
+   "name": "corrupt-byte-not-compared",
+   "catalog": "catalogs/axes-corrupt-byte-not-compared.txt",
+   "want": [
+    "from RedHat/true/false",
+    "primary",
+    "fleet-pkg-base-curl,fleet-pkg-base-openssl,fleet-pkg-extra-tmux,fleet-pkg-extra-vim"
+   ],
+   "python": {
+    "exit": 0,
+    "lines": []
+   }
+  },
+  {
+   "name": "corrupt-byte-in-compared-message",
+   "catalog": "catalogs/axes-corrupt-byte-in-compared-message.txt",
+   "want": [
+    "from RedHat/true/false",
+    "primary",
+    "fleet-pkg-base-curl,fleet-pkg-base-openssl,fleet-pkg-extra-tmux,fleet-pkg-extra-vim"
+   ],
+   "python": {
+    "exit": 1,
+    "lines": [
+     "    fleet-message: expected \"from RedHat/true/false\", got \"from R�dHat/true/false\""
+    ]
+   }
+  },
+  {
+   "name": "corrupt-byte-in-structure",
+   "catalog": "catalogs/axes-corrupt-byte-in-structure.txt",
+   "want": [
+    "from RedHat/true/false",
+    "primary",
+    "fleet-pkg-base-curl,fleet-pkg-base-openssl,fleet-pkg-extra-tmux,fleet-pkg-extra-vim"
+   ],
+   "python": "could-not-run"
+  },
+  {
+   "name": "truncated",
+   "catalog": "catalogs/axes-truncated.txt",
+   "want": [
+    "from RedHat/true/false",
+    "primary",
+    "fleet-pkg-base-curl,fleet-pkg-base-openssl,fleet-pkg-extra-tmux,fleet-pkg-extra-vim"
+   ],
+   "python": "could-not-run"
+  },
+  {
+   "name": "trailing-data",
+   "catalog": "catalogs/axes-trailing-data.txt",
+   "want": [
+    "from RedHat/true/false",
+    "primary",
+    "fleet-pkg-base-curl,fleet-pkg-base-openssl,fleet-pkg-extra-tmux,fleet-pkg-extra-vim"
+   ],
+   "python": "could-not-run"
+  }
+ ],
+ "compliance": [
+  {
+   "name": "enforced",
+   "catalog": "catalogs/compliance-enforced.txt",
+   "python": {
+    "exit": 0,
+    "lines": [
+     "    fleet_profile::compliance_marker = enforced-by-disa_stig"
+    ]
+   }
+  },
+  {
+   "name": "unenforced",
+   "catalog": "catalogs/compliance-unenforced.txt",
+   "python": {
+    "exit": 1,
+    "lines": [
+     "    fleet_profile::compliance_marker: expected \"enforced-by-disa_stig\", got \"unenforced\"",
+     "    the parameter fell back to its default: the enforcement backend",
+     "    ran but no compliance check for it was loaded. Look at",
+     "    compliance_markup::enforcement in hieradata/common.yaml and at",
+     "    fleet_profile/SIMP/compliance_profiles/checks.yaml being on the",
+     "    modulepath the profile compiler globs."
+    ]
+   }
+  },
+  {
+   "name": "other-value",
+   "catalog": "catalogs/compliance-other-value.txt",
+   "python": {
+    "exit": 1,
+    "lines": [
+     "    fleet_profile::compliance_marker: expected \"enforced-by-disa_stig\", got \"enforced-by-other\""
+    ]
+   }
+  },
+  {
+   "name": "marker-absent",
+   "catalog": "catalogs/compliance-marker-absent.txt",
+   "python": {
+    "exit": 2,
+    "lines": [
+     "    Notify[fleet-compliance] is absent from the catalog"
+    ]
+   }
+  },
+  {
+   "name": "message-null",
+   "catalog": "catalogs/compliance-message-null.txt",
+   "python": {
+    "exit": 2,
+    "lines": [
+     "    Notify[fleet-compliance] is absent from the catalog"
+    ]
+   }
+  },
+  {
+   "name": "message-false",
+   "catalog": "catalogs/compliance-message-false.txt",
+   "python": {
+    "exit": 1,
+    "lines": [
+     "    fleet_profile::compliance_marker: expected \"enforced-by-disa_stig\", got false"
+    ]
+   }
+  },
+  {
+   "name": "params-list",
+   "catalog": "catalogs/compliance-params-list.txt",
+   "python": "could-not-run"
+  },
+  {
+   "name": "params-absent",
+   "catalog": "catalogs/compliance-params-absent.txt",
+   "python": {
+    "exit": 2,
+    "lines": [
+     "    Notify[fleet-compliance] is absent from the catalog"
+    ]
+   }
+  },
+  {
+   "name": "first-wins",
+   "catalog": "catalogs/compliance-first-wins.txt",
+   "python": {
+    "exit": 0,
+    "lines": [
+     "    fleet_profile::compliance_marker = enforced-by-disa_stig"
+    ]
+   }
+  },
+  {
+   "name": "no-json-line",
+   "catalog": "catalogs/compliance-no-json-line.txt",
+   "python": "could-not-run"
+  }
+ ],
+ "facts": [
+  {
+   "name": "full",
+   "facts": "facts/full.json",
+   "python": {
+    "exit": 0,
+    "message": ""
+   }
+  },
+  {
+   "name": "missing-os",
+   "facts": "facts/missing-os.json",
+   "python": {
+    "exit": 1,
+    "message": "capture for node-el is missing required facts: os"
+   }
+  },
+  {
+   "name": "missing-all",
+   "facts": "facts/missing-all.json",
+   "python": {
+    "exit": 1,
+    "message": "capture for node-el is missing required facts: networking, os, fleet_tier"
+   }
+  },
+  {
+   "name": "too-few",
+   "facts": "facts/too-few.json",
+   "python": {
+    "exit": 1,
+    "message": "capture for node-el has only 3 facts; expected a full set"
+   }
+  },
+  {
+   "name": "exactly-twenty",
+   "facts": "facts/exactly-twenty.json",
+   "python": {
+    "exit": 0,
+    "message": ""
+   }
+  },
+  {
+   "name": "values-absent",
+   "facts": "facts/values-absent.json",
+   "python": {
+    "exit": 1,
+    "message": "capture for node-el is missing required facts: networking, os, fleet_tier"
+   }
+  },
+  {
+   "name": "values-null",
+   "facts": "facts/values-null.json",
+   "python": {
+    "exit": 1,
+    "message": "capture for node-el is missing required facts: networking, os, fleet_tier"
+   }
+  }
+ ]
+}

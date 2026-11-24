@@ -1,0 +1,150 @@
+version: '3'
+
+vars:
+  # Named ABS_TEST_DIR (not TEST_DIR) deliberately: Task's two-pass variable
+  # resolution re-evaluates a self-referencing "{{.ROOT_DIR}}/{{.TEST_DIR}}"
+  # template against its own prior output, doubling the ROOT_DIR prefix when
+  # no CLI override is given. A distinct name breaks the self-reference.
+  # TEST_DIR is always interpreted relative to the repo root: an absolute
+  # override (e.g. TEST_DIR=/tmp/custom) is silently rebased under ROOT_DIR
+  # rather than used as-is.
+  ABS_TEST_DIR: '{{.ROOT_DIR}}/{{.TEST_DIR | default ".test-output"}}'
+  MODE: '{{.MODE | default "human"}}'
+
+tasks:
+  default:
+    silent: true
+    cmd: |
+      task --list 2>/dev/null
+
+  build:
+    desc: Build the voxdiff, voxagent and gatekit binaries into bin/
+    cmds:
+      - mkdir -p "{{.ROOT_DIR}}/bin"
+      - go build -o "{{.ROOT_DIR}}/bin/voxdiff" "{{.ROOT_DIR}}/cmd/voxdiff"
+      - go build -o "{{.ROOT_DIR}}/bin/voxagent" "{{.ROOT_DIR}}/cmd/voxagent"
+      - go build -o "{{.ROOT_DIR}}/bin/gatekit" "{{.ROOT_DIR}}/cmd/gatekit"
+
+  test:
+    desc: Run Go unit tests — MODE=human (default) or MODE=llm
+    cmds:
+      - bash "{{.ROOT_DIR}}/scripts/run-tests.sh" "{{.MODE}}" "{{.ABS_TEST_DIR}}"
+
+  lint:
+    desc: Run go vet and shellcheck across the repository
+    cmds:
+      # The fleet harness is mostly shell now, and its scripts decide whether a
+      # gate result can be believed, so they are linted alongside the Go.
+      # -x follows sourced files; -P SCRIPTDIR resolves each `source=` directive
+      # against the sourcing script's own directory, so this stays correct
+      # whatever cwd it runs from and whatever directories are added below.
+      - go vet ./...
+      # fleet/bin/* rather than *.sh: the two gate-check-4 wrappers are bash but
+      # carry no suffix, because voxdiff invokes them as bare executables. They
+      # decide whether check 4's result can be believed, so they must be linted.
+      # The directory holds only shell.
+      #
+      # fleet/tests/*.sh IS suffix-filtered, unlike fleet/bin: fleet/tests also
+      # holds fleet.venom.yml, which shellcheck cannot parse.
+      #
+      # tests/spine/*.sh is suffix-filtered for the same reason as fleet/tests:
+      # the directory also holds the allowlist, which is JSON.
+      - shellcheck -x -P SCRIPTDIR {{.ROOT_DIR}}/fleet/bin/* {{.ROOT_DIR}}/fleet/tests/*.sh {{.ROOT_DIR}}/scripts/*.sh {{.ROOT_DIR}}/tests/spine/*.sh
+
+  adjudication:
+    desc: Prove the two negative controls still judge each half before reading the other's log
+    cmd: bash "{{.ROOT_DIR}}/fleet/tests/adjudication.sh"
+
+  vendor-pins:
+    desc: Prove vendor.sh refuses a destination that is not the tree its pin names
+    # Offline. The script rewrites vendor.sh's REPOS table to local origins under
+    # its own mktemp -d, so this never reaches the network and never touches
+    # fleet/.vendor/ -- it is safe to run against a live fleet.
+    cmd: bash "{{.ROOT_DIR}}/fleet/tests/vendor-pins.sh"
+
+  test-privileged:
+    desc: Run the Go unit tests as root, for the cases an unprivileged user cannot reach
+    # Some provider behaviour is only observable as root. The clearest case is
+    # chown: unprivileged, every non-trivial owner/group pair fails with EPERM
+    # regardless of argument order, so a test cannot tell a correct chown from
+    # one with its arguments swapped. Measured -- swapping them and running as
+    # root gives "uid = 2, want 1"; running unprivileged, the same mutation
+    # survives the whole suite.
+    #
+    # Those tests skip themselves when os.Getuid() != 0 rather than passing
+    # quietly, so without this task they never run anywhere. Not in `check`:
+    # it needs a container image, the same reason dev:state-diff is separate.
+    #
+    # Copied into the container rather than run in place, so a root process
+    # never writes to the working tree.
+    cmd: >-
+      podman run --rm -v "{{.ROOT_DIR}}":/src:ro -w /src
+      docker.io/library/golang:1.27
+      sh -c 'cp -r /src /tmp/r && cd /tmp/r && go test ./... '
+
+  noclobber:
+    desc: Prove an inherited noclobber cannot disarm the tree's writability probes
+    # Offline and side-effect free: builds its probe scripts under its own
+    # mktemp -d and never touches fleet/.vendor/ or a running stack, so this is
+    # safe to run against a live fleet.
+    cmd: bash "{{.ROOT_DIR}}/fleet/tests/noclobber.sh"
+
+  report-diff:
+    desc: Prove voxagent's report matches Ruby's from identical catalog bytes
+    # G1. Offline and side-effect free: compiles and applies inside its own
+    # mktemp -d and never touches fleet/ or a running stack. Needs `puppet` on
+    # PATH, and reports 2 rather than 1 when it is missing, so an absent oracle
+    # is never mistaken for agreement.
+    deps: [build]
+    cmd: bash "{{.ROOT_DIR}}/tests/spine/report-diff.sh"
+
+  idempotence:
+    desc: Prove a second apply of the same catalog changes nothing
+    # G2. Needs no Ruby, and catches a class the report differential cannot see:
+    # a provider that reports a change it did not make, or makes one it did not
+    # report. Offline and confined to its own mktemp -d.
+    deps: [build]
+    cmd: bash "{{.ROOT_DIR}}/tests/spine/idempotence.sh"
+
+  state-diff:
+    desc: Prove voxagent and Ruby produce the same state from the same catalog
+    # G3. Deliberately NOT in `check`: it needs a built container image and takes
+    # minutes, so it is run explicitly the way fleet:gate is.
+    #
+    # Starts its OWN containers, named with the script's PID, from
+    # localhost/fleet-node-el:latest. It does not touch the running fleet stack,
+    # and cannot remove another agent's container.
+    cmd: bash "{{.ROOT_DIR}}/tests/spine/state-diff.sh"
+
+  report-diff-container:
+    desc: G5 -- compare voxagent's and Ruby's reports for package, inside a container
+    # Deliberately NOT in `check`, for the same reason dev:state-diff is not: it
+    # needs a built container image and takes minutes.
+    #
+    # It exists because the HOST is not a valid oracle for `package` and fails
+    # silently -- the host's Ruby cannot fork, so dnf.rb's confine goes
+    # suitable=false and Puppet falls back to `dnfmodule`, which manages dnf
+    # MODULES. G1 would compare a plausible report that answers a different
+    # question.
+    #
+    # Starts its OWN containers, named with the script's PID, and cannot remove
+    # another agent's. deps: [build] because the binary is copied in rather than
+    # built inside, and a stale binary is a false green.
+    deps: [build]
+    cmd: bash "{{.ROOT_DIR}}/tests/spine/report-diff-container.sh"
+
+  derive-run-to-run:
+    desc: Re-measure the report differential's run_to_run allowlist against Ruby
+    # Every entry in run_to_run is a field report-diff is blind to, so the list
+    # has to stay a measurement rather than a claim. This applies one catalog
+    # twice from an identical starting state and fails if the allowlist is
+    # either incomplete or over-broad. Run it when report-diff surfaces a
+    # timestamp-shaped divergence: it is what distinguishes an incomplete
+    # measurement from a real defect.
+    # deps: [build] because it calls bin/gatekit, and a stale judge is a false result.
+    deps: [build]
+    cmd: bash "{{.ROOT_DIR}}/tests/spine/derive-run-to-run.sh"
+
+  fmt:
+    desc: Format all Go source
+    cmd: go fmt ./...

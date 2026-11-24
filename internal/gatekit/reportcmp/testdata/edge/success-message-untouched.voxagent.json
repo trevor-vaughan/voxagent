@@ -1,0 +1,1 @@
+{"resource_statuses": {"File[/p]": {"events": [{"status": "success", "message": "change from 'absent' to 'file' failed: Could not set 'file' on ensure: b"}]}}}

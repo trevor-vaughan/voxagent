@@ -1,0 +1,14 @@
+# Test artifacts
+.test-output/
+
+# Local agent/memory state, not project code
+.headroom/
+.claude/handoff/
+
+# Go build output
+/bin/
+/dist/
+*.test
+
+# Local planning notes, not project code
+docs/superpowers/

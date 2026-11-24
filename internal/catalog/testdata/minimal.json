@@ -1,0 +1,33 @@
+{
+  "tags": ["settings", "default", "node", "class"],
+  "name": "testnode.example.com",
+  "version": 1787866617,
+  "code_id": null,
+  "catalog_uuid": "db6d2445-8406-4403-81bd-18e037dae756",
+  "catalog_format": 2,
+  "environment": "production",
+  "resources": [
+    {
+      "type": "Stage",
+      "title": "main",
+      "tags": ["stage"],
+      "exported": false,
+      "kind": "compilable_type",
+      "parameters": { "name": "main" }
+    },
+    {
+      "type": "Notify",
+      "title": "loop-1",
+      "tags": ["notify", "loop-1", "node", "default", "class"],
+      "file": "/etc/puppetlabs/code/environments/production/manifests/site.pp",
+      "line": 35,
+      "exported": false,
+      "kind": "compilable_type",
+      "parameters": { "message": "0001" }
+    }
+  ],
+  "edges": [
+    { "source": "Stage[main]", "target": "Class[Settings]" }
+  ],
+  "classes": ["settings", "default"]
+}

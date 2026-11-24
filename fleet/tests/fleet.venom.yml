@@ -1,0 +1,107 @@
+name: fleet gate
+vars:
+  fleetbin: "{{.venom.testsuite.workdir}}/../bin"
+  # Overridden by .taskfiles/fleet.yml so Task's TEST_DIR stays authoritative;
+  # the default keeps a bare `venom run` working from a clean checkout.
+  outdir: "{{.venom.testsuite.workdir}}/../../.test-output/fleet"
+
+testcases:
+  # First, because it is the only check that would notice the fleet having
+  # quietly collapsed into three identical nodes. Every check below it would
+  # still pass green in that state.
+  - name: the per-node and per-OS-family hiera axes are live
+    steps:
+      - type: exec
+        script: "bash {{.fleetbin}}/gate-axes.sh {{.outdir}}"
+        assertions:
+          - result.code ShouldEqual 0
+          - result.systemout ShouldContainSubstring "== node-el =="
+          - result.systemout ShouldContainSubstring "== node-el-alt =="
+          - result.systemout ShouldContainSubstring "== node-deb =="
+          - result.systemout ShouldNotContainSubstring MISMATCH
+          - result.systemout ShouldNotContainSubstring FAILED
+
+  - name: every node compiles identically twice
+    steps:
+      - type: exec
+        script: "bash {{.fleetbin}}/gate-determinism.sh {{.outdir}}"
+        assertions:
+          - result.code ShouldEqual 0
+          # The "== node-X ==" headers, not a bare "node-el": that substring is
+          # also inside "node-el-alt", so it would pass with node-el-alt never
+          # having been compared at all.
+          - result.systemout ShouldContainSubstring "== node-el =="
+          - result.systemout ShouldContainSubstring "== node-el-alt =="
+          - result.systemout ShouldContainSubstring "== node-deb =="
+          - result.systemout ShouldNotContainSubstring "DIVERGED"
+          - result.systemout ShouldNotContainSubstring "FAILED to run"
+
+  # Runs immediately after the check it validates, and mutates a manifest that
+  # is bind-mounted into all three containers. Venom runs the testcases of one
+  # suite sequentially, so nothing else is compiling while the fixture is
+  # mutated -- do not split this suite in two.
+  - name: gate check 1 detects a nondeterministic manifest and recovers
+    steps:
+      - type: exec
+        script: "bash {{.fleetbin}}/gate-determinism-negative.sh {{.outdir}}"
+        assertions:
+          - result.code ShouldEqual 0
+          - result.systemout ShouldContainSubstring "mutated_exit=1"
+          - result.systemout ShouldContainSubstring "mutated_diverged=yes"
+          - result.systemout ShouldContainSubstring "restored_exit=0"
+          - result.systemout ShouldContainSubstring "restored_identical=yes"
+
+  - name: cross-implementation comparison completes
+    steps:
+      - type: exec
+        script: "bash {{.fleetbin}}/gate-implementations.sh {{.outdir}}"
+        assertions:
+          - result.code ShouldEqual 0
+          - result.systemout ShouldContainSubstring "implementations"
+
+  - name: module tree scan completes without being truncated
+    steps:
+      - type: exec
+        script: "bash {{.fleetbin}}/gate-scan.sh {{.outdir}}"
+        assertions:
+          - result.code ShouldEqual 0
+          # systemerr, not systemout: gate-scan.sh writes the INCOMPLETE marker
+          # to stderr and appends the other copy to its findings file. Neither
+          # reaches stdout, so asserting on systemout could never fail.
+          - result.systemerr ShouldNotContainSubstring INCOMPLETE
+
+  - name: exported resources break the allowlist as expected
+    steps:
+      - type: exec
+        script: "bash {{.fleetbin}}/gate-exports.sh {{.outdir}}"
+        assertions:
+          - result.code ShouldEqual 0
+          - result.systemout ShouldContainSubstring "DIVERGED as expected"
+
+  - name: compliance enforcement reaches the catalog
+    steps:
+      - type: exec
+        script: "bash {{.fleetbin}}/gate-compliance.sh {{.outdir}}"
+        assertions:
+          - result.code ShouldEqual 0
+          - result.systemout ShouldContainSubstring "enforced-by-disa_stig"
+          - result.systemout ShouldNotContainSubstring unenforced
+
+  # Runs immediately after the check it validates, and renames the compliance
+  # data that is bind-mounted into all three containers away and back. Venom
+  # runs the testcases of one suite sequentially, so nothing else is compiling
+  # while the fixture is mutated -- do not split this suite in two.
+  - name: gate check 6 detects missing compliance data and recovers
+    steps:
+      - type: exec
+        script: "bash {{.fleetbin}}/gate-compliance-negative.sh {{.outdir}}"
+        assertions:
+          - result.code ShouldEqual 0
+          # The reported statuses too, not just result.code. The two are printed
+          # precisely so the transcript records what check 6 did, and a reader
+          # who sees only result.code cannot tell a real red-then-green from a
+          # control that never ran the gate at all.
+          - result.systemout ShouldContainSubstring "broken_exit=1"
+          - result.systemout ShouldContainSubstring "broken_reported=yes"
+          - result.systemout ShouldContainSubstring "restored_exit=0"
+          - result.systemout ShouldContainSubstring "restored_enforced=yes"

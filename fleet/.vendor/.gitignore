@@ -1,0 +1,4 @@
+# Vendored third-party sources, cloned at pinned refs by fleet/bin/vendor.sh.
+# Self-ignoring so the root .gitignore does not need to know about this path.
+*
+!.gitignore

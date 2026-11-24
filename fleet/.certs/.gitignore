@@ -1,0 +1,5 @@
+# CA state and issued key material, minted by fleet/bin/make-certs.sh.
+# Self-ignoring so the root .gitignore does not need to know about this path.
+# This directory holds private keys; nothing in it may ever be committed.
+*
+!.gitignore

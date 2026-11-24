@@ -1,0 +1,8 @@
+# Runtime state, not fixture data. Gate check 4 mutates what node-el exports by
+# writing mutator.yaml here, and this directory is bind-mounted read-write into
+# the container so that write lands in the working tree. Ignoring it keeps
+# `git status` clean after a gate run.
+#
+# Scoped to this file rather than added to the root .gitignore, which carries a
+# deliberately unstaged edit that must not be disturbed.
+/mutator.yaml

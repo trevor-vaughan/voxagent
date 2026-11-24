@@ -1,0 +1,115 @@
+name: voxdiff end-to-end
+vars:
+  voxdiff: "{{.venom.testsuite.workdir}}/../bin/voxdiff"
+  fixtures: "{{.venom.testsuite.workdir}}/fixtures"
+
+testcases:
+  - name: compare reports identical catalogs from two compiles
+    steps:
+      - type: exec
+        script: |
+          {{.voxdiff}} compare \
+            -node testnode.example.com \
+            -environmentpath {{.fixtures}}/environments \
+            -environment production \
+            -codedir {{.fixtures}} \
+            -confdir $(mktemp -d) \
+            -vardir $(mktemp -d)
+        assertions:
+          - result.code ShouldEqual 0
+          - result.systemout ShouldContainSubstring IDENTICAL
+          - result.systemout ShouldContainSubstring "version, catalog_uuid"
+
+  - name: compare emits valid JSON when asked
+    steps:
+      - type: exec
+        script: |
+          {{.voxdiff}} compare -json \
+            -node testnode.example.com \
+            -environmentpath {{.fixtures}}/environments \
+            -environment production \
+            -codedir {{.fixtures}} \
+            -confdir $(mktemp -d) \
+            -vardir $(mktemp -d)
+        assertions:
+          - result.code ShouldEqual 0
+          - result.systemoutjson.identical ShouldEqual true
+          - result.systemoutjson.ignored_fields.ignored_fields0 ShouldEqual version
+          - result.systemoutjson.ignored_fields.ignored_fields1 ShouldEqual catalog_uuid
+          - result.systemoutjson.differences ShouldBeEmpty
+
+  - name: compare detects a genuine divergence between two compiles
+    steps:
+      - type: exec
+        script: |
+          {{.voxdiff}} compare \
+            -node testnode.example.com \
+            -environmentpath {{.fixtures}}/environments \
+            -environment production \
+            -codedir {{.fixtures}} \
+            -confdir $(mktemp -d) \
+            -vardir $(mktemp -d) \
+            -left puppet \
+            -right {{.fixtures}}/puppet-right
+        assertions:
+          - result.code ShouldEqual 1
+          - result.systemout ShouldContainSubstring "resources[File[/tmp/fixture-three]]"
+          - result.systemout ShouldContainSubstring "resources[Notify[thing-a]].parameters.message"
+          - result.systemout ShouldContainSubstring "version, catalog_uuid"
+
+  - name: compare fails cleanly on a nonexistent binary
+    steps:
+      - type: exec
+        script: "{{.voxdiff}} compare -node n -left not-a-real-puppet-binary"
+        assertions:
+          - result.code ShouldEqual 2
+          - result.systemerr ShouldContainSubstring "left:"
+
+  - name: compare requires a node name
+    steps:
+      - type: exec
+        script: "{{.voxdiff}} compare"
+        assertions:
+          - result.code ShouldEqual 2
+          - result.systemerr ShouldContainSubstring "-node is required"
+
+  - name: scan flags exported resources and generate calls
+    steps:
+      - type: exec
+        script: "{{.voxdiff}} scan {{.fixtures}}/unstable"
+        assertions:
+          - result.code ShouldEqual 1
+          - result.systemout ShouldContainSubstring exported_resource
+          - result.systemout ShouldContainSubstring generate_call
+
+  - name: scan is silent on a clean tree
+    steps:
+      - type: exec
+        script: "{{.voxdiff}} scan {{.fixtures}}/environments"
+        assertions:
+          - result.code ShouldEqual 0
+          - result.systemout ShouldContainSubstring "0 finding(s)"
+
+  - name: scan exits 2 and keeps findings when a file is unreadable
+    steps:
+      - type: exec
+        script: |
+          scratch=$(mktemp -d)
+          cat > "$scratch/findable.pp" <<'EOF'
+          class findable {
+            @@notify { 'exported-thing': message => 'crosses PuppetDB' }
+          }
+          EOF
+          cat > "$scratch/unreadable.pp" <<'EOF'
+          class unreadable {}
+          EOF
+          chmod 000 "$scratch/unreadable.pp"
+          {{.voxdiff}} scan "$scratch"
+          code=$?
+          chmod 644 "$scratch/unreadable.pp"
+          rm -rf "$scratch"
+          exit $code
+        assertions:
+          - result.code ShouldEqual 2
+          - result.systemout ShouldContainSubstring exported_resource
+          - result.systemerr ShouldContainSubstring "permission denied"

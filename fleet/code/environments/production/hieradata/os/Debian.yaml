@@ -1,0 +1,5 @@
+---
+fleet_profile::message: "from Debian"
+fleet_profile::packages:
+  base:
+    - gnupg

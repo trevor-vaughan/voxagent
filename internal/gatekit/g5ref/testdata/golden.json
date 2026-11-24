@@ -1,0 +1,281 @@
+{
+ "_comment": [
+  "Verdicts of G5's reference assertions as they stood in",
+  "tests/spine/report-diff-container.sh, measured by running them over each",
+  "case below; never hand-derived. Each {expr!r} in the original was rewritten",
+  "to render values the way Go's pycompat.Render does, so complaints are the",
+  "exact text expected. \"crashed\" means a traceback. Frozen: generated once by",
+  "a script that is not kept in the repository."
+ ],
+ "fixture": [
+  "tree",
+  "gdb-gdbserver",
+  "rust-toolset-srpm-macros",
+  "voxagent-no-such-package"
+ ],
+ "cases": [
+  {
+   "name": "clean",
+   "report": "clean.report.json",
+   "catalog": "catalog.json",
+   "python": {
+    "exit": 0,
+    "complaints": []
+   }
+  },
+  {
+   "name": "install-absent",
+   "report": "install-absent.report.json",
+   "catalog": "catalog.json",
+   "python": {
+    "exit": 1,
+    "complaints": [
+     "Package[tree] is absent from the reference report"
+    ]
+   }
+  },
+  {
+   "name": "install-null",
+   "report": "install-null.report.json",
+   "catalog": "catalog.json",
+   "python": {
+    "exit": 1,
+    "complaints": [
+     "Package[tree] is absent from the reference report"
+    ]
+   }
+  },
+  {
+   "name": "remove-unchanged",
+   "report": "remove-unchanged.report.json",
+   "catalog": "catalog.json",
+   "python": {
+    "exit": 1,
+    "complaints": [
+     "Package[gdb-gdbserver] did not change on the reference side"
+    ]
+   }
+  },
+  {
+   "name": "latest-no-events",
+   "report": "latest-no-events.report.json",
+   "catalog": "catalog.json",
+   "python": {
+    "exit": 1,
+    "complaints": [
+     "Package[rust-toolset-srpm-macros] recorded no event on the reference side"
+    ]
+   }
+  },
+  {
+   "name": "missing-not-failed",
+   "report": "missing-not-failed.report.json",
+   "catalog": "catalog.json",
+   "python": {
+    "exit": 1,
+    "complaints": [
+     "Package[voxagent-no-such-package] did not fail, so no attribution was exercised"
+    ]
+   }
+  },
+  {
+   "name": "missing-absent",
+   "report": "missing-absent.report.json",
+   "catalog": "catalog.json",
+   "python": {
+    "exit": 1,
+    "complaints": [
+     "Package[voxagent-no-such-package] is absent from the reference report"
+    ]
+   }
+  },
+  {
+   "name": "exec-ok-two-events",
+   "report": "exec-ok-two-events.report.json",
+   "catalog": "catalog.json",
+   "python": {
+    "exit": 1,
+    "complaints": [
+     "Exec[spine-exec-ok] did not record exactly one executed_command event on the reference side, but [\"executed_command\", \"executed_command\"]"
+    ]
+   }
+  },
+  {
+   "name": "exec-ok-unnamed",
+   "report": "exec-ok-unnamed.report.json",
+   "catalog": "catalog.json",
+   "python": {
+    "exit": 1,
+    "complaints": [
+     "Exec[spine-exec-ok] did not record exactly one executed_command event on the reference side, but [null]"
+    ]
+   }
+  },
+  {
+   "name": "exec-ok-absent",
+   "report": "exec-ok-absent.report.json",
+   "catalog": "catalog.json",
+   "python": {
+    "exit": 1,
+    "complaints": [
+     "Exec[spine-exec-ok] is absent from the reference report"
+    ]
+   }
+  },
+  {
+   "name": "exec-fail-command",
+   "report": "exec-fail-command.report.json",
+   "catalog": "catalog.json",
+   "python": {
+    "exit": 1,
+    "complaints": [
+     "Exec[spine-exec-fail]'s reference failure is attributed to \"command\", not to returns"
+    ]
+   }
+  },
+  {
+   "name": "exec-fail-succeeded",
+   "report": "exec-fail-succeeded.report.json",
+   "catalog": "catalog.json",
+   "python": {
+    "exit": 1,
+    "complaints": [
+     "Exec[spine-exec-fail] did not record exactly one failure event on the reference side, so the attribution was not exercised"
+    ]
+   }
+  },
+  {
+   "name": "exec-returns-one-entry",
+   "report": "exec-returns-one-entry.report.json",
+   "catalog": "catalog.json",
+   "python": {
+    "exit": 1,
+    "complaints": [
+     "Exec[spine-exec-returns]'s reference desired_value is [\"0\"], so the multi-entry accepted list was not exercised"
+    ]
+   }
+  },
+  {
+   "name": "exec-returns-two-char-string",
+   "report": "exec-returns-two-char-string.report.json",
+   "catalog": "catalog.json",
+   "python": {
+    "exit": 0,
+    "complaints": []
+   }
+  },
+  {
+   "name": "exec-returns-null",
+   "report": "exec-returns-null.report.json",
+   "catalog": "catalog.json",
+   "python": {
+    "exit": 1,
+    "complaints": [
+     "Exec[spine-exec-returns]'s reference desired_value is null, so the multi-entry accepted list was not exercised"
+    ]
+   }
+  },
+  {
+   "name": "exec-returns-failed",
+   "report": "exec-returns-failed.report.json",
+   "catalog": "catalog.json",
+   "python": {
+    "exit": 1,
+    "complaints": [
+     "Exec[spine-exec-returns] did not succeed on the reference side, so an accepted non-zero status was not exercised"
+    ]
+   }
+  },
+  {
+   "name": "refresh-with-property",
+   "report": "refresh-with-property.report.json",
+   "catalog": "catalog.json",
+   "python": {
+    "exit": 1,
+    "complaints": [
+     "Exec[spine-exec-refresh]'s reference refresh event carries property \"returns\", so it is not the no-property callback event this fixture exists to compare"
+    ]
+   }
+  },
+  {
+   "name": "refresh-no-events",
+   "report": "refresh-no-events.report.json",
+   "catalog": "catalog.json",
+   "python": {
+    "exit": 1,
+    "complaints": [
+     "Exec[spine-exec-refresh] has no refresh event on the reference side, so refresh propagation was not exercised"
+    ]
+   }
+  },
+  {
+   "name": "guarded-present",
+   "report": "guarded-present.report.json",
+   "catalog": "catalog.json",
+   "python": {
+    "exit": 1,
+    "complaints": [
+     "Exec[spine-exec-guarded] is PRESENT in the reference report (changed=false, failed=false, out_of_sync=true, 2 event(s)), so its guard did not skip the command"
+    ]
+   }
+  },
+  {
+   "name": "guarded-undeclared",
+   "report": "guarded-undeclared.report.json",
+   "catalog": "guarded-undeclared.catalog.json",
+   "python": {
+    "exit": 1,
+    "complaints": [
+     "Exec[spine-exec-guarded] is not in the compiled catalog, so its absence from the report is evidence of nothing"
+    ]
+   }
+  },
+  {
+   "name": "catalog-resources-empty-object",
+   "report": "catalog-resources-empty-object.report.json",
+   "catalog": "catalog-resources-empty-object.catalog.json",
+   "python": {
+    "exit": 1,
+    "complaints": [
+     "Exec[spine-exec-guarded] is not in the compiled catalog, so its absence from the report is evidence of nothing"
+    ]
+   }
+  },
+  {
+   "name": "crash-statuses-list",
+   "report": "crash-statuses-list.report.json",
+   "catalog": "catalog.json",
+   "python": "crashed"
+  },
+  {
+   "name": "crash-status-string",
+   "report": "crash-status-string.report.json",
+   "catalog": "catalog.json",
+   "python": "crashed"
+  },
+  {
+   "name": "crash-events-object",
+   "report": "crash-events-object.report.json",
+   "catalog": "catalog.json",
+   "python": "crashed"
+  },
+  {
+   "name": "crash-desired-number",
+   "report": "crash-desired-number.report.json",
+   "catalog": "catalog.json",
+   "python": "crashed"
+  },
+  {
+   "name": "crash-resources-null",
+   "report": "crash-resources-null.report.json",
+   "catalog": "crash-resources-null.catalog.json",
+   "python": "crashed"
+  },
+  {
+   "name": "crash-report-list",
+   "report": "crash-report-list.report.json",
+   "catalog": "catalog.json",
+   "python": "crashed"
+  }
+ ]
+}

@@ -1,0 +1,9 @@
+
+gdb-gdbserver.x86_64                       17.2-3.1.el10               appstream
+glibc.x86_64                               2.39-141.el10               baseos   
+glibc-common.x86_64                        2.39-141.el10               baseos   
+glibc-devel.x86_64                         2.39-141.el10               appstream
+glibc-gconv-extra.x86_64                   2.39-141.el10               baseos   
+glibc-minimal-langpack.x86_64              2.39-141.el10               baseos   
+libsemanage.x86_64                         3.11-2.el10                 baseos   
+EXIT=100

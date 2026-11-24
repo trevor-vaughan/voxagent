@@ -1,0 +1,65 @@
+#!/usr/bin/env bash
+# voxdiff -right for gate check 4: change what node-el exports, then compile
+# node-deb.
+#
+# Two ordinary compiles of the collector agree, because PuppetDB is unchanged
+# between them. To show that external mutable state genuinely breaks the
+# two-field allowlist, the right-hand side must first alter what is exported.
+#
+# The mutation is a fixed string, not a timestamp. A time-based export would
+# pass or fail depending on how quickly the two compiles ran, and a flaky test
+# in a harness whose purpose is trustworthiness is worse than no test.
+#
+# node-el picks the new fact up only because the nodes carry routes.yaml:
+# storeconfigs otherwise makes OpenVoxDB a read-through cache for a node's facts
+# and replays the first set forever.
+#
+# The export and the wait are gate-common.sh's, not copies. The base and the
+# mutated export must be produced under identical conditions -- if this file
+# drifted from gate-exports.sh by a flag, the two collector compiles would be
+# built from different inputs and the gate would report that as a finding.
+set -euo pipefail
+# Inherited noclobber disarms every `: > "$f"` writability probe in this tree.
+# Measured: under `set -C`, the probe SUCCEEDS by creating $f, and the redirect
+# it was written to predict then fails with "cannot overwrite existing file".
+# `env SHELLOPTS=noclobber` reaches here -- confirmed through two process hops
+# and a shebang script -- so this is a caller's shell setting, not a hypothetical.
+#
+# Those probes exist to stop an outage being reported as a finding about the
+# fleet; see gate-determinism.sh, which records the DIVERGED-for-a-run-that-never-
+# happened measurement that put them there. Leaving noclobber active would let
+# that defect back in with the guard still apparently passing.
+#
+# A gate owns its output directory outright, so clobber-protection guards
+# nothing of value here.
+set +C
+
+# Guarded and resolved separately, like the eight gate scripts. This is the ninth
+# site that sources gate-common.sh and was the only unguarded one: bare, a
+# missing file exits 1 and a failing `cd` substitution exits 1 too. Measured with
+# no sibling gate-common.sh: exit 1.
+#
+# It was not a live channel, and the reason is worth stating because it is the
+# kind of coupling the guards exist to remove: this file is voxdiff's `-right`,
+# and internal/compile/runner.go wraps any wrapper failure into an error that
+# cmd/voxdiff/main.go maps to exit 2, so check 4 saw could-not-run regardless.
+# Check 4's correct classification rested entirely on voxdiff's error handling
+# rather than on anything visible here. Now it rests on both.
+BIN_DIR="$(cd "$(dirname "$0")" && pwd)" || exit 2
+
+# shellcheck source=gate-common.sh
+. "$BIN_DIR/gate-common.sh" || {
+  echo "gate: cannot load ${BIN_DIR}/gate-common.sh" >&2 || exit 2
+  exit 2
+}
+
+fleet_export_as mutated
+
+# Waiting before compiling is what keeps a timing failure from presenting as a
+# fleet finding: compiling anyway would hand voxdiff two matching catalogs and
+# the gate would report "the fleet did not diverge" when the export simply had
+# not landed yet. fleet_wait_for_export exits 2 on exhaustion, which voxdiff
+# surfaces as its own exit 2 and the gate reports as "could not run".
+fleet_wait_for_export "fleet-exported-node-el-mutated"
+
+exec podman exec fleet_node_deb /opt/puppetlabs/bin/puppet "$@"

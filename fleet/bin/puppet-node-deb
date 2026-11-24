@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+# voxdiff -left for gate check 4: compile node-deb as it stands.
+#
+# Runs on the host and forwards into the container. voxdiff passes Puppet's
+# own flags through verbatim, and those paths refer to the container
+# filesystem because that is where puppet actually runs.
+set -euo pipefail
+# Inherited noclobber disarms every `: > "$f"` writability probe in this tree.
+# Measured: under `set -C`, the probe SUCCEEDS by creating $f, and the redirect
+# it was written to predict then fails with "cannot overwrite existing file".
+# `env SHELLOPTS=noclobber` reaches here -- confirmed through two process hops
+# and a shebang script -- so this is a caller's shell setting, not a hypothetical.
+#
+# Those probes exist to stop an outage being reported as a finding about the
+# fleet; see gate-determinism.sh, which records the DIVERGED-for-a-run-that-never-
+# happened measurement that put them there. Leaving noclobber active would let
+# that defect back in with the guard still apparently passing.
+#
+# A gate owns its output directory outright, so clobber-protection guards
+# nothing of value here.
+set +C
+exec podman exec fleet_node_deb /opt/puppetlabs/bin/puppet "$@"

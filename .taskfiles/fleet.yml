@@ -1,0 +1,155 @@
+version: '3'
+
+vars:
+  FLEET_DIR: '{{.ROOT_DIR}}/fleet'
+  VENDOR_DIR: '{{.ROOT_DIR}}/fleet/.vendor'
+  CERTS_DIR: '{{.ROOT_DIR}}/fleet/.certs'
+  # See integration.yml for why this is named ABS_TEST_DIR and not TEST_DIR.
+  ABS_TEST_DIR: '{{.ROOT_DIR}}/{{.TEST_DIR | default ".test-output"}}'
+  # Set FORCE to any non-empty value to rebuild images that already exist.
+  FORCE: '{{.FORCE | default ""}}'
+
+tasks:
+  default:
+    silent: true
+    cmd: |
+      task --list 2>/dev/null
+
+  vendor:
+    desc: Clone simp-webrick and the Forge modules the fleet needs
+    cmds:
+      - bash "{{.FLEET_DIR}}/bin/vendor.sh" "{{.VENDOR_DIR}}"
+
+  images:
+    desc: Build the fleet node images; set FORCE=1 to rebuild existing ones
+    cmds:
+      - bash "{{.FLEET_DIR}}/bin/build-images.sh" "{{.FLEET_DIR}}/images" "{{.FORCE}}"
+
+  certs:
+    desc: Mint the fleet CA and the TLS material OpenVoxDB and the nodes need
+    # deps rather than relying on up's: `up` runs its deps in parallel, and this
+    # script builds openvox-ca out of the tree `vendor` clones.
+    deps: [vendor]
+    cmd: bash "{{.FLEET_DIR}}/bin/make-certs.sh" "{{.CERTS_DIR}}" "{{.VENDOR_DIR}}/openvox-ca"
+
+  up:
+    desc: Start the fleet stack and wait until OpenVoxDB is serving
+    deps: [vendor, images, certs]
+    cmds:
+      - task: :dev:build
+      # Refuses an expired certificate or CRL before anything starts; make-certs
+      # only checks that the files exist. See docs/maintainers/fleet.md.
+      - '"{{.ROOT_DIR}}/bin/gatekit" fleet-certs "{{.CERTS_DIR}}"'
+      - podman-compose -f "{{.FLEET_DIR}}/compose.yml" up -d
+      - bash "{{.FLEET_DIR}}/bin/wait-for-openvoxdb.sh"
+
+  # Gate exit codes. All eight agree that 2 means "could not run" -- a usage
+  # error, an unwritable output directory or stdout, a stopped container, a
+  # truncated scan, an export that never landed, a log that could not be read,
+  # or a nested run that exited outside this contract. They differ on what they
+  # do with a result, and deliberately so:
+  #
+  #   gate:determinism      exits 1 when catalogs diverge. Divergence is a
+  #                         failure: two compiles of one node must agree.
+  #   gate:implementations  exits 0 whether the implementations agreed or not.
+  #                         Whether they agree is the open question this check
+  #                         measures, so asserting either way would be a guess.
+  #   gate:scan             exits 0 whether or not findings were produced.
+  #                         Findings are reviewed, not treated as errors.
+  #   gate:axes             exits 1 when a node stops carrying its own hiera
+  #                         data. Every other check compares a node against
+  #                         itself, so this is the only one that would notice
+  #                         the fleet collapsing into three identical nodes.
+  #   gate:negative         exits 1 when gate:determinism FAILS to detect a
+  #                         manifest this script deliberately broke. It is a
+  #                         test of a gate, not a gate.
+  #   gate:exports          INVERTED: exits 0 when the catalogs DO diverge, 1
+  #                         when they do not. It is the negative control -- the
+  #                         other checks all report agreement, so this is the
+  #                         only evidence the harness can detect anything at
+  #                         all.
+  #   gate:compliance       exits 1 when compliance_markup enforcement does not
+  #                         reach the catalog. The parameter it asserts defaults
+  #                         to 'unenforced', so a check that only required a
+  #                         successful compile would stay green in exactly the
+  #                         state this one exists to detect.
+  #   gate:compliance-negative
+  #                         exits 1 when gate:compliance FAILS to detect the
+  #                         module's compliance data being renamed away. Like
+  #                         gate:negative it is a test of a gate, not a gate --
+  #                         and it is the one that matters most, because the
+  #                         state it proves detectable is a clean compile
+  #                         carrying a default.
+  #
+  # Task does NOT pass any of these through -- it reports 201 for any non-zero
+  # command. Use `task -x fleet:gate:...` for the real code, or invoke the
+  # script directly, which is what the Venom suite must do.
+  gate:determinism:
+    desc: Compile each node twice and require identical catalogs
+    cmd: bash "{{.FLEET_DIR}}/bin/gate-determinism.sh" "{{.ABS_TEST_DIR}}/fleet"
+
+  gate:implementations:
+    desc: Measure OpenVox against the puppet gem (records, does not assert equality)
+    cmd: bash "{{.FLEET_DIR}}/bin/gate-implementations.sh" "{{.ABS_TEST_DIR}}/fleet"
+
+  gate:scan:
+    desc: Scan the fleet module tree for non-deterministic constructs
+    cmd: bash "{{.FLEET_DIR}}/bin/gate-scan.sh" "{{.ABS_TEST_DIR}}/fleet"
+
+  gate:axes:
+    desc: Assert each node still carries its own hiera data (1 means an axis collapsed)
+    cmd: bash "{{.FLEET_DIR}}/bin/gate-axes.sh" "{{.ABS_TEST_DIR}}/fleet"
+
+  # Runs alone or not at all. This one briefly rewrites fleet_profile's init.pp,
+  # which compose.yml bind-mounts into all three containers, so anything else
+  # compiling at the same time -- another gate task, a second terminal, a
+  # concurrent `task fleet:gate` -- silently measures the broken manifest. The
+  # Venom suite is safe because Venom runs a suite's testcases sequentially.
+  gate:negative:
+    desc: Prove gate:determinism can go red, then prove it goes green again (run alone)
+    cmd: bash "{{.FLEET_DIR}}/bin/gate-determinism-negative.sh" "{{.ABS_TEST_DIR}}/fleet"
+
+  gate:exports:
+    # Quoted: the "INVERTED: " inside the text would otherwise be read as a
+    # nested mapping and Task would refuse to parse this file at all.
+    desc: 'Negative control — exported resources must diverge (INVERTED: 0 means diverged)'
+    cmd: bash "{{.FLEET_DIR}}/bin/gate-exports.sh" "{{.ABS_TEST_DIR}}/fleet"
+
+  gate:compliance:
+    desc: Assert compliance_markup enforcement reaches the catalog (1 means it did not)
+    cmd: bash "{{.FLEET_DIR}}/bin/gate-compliance.sh" "{{.ABS_TEST_DIR}}/fleet"
+
+  # Runs alone or not at all, for the same reason gate:negative does: this one
+  # renames fleet_profile's SIMP/ directory away and back, and compose.yml
+  # bind-mounts that tree into all three containers, so anything else compiling
+  # at the same time silently measures a fleet with no compliance data. The name
+  # is not a second gate:negative -- that one is check 1's control and is named
+  # as such in the maintainer notes.
+  gate:compliance-negative:
+    desc: Prove gate:compliance can go red, then prove it goes green again (run alone)
+    cmd: bash "{{.FLEET_DIR}}/bin/gate-compliance-negative.sh" "{{.ABS_TEST_DIR}}/fleet"
+
+  gate:
+    desc: Run the full fleet gate against a running stack
+    deps: [up]
+    cmds:
+      # mkdir for venom's --output-dir, not for the gate scripts: each of those
+      # calls fleet_require_writable_dir itself, but venom writes its result
+      # file after the suite finishes and does not create the directory.
+      # Matches the shape integration:venom already uses.
+      - mkdir -p "{{.ABS_TEST_DIR}}/fleet"
+      - venom run "{{.FLEET_DIR}}/tests/fleet.venom.yml" --var outdir="{{.ABS_TEST_DIR}}/fleet" --output-dir "{{.ABS_TEST_DIR}}/fleet"
+
+  down:
+    desc: Stop the fleet stack, keeping volumes
+    cmd: podman-compose -f "{{.FLEET_DIR}}/compose.yml" down
+
+  clean:
+    desc: Stop the fleet stack and drop its volumes
+    cmds:
+      - podman-compose -f "{{.FLEET_DIR}}/compose.yml" down -v
+      # Gate check 4 writes this into node-el's bind-mounted facts directory to
+      # change what it exports. It is runtime state, not fixture data, and it
+      # outlives the check -- so a clean must remove it or the next run starts
+      # from whatever the last one left behind.
+      - rm -f "{{.FLEET_DIR}}/facts/node-el/mutator.yaml"

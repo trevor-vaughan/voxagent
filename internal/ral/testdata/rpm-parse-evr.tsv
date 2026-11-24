@@ -1,0 +1,78 @@
+# rpm_parse_evr ground truth. Every expectation here was MEASURED by running the
+# oracle's own Ruby, never hand-derived from reading the algorithm.
+#
+# Columns, tab separated, no quoting: input, epoch, version, release, arch.
+# "NIL" is Ruby's nil, i.e. the field is ABSENT; an empty field is the empty
+# string. compare_values treats those two differently, so the distinction is
+# load-bearing and the table must be able to spell both. No real epoch, version,
+# release or architecture is the literal string "NIL".
+#
+# The epoch rows exist because rpm_parse_evr normalises through Ruby's
+# Integer(), which is not decimal parsing: "010" is octal 8, "08" is a parse
+# failure and so becomes absent, and 0x/0b/0d/0o prefixes, underscore digit
+# separators, surrounding whitespace, a sign and arbitrary precision are all
+# accepted. A port that reaches for a plain base-10 atoi silently disagrees.
+#
+# Oracle: puppet-8.10.0 lib/puppet/util/rpm_compare.rb, byte-identical to the
+# openvox copy (md5 b82729c2a663 both sides).
+#
+# To add an input: append a row with any four placeholder columns, then
+# regenerate. The regenerator reads the inputs back out of this file:
+#
+#   ruby -e 'module Puppet; module Util; end; end
+#   require "/home/llm/.rvm/gems/ruby-3.4.9/gems/puppet-8.10.0/lib/puppet/util/rpm_compare.rb"
+#   include Puppet::Util::RpmCompare
+#   f = ->(v) { v.nil? ? "NIL" : v }
+#   ARGF.each_line do |l|
+#     (print l; next) if l.start_with?("#")
+#     i = l.chomp.split("\t", -1)[0]
+#     h = rpm_parse_evr(i)
+#     puts "%s\t%s\t%s\t%s\t%s" % [i, f[h[:epoch]], f[h[:version]], f[h[:release]], f[h[:arch]]]
+#   end' internal/ral/testdata/rpm-parse-evr.tsv > /tmp/parse.tsv && mv /tmp/parse.tsv internal/ral/testdata/rpm-parse-evr.tsv
+#
+# input	epoch	version	release	arch
+1.0	NIL	1.0	NIL	NIL
+1.0-1	NIL	1.0	1	NIL
+1:1.0-1	1	1.0	1	NIL
+007:1.0-1	7	1.0	1	NIL
+00:1.0-1	0	1.0	1	NIL
+foo:1.0-1	NIL	1.0	1	NIL
+:1.0-1	NIL	1.0	1	NIL
+-1	NIL		1	NIL
+1.0-	NIL	1.0		NIL
+	NIL		NIL	NIL
+1.0-1.x86_64	NIL	1.0	1	x86_64
+1.0-1.el10.noarch	NIL	1.0	1.el10	noarch
+1.0-1.el10	NIL	1.0	1.el10	NIL
+2.0.0-1.el10.i686	NIL	2.0.0	1.el10	i686
+1.0-1-2	NIL	1.0	1-2	NIL
+1.0~rc1-1	NIL	1.0~rc1	1	NIL
+x86_64	NIL	x86_64	NIL	NIL
+1.0-1.noarch.x86_64	NIL	1.0	1	noarch
+-1:1.0-1	-1	1.0	1	NIL
+1.0-1.armv7l	NIL	1.0	1	armv7l
+010:1.0-1	8	1.0	1	NIL
+08:1.0-1	NIL	1.0	1	NIL
+0x10:1.0-1	16	1.0	1	NIL
+0b11:1.0-1	3	1.0	1	NIL
+0d10:1.0-1	10	1.0	1	NIL
+0o17:1.0-1	15	1.0	1	NIL
+1_0:1.0-1	10	1.0	1	NIL
+ 7 :1.0-1	7	1.0	1	NIL
++7:1.0-1	7	1.0	1	NIL
+7.0:1.0-1	NIL	1.0	1	NIL
+99999999999999999999:1.0-1	99999999999999999999	1.0	1	NIL
+_1:1.0-1	NIL	1.0	1	NIL
+1__0:1.0-1	NIL	1.0	1	NIL
+1:2:1.0-1	1	2:1.0	1	NIL
+1.0-1.ppc64	NIL	1.0	164	ppc
+1.0-1.s390x	NIL	1.0	1x	s390
+1.0-1.armv5tejl	NIL	1.0	1	armv5tejl
+0d010:1.0-1	10	1.0	1	NIL
+0X1F:1.0-1	31	1.0	1	NIL
+00_0:1.0-1	0	1.0	1	NIL
+0x_10:1.0-1	NIL	1.0	1	NIL
+0x:1.0-1	NIL	1.0	1	NIL
+1_:1.0-1	NIL	1.0	1	NIL
++ 7:1.0-1	NIL	1.0	1	NIL
+--1:1.0-1	NIL	1.0	1	NIL

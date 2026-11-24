@@ -1,0 +1,394 @@
+{
+ "catalog_format": 2,
+ "catalog_uuid": "0ac662a5-f2bf-4927-b489-b2d8ccb96add",
+ "classes": [
+  "settings",
+  "default"
+ ],
+ "code_id": null,
+ "edges": [
+  {
+   "source": "Stage[main]",
+   "target": "Class[Settings]"
+  },
+  {
+   "source": "Stage[main]",
+   "target": "Class[main]"
+  },
+  {
+   "source": "Class[main]",
+   "target": "Node[default]"
+  },
+  {
+   "source": "Node[default]",
+   "target": "Notify[spine]"
+  },
+  {
+   "source": "Node[default]",
+   "target": "File[/tmp/target/a.txt]"
+  },
+  {
+   "source": "Node[default]",
+   "target": "File[/tmp/target/d]"
+  },
+  {
+   "source": "Node[default]",
+   "target": "File[/tmp/target/gone]"
+  },
+  {
+   "source": "Node[default]",
+   "target": "File[/tmp/target/missing/bad.txt]"
+  },
+  {
+   "source": "Node[default]",
+   "target": "Exec[spine-exec-ok]"
+  },
+  {
+   "source": "Node[default]",
+   "target": "Exec[spine-exec-fail]"
+  },
+  {
+   "source": "Node[default]",
+   "target": "Exec[spine-exec-returns]"
+  },
+  {
+   "source": "Node[default]",
+   "target": "Exec[spine-exec-refresh]"
+  },
+  {
+   "source": "Node[default]",
+   "target": "Exec[spine-exec-guarded]"
+  },
+  {
+   "source": "Node[default]",
+   "target": "Package[tree]"
+  },
+  {
+   "source": "Node[default]",
+   "target": "Package[gdb-gdbserver]"
+  },
+  {
+   "source": "Node[default]",
+   "target": "Package[rust-toolset-srpm-macros]"
+  },
+  {
+   "source": "Node[default]",
+   "target": "Package[voxagent-no-such-package]"
+  }
+ ],
+ "environment": "production",
+ "name": "spine.example",
+ "resources": [
+  {
+   "exported": false,
+   "kind": "compilable_type",
+   "parameters": {
+    "name": "main"
+   },
+   "tags": [
+    "stage"
+   ],
+   "title": "main",
+   "type": "Stage"
+  },
+  {
+   "exported": false,
+   "kind": "unknown",
+   "tags": [
+    "class",
+    "settings"
+   ],
+   "title": "Settings",
+   "type": "Class"
+  },
+  {
+   "exported": false,
+   "kind": "unknown",
+   "parameters": {
+    "name": "main"
+   },
+   "tags": [
+    "class"
+   ],
+   "title": "main",
+   "type": "Class"
+  },
+  {
+   "exported": false,
+   "kind": "unknown",
+   "tags": [
+    "node",
+    "default",
+    "class"
+   ],
+   "title": "default",
+   "type": "Node"
+  },
+  {
+   "exported": false,
+   "file": "/tmp/e/production/manifests/site.pp",
+   "kind": "compilable_type",
+   "line": 2,
+   "parameters": {
+    "message": "constant text",
+    "notify": "Exec[spine-exec-refresh]"
+   },
+   "tags": [
+    "notify",
+    "spine",
+    "node",
+    "default",
+    "class"
+   ],
+   "title": "spine",
+   "type": "Notify"
+  },
+  {
+   "exported": false,
+   "file": "/tmp/e/production/manifests/site.pp",
+   "kind": "compilable_type",
+   "line": 3,
+   "parameters": {
+    "content": "alpha\n",
+    "ensure": "file",
+    "mode": "0644"
+   },
+   "tags": [
+    "file",
+    "node",
+    "default",
+    "class"
+   ],
+   "title": "/tmp/target/a.txt",
+   "type": "File"
+  },
+  {
+   "exported": false,
+   "file": "/tmp/e/production/manifests/site.pp",
+   "kind": "compilable_type",
+   "line": 4,
+   "parameters": {
+    "ensure": "directory",
+    "mode": "0755"
+   },
+   "tags": [
+    "file",
+    "node",
+    "default",
+    "class"
+   ],
+   "title": "/tmp/target/d",
+   "type": "File"
+  },
+  {
+   "exported": false,
+   "file": "/tmp/e/production/manifests/site.pp",
+   "kind": "compilable_type",
+   "line": 5,
+   "parameters": {
+    "ensure": "absent"
+   },
+   "tags": [
+    "file",
+    "node",
+    "default",
+    "class"
+   ],
+   "title": "/tmp/target/gone",
+   "type": "File"
+  },
+  {
+   "exported": false,
+   "file": "/tmp/e/production/manifests/site.pp",
+   "kind": "compilable_type",
+   "line": 6,
+   "parameters": {
+    "content": "x\n",
+    "ensure": "file"
+   },
+   "tags": [
+    "file",
+    "node",
+    "default",
+    "class"
+   ],
+   "title": "/tmp/target/missing/bad.txt",
+   "type": "File"
+  },
+  {
+   "exported": false,
+   "file": "/tmp/e/production/manifests/site.pp",
+   "kind": "compilable_type",
+   "line": 21,
+   "parameters": {
+    "command": "/bin/true",
+    "cwd": "/tmp"
+   },
+   "tags": [
+    "exec",
+    "spine-exec-ok",
+    "node",
+    "default",
+    "class"
+   ],
+   "title": "spine-exec-ok",
+   "type": "Exec"
+  },
+  {
+   "exported": false,
+   "file": "/tmp/e/production/manifests/site.pp",
+   "kind": "compilable_type",
+   "line": 31,
+   "parameters": {
+    "command": "/bin/false"
+   },
+   "tags": [
+    "exec",
+    "spine-exec-fail",
+    "node",
+    "default",
+    "class"
+   ],
+   "title": "spine-exec-fail",
+   "type": "Exec"
+  },
+  {
+   "exported": false,
+   "file": "/tmp/e/production/manifests/site.pp",
+   "kind": "compilable_type",
+   "line": 40,
+   "parameters": {
+    "command": "/usr/bin/test -d /nonexistent-spine",
+    "returns": [
+     0,
+     1
+    ]
+   },
+   "tags": [
+    "exec",
+    "spine-exec-returns",
+    "node",
+    "default",
+    "class"
+   ],
+   "title": "spine-exec-returns",
+   "type": "Exec"
+  },
+  {
+   "exported": false,
+   "file": "/tmp/e/production/manifests/site.pp",
+   "kind": "compilable_type",
+   "line": 50,
+   "parameters": {
+    "command": "/bin/true",
+    "refreshonly": true
+   },
+   "tags": [
+    "exec",
+    "spine-exec-refresh",
+    "node",
+    "default",
+    "class"
+   ],
+   "title": "spine-exec-refresh",
+   "type": "Exec"
+  },
+  {
+   "exported": false,
+   "file": "/tmp/e/production/manifests/site.pp",
+   "kind": "compilable_type",
+   "line": 58,
+   "parameters": {
+    "command": "/bin/true",
+    "onlyif": "/bin/false"
+   },
+   "tags": [
+    "exec",
+    "spine-exec-guarded",
+    "node",
+    "default",
+    "class"
+   ],
+   "title": "spine-exec-guarded",
+   "type": "Exec"
+  },
+  {
+   "exported": false,
+   "file": "/tmp/e/production/manifests/site.pp",
+   "kind": "compilable_type",
+   "line": 62,
+   "parameters": {
+    "ensure": "present"
+   },
+   "tags": [
+    "package",
+    "tree",
+    "node",
+    "default",
+    "class"
+   ],
+   "title": "tree",
+   "type": "Package"
+  },
+  {
+   "exported": false,
+   "file": "/tmp/e/production/manifests/site.pp",
+   "kind": "compilable_type",
+   "line": 63,
+   "parameters": {
+    "ensure": "absent"
+   },
+   "tags": [
+    "package",
+    "gdb-gdbserver",
+    "node",
+    "default",
+    "class"
+   ],
+   "title": "gdb-gdbserver",
+   "type": "Package"
+  },
+  {
+   "exported": false,
+   "file": "/tmp/e/production/manifests/site.pp",
+   "kind": "compilable_type",
+   "line": 64,
+   "parameters": {
+    "ensure": "latest"
+   },
+   "tags": [
+    "package",
+    "rust-toolset-srpm-macros",
+    "node",
+    "default",
+    "class"
+   ],
+   "title": "rust-toolset-srpm-macros",
+   "type": "Package"
+  },
+  {
+   "exported": false,
+   "file": "/tmp/e/production/manifests/site.pp",
+   "kind": "compilable_type",
+   "line": 65,
+   "parameters": {
+    "ensure": "present"
+   },
+   "tags": [
+    "package",
+    "voxagent-no-such-package",
+    "node",
+    "default",
+    "class"
+   ],
+   "title": "voxagent-no-such-package",
+   "type": "Package"
+  }
+ ],
+ "tags": [
+  "settings",
+  "default",
+  "node"
+ ],
+ "version": 1791035482
+}

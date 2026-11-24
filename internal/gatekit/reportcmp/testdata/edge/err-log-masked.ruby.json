@@ -1,0 +1,1 @@
+{"logs": [{"source": "Puppet", "message": "Execution of 'x' returned 1: 21 MB/s", "level": "err"}]}

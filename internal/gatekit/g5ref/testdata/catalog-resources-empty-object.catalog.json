@@ -1,0 +1,88 @@
+{
+ "catalog_format": 2,
+ "catalog_uuid": "0ac662a5-f2bf-4927-b489-b2d8ccb96add",
+ "classes": [
+  "settings",
+  "default"
+ ],
+ "code_id": null,
+ "edges": [
+  {
+   "source": "Stage[main]",
+   "target": "Class[Settings]"
+  },
+  {
+   "source": "Stage[main]",
+   "target": "Class[main]"
+  },
+  {
+   "source": "Class[main]",
+   "target": "Node[default]"
+  },
+  {
+   "source": "Node[default]",
+   "target": "Notify[spine]"
+  },
+  {
+   "source": "Node[default]",
+   "target": "File[/tmp/target/a.txt]"
+  },
+  {
+   "source": "Node[default]",
+   "target": "File[/tmp/target/d]"
+  },
+  {
+   "source": "Node[default]",
+   "target": "File[/tmp/target/gone]"
+  },
+  {
+   "source": "Node[default]",
+   "target": "File[/tmp/target/missing/bad.txt]"
+  },
+  {
+   "source": "Node[default]",
+   "target": "Exec[spine-exec-ok]"
+  },
+  {
+   "source": "Node[default]",
+   "target": "Exec[spine-exec-fail]"
+  },
+  {
+   "source": "Node[default]",
+   "target": "Exec[spine-exec-returns]"
+  },
+  {
+   "source": "Node[default]",
+   "target": "Exec[spine-exec-refresh]"
+  },
+  {
+   "source": "Node[default]",
+   "target": "Exec[spine-exec-guarded]"
+  },
+  {
+   "source": "Node[default]",
+   "target": "Package[tree]"
+  },
+  {
+   "source": "Node[default]",
+   "target": "Package[gdb-gdbserver]"
+  },
+  {
+   "source": "Node[default]",
+   "target": "Package[rust-toolset-srpm-macros]"
+  },
+  {
+   "source": "Node[default]",
+   "target": "Package[voxagent-no-such-package]"
+  }
+ ],
+ "environment": "production",
+ "name": "spine.example",
+ "resources": {},
+ "tags": [
+  "settings",
+  "default",
+  "node"
+ ],
+ "version": 1791035482
+}

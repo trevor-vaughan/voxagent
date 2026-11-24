@@ -1,0 +1,18 @@
+# Debian-family fleet node.
+#
+# Only carries the OpenVox agent. The cross-implementation comparison runs on
+# the RedHat nodes; this node exists to vary os.family, so a second
+# implementation here would add build time without adding evidence.
+FROM docker.io/library/debian:12
+
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends curl ca-certificates && \
+    curl -fsSL -o /tmp/openvox-release.deb https://apt.voxpupuli.org/openvox8-release-debian12.deb && \
+    apt-get install -y /tmp/openvox-release.deb && \
+    apt-get update && \
+    apt-get install -y --no-install-recommends openvox-agent openvoxdb-termini && \
+    rm -rf /var/lib/apt/lists/* /tmp/openvox-release.deb
+
+ENV PATH="/opt/puppetlabs/bin:${PATH}"
+
+CMD ["tail", "-f", "/dev/null"]

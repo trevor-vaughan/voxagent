@@ -1,0 +1,24 @@
+# Discovered by compliance_markup's profile compiler, which globs every module
+# on the modulepath for SIMP/compliance_profiles (compliance_mapper.rb:166-208).
+#
+# This exists so enforcement reaches a catalog the gate actually compares. The
+# module's own shipped check targets yum::config_options, and nothing in this
+# fleet uses the yum class, so without this file the profile compiler would run
+# and change nothing -- a green gate measuring machinery rather than output.
+#
+# The parameter is deliberately one no hiera layer sets. The enforcement backend
+# is first in the hierarchy, so enforcing message or packages would override the
+# per-node data gate check 5 pins and collapse the fleet's axes.
+---
+version: 2.0.0
+checks:
+  oval:com.github.voxagent.fleet_profile.compliance_marker:
+    settings:
+      parameter: fleet_profile::compliance_marker
+      value: enforced-by-disa_stig
+    type: puppet-class-parameter
+    controls:
+      disa_stig: true
+    identifiers:
+      disa_stig:
+        - VOXAGENT-FLEET-0001

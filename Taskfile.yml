@@ -1,0 +1,54 @@
+version: '3'
+
+includes:
+  dev:
+    taskfile: .taskfiles/dev.yml
+  integration:
+    taskfile: .taskfiles/integration.yml
+  fleet:
+    taskfile: .taskfiles/fleet.yml
+
+vars:
+  APP_NAME: '{{.APP_NAME | default "voxdiff"}}'
+  TEST_DIR: '{{.TEST_DIR | default ".test-output"}}'
+
+tasks:
+  default:
+    silent: true
+    cmd: |
+      task --list 2>/dev/null
+
+  build:
+    desc: "Alias for dev:build"
+    cmds:
+      - task: dev:build
+
+  test:
+    desc: "Alias for dev:test — pass MODE=llm for errors-only output"
+    cmds:
+      - task: dev:test
+        vars:
+          MODE: '{{.MODE}}'
+
+  lint:
+    desc: "Alias for dev:lint"
+    cmds:
+      - task: dev:lint
+
+  fmt:
+    desc: "Alias for dev:fmt"
+    cmds:
+      - task: dev:fmt
+
+  check:
+    desc: Run all quality gates
+    # Extended, never replaced. Every entry here is a gate somebody had to argue
+    # for; dropping one leaves `check` exiting 0 while asserting less than it
+    # did. dev:state-diff is deliberately absent -- it needs a container image
+    # and takes minutes, so it is run explicitly like fleet:gate.
+    deps: [lint, test, dev:adjudication, dev:vendor-pins, dev:noclobber,
+           dev:report-diff, dev:idempotence]
+
+  clean:
+    desc: Remove build artifacts and test output
+    cmd: rm -rf bin/ dist/ {{.TEST_DIR}}

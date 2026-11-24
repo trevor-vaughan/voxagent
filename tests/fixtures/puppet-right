@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+# Wrapper for the "compare detects a real divergence" venom testcase.
+#
+# voxdiff compare passes the same -environmentpath value to both the left
+# and right compiles (see cmd/voxdiff/main.go's runCompare: both Runners
+# share *envPath). To produce a genuine, deterministic divergence through
+# the real compile path on both sides, this wrapper intercepts
+# --environmentpath and rewrites it to a sibling fixture tree
+# (environments-b) that differs from the one the left side compiles
+# against, then execs the real puppet binary. No timing or randomness is
+# involved: the two sides always compile different manifests, so the
+# divergence is reproducible on every run.
+set -euo pipefail
+
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+args=()
+while [[ $# -gt 0 ]]; do
+  if [[ "$1" == "--environmentpath" ]]; then
+    args+=("--environmentpath" "${script_dir}/environments-b")
+    shift 2
+  else
+    args+=("$1")
+    shift
+  fi
+done
+
+exec puppet "${args[@]}"

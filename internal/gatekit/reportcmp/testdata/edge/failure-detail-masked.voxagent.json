@@ -1,0 +1,1 @@
+{"resource_statuses": {"File[/p]": {"events": [{"status": "failure", "property": "ensure", "message": "change from 'absent' to 'file' failed: Could not set 'file' on ensure: open /p: no such file (file: /m.pp, line: 3)"}]}}}

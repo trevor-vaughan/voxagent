@@ -1,0 +1,197 @@
+{
+  "host": "spine.example",
+  "time": "2026-10-02T19:20:42.678585846Z",
+  "configuration_version": 1790968818,
+  "transaction_uuid": "d1096608-9e92-410a-8d64-5e79185b3838",
+  "report_format": 12,
+  "puppet_version": "8.10.0",
+  "status": "failed",
+  "transaction_completed": true,
+  "noop": false,
+  "noop_pending": false,
+  "environment": "production",
+  "corrective_change": false,
+  "catalog_uuid": "f8feb89e-79f6-429d-94ce-d352cebfc5fe",
+  "cached_catalog_status": "not_used",
+  "resource_statuses": {
+    "Package[nano]": {
+      "resource": "Package[nano]",
+      "resource_type": "Package",
+      "title": "nano",
+      "file": "/tmp/e/production/manifests/site.pp",
+      "line": 1,
+      "provider_used": "dnf",
+      "containment_path": [
+        "Stage[main]",
+        "Main",
+        "Package[nano]"
+      ],
+      "tags": [
+        "package",
+        "nano",
+        "class"
+      ],
+      "evaluation_time": 5.701878965,
+      "failed": true,
+      "failed_to_restart": false,
+      "changed": false,
+      "out_of_sync": true,
+      "skipped": false,
+      "change_count": 0,
+      "out_of_sync_count": 1,
+      "corrective_change": false,
+      "events": [
+        {
+          "audited": false,
+          "property": "ensure",
+          "previous_value": "purged",
+          "desired_value": "8.1-1.el10 8.1-3.el10",
+          "historical_value": null,
+          "message": "change from 'purged' to '8.1-1.el10 8.1-3.el10' failed: Could not update: Execution of '/usr/bin/dnf -y install nano-8.1-1.el10 8.1-3.el10' returned 1: CentOS Stream 10 - BaseOS                       3.3 MB/s | 6.8 MB     00:02    \nCentOS Stream 10 - AppStream                    5.7 MB/s | 3.3 MB     00:00    \nCentOS Stream 10 - Extras packages               58 kB/s |  11 kB     00:00    \nOpenVox 8 Repository el 10 - x86_64              17 kB/s |  13 kB     00:00    \nNo match for argument: nano-8.1-1.el10 8.1-3.el10\nError: Unable to find a match: nano-8.1-1.el10 8.1-3.el10",
+          "name": "package_changed",
+          "status": "failure",
+          "time": "2026-10-02T19:20:48.477548703Z",
+          "redacted": null,
+          "corrective_change": false
+        }
+      ],
+      "time": "2026-10-02T19:20:48.477555233Z"
+    }
+  },
+  "logs": [
+    {
+      "level": "err",
+      "message": "change from 'purged' to '8.1-1.el10 8.1-3.el10' failed: Could not update: Execution of '/usr/bin/dnf -y install nano-8.1-1.el10 8.1-3.el10' returned 1: CentOS Stream 10 - BaseOS                       3.3 MB/s | 6.8 MB     00:02    \nCentOS Stream 10 - AppStream                    5.7 MB/s | 3.3 MB     00:00    \nCentOS Stream 10 - Extras packages               58 kB/s |  11 kB     00:00    \nOpenVox 8 Repository el 10 - x86_64              17 kB/s |  13 kB     00:00    \nNo match for argument: nano-8.1-1.el10 8.1-3.el10\nError: Unable to find a match: nano-8.1-1.el10 8.1-3.el10",
+      "source": "/Stage[main]/Main/Package[nano]/ensure",
+      "time": "2026-10-02T19:20:48.477552563Z"
+    },
+    {
+      "level": "err",
+      "message": "Could not update: Execution of '/usr/bin/dnf -y install nano-8.1-1.el10 8.1-3.el10' returned 1: CentOS Stream 10 - BaseOS                       3.3 MB/s | 6.8 MB     00:02    \nCentOS Stream 10 - AppStream                    5.7 MB/s | 3.3 MB     00:00    \nCentOS Stream 10 - Extras packages               58 kB/s |  11 kB     00:00    \nOpenVox 8 Repository el 10 - x86_64              17 kB/s |  13 kB     00:00    \nNo match for argument: nano-8.1-1.el10 8.1-3.el10\nError: Unable to find a match: nano-8.1-1.el10 8.1-3.el10",
+      "source": "Puppet",
+      "time": "2026-10-02T19:20:48.477553173Z"
+    },
+    {
+      "level": "notice",
+      "message": "Applied catalog in 5.80 seconds",
+      "source": "Puppet",
+      "time": "2026-10-02T19:20:48.477566993Z"
+    }
+  ],
+  "metrics": {
+    "changes": {
+      "name": "changes",
+      "label": "Changes",
+      "values": [
+        [
+          "total",
+          "Total",
+          0
+        ]
+      ]
+    },
+    "events": {
+      "name": "events",
+      "label": "Events",
+      "values": [
+        [
+          "total",
+          "Total",
+          1
+        ],
+        [
+          "failure",
+          "Failure",
+          1
+        ],
+        [
+          "success",
+          "Success",
+          0
+        ]
+      ]
+    },
+    "resources": {
+      "name": "resources",
+      "label": "Resources",
+      "values": [
+        [
+          "total",
+          "Total",
+          1
+        ],
+        [
+          "skipped",
+          "Skipped",
+          0
+        ],
+        [
+          "failed",
+          "Failed",
+          1
+        ],
+        [
+          "failed_to_restart",
+          "Failed to restart",
+          0
+        ],
+        [
+          "restarted",
+          "Restarted",
+          0
+        ],
+        [
+          "changed",
+          "Changed",
+          0
+        ],
+        [
+          "out_of_sync",
+          "Out of sync",
+          1
+        ],
+        [
+          "scheduled",
+          "Scheduled",
+          0
+        ],
+        [
+          "corrective_change",
+          "Corrective change",
+          0
+        ]
+      ]
+    },
+    "time": {
+      "name": "time",
+      "label": "Time",
+      "values": [
+        [
+          "package",
+          "Package",
+          5.701878965
+        ],
+        [
+          "config_retrieval",
+          "Config retrieval",
+          0
+        ],
+        [
+          "transaction_evaluation",
+          "Transaction evaluation",
+          5.798924837
+        ],
+        [
+          "catalog_application",
+          "Catalog application",
+          5.798973507
+        ],
+        [
+          "total",
+          "Total",
+          5.798973507
+        ]
+      ]
+    }
+  }
+}

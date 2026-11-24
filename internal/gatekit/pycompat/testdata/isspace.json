@@ -1,0 +1,13 @@
+{"_comment": ["Measured by CPython 3.12.14 (Unicode 15.0.0), never hand-derived.", "Frozen: the repository no longer carries the generator's runtime. To add", "a case, measure it with CPython 3.12 elsewhere and record the result here.", "The generator script is not kept in the repository.", "Every code point c for which chr(c).isspace() is true, as inclusive ranges."],
+ "ranges": [
+  [9, 13],
+  [28, 32],
+  [133, 133],
+  [160, 160],
+  [5760, 5760],
+  [8192, 8202],
+  [8232, 8233],
+  [8239, 8239],
+  [8287, 8287],
+  [12288, 12288]
+]}

@@ -1,0 +1,5 @@
+---
+fleet_profile::message: "from RedHat"
+fleet_profile::packages:
+  base:
+    - openssl

@@ -1,0 +1,197 @@
+{
+  "host": "spine.example",
+  "time": "2026-10-02T19:55:02.376367291Z",
+  "configuration_version": 1790970878,
+  "transaction_uuid": "6a26b596-82cf-4a90-a7c9-0ec3907f203c",
+  "report_format": 12,
+  "puppet_version": "8.10.0",
+  "status": "failed",
+  "transaction_completed": true,
+  "noop": false,
+  "noop_pending": false,
+  "environment": "production",
+  "corrective_change": false,
+  "catalog_uuid": "c26fede3-2566-4da9-8c15-502b83a1fcbb",
+  "cached_catalog_status": "not_used",
+  "resource_statuses": {
+    "Package[vi]": {
+      "resource": "Package[vi]",
+      "resource_type": "Package",
+      "title": "vi",
+      "file": "/tmp/e/production/manifests/site.pp",
+      "line": 1,
+      "provider_used": "dnf",
+      "containment_path": [
+        "Stage[main]",
+        "Main",
+        "Package[vi]"
+      ],
+      "tags": [
+        "package",
+        "vi",
+        "class"
+      ],
+      "evaluation_time": 5.200464308,
+      "failed": true,
+      "failed_to_restart": false,
+      "changed": false,
+      "out_of_sync": true,
+      "skipped": false,
+      "change_count": 0,
+      "out_of_sync_count": 1,
+      "corrective_change": false,
+      "events": [
+        {
+          "audited": false,
+          "property": "ensure",
+          "previous_value": "2:9.1.083-23.el10",
+          "desired_value": "2:9.1.083-22.el10",
+          "historical_value": null,
+          "message": "change from '2:9.1.083-23.el10' to '2:9.1.083-22.el10' failed: Could not update: Execution of '/usr/bin/dnf -y downgrade vi-2:9.1.083-22.el10' returned 1: CentOS Stream 10 - BaseOS                       3.7 MB/s | 6.8 MB     00:01    \nCentOS Stream 10 - AppStream                    8.7 MB/s | 3.3 MB     00:00    \nCentOS Stream 10 - Extras packages               50 kB/s |  11 kB     00:00    \nOpenVox 8 Repository el 10 - x86_64              17 kB/s |  13 kB     00:00    \nNo package vi-2:9.1.083-22.el10 available.\nError: No packages marked for downgrade.",
+          "name": "package_changed",
+          "status": "failure",
+          "time": "2026-10-02T19:55:07.680565139Z",
+          "redacted": null,
+          "corrective_change": false
+        }
+      ],
+      "time": "2026-10-02T19:55:07.680571069Z"
+    }
+  },
+  "logs": [
+    {
+      "level": "err",
+      "message": "change from '2:9.1.083-23.el10' to '2:9.1.083-22.el10' failed: Could not update: Execution of '/usr/bin/dnf -y downgrade vi-2:9.1.083-22.el10' returned 1: CentOS Stream 10 - BaseOS                       3.7 MB/s | 6.8 MB     00:01    \nCentOS Stream 10 - AppStream                    8.7 MB/s | 3.3 MB     00:00    \nCentOS Stream 10 - Extras packages               50 kB/s |  11 kB     00:00    \nOpenVox 8 Repository el 10 - x86_64              17 kB/s |  13 kB     00:00    \nNo package vi-2:9.1.083-22.el10 available.\nError: No packages marked for downgrade.",
+      "source": "/Stage[main]/Main/Package[vi]/ensure",
+      "time": "2026-10-02T19:55:07.680568539Z"
+    },
+    {
+      "level": "err",
+      "message": "Could not update: Execution of '/usr/bin/dnf -y downgrade vi-2:9.1.083-22.el10' returned 1: CentOS Stream 10 - BaseOS                       3.7 MB/s | 6.8 MB     00:01    \nCentOS Stream 10 - AppStream                    8.7 MB/s | 3.3 MB     00:00    \nCentOS Stream 10 - Extras packages               50 kB/s |  11 kB     00:00    \nOpenVox 8 Repository el 10 - x86_64              17 kB/s |  13 kB     00:00    \nNo package vi-2:9.1.083-22.el10 available.\nError: No packages marked for downgrade.",
+      "source": "Puppet",
+      "time": "2026-10-02T19:55:07.680569369Z"
+    },
+    {
+      "level": "notice",
+      "message": "Applied catalog in 5.30 seconds",
+      "source": "Puppet",
+      "time": "2026-10-02T19:55:07.680583719Z"
+    }
+  ],
+  "metrics": {
+    "changes": {
+      "name": "changes",
+      "label": "Changes",
+      "values": [
+        [
+          "total",
+          "Total",
+          0
+        ]
+      ]
+    },
+    "events": {
+      "name": "events",
+      "label": "Events",
+      "values": [
+        [
+          "total",
+          "Total",
+          1
+        ],
+        [
+          "failure",
+          "Failure",
+          1
+        ],
+        [
+          "success",
+          "Success",
+          0
+        ]
+      ]
+    },
+    "resources": {
+      "name": "resources",
+      "label": "Resources",
+      "values": [
+        [
+          "total",
+          "Total",
+          1
+        ],
+        [
+          "skipped",
+          "Skipped",
+          0
+        ],
+        [
+          "failed",
+          "Failed",
+          1
+        ],
+        [
+          "failed_to_restart",
+          "Failed to restart",
+          0
+        ],
+        [
+          "restarted",
+          "Restarted",
+          0
+        ],
+        [
+          "changed",
+          "Changed",
+          0
+        ],
+        [
+          "out_of_sync",
+          "Out of sync",
+          1
+        ],
+        [
+          "scheduled",
+          "Scheduled",
+          0
+        ],
+        [
+          "corrective_change",
+          "Corrective change",
+          0
+        ]
+      ]
+    },
+    "time": {
+      "name": "time",
+      "label": "Time",
+      "values": [
+        [
+          "package",
+          "Package",
+          5.200464308
+        ],
+        [
+          "config_retrieval",
+          "Config retrieval",
+          0
+        ],
+        [
+          "transaction_evaluation",
+          "Transaction evaluation",
+          5.304177608
+        ],
+        [
+          "catalog_application",
+          "Catalog application",
+          5.304207978
+        ],
+        [
+          "total",
+          "Total",
+          5.304207978
+        ]
+      ]
+    }
+  }
+}

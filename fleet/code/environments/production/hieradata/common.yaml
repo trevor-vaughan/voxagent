@@ -1,0 +1,17 @@
+---
+# Enforced in the common layer, so it is uniform across all three nodes and
+# cannot be mistaken for per-node data. This is what makes profile_list non-empty
+# in compliance_mapper.rb:55, and so what makes the profile compiler run at all.
+compliance_markup::enforcement:
+  - disa_stig
+
+lookup_options:
+  fleet_profile::packages:
+    merge: deep
+
+fleet_profile::message: "from common"
+fleet_profile::packages:
+  base:
+    - curl
+  extra:
+    - vim

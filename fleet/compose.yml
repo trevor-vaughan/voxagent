@@ -1,0 +1,135 @@
+# Fleet stage 1: masterless. Nodes compile locally and reach OpenVoxDB
+# directly through the storeconfigs terminus.
+#
+# Every service sets `logging: driver: k8s-file`. Podman defaults to
+# journald and this environment has no journald, so without this
+# `podman logs` returns nothing at all and failures are invisible.
+services:
+  postgres:
+    image: docker.io/library/postgres:16
+    container_name: fleet_postgres
+    environment:
+      POSTGRES_USER: openvoxdb
+      POSTGRES_PASSWORD: openvoxdb
+      POSTGRES_DB: openvoxdb
+    volumes:
+      - ./initdb:/docker-entrypoint-initdb.d:ro,z
+    networks:
+      - fleet-net
+    logging:
+      driver: k8s-file
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U openvoxdb"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  openvoxdb:
+    image: ghcr.io/openvoxproject/openvoxdb:latest
+    container_name: fleet_openvoxdb
+    environment:
+      OPENVOXDB_POSTGRES_HOSTNAME: postgres
+      # Without this the entrypoint blocks up to 360 seconds waiting for a
+      # puppetserver at https://puppet:8140. Stage 1 has no master.
+      USE_OPENVOXSERVER: "false"
+    # TLS on 8081, because the PuppetDB terminus refuses plain HTTP. Port 8080
+    # stays exposed for the gate's own queries, which run from the host.
+    #
+    # zz-ssl.ini is merged into conf.d and must not set `client-auth`: the
+    # shipped jetty.ini already sets it, and Trapperkeeper rejects a duplicate
+    # key across conf.d with "Duplicate configuration entry" and will not start.
+    volumes:
+      - ./openvoxdb/zz-ssl.ini:/etc/puppetlabs/puppetdb/conf.d/zz-ssl.ini:ro,z
+      - ./.certs/ca.crt:/etc/puppetlabs/puppetdb/ca.crt:ro,z
+      - ./.certs/openvoxdb.crt:/etc/puppetlabs/puppetdb/openvoxdb.crt:ro,z
+      - ./.certs/openvoxdb.key:/etc/puppetlabs/puppetdb/openvoxdb.key:ro,z
+    ports:
+      - "127.0.0.1:18080:8080"
+    depends_on:
+      - postgres
+    networks:
+      - fleet-net
+    logging:
+      driver: k8s-file
+
+  node-el:
+    image: fleet-node-el:latest
+    container_name: fleet_node_el
+    hostname: node-el
+    volumes:
+      - ./code:/etc/puppetlabs/code:ro,z
+      - ./facts/node-el:/opt/puppetlabs/facter/facts.d:z
+      - ../bin/voxdiff:/usr/local/bin/voxdiff:ro,z
+      - ./.vendor/modules:/fleet-modules:ro,z
+      # The DEFAULT confdir, deliberately. voxdiff cannot pass --storeconfigs,
+      # so storeconfigs has to come from puppet.conf -- and gate checks 1-3
+      # compile under a throwaway --confdir, so they never read this file and
+      # stay free of storeconfigs. That split is load-bearing, not incidental.
+      #
+      # Certificates are mounted one file at a time rather than as a directory
+      # so that no node can read another node's private key.
+      - ./code/puppet-node-el.conf:/etc/puppetlabs/puppet/puppet.conf:ro,z
+      - ./code/puppetdb.conf:/etc/puppetlabs/puppet/puppetdb.conf:ro,z
+      # node-el only: storeconfigs makes OpenVoxDB a read-through cache for a
+      # node's facts, which would replay node-el's first fact set forever and
+      # silently defeat gate check 4's mutation. See the file for the detail.
+      - ./code/routes.yaml:/etc/puppetlabs/puppet/routes.yaml:ro,z
+      - ./.certs/ca.crt:/etc/puppetlabs/puppet/fleet-ssl/ca.crt:ro,z
+      - ./.certs/ca.crl:/etc/puppetlabs/puppet/fleet-ssl/ca.crl:ro,z
+      - ./.certs/node-el.crt:/etc/puppetlabs/puppet/fleet-ssl/node-el.crt:ro,z
+      - ./.certs/node-el.key:/etc/puppetlabs/puppet/fleet-ssl/node-el.key:ro,z
+    depends_on:
+      - openvoxdb
+    networks:
+      - fleet-net
+    logging:
+      driver: k8s-file
+
+  node-el-alt:
+    image: fleet-node-el:latest
+    container_name: fleet_node_el_alt
+    hostname: node-el-alt
+    volumes:
+      - ./code:/etc/puppetlabs/code:ro,z
+      - ./facts/node-el-alt:/opt/puppetlabs/facter/facts.d:ro,z
+      - ../bin/voxdiff:/usr/local/bin/voxdiff:ro,z
+      - ./.vendor/modules:/fleet-modules:ro,z
+      - ./code/puppet-node-el-alt.conf:/etc/puppetlabs/puppet/puppet.conf:ro,z
+      - ./code/routes.yaml:/etc/puppetlabs/puppet/routes.yaml:ro,z
+      - ./code/puppetdb.conf:/etc/puppetlabs/puppet/puppetdb.conf:ro,z
+      - ./.certs/ca.crt:/etc/puppetlabs/puppet/fleet-ssl/ca.crt:ro,z
+      - ./.certs/ca.crl:/etc/puppetlabs/puppet/fleet-ssl/ca.crl:ro,z
+      - ./.certs/node-el-alt.crt:/etc/puppetlabs/puppet/fleet-ssl/node-el-alt.crt:ro,z
+      - ./.certs/node-el-alt.key:/etc/puppetlabs/puppet/fleet-ssl/node-el-alt.key:ro,z
+    depends_on:
+      - openvoxdb
+    networks:
+      - fleet-net
+    logging:
+      driver: k8s-file
+
+  node-deb:
+    image: fleet-node-deb:latest
+    container_name: fleet_node_deb
+    hostname: node-deb
+    volumes:
+      - ./code:/etc/puppetlabs/code:ro,z
+      - ./facts/node-deb:/opt/puppetlabs/facter/facts.d:ro,z
+      - ../bin/voxdiff:/usr/local/bin/voxdiff:ro,z
+      - ./.vendor/modules:/fleet-modules:ro,z
+      - ./code/puppet-node-deb.conf:/etc/puppetlabs/puppet/puppet.conf:ro,z
+      - ./code/routes.yaml:/etc/puppetlabs/puppet/routes.yaml:ro,z
+      - ./code/puppetdb.conf:/etc/puppetlabs/puppet/puppetdb.conf:ro,z
+      - ./.certs/ca.crt:/etc/puppetlabs/puppet/fleet-ssl/ca.crt:ro,z
+      - ./.certs/ca.crl:/etc/puppetlabs/puppet/fleet-ssl/ca.crl:ro,z
+      - ./.certs/node-deb.crt:/etc/puppetlabs/puppet/fleet-ssl/node-deb.crt:ro,z
+      - ./.certs/node-deb.key:/etc/puppetlabs/puppet/fleet-ssl/node-deb.key:ro,z
+    depends_on:
+      - openvoxdb
+    networks:
+      - fleet-net
+    logging:
+      driver: k8s-file
+
+networks:
+  fleet-net:

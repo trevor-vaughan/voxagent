@@ -1,0 +1,24 @@
+version: '3'
+
+vars:
+  # Named ABS_TEST_DIR (not TEST_DIR) deliberately: Task's two-pass variable
+  # resolution re-evaluates a self-referencing "{{.ROOT_DIR}}/{{.TEST_DIR}}"
+  # template against its own prior output, doubling the ROOT_DIR prefix when
+  # no CLI override is given. A distinct name breaks the self-reference.
+  # TEST_DIR is always interpreted relative to the repo root: an absolute
+  # override (e.g. TEST_DIR=/tmp/custom) is silently rebased under ROOT_DIR
+  # rather than used as-is.
+  ABS_TEST_DIR: '{{.ROOT_DIR}}/{{.TEST_DIR | default ".test-output"}}'
+
+tasks:
+  default:
+    silent: true
+    cmd: |
+      task --list 2>/dev/null
+
+  venom:
+    desc: Run the Venom end-to-end suite against a real Puppet installation
+    cmds:
+      - mkdir -p "{{.ABS_TEST_DIR}}"
+      - task: :dev:build
+      - venom run "{{.ROOT_DIR}}/tests" --output-dir "{{.ABS_TEST_DIR}}"

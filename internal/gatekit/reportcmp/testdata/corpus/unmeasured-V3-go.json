@@ -1,0 +1,191 @@
+{
+  "host": "spine.example",
+  "time": "2026-10-02T19:56:48.316028327Z",
+  "configuration_version": 1790970996,
+  "transaction_uuid": "d6041c47-c658-49b8-aff0-932f50820f2a",
+  "report_format": 12,
+  "puppet_version": "8.10.0",
+  "status": "changed",
+  "transaction_completed": true,
+  "noop": false,
+  "noop_pending": false,
+  "environment": "production",
+  "corrective_change": false,
+  "catalog_uuid": "bc9edb56-9c0c-401e-87f7-d939e1af4efd",
+  "cached_catalog_status": "not_used",
+  "resource_statuses": {
+    "Package[vim-enhanced]": {
+      "resource": "Package[vim-enhanced]",
+      "resource_type": "Package",
+      "title": "vim-enhanced",
+      "file": "/tmp/e/production/manifests/site.pp",
+      "line": 1,
+      "provider_used": "dnf",
+      "containment_path": [
+        "Stage[main]",
+        "Main",
+        "Package[vim-enhanced]"
+      ],
+      "tags": [
+        "package",
+        "vim-enhanced",
+        "class"
+      ],
+      "evaluation_time": 8.991629005,
+      "failed": false,
+      "failed_to_restart": false,
+      "changed": true,
+      "out_of_sync": true,
+      "skipped": false,
+      "change_count": 1,
+      "out_of_sync_count": 1,
+      "corrective_change": false,
+      "events": [
+        {
+          "audited": false,
+          "property": "ensure",
+          "previous_value": "purged",
+          "desired_value": "present",
+          "historical_value": null,
+          "message": "created",
+          "name": "package_installed",
+          "status": "success",
+          "time": "2026-10-02T19:56:57.379800146Z",
+          "redacted": null,
+          "corrective_change": false
+        }
+      ],
+      "time": "2026-10-02T19:56:57.379804316Z"
+    }
+  },
+  "logs": [
+    {
+      "level": "notice",
+      "message": "created",
+      "source": "/Stage[main]/Main/Package[vim-enhanced]/ensure",
+      "time": "2026-10-02T19:56:57.379803426Z"
+    },
+    {
+      "level": "notice",
+      "message": "Applied catalog in 9.08 seconds",
+      "source": "Puppet",
+      "time": "2026-10-02T19:56:57.400411507Z"
+    }
+  ],
+  "metrics": {
+    "changes": {
+      "name": "changes",
+      "label": "Changes",
+      "values": [
+        [
+          "total",
+          "Total",
+          1
+        ]
+      ]
+    },
+    "events": {
+      "name": "events",
+      "label": "Events",
+      "values": [
+        [
+          "total",
+          "Total",
+          1
+        ],
+        [
+          "failure",
+          "Failure",
+          0
+        ],
+        [
+          "success",
+          "Success",
+          1
+        ]
+      ]
+    },
+    "resources": {
+      "name": "resources",
+      "label": "Resources",
+      "values": [
+        [
+          "total",
+          "Total",
+          2
+        ],
+        [
+          "skipped",
+          "Skipped",
+          0
+        ],
+        [
+          "failed",
+          "Failed",
+          0
+        ],
+        [
+          "failed_to_restart",
+          "Failed to restart",
+          0
+        ],
+        [
+          "restarted",
+          "Restarted",
+          0
+        ],
+        [
+          "changed",
+          "Changed",
+          1
+        ],
+        [
+          "out_of_sync",
+          "Out of sync",
+          1
+        ],
+        [
+          "scheduled",
+          "Scheduled",
+          0
+        ],
+        [
+          "corrective_change",
+          "Corrective change",
+          0
+        ]
+      ]
+    },
+    "time": {
+      "name": "time",
+      "label": "Time",
+      "values": [
+        [
+          "package",
+          "Package",
+          9.012206726
+        ],
+        [
+          "config_retrieval",
+          "Config retrieval",
+          0
+        ],
+        [
+          "transaction_evaluation",
+          "Transaction evaluation",
+          9.08433706
+        ],
+        [
+          "catalog_application",
+          "Catalog application",
+          9.08437432
+        ],
+        [
+          "total",
+          "Total",
+          9.08437432
+        ]
+      ]
+    }
+  }
+}

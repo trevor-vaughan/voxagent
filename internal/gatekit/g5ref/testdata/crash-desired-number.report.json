@@ -1,0 +1,557 @@
+{
+ "resource_statuses": {
+  "Exec[spine-exec-fail]": {
+   "change_count": 0,
+   "changed": false,
+   "containment_path": [
+    "Stage[main]",
+    "Main",
+    "Node[default]",
+    "Exec[spine-exec-fail]"
+   ],
+   "corrective_change": false,
+   "evaluation_time": 0.006076246,
+   "events": [
+    {
+     "audited": false,
+     "corrective_change": false,
+     "desired_value": [
+      "0"
+     ],
+     "historical_value": null,
+     "message": "change from 'notrun' to ['0'] failed: '/bin/false' returned 1 instead of one of [0]",
+     "name": "executed_command",
+     "previous_value": "notrun",
+     "property": "returns",
+     "redacted": null,
+     "status": "failure",
+     "time": "2026-10-02T19:21:39.969458078+00:00"
+    }
+   ],
+   "failed": true,
+   "failed_to_restart": false,
+   "file": "/tmp/e/production/manifests/site.pp",
+   "line": 31,
+   "out_of_sync": true,
+   "out_of_sync_count": 1,
+   "provider_used": "posix",
+   "resource": "Exec[spine-exec-fail]",
+   "resource_type": "Exec",
+   "skipped": false,
+   "tags": [
+    "exec",
+    "spine-exec-fail",
+    "node",
+    "default",
+    "class"
+   ],
+   "time": "2026-10-02T19:21:39.963991869+00:00",
+   "title": "spine-exec-fail"
+  },
+  "Exec[spine-exec-ok]": {
+   "change_count": 1,
+   "changed": true,
+   "containment_path": [
+    "Stage[main]",
+    "Main",
+    "Node[default]",
+    "Exec[spine-exec-ok]"
+   ],
+   "corrective_change": false,
+   "evaluation_time": 0.005834854,
+   "events": [
+    {
+     "audited": false,
+     "corrective_change": false,
+     "desired_value": [
+      "0"
+     ],
+     "historical_value": null,
+     "message": "executed successfully",
+     "name": "executed_command",
+     "previous_value": "notrun",
+     "property": "returns",
+     "redacted": null,
+     "status": "success",
+     "time": "2026-10-02T19:21:39.958111235+00:00"
+    }
+   ],
+   "failed": false,
+   "failed_to_restart": false,
+   "file": "/tmp/e/production/manifests/site.pp",
+   "line": 21,
+   "out_of_sync": true,
+   "out_of_sync_count": 1,
+   "provider_used": "posix",
+   "resource": "Exec[spine-exec-ok]",
+   "resource_type": "Exec",
+   "skipped": false,
+   "tags": [
+    "exec",
+    "spine-exec-ok",
+    "node",
+    "default",
+    "class"
+   ],
+   "time": "2026-10-02T19:21:39.958011934+00:00",
+   "title": "spine-exec-ok"
+  },
+  "Exec[spine-exec-refresh]": {
+   "change_count": 1,
+   "changed": true,
+   "containment_path": [
+    "Stage[main]",
+    "Main",
+    "Node[default]",
+    "Exec[spine-exec-refresh]"
+   ],
+   "corrective_change": false,
+   "evaluation_time": 0.000115281,
+   "events": [
+    {
+     "audited": false,
+     "corrective_change": false,
+     "desired_value": null,
+     "historical_value": null,
+     "message": "Triggered 'refresh' from 1 event",
+     "name": "refresh",
+     "previous_value": null,
+     "property": null,
+     "redacted": false,
+     "status": "success",
+     "time": "2026-10-02T19:21:39.981559799+00:00"
+    }
+   ],
+   "failed": false,
+   "failed_to_restart": false,
+   "file": "/tmp/e/production/manifests/site.pp",
+   "line": 50,
+   "out_of_sync": true,
+   "out_of_sync_count": 1,
+   "provider_used": "posix",
+   "resource": "Exec[spine-exec-refresh]",
+   "resource_type": "Exec",
+   "skipped": false,
+   "tags": [
+    "exec",
+    "spine-exec-refresh",
+    "node",
+    "default",
+    "class"
+   ],
+   "time": "2026-10-02T19:21:39.975606715+00:00",
+   "title": "spine-exec-refresh"
+  },
+  "Exec[spine-exec-returns]": {
+   "change_count": 1,
+   "changed": true,
+   "containment_path": [
+    "Stage[main]",
+    "Main",
+    "Node[default]",
+    "Exec[spine-exec-returns]"
+   ],
+   "corrective_change": false,
+   "evaluation_time": 0.005280147,
+   "events": [
+    {
+     "audited": false,
+     "corrective_change": false,
+     "desired_value": 5,
+     "historical_value": null,
+     "message": "executed successfully",
+     "name": "executed_command",
+     "previous_value": "notrun",
+     "property": "returns",
+     "redacted": null,
+     "status": "success",
+     "time": "2026-10-02T19:21:39.970275947+00:00"
+    }
+   ],
+   "failed": false,
+   "failed_to_restart": false,
+   "file": "/tmp/e/production/manifests/site.pp",
+   "line": 40,
+   "out_of_sync": true,
+   "out_of_sync_count": 1,
+   "provider_used": "posix",
+   "resource": "Exec[spine-exec-returns]",
+   "resource_type": "Exec",
+   "skipped": false,
+   "tags": [
+    "exec",
+    "spine-exec-returns",
+    "node",
+    "default",
+    "class"
+   ],
+   "time": "2026-10-02T19:21:39.970189066+00:00",
+   "title": "spine-exec-returns"
+  },
+  "File[/tmp/target/a.txt]": {
+   "change_count": 1,
+   "changed": true,
+   "containment_path": [
+    "Stage[main]",
+    "Main",
+    "Node[default]",
+    "File[/tmp/target/a.txt]"
+   ],
+   "corrective_change": false,
+   "evaluation_time": 0.001239104,
+   "events": [
+    {
+     "audited": false,
+     "corrective_change": false,
+     "desired_value": "file",
+     "historical_value": null,
+     "message": "defined content as '{sha256}b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060'",
+     "name": "file_created",
+     "previous_value": "absent",
+     "property": "ensure",
+     "redacted": null,
+     "status": "success",
+     "time": "2026-10-02T19:21:39.954774799+00:00"
+    }
+   ],
+   "failed": false,
+   "failed_to_restart": false,
+   "file": "/tmp/e/production/manifests/site.pp",
+   "line": 3,
+   "out_of_sync": true,
+   "out_of_sync_count": 1,
+   "provider_used": "posix",
+   "resource": "File[/tmp/target/a.txt]",
+   "resource_type": "File",
+   "skipped": false,
+   "tags": [
+    "file",
+    "node",
+    "default",
+    "class"
+   ],
+   "time": "2026-10-02T19:21:39.954631397+00:00",
+   "title": "/tmp/target/a.txt"
+  },
+  "File[/tmp/target/d]": {
+   "change_count": 1,
+   "changed": true,
+   "containment_path": [
+    "Stage[main]",
+    "Main",
+    "Node[default]",
+    "File[/tmp/target/d]"
+   ],
+   "corrective_change": false,
+   "evaluation_time": 0.000466475,
+   "events": [
+    {
+     "audited": false,
+     "corrective_change": false,
+     "desired_value": "directory",
+     "historical_value": null,
+     "message": "created",
+     "name": "directory_created",
+     "previous_value": "absent",
+     "property": "ensure",
+     "redacted": null,
+     "status": "success",
+     "time": "2026-10-02T19:21:39.956094433+00:00"
+    }
+   ],
+   "failed": false,
+   "failed_to_restart": false,
+   "file": "/tmp/e/production/manifests/site.pp",
+   "line": 4,
+   "out_of_sync": true,
+   "out_of_sync_count": 1,
+   "provider_used": "posix",
+   "resource": "File[/tmp/target/d]",
+   "resource_type": "File",
+   "skipped": false,
+   "tags": [
+    "file",
+    "node",
+    "default",
+    "class"
+   ],
+   "time": "2026-10-02T19:21:39.955972292+00:00",
+   "title": "/tmp/target/d"
+  },
+  "File[/tmp/target/missing/bad.txt]": {
+   "change_count": 0,
+   "changed": false,
+   "containment_path": [
+    "Stage[main]",
+    "Main",
+    "Node[default]",
+    "File[/tmp/target/missing/bad.txt]"
+   ],
+   "corrective_change": false,
+   "evaluation_time": 0.000952031,
+   "events": [
+    {
+     "audited": false,
+     "corrective_change": false,
+     "desired_value": "file",
+     "historical_value": null,
+     "message": "change from 'absent' to 'file' failed: Could not set 'file' on ensure: No such file or directory - A directory component in /tmp/target/missing/bad.txt20261002-23-1c2mmj8.lock does not exist or is a dangling symbolic link (file: /tmp/e/production/manifests/site.pp, line: 6)",
+     "name": "file_created",
+     "previous_value": "absent",
+     "property": "ensure",
+     "redacted": null,
+     "status": "failure",
+     "time": "2026-10-02T19:21:39.957371337+00:00"
+    }
+   ],
+   "failed": true,
+   "failed_to_restart": false,
+   "file": "/tmp/e/production/manifests/site.pp",
+   "line": 6,
+   "out_of_sync": true,
+   "out_of_sync_count": 1,
+   "provider_used": "posix",
+   "resource": "File[/tmp/target/missing/bad.txt]",
+   "resource_type": "File",
+   "skipped": false,
+   "tags": [
+    "file",
+    "node",
+    "default",
+    "class"
+   ],
+   "time": "2026-10-02T19:21:39.956927062+00:00",
+   "title": "/tmp/target/missing/bad.txt"
+  },
+  "Notify[spine]": {
+   "change_count": 1,
+   "changed": true,
+   "containment_path": [
+    "Stage[main]",
+    "Main",
+    "Node[default]",
+    "Notify[spine]"
+   ],
+   "corrective_change": false,
+   "evaluation_time": 0.000731757,
+   "events": [
+    {
+     "audited": false,
+     "corrective_change": false,
+     "desired_value": "constant text",
+     "historical_value": null,
+     "message": "defined 'message' as 'constant text'",
+     "name": "message_changed",
+     "previous_value": "absent",
+     "property": "message",
+     "redacted": null,
+     "status": "success",
+     "time": "2026-10-02T19:21:39.953792968+00:00"
+    }
+   ],
+   "failed": false,
+   "failed_to_restart": false,
+   "file": "/tmp/e/production/manifests/site.pp",
+   "line": 2,
+   "out_of_sync": true,
+   "out_of_sync_count": 1,
+   "provider_used": null,
+   "resource": "Notify[spine]",
+   "resource_type": "Notify",
+   "skipped": false,
+   "tags": [
+    "notify",
+    "spine",
+    "node",
+    "default",
+    "class"
+   ],
+   "time": "2026-10-02T19:21:39.953715658+00:00",
+   "title": "spine"
+  },
+  "Package[gdb-gdbserver]": {
+   "change_count": 1,
+   "changed": true,
+   "containment_path": [
+    "Stage[main]",
+    "Main",
+    "Node[default]",
+    "Package[gdb-gdbserver]"
+   ],
+   "corrective_change": false,
+   "evaluation_time": 0.057078498,
+   "events": [
+    {
+     "audited": false,
+     "corrective_change": false,
+     "desired_value": "absent",
+     "historical_value": null,
+     "message": "removed",
+     "name": "package_removed",
+     "previous_value": "17.2-4.el10",
+     "property": "ensure",
+     "redacted": null,
+     "status": "success",
+     "time": "2026-10-02T19:21:41.459677716+00:00"
+    }
+   ],
+   "failed": false,
+   "failed_to_restart": false,
+   "file": "/tmp/e/production/manifests/site.pp",
+   "line": 63,
+   "out_of_sync": true,
+   "out_of_sync_count": 1,
+   "provider_used": "dnf",
+   "resource": "Package[gdb-gdbserver]",
+   "resource_type": "Package",
+   "skipped": false,
+   "tags": [
+    "package",
+    "gdb-gdbserver",
+    "node",
+    "default",
+    "class"
+   ],
+   "time": "2026-10-02T19:21:41.459453194+00:00",
+   "title": "gdb-gdbserver"
+  },
+  "Package[rust-toolset-srpm-macros]": {
+   "change_count": 1,
+   "changed": true,
+   "containment_path": [
+    "Stage[main]",
+    "Main",
+    "Node[default]",
+    "Package[rust-toolset-srpm-macros]"
+   ],
+   "corrective_change": false,
+   "evaluation_time": 0.833433701,
+   "events": [
+    {
+     "audited": false,
+     "corrective_change": false,
+     "desired_value": "latest",
+     "historical_value": null,
+     "message": "ensure changed '1.97.1-4.el10' to '0:1.98.1-1.el10'",
+     "name": "package_changed",
+     "previous_value": "1.97.1-4.el10",
+     "property": "ensure",
+     "redacted": null,
+     "status": "success",
+     "time": "2026-10-02T19:21:41.774809721+00:00"
+    }
+   ],
+   "failed": false,
+   "failed_to_restart": false,
+   "file": "/tmp/e/production/manifests/site.pp",
+   "line": 64,
+   "out_of_sync": true,
+   "out_of_sync_count": 1,
+   "provider_used": "dnf",
+   "resource": "Package[rust-toolset-srpm-macros]",
+   "resource_type": "Package",
+   "skipped": false,
+   "tags": [
+    "package",
+    "rust-toolset-srpm-macros",
+    "node",
+    "default",
+    "class"
+   ],
+   "time": "2026-10-02T19:21:41.523451747+00:00",
+   "title": "rust-toolset-srpm-macros"
+  },
+  "Package[tree]": {
+   "change_count": 1,
+   "changed": true,
+   "containment_path": [
+    "Stage[main]",
+    "Main",
+    "Node[default]",
+    "Package[tree]"
+   ],
+   "corrective_change": false,
+   "evaluation_time": 1.43405645,
+   "events": [
+    {
+     "audited": false,
+     "corrective_change": false,
+     "desired_value": "present",
+     "historical_value": null,
+     "message": "created",
+     "name": "package_installed",
+     "previous_value": "purged",
+     "property": "ensure",
+     "redacted": null,
+     "status": "success",
+     "time": "2026-10-02T19:21:40.048019370+00:00"
+    }
+   ],
+   "failed": false,
+   "failed_to_restart": false,
+   "file": "/tmp/e/production/manifests/site.pp",
+   "line": 62,
+   "out_of_sync": true,
+   "out_of_sync_count": 1,
+   "provider_used": "dnf",
+   "resource": "Package[tree]",
+   "resource_type": "Package",
+   "skipped": false,
+   "tags": [
+    "package",
+    "tree",
+    "node",
+    "default",
+    "class"
+   ],
+   "time": "2026-10-02T19:21:40.024938049+00:00",
+   "title": "tree"
+  },
+  "Package[voxagent-no-such-package]": {
+   "change_count": 0,
+   "changed": false,
+   "containment_path": [
+    "Stage[main]",
+    "Main",
+    "Node[default]",
+    "Package[voxagent-no-such-package]"
+   ],
+   "corrective_change": false,
+   "evaluation_time": 0.35628412,
+   "events": [
+    {
+     "audited": false,
+     "corrective_change": false,
+     "desired_value": "present",
+     "historical_value": null,
+     "message": "change from 'purged' to 'present' failed: Execution of '/usr/bin/dnf -y install voxagent-no-such-package' returned 1: Last metadata expiration check: 0:00:06 ago on Fri Oct  2 19:21:36 2026.\nNo match for argument: voxagent-no-such-package\nError: Unable to find a match: voxagent-no-such-package",
+     "name": "package_installed",
+     "previous_value": "purged",
+     "property": "ensure",
+     "redacted": null,
+     "status": "failure",
+     "time": "2026-10-02T19:21:42.712838786+00:00"
+    }
+   ],
+   "failed": true,
+   "failed_to_restart": false,
+   "file": "/tmp/e/production/manifests/site.pp",
+   "line": 65,
+   "out_of_sync": true,
+   "out_of_sync_count": 1,
+   "provider_used": "dnf",
+   "resource": "Package[voxagent-no-such-package]",
+   "resource_type": "Package",
+   "skipped": false,
+   "tags": [
+    "package",
+    "voxagent-no-such-package",
+    "node",
+    "default",
+    "class"
+   ],
+   "time": "2026-10-02T19:21:42.357300873+00:00",
+   "title": "voxagent-no-such-package"
+  }
+ }
+}

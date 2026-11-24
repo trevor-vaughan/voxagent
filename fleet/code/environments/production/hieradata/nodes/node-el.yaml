@@ -1,0 +1,5 @@
+---
+fleet_profile::export_resources: true
+fleet_profile::packages:
+  extra:
+    - tmux
