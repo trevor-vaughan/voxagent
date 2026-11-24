@@ -1,0 +1,19 @@
+docs/maintainers/units.md
+  s_c107ecedab04a8::t_1d5e5955e5fd84 73,210
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "d146adf4288ca8148b93a7da2728ce56e246f3bf",
+  "prompts": {},
+  "sessions": {
+    "s_c107ecedab04a8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-ac9e3727214ded7b1",
+        "model": "unknown"
+      },
+      "human_author": "LLM (riotbox) <llm@riotbox>"
+    }
+  }
+}
