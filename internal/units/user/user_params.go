@@ -113,7 +113,7 @@ func parseUserParams(r catalog.Resource) (userParams, error) {
 			}
 			n, err := rubyvalue.Integer(v)
 			if err != nil {
-				return rubyvalue.MungeFailure(r, name, v, err.Error())
+				return rubyvalue.MungeIntegerFailure(r, name, v, err)
 			}
 			*dst = n
 		case float64:
@@ -150,7 +150,7 @@ func parseUserParams(r catalog.Resource) (userParams, error) {
 		}
 		n, err := rubyvalue.Integer(text)
 		if err != nil {
-			return rubyvalue.MungeFailure(r, name, r.Parameters[name], err.Error())
+			return rubyvalue.MungeIntegerFailure(r, name, r.Parameters[name], err)
 		}
 		*dst = &n
 		return nil

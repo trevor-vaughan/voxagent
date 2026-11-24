@@ -61,8 +61,9 @@ const maxGID = 4294967290
 
 // PosixGID is Puppet::Util.gid, i.e. get_posix_value(:group, :gid, v)
 // (util/posix.rb:172-205). v is an int64 or a string. ok=false is Ruby's nil: no
-// such group.
-func PosixGID(ctx context.Context, ns NameService, v any) (gid int64, ok bool, err error) {
+// such group. marked says v is a Sensitive value, which the debug line that
+// repeats it prints as [redacted] (D-78).
+func PosixGID(ctx context.Context, ns NameService, v any, marked bool) (gid int64, ok bool, err error) {
 	// posix.rb:173-177: Integer(field) rescuing ArgumentError, so a string that
 	// is not an integer literal stays a name.
 	var field any = v
@@ -137,7 +138,8 @@ func PosixGID(ctx context.Context, ns NameService, v any) (gid int64, ok bool, e
 	if check != nil {
 		shown = fmt.Sprint(check)
 	}
-	runlog.Debugf(ctx, "Puppet", "The value retrieved: '%s' is different than the required state: '%v', searching in all entries", shown, field)
+	runlog.Debugf(ctx, "Puppet", "The value retrieved: %s is different than the required state: %s, searching in all entries",
+		rubyvalue.RedactIf(marked, "'%s'", shown), rubyvalue.RedactIf(marked, "'%v'", field))
 
 	// search_posix_field (posix.rb:100-126): first entry whose gid equals an
 	// integer input, or whose name equals the input.

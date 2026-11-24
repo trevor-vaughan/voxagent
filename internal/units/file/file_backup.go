@@ -39,6 +39,9 @@ type backup struct {
 	// force, follow and recurse are the resource's own (can_backup?,
 	// remove_backup, perform_backup_with_bucket).
 	force, follow, recurse bool
+	// redact is set when the catalog lists backup as Sensitive: errors show
+	// value as [redacted] (D-78: Ruby prints it).
+	redact bool
 	// warnings are the run-level, Puppet-sourced warnings backing up raised,
 	// which Apply returns.
 	warnings []ral.Warning
@@ -81,7 +84,7 @@ func backupValue(r catalog.Resource) (string, error) {
 		}
 		return v, nil
 	}
-	return "", fmt.Errorf("Parameter backup failed on %s: Invalid backup type %s", r.Ref(), rubyvalue.InspectValue(v))
+	return "", fmt.Errorf("Parameter backup failed on %s: Invalid backup type %s", r.Ref(), rubyvalue.ShownValue(r, "backup", v))
 }
 
 // newBackup is r's backup, or nil when it has none.
@@ -91,7 +94,8 @@ func newBackup(r catalog.Resource, vardir string) (*backup, error) {
 		return nil, err
 	}
 	return &backup{value: value, vardir: vardir, force: forceTrue(r), follow: linksFollow(r),
-		recurse: rubyvalue.ParamString(r, "recurse", "false") == "true"}, nil
+		recurse: rubyvalue.ParamString(r, "recurse", "false") == "true",
+		redact:  slices.Contains(r.SensitiveParameters, "backup")}, nil
 }
 
 // isSuffix is bucket's `backup =~ /^\./` (type/file.rb:492): Ruby's ^
@@ -136,7 +140,7 @@ func (b *backup) existing(fsys fileSystem, path string, fi os.FileInfo) (pathWar
 		return nil, b.local(fsys, path)
 	}
 	if b.value != defaultBucket {
-		return nil, fmt.Errorf("Could not find filebucket %s specified in backup", b.value)
+		return nil, fmt.Errorf("Could not find filebucket %s specified in backup", rubyvalue.RedactIf(b.redact, "%s", b.value))
 	}
 	return nil, b.toBucket(fsys, path)
 }
@@ -144,23 +148,32 @@ func (b *backup) existing(fsys fileSystem, path string, fi os.FileInfo) (pathWar
 // local is perform_backup_with_backuplocal (util/backups.rb:36-54): unlink a
 // stale <path><suffix> (remove_backup, :56-79), then copy path there as
 // FileUtils.cp_r(preserve: true) does.
+//
+// Under redact the suffix is [redacted] wherever it appears in an error, the
+// file system's own text included.
 func (b *backup) local(fsys fileSystem, path string) error {
 	newfile := path + b.value
+	scrub := func(text string) string {
+		if b.redact {
+			return strings.ReplaceAll(text, b.value, "[redacted]")
+		}
+		return text
+	}
 	// remove_backup reads the old backup as links says: lstat under manage,
 	// stat under follow. Either way a link is unlinked, never written through.
 	if fi, err := statFor(fsys, newfile, b.follow); err == nil {
 		if fi.IsDir() {
-			return fmt.Errorf("Will not remove directory backup %s; use a filebucket", newfile)
+			return fmt.Errorf("Will not remove directory backup %s; use a filebucket", scrub(newfile))
 		}
 		if err := fsys.Remove(newfile); err != nil {
-			return fmt.Errorf("Could not remove old backup: %s", err)
+			return fmt.Errorf("Could not remove old backup: %s", scrub(err.Error()))
 		}
 	} else if !errors.Is(err, fs.ErrNotExist) {
 		// Only Errno::ENOENT is rescued (:62-64).
 		return err
 	}
 	if err := copyTree(fsys, path, newfile); err != nil {
-		return fmt.Errorf("Could not back %s up: %s", path, err)
+		return fmt.Errorf("Could not back %s up: %s", path, scrub(err.Error()))
 	}
 	return nil
 }

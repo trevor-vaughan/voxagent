@@ -727,3 +727,35 @@ func TestFileGenerateRecursedDirectorySwappedForAFifoFailsInsteadOfBlocking(t *t
 		t.Fatal("Generate blocked opening the fifo that replaced the recursed directory")
 	}
 }
+
+// D-78: a source directory that cannot be opened is named [redacted] when the
+// source is marked, as the walk's own failures name it. The unmarked text is
+// the OS error naming the directory.
+func TestWalkTreeOpenFailureRedactsAMarkedSourceDirectory(t *testing.T) {
+	for _, tc := range []struct {
+		redact bool
+		want   func(dir string) string
+	}{
+		{false, func(dir string) string { return "open " + dir + ": not a directory" }},
+		{true, func(string) string { return "open [redacted]: not a directory" }},
+	} {
+		dir := filepath.Join(t.TempDir(), "secret-src")
+		tree(t, dir, "f")
+		beforeDirOpen = func(d string) {
+			if d != dir {
+				return
+			}
+			if err := os.RemoveAll(dir); err != nil {
+				t.Error(err)
+			}
+			if err := syscall.Mkfifo(dir, 0o644); err != nil {
+				t.Error(err)
+			}
+		}
+		_, _, err := walkTree(dir, tc.redact)
+		beforeDirOpen = nil
+		if want := tc.want(dir); err == nil || err.Error() != want {
+			t.Errorf("redact=%v: err = %v, want %q", tc.redact, err, want)
+		}
+	}
+}

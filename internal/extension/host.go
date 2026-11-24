@@ -1,6 +1,7 @@
 package extension
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -34,19 +35,36 @@ type Host struct {
 	dead   error
 	closed bool
 	stats  Stats
+	stderr *hostStderr // nil when the host writes to os.Stderr directly
 }
+
+// hostStderr is the read end of the host's stderr pipe and the goroutine
+// copying it through scrubbedLines.
+type hostStderr struct {
+	r     *os.File
+	lines *scrubbedLines
+	done  chan struct{} // closed when the copy has stopped
+	err   error         // the copy's write error, once done is closed
+}
+
+// stderrGrace is how long Close waits, once the host has exited, for the end
+// of its stderr: a descendant that inherited the pipe can hold it open.
+const stderrGrace = time.Second
 
 // Start runs argv with env, reads the hello and refuses a protocol other than
 // Protocol. dir, when non-empty, is removed by Close. A failed handshake closes
 // the host, so dir is already removed when Start returns an error; a failure
-// before the process starts leaves dir for the caller.
-func Start(argv, env []string, dir string, t Timeouts) (*Host, error) {
+// before the process starts leaves dir for the caller. scrub, when not nil,
+// filters the host's stderr on its way to os.Stderr (Config.Scrub).
+func Start(argv, env []string, dir string, t Timeouts, scrub func(string) string) (*Host, error) {
 	cmd := exec.Command(argv[0], argv[1:]...)
 	if env == nil {
 		env = []string{} // a nil Env would make the host inherit the agent's whole environment
 	}
 	cmd.Env = env
-	cmd.Stderr = os.Stderr
+	if scrub == nil {
+		cmd.Stderr = os.Stderr
+	}
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
 		return nil, fmt.Errorf("extension host: %w", err)
@@ -55,11 +73,39 @@ func Start(argv, env []string, dir string, t Timeouts) (*Host, error) {
 	if err != nil {
 		return nil, fmt.Errorf("extension host: %w", err)
 	}
+	// A pipe of its own, not exec's: cmd.Wait would wait for its EOF, which a
+	// descendant of the host holding it open can put off indefinitely.
+	var stderr *hostStderr
+	var stderrW *os.File
+	if scrub != nil {
+		r, w, err := os.Pipe()
+		if err != nil {
+			return nil, fmt.Errorf("extension host: %w", err)
+		}
+		stderr = &hostStderr{r: r, lines: &scrubbedLines{w: os.Stderr, scrub: scrub}, done: make(chan struct{})}
+		stderrW = w
+		cmd.Stderr = w
+	}
 	started := time.Now()
 	if err := cmd.Start(); err != nil {
+		if stderr != nil {
+			stderr.r.Close()
+			stderrW.Close()
+		}
 		return nil, fmt.Errorf("start the extension host %s: %w", argv[0], err)
 	}
-	h := &Host{cmd: cmd, stdin: stdin, stdout: stdout, dir: dir, timeouts: t}
+	if stderr != nil {
+		stderrW.Close() // the host holds its own copy
+		go func() {
+			defer close(stderr.done)
+			if _, err := io.Copy(stderr.lines, stderr.r); err != nil && !errors.Is(err, os.ErrClosed) {
+				stderr.err = err
+				// Keep draining, so a full pipe cannot stall the host.
+				_, _ = io.Copy(io.Discard, stderr.r)
+			}
+		}()
+	}
+	h := &Host{cmd: cmd, stdin: stdin, stdout: stdout, dir: dir, timeouts: t, stderr: stderr}
 	raw, err := h.roundTrip("hello", nil, t.Other)
 	if err == nil {
 		var env struct {
@@ -703,10 +749,75 @@ func (h *Host) Close() error {
 	if h.dead == nil && waitErr != nil {
 		errs = append(errs, fmt.Errorf("extension host exit: %w", waitErr))
 	}
+	// The host has exited. What it wrote is in the pipe; a descendant still
+	// holding the pipe gets stderrGrace to close it, then the read end is
+	// closed, so its later writes fail (EPIPE, or SIGPIPE where it does not
+	// ignore the signal) and nothing more of it is printed.
+	if h.stderr != nil {
+		grace := time.NewTimer(stderrGrace)
+		select {
+		case <-h.stderr.done:
+		case <-grace.C:
+			_ = h.stderr.r.Close()
+			<-h.stderr.done
+		}
+		grace.Stop()
+		_ = h.stderr.r.Close()
+		err := h.stderr.err
+		if ferr := h.stderr.lines.flush(); err == nil {
+			err = ferr
+		}
+		if err != nil {
+			errs = append(errs, fmt.Errorf("extension host stderr: %w", err))
+		}
+	}
 	if h.dir != "" {
 		if err := os.RemoveAll(h.dir); err != nil {
 			errs = append(errs, fmt.Errorf("remove the extension host directory: %w", err))
 		}
 	}
 	return errors.Join(errs...)
+}
+
+// maxPendingStderr is how many bytes of a line without a newline
+// scrubbedLines holds before it writes them anyway.
+const maxPendingStderr = 64 << 10
+
+// scrubbedLines passes the host's stderr to w a line at a time, each run of
+// complete lines through scrub, so a form split across writes is still found.
+// The bytes after the last newline wait for the next write, for the cap
+// (maxPendingStderr) or for flush.
+type scrubbedLines struct {
+	w       io.Writer
+	scrub   func(string) string
+	pending []byte
+}
+
+func (l *scrubbedLines) Write(b []byte) (int, error) {
+	l.pending = append(l.pending, b...)
+	if end := bytes.LastIndexByte(l.pending, '\n') + 1; end > 0 {
+		if _, err := io.WriteString(l.w, l.scrub(string(l.pending[:end]))); err != nil {
+			return 0, err
+		}
+		l.pending = append(l.pending[:0], l.pending[end:]...)
+	}
+	// A form split here is not found; the cap bounds what a host that never
+	// ends its line can make voxagent hold.
+	if len(l.pending) >= maxPendingStderr {
+		if err := l.flush(); err != nil {
+			return 0, err
+		}
+	}
+	return len(b), nil
+}
+
+// flush writes the line in progress, adding no newline: at the cap, and at
+// Close for a last line the host left without one.
+func (l *scrubbedLines) flush() error {
+	if len(l.pending) == 0 {
+		return nil
+	}
+	_, err := io.WriteString(l.w, l.scrub(string(l.pending)))
+	l.pending = nil
+	return err
 }

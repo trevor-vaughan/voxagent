@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -332,5 +333,30 @@ func TestUnresolvableTitleIsCouldNotRun(t *testing.T) {
 	}
 	if entries, err := os.ReadDir(reports); !os.IsNotExist(err) && len(entries) != 0 {
 		t.Errorf("a report was written: %v, %v", entries, err)
+	}
+}
+
+// What a module writes straight to the host's stderr reaches voxagent's stderr
+// scrubbed of the catalog's marked values, and unchanged when nothing is marked.
+func TestHostStderrIsScrubbed(t *testing.T) {
+	bin := buildBinary(t)
+	for _, marked := range []bool{true, false} {
+		t.Run(fmt.Sprintf("marked=%v", marked), func(t *testing.T) {
+			dir := t.TempDir()
+			r := ext("Vox_secret", "s", map[string]any{"echo": "HOSTSTDERR-1"})
+			want := "prefetch stderr: HOSTSTDERR-1\n"
+			if marked {
+				r["sensitive_parameters"] = []string{"echo"}
+				want = "prefetch stderr: [redacted]\n"
+			}
+			c := writeCatalog(t, dir, []map[string]any{r})
+			_, stderr, code := run(t, bin, append([]string{"apply", "--noop", "--catalog", c}, hostArgs(t)...)...)
+			if code != 0 {
+				t.Fatalf("exit %d, stderr:\n%s", code, stderr)
+			}
+			if !strings.Contains(stderr, want) || marked && strings.Contains(stderr, "HOSTSTDERR-1") {
+				t.Errorf("stderr lacks %q or holds the marked value:\n%s", want, stderr)
+			}
+		})
 	}
 }

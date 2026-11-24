@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"slices"
 	"strings"
 
 	"github.com/voxagent/voxagent/internal/catalog"
@@ -134,6 +135,17 @@ func custom(r catalog.Resource, op string) ([]string, bool) {
 	return []string{"/bin/sh", "-c", fmt.Sprint(v)}, true
 }
 
+// redactIfMarked has the commands run under the returned context logged
+// redacted when the catalog lists the custom command op as Sensitive. op is a
+// plain parameter Ruby cannot mark, so the rule is D-78's, as for Exec's
+// environment.
+func redactIfMarked(ctx context.Context, r catalog.Resource, op string) context.Context {
+	if slices.Contains(r.SensitiveParameters, op) {
+		return command.WithRedactedCommands(ctx)
+	}
+	return ctx
+}
+
 // status is base.rb's status: the custom status command or is-active, exit 0
 // meaning running and anything else stopped -- never an error for a non-zero
 // exit. A command that cannot start at all is an error.
@@ -141,7 +153,7 @@ func (s Service) status(ctx context.Context, r catalog.Resource, name string) (s
 	var code int
 	var err error
 	if c, ok := custom(r, "status"); ok {
-		code, _, err = s.runner().Run(ctx, c[0], c[1:]...)
+		code, _, err = s.runner().Run(redactIfMarked(ctx, r, "status"), c[0], c[1:]...)
 	} else {
 		code, _, err = s.runner().Run(ctx, "systemctl", "is-active", "--", name)
 	}
@@ -325,7 +337,7 @@ func (s Service) operate(ctx context.Context, r catalog.Resource, name, op strin
 	var code int
 	var err error
 	if c, ok := custom(r, op); ok {
-		code, _, err = s.runner().Run(ctx, c[0], c[1:]...)
+		code, _, err = s.runner().Run(redactIfMarked(ctx, r, op), c[0], c[1:]...)
 	} else {
 		code, _, err = s.runner().Run(ctx, "systemctl", op, "--", name)
 	}

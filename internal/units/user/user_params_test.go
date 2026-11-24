@@ -157,3 +157,23 @@ func TestUserConversionDebug(t *testing.T) {
 		t.Errorf("ia_load_module: %q", got)
 	}
 }
+
+// D-78: a marked uid, gid or age is [redacted] in its munge failure, in the
+// detail that repeats the value as well as in the wrapper.
+func TestUserParamsRedactsSensitiveMungeFailure(t *testing.T) {
+	for _, tc := range []struct {
+		attr  string
+		value any
+		want  string
+	}{
+		{"uid", "09", "Parameter uid failed on User[u9]: Munging failed for value [redacted] in class uid: invalid value for Integer(): [redacted]"},
+		{"gid", "09", "Parameter gid failed on User[u9]: Munging failed for value [redacted] in class gid: invalid value for Integer(): [redacted]"},
+		{"password_warn_days", "08", "Parameter password_warn_days failed on User[u9]: Munging failed for value [redacted] in class password_warn_days: invalid value for Integer(): [redacted]"},
+	} {
+		r := userRes("u9", map[string]any{tc.attr: tc.value})
+		r.SensitiveParameters = []string{tc.attr}
+		if got := raltest.ErrText(User{}.Validate(r)); got != tc.want {
+			t.Errorf("%s:\n got %q\nwant %q", tc.attr, got, tc.want)
+		}
+	}
+}

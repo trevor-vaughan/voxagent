@@ -1,0 +1,223 @@
+{
+  "match": [
+    {
+      "name": "plain",
+      "forms": [
+        "hunter2"
+      ],
+      "text": "pw hunter2 ok",
+      "want": "pw [redacted] ok"
+    },
+    {
+      "name": "no-forms",
+      "forms": [],
+      "text": "nothing to hide",
+      "want": "nothing to hide"
+    },
+    {
+      "name": "overlap",
+      "forms": [
+        "abcd",
+        "cdef"
+      ],
+      "text": "abcdef",
+      "want": "[redacted]"
+    },
+    {
+      "name": "adjacent",
+      "forms": [
+        "abcd",
+        "efgh"
+      ],
+      "text": "abcdefgh",
+      "want": "[redacted]"
+    },
+    {
+      "name": "nested-run-end",
+      "forms": [
+        "abcdefghijkl",
+        "bcde",
+        "hijk"
+      ],
+      "text": "abcdefghijklZ",
+      "want": "[redacted]Z"
+    },
+    {
+      "name": "nested-extends",
+      "forms": [
+        "abcdefghij",
+        "cdef",
+        "klmnop"
+      ],
+      "text": "abcdefghijklmnop",
+      "want": "[redacted]"
+    },
+    {
+      "name": "self-overlap",
+      "forms": [
+        "aaaa"
+      ],
+      "text": "aaaaa",
+      "want": "[redacted]"
+    },
+    {
+      "name": "short-token",
+      "forms": [
+        "7"
+      ],
+      "text": "Invalid 7",
+      "want": "Invalid [redacted]"
+    },
+    {
+      "name": "short-token-inside-word",
+      "forms": [
+        "7"
+      ],
+      "text": "line7 x7y 7",
+      "want": "line7 x7y [redacted]"
+    },
+    {
+      "name": "short-token-punct",
+      "forms": [
+        "e"
+      ],
+      "text": "[e] e_x",
+      "want": "[[redacted]] e_x"
+    },
+    {
+      "name": "invalid-utf8-neighbour",
+      "forms": [
+        "pass"
+      ],
+      "text_hex": "ff70617373fe",
+      "want_hex": "ff5b72656461637465645dfe"
+    },
+    {
+      "name": "invalid-utf8-run",
+      "forms": [
+        "pass"
+      ],
+      "text_hex": "fffe7061737320c3a9",
+      "want_hex": "fffe5b72656461637465645d20c3a9"
+    },
+    {
+      "name": "multibyte",
+      "forms": [
+        "päss"
+      ],
+      "text": "x päss y",
+      "want": "x [redacted] y"
+    }
+  ],
+  "forms": [
+    {
+      "name": "string",
+      "value": "s3cret",
+      "forms": [
+        "s3cret",
+        "\"s3cret\""
+      ]
+    },
+    {
+      "name": "string-escapes",
+      "value": "a\"b\n",
+      "forms": [
+        "a\"b\n",
+        "\"a\\\"b\\n\""
+      ]
+    },
+    {
+      "name": "integer",
+      "value": 7,
+      "forms": [
+        "7"
+      ]
+    },
+    {
+      "name": "float",
+      "value": 1.5,
+      "forms": [
+        "1.5"
+      ]
+    },
+    {
+      "name": "integral-float",
+      "value": 1.0,
+      "forms": [
+        "1"
+      ],
+      "note": "Go decodes 1.0 as float64(1); Ruby gives [\"1.0\"]. Ruby side skips this case."
+    },
+    {
+      "name": "bool",
+      "value": true,
+      "forms": [
+        "true"
+      ]
+    },
+    {
+      "name": "nil",
+      "value": null,
+      "forms": []
+    },
+    {
+      "name": "empty",
+      "value": "",
+      "forms": [
+        "\"\""
+      ],
+      "note": "The empty string drops as a form, but its inspect text \"\" (two quote characters) stays, as in Ruby."
+    },
+    {
+      "name": "empty-array",
+      "value": [],
+      "forms": []
+    },
+    {
+      "name": "empty-hash",
+      "value": {},
+      "forms": []
+    },
+    {
+      "name": "array",
+      "value": [
+        "hunter2",
+        "e"
+      ],
+      "forms": [
+        "[\"hunter2\", \"e\"]",
+        "hunter2",
+        "\"hunter2\"",
+        "e",
+        "\"e\""
+      ]
+    },
+    {
+      "name": "nested-array",
+      "value": [
+        [
+          "ab"
+        ],
+        3
+      ],
+      "forms": [
+        "[[\"ab\"], 3]",
+        "[\"ab\"]",
+        "ab",
+        "\"ab\"",
+        "3"
+      ]
+    },
+    {
+      "name": "hash",
+      "value": {
+        "k": "hunter2"
+      },
+      "forms": [
+        "hunter2",
+        "\"hunter2\""
+      ],
+      "note": "Go omits the whole-Hash forms (map order lost); Ruby's result is a superset whose extra forms start with '{'."
+    }
+  ]
+}

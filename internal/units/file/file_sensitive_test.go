@@ -295,3 +295,144 @@ func TestFileMarkedLinkTargetError(t *testing.T) {
 		}
 	}
 }
+
+// D-78: a marked backup is [redacted] in the errors that repeat it: the
+// refused value, the missing bucket and the suffix in a copy's path. The
+// unmarked texts are file_backup_test.go's.
+func TestFileMarkedBackupIsRedacted(t *testing.T) {
+	t.Run("invalid type", func(t *testing.T) {
+		path := filepath.Join(t.TempDir(), "f")
+		err := File{}.Validate(markedFile(path, map[string]any{"backup": 5.5}, "backup"))
+		if want := "Parameter backup failed on File[" + path + "]: Invalid backup type [redacted]"; err == nil || err.Error() != want {
+			t.Errorf("err = %v, want %q", err, want)
+		}
+	})
+	apply := func(t *testing.T, path string, backup string, marked bool) error {
+		t.Helper()
+		seedOld(t, path, 0o644)
+		var sens []string
+		if marked {
+			sens = []string{"backup"}
+		}
+		changes, _ := applyBackup(t, t.TempDir(), markedFile(path, map[string]any{"content": "new\n", "backup": backup}, sens...), false)
+		if len(changes) != 1 || changes[0].Err == nil {
+			t.Fatalf("changes = %+v, want one failed change", changes)
+		}
+		return changes[0].Err
+	}
+	t.Run("unknown bucket", func(t *testing.T) {
+		path := filepath.Join(t.TempDir(), "f")
+		if got, want := apply(t, path, "nobucket-secret", true).Error(), "Could not find filebucket [redacted] specified in backup"; got != want {
+			t.Errorf("err = %q, want %q", got, want)
+		}
+	})
+	t.Run("directory backup", func(t *testing.T) {
+		path := filepath.Join(t.TempDir(), "f")
+		mustMkdir(t, path+".secret")
+		if got, want := apply(t, path, ".secret", true).Error(), "Will not remove directory backup "+path+"[redacted]; use a filebucket"; got != want {
+			t.Errorf("err = %q, want %q", got, want)
+		}
+	})
+	t.Run("copy failure", func(t *testing.T) {
+		const suffix = ".nodir/secret"
+		for _, marked := range []bool{true, false} {
+			path := filepath.Join(t.TempDir(), "f")
+			got := apply(t, path, suffix, marked).Error()
+			if marked {
+				leakFree(t, got, "secret")
+			} else if !strings.Contains(got, path+suffix) {
+				t.Errorf("unmarked err = %q, want it to name %q", got, path+suffix)
+			}
+		}
+	})
+}
+
+// D-78: the checksums in a discarded write's error are digests of the marked
+// content, which would let a low-entropy secret be brute-forced.
+func TestFileMarkedContentMismatchHidesTheDigests(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		r      func(path string) catalog.Resource
+		redact bool
+	}{
+		{"unmarked", func(p string) catalog.Resource { return markedFile(p, nil) }, false},
+		{"content marked", func(p string) catalog.Resource { return markedFile(p, map[string]any{"content": "new\n"}, "content") }, true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			dst := filepath.Join(t.TempDir(), "new")
+			c := mismatched("new\n", "changed\n")
+			changes, _, err := applyFile(context.Background(), osFS{}, dst, tc.r(dst), false, false, &c, nil, nil)
+			if err != nil || len(changes) != 1 || changes[0].Err == nil {
+				t.Fatalf("applyFile = %+v, %v; want one failed change", changes, err)
+			}
+			want := "File written to disk did not match desired checksum; discarding changes (" +
+				checksum([]byte("changed\n")) + " vs " + checksum([]byte("new\n")) + ")"
+			if tc.redact {
+				want = "File written to disk did not match desired checksum; discarding changes ([redacted] vs [redacted])"
+			}
+			if got := changes[0].Err.Error(); got != want {
+				t.Errorf("Err = %q, want %q", got, want)
+			}
+		})
+	}
+}
+
+// D-78: a child whose source directory cannot be opened does not name it when
+// the parent's source is marked.
+func TestFileMarkedChildSourceDirectoryOpenError(t *testing.T) {
+	dir := filepath.Join(t.TempDir(), "gone-secret")
+	parent := markedFile("/p/par", map[string]any{"source": dir, "recurse": true}, "source")
+	child := raltest.FileRes("/p/par/a", map[string]any{"source": dir + "/a"})
+	child.GeneratedFrom = &parent
+	_, _, err := childSourceFS(child, nil)
+	if err == nil {
+		t.Fatal("child of a missing source directory: no error")
+	}
+	leakFree(t, err.Error(), "secret")
+	parent.SensitiveParameters = nil
+	if _, _, err = childSourceFS(child, nil); err == nil || !strings.Contains(err.Error(), dir) {
+		t.Errorf("unmarked child: %v, want the source directory named", err)
+	}
+}
+
+// D-78: these are plain parameters Ruby cannot mark, which the catalog may
+// list; a listed value is [redacted] in the "Invalid value" and "fully
+// qualified" errors that repeat it, where Ruby prints it. A path taken from
+// the title is not the parameter, so it stays.
+func TestFileMarkedPlainParameterValidationErrors(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		params map[string]any
+		marked string
+		want   string
+	}{
+		{"replace", map[string]any{"replace": "secretrepl"}, "replace",
+			"Parameter replace failed on File[/f]: Invalid value [redacted]. Valid values are true, false, yes, no."},
+		{"force", map[string]any{"force": 7.0}, "force",
+			"Parameter force failed on File[/f]: Invalid value [redacted]. Valid values are true, false, yes, no."},
+		{"selinux_ignore_defaults", map[string]any{"selinux_ignore_defaults": "secretsel"}, "selinux_ignore_defaults",
+			"Parameter selinux_ignore_defaults failed on File[/f]: Invalid value [redacted]. Valid values are true, false."},
+		{"links", map[string]any{"links": "secretlinks"}, "links",
+			"Parameter links failed on File[/f]: Invalid value [redacted]. Valid values are follow, manage."},
+		{"path parameter", map[string]any{"path": "secret-rel"}, "path",
+			"Parameter path failed on File[/f]: File paths must be fully qualified, not [redacted]"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			r := raltest.FileRes("/f", tc.params)
+			r.SensitiveParameters = []string{tc.marked}
+			if err := (File{}).Validate(r); err == nil || err.Error() != tc.want {
+				t.Errorf("marked: err = %v, want %q", err, tc.want)
+			}
+			r.SensitiveParameters = nil
+			if err := (File{}).Validate(r); err == nil || strings.Contains(err.Error(), "[redacted]") {
+				t.Errorf("unmarked: err = %v, want the value named", err)
+			}
+		})
+	}
+	// The title is not the path parameter: marking path leaves it shown.
+	r := raltest.FileRes("relative-title", nil)
+	r.SensitiveParameters = []string{"path"}
+	if err := (File{}).Validate(r); err == nil || !strings.Contains(err.Error(), "not 'relative-title'") {
+		t.Errorf("title path: err = %v, want the title named", err)
+	}
+}

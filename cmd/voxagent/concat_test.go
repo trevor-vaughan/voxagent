@@ -271,7 +271,7 @@ func TestConcatGenerationHostAndNativeAgree(t *testing.T) {
 	if !slices.ContainsFunc(natives, func(p ral.Provider) bool { return p.Type() == "concat_file" }) {
 		t.Fatal("concat_file is not native with a measured tree")
 	}
-	if loadGenerate(native, ral.NewRegistry(natives...)) {
+	if loadGenerate(native, ral.NewRegistry(natives...), nil) {
 		t.Fatal("native load generation refused the catalog")
 	}
 

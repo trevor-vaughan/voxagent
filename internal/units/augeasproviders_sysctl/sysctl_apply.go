@@ -77,7 +77,7 @@ func (s Sysctl) Apply(ctx context.Context, r catalog.Resource, noop bool) ([]ral
 		} else {
 			code, out, err := s.runner.run(ctx, s.sysctl, "-n", p.Name)
 			if err == nil && code != 0 {
-				err = command.ExecFailure([]string{s.sysctl, "-n", p.Name}, false, code, out)
+				err = command.ExecFailure([]string{s.sysctl, "-n", p.Name}, false, false, code, out)
 			}
 			if err != nil {
 				return []ral.Change{{Property: "value", Was: was, Is: p.Value, Err: err}}, nil, nil
@@ -124,7 +124,7 @@ func (s Sysctl) flush(ctx context.Context, p sysctlParams, entry core.SysctlEntr
 		arg := p.Name + "=" + p.Value
 		code, out, err := s.runner.run(ctx, s.sysctl, "-w", arg)
 		if err == nil && code != 0 {
-			err = command.ExecFailure([]string{s.sysctl, "-w", arg}, false, code, out)
+			err = command.ExecFailure([]string{s.sysctl, "-w", arg}, false, false, code, out)
 		}
 		if err != nil {
 			if !p.Silent {

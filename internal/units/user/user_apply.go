@@ -129,14 +129,14 @@ func (u User) create(ctx context.Context, r catalog.Resource, p userParams, cmds
 		return fmt.Errorf("Could not set 'present' on ensure: %s%s", err, rubyvalue.ErrorLocation(r.File, r.Line))
 	}
 	if p.Shell != nil {
-		if err := checkShell(*p.Shell); err != nil {
+		if err := checkShell(*p.Shell, ral.IsMarked(u, r, "shell")); err != nil {
 			return err
 		}
 	}
 	ns := u.nss()
 	argv := []string{cmds.add}
 	if p.GID == nil {
-		_, ok, err := nameservice.PosixGID(ctx, ns, p.Name)
+		_, ok, err := nameservice.PosixGID(ctx, ns, p.Name, false)
 		if err != nil {
 			return ensureErr(err)
 		}
@@ -193,7 +193,11 @@ func (u User) create(ctx context.Context, r catalog.Resource, p userParams, cmds
 	if p.System {
 		argv = append(argv, "-r")
 	}
+	// The command line is redacted when any property is, the output only when
+	// the argv carries a marked value; password goes to its own command.
 	opts := command.ArgvOpts{Redact: redact}
+	opts.RedactOutput = slices.ContainsFunc([]string{"comment", "expiry", "gid", "groups", "home", "shell", "uid"},
+		func(attr string) bool { return ral.IsMarked(u, r, attr) })
 	if err := u.exec(ctx, opts, append(argv, p.Name)); err != nil {
 		return fmt.Errorf("Could not create user %s: %w", p.Name, err)
 	}
@@ -208,13 +212,15 @@ func (u User) create(ctx context.Context, r catalog.Resource, p userParams, cmds
 		}
 	}
 	if len(chage) > 1 {
+		opts.RedactOutput = slices.ContainsFunc([]string{"password_min_age", "password_max_age", "password_warn_days"},
+			func(attr string) bool { return ral.IsMarked(u, r, attr) })
 		if err := u.exec(ctx, opts, append(chage, p.Name)); err != nil {
 			return fmt.Errorf("Could not create user %s: %w", p.Name, err)
 		}
 	}
 	if p.Password != nil {
 		// set(:password) asks has_sensitive_data?(:password): always marked.
-		if err := u.exec(ctx, command.ArgvOpts{Redact: true}, []string{cmds.mod, "-p", *p.Password, p.Name}); err != nil {
+		if err := u.exec(ctx, command.ArgvOpts{Redact: true, RedactOutput: true}, []string{cmds.mod, "-p", *p.Password, p.Name}); err != nil {
 			return fmt.Errorf("Could not set password on user[%s]: %w", p.Name, err)
 		}
 	}
@@ -257,7 +263,7 @@ func (u User) modify(ctx context.Context, p userParams, cur userCurrent, cmds us
 	set := func(prop, cmd, flag, value string, extra ...string) error {
 		argv := append([]string{cmd, flag, value}, extra...)
 		_, redact := marked[prop]
-		if err := u.exec(ctx, command.ArgvOpts{Redact: redact}, append(argv, p.Name)); err != nil {
+		if err := u.exec(ctx, command.ArgvOpts{Redact: redact, RedactOutput: redact}, append(argv, p.Name)); err != nil {
 			return fmt.Errorf("Could not set %s on user[%s]: %w", prop, p.Name, err)
 		}
 		return nil
@@ -287,19 +293,20 @@ func (u User) modify(ctx context.Context, p userParams, cur userCurrent, cmds us
 		})
 	}
 	if p.GID != nil {
-		gid, ok, err := nameservice.PosixGID(ctx, u.nss(), p.GID)
+		_, gidMarked := marked["gid"]
+		gid, ok, err := nameservice.PosixGID(ctx, u.nss(), p.GID, gidMarked)
 		if err != nil || !ok || gid != cur.pw.GID {
 			add("gid", cur.pw.GID, p.GID, puppetValue(cur.pw.GID), puppetValue(p.GID), puppetValue(p.GID), false, false, func() error {
 				if err != nil {
 					return err
 				}
 				// type/user.rb:172-186 resolves the value again to sync it.
-				gid, ok, err := nameservice.PosixGID(ctx, u.nss(), p.GID)
+				gid, ok, err := nameservice.PosixGID(ctx, u.nss(), p.GID, gidMarked)
 				if err != nil {
 					return err
 				}
 				if !ok {
-					return fmt.Errorf("Could not find group(s) %s", idArg(p.GID))
+					return fmt.Errorf("Could not find group(s) %s", rubyvalue.RedactIf(gidMarked, "%s", idArg(p.GID)))
 				}
 				return set("gid", cmds.mod, "-g", strconv.FormatInt(gid, 10))
 			})
@@ -311,7 +318,8 @@ func (u User) modify(ctx context.Context, p userParams, cur userCurrent, cmds us
 		}
 	}
 	text("comment", "-c", cur.pw.Gecos, p.Comment, nil)
-	text("shell", "-s", cur.pw.Shell, p.Shell, func() error { return checkShell(*p.Shell) })
+	_, shellMarked := marked["shell"]
+	text("shell", "-s", cur.pw.Shell, p.Shell, func() error { return checkShell(*p.Shell, shellMarked) })
 
 	if p.Password != nil && !(cur.spFound && cur.sp.Hash == *p.Password) {
 		// A sensitive property's values and messages are always redacted
@@ -350,6 +358,7 @@ func (u User) modify(ctx context.Context, p userParams, cur userCurrent, cmds us
 	}
 
 	if p.Groups != nil {
+		_, groupsMarked := marked["groups"]
 		should := groupsShould(p.Groups, cur.groups, p.Inclusive)
 		if strings.Join(slices.Sorted(slices.Values(cur.groups)), ",") != should {
 			// change_to_s (type/user.rb:353-364) shows the csv split into a list.
@@ -359,7 +368,7 @@ func (u User) modify(ctx context.Context, p userParams, cur userCurrent, cmds us
 			}
 			add("groups", cur.groups, should, strings.Join(cur.groups, ","), rubyvalue.PuppetQuote(should), "["+strings.Join(shown, ", ")+"]", false, false, func() error {
 				if groupsWhitespace.MatchString(should) {
-					return fmt.Errorf("Invalid value %s: Groups must be comma-separated", should)
+					return fmt.Errorf("Invalid value %s: Groups must be comma-separated", rubyvalue.RedactIf(groupsMarked, "%s", should))
 				}
 				return set("groups", cmds.mod, "-G", should)
 			})
@@ -402,7 +411,7 @@ func (u User) exec(ctx context.Context, o command.ArgvOpts, argv []string) error
 		return err
 	}
 	if code != 0 {
-		return command.ExecFailure(argv, o.Redact, code, out)
+		return command.ExecFailure(argv, o.Redact, o.RedactOutput, code, out)
 	}
 	return nil
 }
@@ -422,14 +431,14 @@ func (u User) nss() nameservice.NameService {
 }
 
 // checkShell is check_valid_shell (useradd.rb:248-255): File.exist? then
-// File.executable?.
-func checkShell(shell string) error {
+// File.executable?. marked prints the shell as [redacted] (D-78).
+func checkShell(shell string, marked bool) error {
 	fi, err := os.Stat(shell)
 	if err != nil {
-		return fmt.Errorf("Shell %s must exist", shell)
+		return fmt.Errorf("Shell %s must exist", rubyvalue.RedactIf(marked, "%s", shell))
 	}
 	if !command.Executable(shell, fi) {
-		return fmt.Errorf("Shell %s must be executable", shell)
+		return fmt.Errorf("Shell %s must be executable", rubyvalue.RedactIf(marked, "%s", shell))
 	}
 	return nil
 }

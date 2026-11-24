@@ -384,19 +384,23 @@ func TestExecFailureText(t *testing.T) {
 		name   string
 		cmd    []string
 		redact bool
-		code   int
-		output string
-		want   string
+		// redactOutput hides the output independently of the command line.
+		redactOutput bool
+		code         int
+		output       string
+		want         string
 	}{
-		{"plain", cmd, false, 4, "usermod: x\n", "Execution of '/usr/sbin/usermod -u 5 foo' returned 4: usermod: x"},
-		{"redacted", cmd, true, 4, "usermod: x\n", "Execution of '[redacted]' returned 4: usermod: x"},
-		{"empty element", []string{"/usr/sbin/usermod", "-c", "", "foo"}, false, 1, "bad",
+		{"plain", cmd, false, false, 4, "usermod: x\n", "Execution of '/usr/sbin/usermod -u 5 foo' returned 4: usermod: x"},
+		{"command redacted only", cmd, true, false, 4, "usermod: x\n", "Execution of '[redacted]' returned 4: usermod: x"},
+		{"output redacted only", cmd, false, true, 4, "usermod: x\n", "Execution of '/usr/sbin/usermod -u 5 foo' returned 4: [output redacted]"},
+		{"both redacted", cmd, true, true, 4, "usermod: x\n", "Execution of '[redacted]' returned 4: [output redacted]"},
+		{"empty element", []string{"/usr/sbin/usermod", "-c", "", "foo"}, false, false, 1, "bad",
 			"Execution of '/usr/sbin/usermod -c  foo' returned 1: bad"},
-		{"strip NUL and space", cmd, false, 2, " \x00\n x y \x00\t\n", "Execution of '/usr/sbin/usermod -u 5 foo' returned 2: x y"},
-		{"empty output", cmd, false, 3, "", "Execution of '/usr/sbin/usermod -u 5 foo' returned 3: "},
+		{"strip NUL and space", cmd, false, false, 2, " \x00\n x y \x00\t\n", "Execution of '/usr/sbin/usermod -u 5 foo' returned 2: x y"},
+		{"empty output", cmd, false, false, 3, "", "Execution of '/usr/sbin/usermod -u 5 foo' returned 3: "},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			if got := ExecFailure(tc.cmd, tc.redact, tc.code, tc.output).Error(); got != tc.want {
+			if got := ExecFailure(tc.cmd, tc.redact, tc.redactOutput, tc.code, tc.output).Error(); got != tc.want {
 				t.Errorf("got %q, want %q", got, tc.want)
 			}
 		})
@@ -447,4 +451,31 @@ func withOutputCap(t *testing.T, n int) {
 	old := OutputCap
 	OutputCap = n
 	t.Cleanup(func() { OutputCap = old })
+}
+
+// D-78: the error for a command that cannot start names the command through
+// the OS error (fork/exec <path>, exec: "<name>"), so a marked command's error
+// keeps only the cause.
+func TestArgvRunnersRedactAStartFailureOfAMarkedCommand(t *testing.T) {
+	for _, tc := range []struct {
+		name         string
+		cmd          string
+		marked, want string
+	}{
+		{"absolute unmarked", "/nonexistent/tree-s3cret", "", "run '/nonexistent/tree-s3cret arg': fork/exec /nonexistent/tree-s3cret: no such file or directory"},
+		{"absolute marked", "/nonexistent/tree-s3cret", "x", "run [command redacted]: fork/exec: no such file or directory"},
+		{"relative unmarked", "tree-s3cret-cmd", "", `run 'tree-s3cret-cmd arg': exec: "tree-s3cret-cmd": executable file not found in $PATH`},
+		{"relative marked", "tree-s3cret-cmd", "x", "run [command redacted]: executable file not found in $PATH"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := context.Background()
+			if tc.marked != "" {
+				ctx = WithRedactedCommands(ctx)
+			}
+			_, _, err := RunArgv(ctx, tc.cmd, "arg")
+			if err == nil || err.Error() != tc.want {
+				t.Errorf("err = %v, want %q", err, tc.want)
+			}
+		})
+	}
 }

@@ -114,11 +114,11 @@ func ParseGroup(r catalog.Resource) (groupParams, error) {
 	case nil:
 	case string:
 		if !gidPattern.MatchString(v) {
-			return p, rubyvalue.ParamFailure(r, "gid", "Invalid GID "+v)
+			return p, rubyvalue.ParamFailure(r, "gid", "Invalid GID "+rubyvalue.RedactIf(slices.Contains(r.SensitiveParameters, "gid"), "%s", v))
 		}
 		n, err := rubyvalue.Integer(v)
 		if err != nil {
-			return p, rubyvalue.MungeFailure(r, "gid", v, err.Error())
+			return p, rubyvalue.MungeIntegerFailure(r, "gid", v, err)
 		}
 		p.GID, p.HasGID = n, true
 	case float64:
@@ -184,6 +184,7 @@ func (g Group) Apply(ctx context.Context, r catalog.Resource, noop bool) ([]ral.
 	if err != nil {
 		return nil, nil, err
 	}
+	marked, _ := ral.MarkSensitive(g, r)
 	var cmds groupCommands
 	for _, c := range []struct {
 		name string
@@ -212,7 +213,7 @@ func (g Group) Apply(ctx context.Context, r catalog.Resource, noop bool) ([]ral.
 		}
 		ch := ral.Change{Property: "ensure", Was: "present", Is: "absent", Message: "removed" + suffix, Name: "group_removed"}
 		if !noop {
-			if err := g.exec(ctx, cmds.del, p.name); err != nil {
+			if err := g.exec(ctx, command.ArgvOpts{}, cmds.del, p.name); err != nil {
 				ch.Err = fmt.Errorf("Could not delete group %s: %w", p.name, err)
 			}
 		}
@@ -221,7 +222,7 @@ func (g Group) Apply(ctx context.Context, r catalog.Resource, noop bool) ([]ral.
 	if !exists {
 		ch := ral.Change{Property: "ensure", Was: "absent", Is: "present", Message: "created" + suffix, Name: "group_created"}
 		if !noop {
-			ch.Err = g.create(ctx, r, p, cmds)
+			ch.Err = g.create(ctx, r, p, cmds, marked)
 		}
 		return []ral.Change{ch}, nil, nil
 	}
@@ -235,7 +236,8 @@ func (g Group) Apply(ctx context.Context, r catalog.Resource, noop bool) ([]ral.
 			if p.allowdupe {
 				args = append(args, "-o")
 			}
-			if err := g.exec(ctx, cmds.mod, append(args, p.name)...); err != nil {
+			_, redact := marked["gid"]
+			if err := g.exec(ctx, command.ArgvOpts{Redact: redact, RedactOutput: redact}, cmds.mod, append(args, p.name)...); err != nil {
 				ch.Err = fmt.Errorf("Could not set gid on group[%s]: %w", p.name, err)
 			}
 		}
@@ -259,10 +261,10 @@ func (g Group) Apply(ctx context.Context, r catalog.Resource, noop bool) ([]ral.
 		ch.Message = fmt.Sprintf("members changed %s to %s%s", ch.WasDisplay,
 			strings.Join(actualShould(current, rubyvalue.SplitComma(joined), p.auth), ","), suffix)
 		if !noop {
-			if err := g.validateMembers(p.members); err != nil {
+			if err := g.validateMembers(p.members, marked); err != nil {
 				ch.Err = err
 			} else {
-				ch.Err = g.setMembers(ctx, p, current, cmds)
+				ch.Err = g.setMembers(ctx, p, current, cmds, marked)
 			}
 		}
 		changes = append(changes, ch)
@@ -274,7 +276,7 @@ func (g Group) Apply(ctx context.Context, r catalog.Resource, noop bool) ([]ral.
 // members command when members is set. A member that does not resolve raises
 // Etc's ArgumentError, which property.rb:492 wraps as ensure's failure; the
 // commands' own failures are Puppet::Errors and are not wrapped.
-func (g Group) create(ctx context.Context, r catalog.Resource, p groupParams, cmds groupCommands) error {
+func (g Group) create(ctx context.Context, r catalog.Resource, p groupParams, cmds groupCommands, marked ral.Attrs) error {
 	var args []string
 	if p.HasGID {
 		args = append(args, "-g", strconv.FormatInt(p.GID, 10))
@@ -285,13 +287,16 @@ func (g Group) create(ctx context.Context, r catalog.Resource, p groupParams, cm
 	if p.system {
 		args = append(args, "-r")
 	}
-	if err := g.exec(ctx, cmds.add, append(args, p.name)...); err != nil {
+	// Any marked property redacts the command line; the output only when the
+	// argv carries a marked value, which is the gid.
+	_, gidMarked := marked["gid"]
+	if err := g.exec(ctx, command.ArgvOpts{Redact: len(marked) > 0, RedactOutput: gidMarked}, cmds.add, append(args, p.name)...); err != nil {
 		return fmt.Errorf("Could not create group %s: %w", p.name, err)
 	}
 	if !p.hasMembers {
 		return nil
 	}
-	if err := g.validateMembers(p.members); err != nil {
+	if err := g.validateMembers(p.members, marked); err != nil {
 		return fmt.Errorf("Could not set 'present' on ensure: %s%s", err, rubyvalue.ErrorLocation(r.File, r.Line))
 	}
 	// The provider's cache was emptied by exists? finding nothing, so the
@@ -305,12 +310,13 @@ func (g Group) create(ctx context.Context, r catalog.Resource, p groupParams, cm
 		}
 		current = cur.Members
 	}
-	return g.setMembers(ctx, p, current, cmds)
+	return g.setMembers(ctx, p, current, cmds, marked)
 }
 
 // validateMembers is groupadd.rb:99-105: every name in every element, split on
 // commas and stripped, must be a user (Etc.getpwnam).
-func (g Group) validateMembers(members []string) error {
+func (g Group) validateMembers(members []string, marked ral.Attrs) error {
+	_, redact := marked["members"]
 	ns := g.nss()
 	for _, m := range members {
 		for _, u := range rubyvalue.SplitComma(m) {
@@ -320,7 +326,7 @@ func (g Group) validateMembers(members []string) error {
 				return err
 			}
 			if !ok {
-				return fmt.Errorf("can't find user for %s", u)
+				return fmt.Errorf("can't find user for %s", rubyvalue.RedactIf(redact, "%s", u))
 			}
 		}
 	}
@@ -331,7 +337,8 @@ func (g Group) validateMembers(members []string) error {
 // under auth_membership each current member is removed with usermod -rG
 // (purge_members, unwrapped failure), then groupmod -aU adds the should
 // elements joined in manifest order.
-func (g Group) setMembers(ctx context.Context, p groupParams, current []string, cmds groupCommands) error {
+func (g Group) setMembers(ctx context.Context, p groupParams, current []string, cmds groupCommands, marked ral.Attrs) error {
+	_, redact := marked["members"]
 	if p.auth && len(current) > 0 {
 		usermod, err := nameservice.ShadowCommand("usermod")
 		if err != nil {
@@ -340,30 +347,31 @@ func (g Group) setMembers(ctx context.Context, p groupParams, current []string, 
 			return errors.New("Command purgemember is missing")
 		}
 		for _, m := range current {
-			if err := g.exec(ctx, usermod, "-rG", p.name, m); err != nil {
+			if err := g.exec(ctx, command.ArgvOpts{Redact: redact, RedactOutput: redact}, usermod, "-rG", p.name, m); err != nil {
 				return err
 			}
 		}
 	}
-	if err := g.exec(ctx, cmds.mod, "-aU", strings.Join(p.members, ","), p.name); err != nil {
+	if err := g.exec(ctx, command.ArgvOpts{Redact: redact, RedactOutput: redact}, cmds.mod, "-aU", strings.Join(p.members, ","), p.name); err != nil {
 		return fmt.Errorf("Could not set members on group[%s]: %w", p.name, err)
 	}
 	return nil
 }
 
 // exec runs one command with Puppet's failonfail: a non-zero exit is a
-// Puppet::ExecutionFailure.
-func (g Group) exec(ctx context.Context, name string, args ...string) error {
+// Puppet::ExecutionFailure. o.Redact logs and names the command as Ruby does
+// for a command with sensitive data, o.RedactOutput hides its output (D-78).
+func (g Group) exec(ctx context.Context, o command.ArgvOpts, name string, args ...string) error {
 	runner := g.runner
 	if runner == nil {
 		runner = command.HostShadowRunner{}
 	}
-	code, out, err := runner.Run(ctx, command.ArgvOpts{}, name, args...)
+	code, out, err := runner.Run(ctx, o, name, args...)
 	if err != nil {
 		return err
 	}
 	if code != 0 {
-		return command.ExecFailure(append([]string{name}, args...), false, code, out)
+		return command.ExecFailure(append([]string{name}, args...), o.Redact, o.RedactOutput, code, out)
 	}
 	return nil
 }

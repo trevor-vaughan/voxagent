@@ -13,8 +13,9 @@ logger argument, and a nil logger is a valid no-op.
 ```
 runlog.Debugf -> Logger.Log (level filter, debug budget)
   -> record: report.AddLog (console.record before the report exists)
-       -> report observer -> puppetConsole.print
-  -> debug line past the budget: puppetConsole.print only
+       stores the message scrubbed (report.SetScrubber)
+       -> report observer -> puppetConsole.print scrubs its own line
+  -> debug line past the budget: puppetConsole.print only (scrubs it)
 ```
 
 - **Level.** `logLevel(verbose, debug)` in `cmd/voxagent/console.go` gives
@@ -39,6 +40,22 @@ runlog.Debugf -> Logger.Log (level filter, debug budget)
   messages recorded. The first debug line past it is not recorded; one warning
   at source `voxagent` is recorded in its place, and every later debug line is
   printed only. Info and above are never held back.
+- **Scrub once per sink (D-78).** `redact.Scrubber.Scrub` is not idempotent,
+  so each sink scrubs exactly once. `applyCatalog` builds the scrubber from the
+  decoded catalog (`redact.New`), points `puppetConsole.scrub` at it, and gives
+  the report `SetScrubber(sc.Scrub)`, which scrubs the messages it stores.
+  The observer is handed the entry unscrubbed and `puppetConsole.print` scrubs
+  its own line, which covers the over-budget lines, since they never reach the
+  report's scrubber. `stderrf` scrubs the stderr lines written after the
+  catalog decodes, the whole line, so a title equal to a marked value reads
+  `[redacted]` there (accepted over-redaction). `applyCatalog` rebuilds the
+  scrubber (`rescrub`) after the extension host loads and after native
+  load-time generation, so the host's generated resources' marks count; forms
+  are never removed. On the agent path, `runAgent` points `puppetConsole.scrub` at a
+  scrubber built when `agent.Prepare` decodes the catalog (`RunConfig.Decoded`),
+  so the lines logged before `applyCatalog` (the source fetch's) and
+  `Prepare`'s error line are scrubbed too. The extension host's raw stderr
+  bypasses the logger; D-78 describes the line writer that scrubs it.
 - **Extension host.** `load` carries `"log_level"` (`notice`, `info` or
   `debug`), and `host.rb` sets `Puppet::Util::Log.level` from it, so Ruby's own
   debug lines reach the host's log stream only under `--debug`.
@@ -85,7 +102,9 @@ line.
    `Executing '[redacted]'`, `Executing check '[redacted]'`,
    `Executing: '[redacted]'`, `'[command redacted]' won't be executed because of
    failed check '<check>'` and one `[output redacted]` line for guard output. A
-   line with fixed text and no interpolated value is not redacted (D-78).
+   line with fixed text and no interpolated value is not redacted (D-78). The
+   scrub at the sink is a backstop, not a substitute: keep the call-site
+   redaction.
 5. **Test the exact text.** Add a unit test beside the provider that pins the
    source and the message verbatim, with a marked case and an unmarked case for
    any line that can carry a value. Then run

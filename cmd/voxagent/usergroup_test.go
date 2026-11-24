@@ -170,6 +170,14 @@ func TestInvalidSensitiveUserGroupValueIsRedactedInRefusal(t *testing.T) {
 	bin := buildBinary(t)
 	for _, typ := range []string{"User", "Group"} {
 		t.Run(typ, func(t *testing.T) {
+			probe := &catalog.Catalog{Resources: []catalog.Resource{{Type: typ, Title: "probe"}}}
+			user, group := nativeUserGroup(ral.HostPlatform, probe)
+			if typ == "User" && !user {
+				t.Skip("user is not native on this host")
+			}
+			if typ == "Group" && !group {
+				t.Skip("group is not native on this host")
+			}
 			dir := t.TempDir()
 			cat := writeCatalog(t, dir, []map[string]any{
 				markedResource(typ, "leak", map[string]any{"ensure": "D8SECRET-" + typ + "-ensure"}, "ensure"),

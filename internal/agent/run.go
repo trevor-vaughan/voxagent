@@ -27,6 +27,8 @@ var environmentRe = regexp.MustCompile(`^[a-z0-9_]+$`)
 // carry the same one. Log, which may be nil, receives the lines Puppet's agent
 // logs before applying, at Puppet's levels, for the report and the console.
 // Start, when set, is when the command began; it opens startup_time.
+// Decoded, which may be nil, receives the catalog as soon as it is decoded,
+// before any line or error can carry one of its values.
 type RunConfig struct {
 	SSL                                    SSLConfig
 	Environment                            string
@@ -35,6 +37,7 @@ type RunConfig struct {
 	TransactionUUID                        string
 	Log                                    LogFunc
 	Start                                  time.Time
+	Decoded                                func(*catalog.Catalog)
 }
 
 // Phase is one step of the run Puppet's agent times and reports under Name
@@ -166,6 +169,9 @@ func Prepare(ctx context.Context, c RunConfig) (*Prepared, error) {
 	cat, err := catalog.Decode(raw)
 	if err != nil {
 		return nil, err
+	}
+	if c.Decoded != nil {
+		c.Decoded(cat)
 	}
 	timed("config_retrieval")
 	if cat.Environment != env {

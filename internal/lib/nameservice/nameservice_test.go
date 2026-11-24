@@ -58,7 +58,7 @@ func debugCtx() (context.Context, *[]string) {
 
 func mustGID(t *testing.T, ctx context.Context, ns NameService, v any) (int64, bool) {
 	t.Helper()
-	gid, ok, err := PosixGID(ctx, ns, v)
+	gid, ok, err := PosixGID(ctx, ns, v, false)
 	if err != nil {
 		t.Fatalf("PosixGID(%v): %v", v, err)
 	}
@@ -165,7 +165,7 @@ func (noEnum) AllGroups() ([]GroupEntry, error) { return nil, nil }
 
 func TestPosixGIDPropagatesErrors(t *testing.T) {
 	ctx, _ := debugCtx()
-	if _, _, err := PosixGID(ctx, failingNSS{}, "x"); err == nil {
+	if _, _, err := PosixGID(ctx, failingNSS{}, "x", false); err == nil {
 		t.Error("error swallowed")
 	}
 }
@@ -311,5 +311,21 @@ func TestShadowCommandSearchesRubysPathInOrder(t *testing.T) {
 	}
 	if !reflect.DeepEqual(saved, []string{"/usr/sbin", "/usr/bin", "/sbin", "/bin"}) {
 		t.Errorf("default search order = %q", saved)
+	}
+}
+
+// D-78: a marked gid prints as [redacted] in the "required state" debug line,
+// and so does the value retrieved, which may be derived from it. An unmarked
+// gid prints as before (TestPosixGIDSearchesAllEntries).
+func TestPosixGIDRedactsMarkedValue(t *testing.T) {
+	ctx, msgs := debugCtx()
+	ns := byIDFirst{fakeNSS{groups: []GroupEntry{{Name: "a", GID: 6}, {Name: "b", GID: 5}}}}
+	gid, ok, err := PosixGID(ctx, ns, "b", true)
+	if err != nil || !ok || gid != 5 {
+		t.Fatalf("got %d, %v, %v", gid, ok, err)
+	}
+	want := []string{"The value retrieved: [redacted] is different than the required state: [redacted], searching in all entries"}
+	if !reflect.DeepEqual(*msgs, want) {
+		t.Errorf("debug = %q; want %q", *msgs, want)
 	}
 }

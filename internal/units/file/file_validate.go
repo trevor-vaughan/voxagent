@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"syscall"
@@ -36,6 +37,10 @@ type validation struct {
 	// built from marked input (catalog.Resource.OutputRedacted): a validator
 	// can echo the content it checks, so its output is never printed (D-78).
 	outputRedacted bool
+	// commandRedacted is set when the catalog lists validate_cmd as Sensitive:
+	// a plain parameter Ruby cannot mark, so the command prints as [redacted]
+	// (D-78) and, as it can echo itself, its output is never printed.
+	commandRedacted bool
 }
 
 // validationOf returns r's validation, or nil when it declares no
@@ -52,7 +57,8 @@ func validationOf(r catalog.Resource, outputRedacted bool) (*validation, error) 
 	if !ok {
 		return nil, fmt.Errorf("validate_cmd is %T, not a string", raw)
 	}
-	v := &validation{cmd: cmd, replacement: "%", outputRedacted: outputRedacted}
+	commandRedacted := slices.Contains(r.SensitiveParameters, "validate_cmd")
+	v := &validation{cmd: cmd, replacement: "%", outputRedacted: outputRedacted || commandRedacted, commandRedacted: commandRedacted}
 	if raw, ok := r.Parameters["validate_replacement"]; ok {
 		if v.replacement, ok = raw.(string); !ok {
 			return nil, fmt.Errorf("validate_replacement is %T, not a string", raw)
@@ -101,7 +107,7 @@ func (*validation) createTemp(fsys fileSystem, path string) (*os.File, string, e
 // There is no timeout: Puppet passes none (type/file.rb:938).
 func (v *validation) run(ctx context.Context, tmpPath string) error {
 	line := strings.ReplaceAll(v.cmd, v.replacement, tmpPath)
-	status, output, err := runAsRubyExec(ctx, line)
+	status, output, err := runAsRubyExec(ctx, line, v.commandRedacted)
 	if err != nil {
 		return err
 	}
@@ -120,7 +126,7 @@ func (v *validation) run(ctx context.Context, tmpPath string) error {
 	if v.outputRedacted {
 		output = "[output redacted]"
 	}
-	return &command.ExecutionFailure{Command: line, Status: status, Output: output}
+	return &command.ExecutionFailure{Command: rubyvalue.RedactIf(v.commandRedacted, "%s", line), Status: status, Output: output}
 }
 
 // rubyEnvDropped are the variables Puppet deletes in the child before every
@@ -148,8 +154,9 @@ var rubyEnvDropped = func() map[string]struct{} {
 // A command that cannot be executed (ENOENT, EACCES, ...) is not an error
 // here: Puppet's child logs it and exits 1 (:392-395), so it is status 1. The
 // output Ruby's child writes depends on the agent's log destinations
-// (measured); this one says what failed, plainly.
-func runAsRubyExec(ctx context.Context, line string) (int, string, error) {
+// (measured); this one says what failed, plainly. redact logs line as
+// [redacted] (D-78).
+func runAsRubyExec(ctx context.Context, line string, redact bool) (int, string, error) {
 	words, shell := rubyExecWords(line)
 	var argv0 string
 	var cmd *exec.Cmd
@@ -163,7 +170,7 @@ func runAsRubyExec(ctx context.Context, line string) (int, string, error) {
 		argv0 = words[0]
 		cmd = rubyChild(argv0, argv0, words[1:]...)
 	}
-	status, output, err := command.RunLogged(ctx, cmd, command.QuoteOrRedact(line, false), line)
+	status, output, err := command.RunLogged(ctx, cmd, command.QuoteOrRedact(line, redact), rubyvalue.RedactIf(redact, "%s", line))
 	if err == nil {
 		return status, output, nil
 	}
@@ -182,7 +189,7 @@ func runAsRubyExec(ctx context.Context, line string) (int, string, error) {
 		// A file with no #! line: Ruby retries it as a /bin/sh script
 		// (process.c proc_exec_cmd), measured with Ruby 3.4.9.
 		retry := rubyChild("/bin/sh", "sh", append([]string{cmd.Path}, cmd.Args[1:]...)...)
-		return command.RunCapped(ctx, retry, command.QuoteOrRedact(line, false), (*exec.Cmd).Run)
+		return command.RunCapped(ctx, retry, command.QuoteOrRedact(line, redact), (*exec.Cmd).Run)
 	}
 	return 1, couldNotExecute(errno, argv0), nil
 }
@@ -293,11 +300,13 @@ func validateValidateCmd(r catalog.Resource) error {
 		return nil
 	}
 	if _, isString := cmd.(string); !isString {
-		return fmt.Errorf(`%s: validate_cmd => %v (%T) is refused: Puppet accepts it and fails every change it validates with "undefined method 'gsub'"`, r.Ref(), cmd, cmd)
+		return fmt.Errorf(`%s: validate_cmd => %v (%T) is refused: Puppet accepts it and fails every change it validates with "undefined method 'gsub'"`,
+			r.Ref(), rubyvalue.RedactIf(slices.Contains(r.SensitiveParameters, "validate_cmd"), "%v", cmd), cmd)
 	}
 	if v, ok := r.Parameters["validate_replacement"]; ok {
 		if _, isString := v.(string); !isString {
-			return fmt.Errorf(`%s: validate_replacement => %v (%T) is refused: Puppet accepts it and fails every change it validates with "wrong argument type"`, r.Ref(), v, v)
+			return fmt.Errorf(`%s: validate_replacement => %v (%T) is refused: Puppet accepts it and fails every change it validates with "wrong argument type"`,
+				r.Ref(), rubyvalue.RedactIf(slices.Contains(r.SensitiveParameters, "validate_replacement"), "%v", v), v)
 		}
 	}
 	if rubyvalue.ParamString(r, "recurse", "false") == "true" {

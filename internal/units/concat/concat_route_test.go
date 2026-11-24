@@ -310,6 +310,13 @@ func TestConcatDelegationReasons(t *testing.T) {
 		{"two share a path", measured, []catalog.Resource{
 			concatFileRes("/etc/a", nil), concatFileRes("b", map[string]any{"path": "/etc/a"}),
 		}, "two concat_file resources manage /etc/a"},
+		// D-78: a marked path is [redacted] whichever of the two it is on.
+		{"two share a marked path, first", measured, []catalog.Resource{
+			concatFileRes("a", map[string]any{"path": "/etc/a"}, "path"), concatFileRes("/etc/a", nil),
+		}, "two concat_file resources manage [redacted]"},
+		{"two share a marked path, second", measured, []catalog.Resource{
+			concatFileRes("/etc/a", nil), concatFileRes("b", map[string]any{"path": "/etc/a"}, "path"),
+		}, "two concat_file resources manage [redacted]"},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {

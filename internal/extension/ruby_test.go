@@ -699,3 +699,185 @@ func TestRealHostRefusesOtherLogLevels(t *testing.T) {
 		})
 	}
 }
+
+// A refused resource's message and the debug lines Puppet logs while converting it
+// carry the value of a parameter the catalog marks Sensitive: Puppet validates
+// before it marks anything (type.rb:2341-2345). The host redacts them (D-78).
+func TestRealHostRedactsSensitiveValuesInRefusals(t *testing.T) {
+	_, load, _ := launchAt(t, "debug", func(string) []res {
+		marked := resource("Vox_secret", "marked", res{"token": []string{"hunter2", "swordfish"}})
+		marked["sensitive_parameters"] = []string{"token"}
+		plain := resource("Vox_secret", "plain", res{"token": "visible"})
+		return []res{marked, plain}
+	})
+	var marked, plain string
+	for _, r := range load.Invalid {
+		switch r.Ref {
+		case "Vox_secret[marked]":
+			marked = r.Message
+		case "Vox_secret[plain]":
+			plain = r.Message
+		}
+	}
+	if !strings.Contains(marked, "[redacted]") || strings.Contains(marked, "hunter2") || strings.Contains(marked, "swordfish") {
+		t.Errorf("marked refusal = %q", marked)
+	}
+	if !strings.Contains(plain, "Invalid token visible") {
+		t.Errorf("unmarked refusal = %q", plain)
+	}
+	var sawMarked, sawPlain bool
+	for _, l := range load.Logs {
+		if strings.Contains(l.Message, "hunter2") || strings.Contains(l.Message, "swordfish") {
+			t.Errorf("log leaks a Sensitive value: %+v", l)
+		}
+		sawMarked = sawMarked || strings.Contains(l.Message, "Reraising") && strings.Contains(l.Message, "[redacted]")
+		sawPlain = sawPlain || strings.Contains(l.Message, "Reraising Invalid token visible")
+	}
+	if !sawMarked || !sawPlain {
+		t.Errorf("want a redacted and an unredacted Reraising line, got %+v", load.Logs)
+	}
+}
+
+// refusal returns the host's refusal text for ref.
+func refusal(load extension.LoadResult, ref string) string {
+	for _, r := range load.Invalid {
+		if r.Ref == ref {
+			return r.Message
+		}
+	}
+	return ""
+}
+
+func marked(params res, names ...string) res {
+	r := resource("Vox_secret", params["name"].(string), params)
+	r["sensitive_parameters"] = names
+	return r
+}
+
+// One pass redacts every form: overlapping values leave one marker each, a
+// short value matches only as a whole token, an invalid-UTF-8 message cannot
+// hide a secret, and a name the type does not define is harmless.
+func TestRealHostRedactionEdgeCases(t *testing.T) {
+	_, load, _ := launchAt(t, "debug", func(string) []res {
+		return []res{
+			marked(res{"name": "overlap", "token": []string{"hunter2", "e"}}, "token"),
+			marked(res{"name": "line7", "token": 7}, "token"),
+			marked(res{"name": "hash", "token": map[string]string{"k": "hunter2"}}, "nosuch", "token"),
+			marked(res{"name": "raw", "raw": "p\u00e4ss"}, "raw"),
+			marked(res{"name": "bare", "token": "visible"}),
+			// Forms that overlap in the text leave no fragment: merged into one span.
+			marked(res{"name": "ov1", "echo": "xhun", "extra": "hunter2", "raw": "xhunter2"}, "echo", "extra"),
+			marked(res{"name": "nest1", "echo": "abcdefghijkl", "extra": []string{"bcde", "hijk"}, "raw": "abcdefghijklZ"}, "echo", "extra"),
+			marked(res{"name": "nest2", "echo": "abcdefghij", "extra": []string{"cdef", "klmnop"}, "raw": "abcdefghijklmnop"}, "echo", "extra"),
+			marked(res{"name": "ov2", "echo": "abcd", "extra": "cdef", "raw": "abcdef"}, "echo", "extra"),
+		}
+	})
+	const tail = " (file: /x/site.pp, line: 3)"
+	for ref, want := range map[string]string{
+		"Vox_secret[overlap]": "Parameter token failed on Vox_secret[overlap]: Invalid token [redacted] / [redacted]" + tail,
+		// "7" is redacted as a token and left inside the title line7.
+		"Vox_secret[line7]": "Parameter token failed on Vox_secret[line7]: Invalid token [redacted]" + tail,
+		// A hash's keys are not forms: only its values and its own text are.
+		"Vox_secret[hash]": "Parameter token failed on Vox_secret[hash]: Invalid token k / [redacted]" + tail,
+		"Vox_secret[bare]": "Parameter token failed on Vox_secret[bare]: Invalid token visible" + tail,
+	} {
+		if got := refusal(load, ref); got != want {
+			t.Errorf("%s refusal = %q, want %q", ref, got, want)
+		}
+	}
+	for _, name := range []string{"ov1", "ov2"} {
+		if got, want := refusal(load, "Vox_secret["+name+"]"),
+			"Parameter raw failed on Vox_secret["+name+"]: Invalid raw [redacted]\ufffd"+tail; got != want {
+			t.Errorf("%s refusal = %q, want %q", name, got, want)
+		}
+	}
+	// A span nested in a longer one must not end the run early, and one starting
+	// where the run ends joins it.
+	for name, want := range map[string]string{"nest1": "[redacted]Z", "nest2": "[redacted]"} {
+		if got, want := refusal(load, "Vox_secret["+name+"]"),
+			"Parameter raw failed on Vox_secret["+name+"]: Invalid raw "+want+"\ufffd"+tail; got != want {
+			t.Errorf("%s refusal = %q, want %q", name, got, want)
+		}
+	}
+	// The 0xFF byte makes the message invalid UTF-8; the secret is still matched on bytes.
+	if got, want := refusal(load, "Vox_secret[raw]"),
+		"Parameter raw failed on Vox_secret[raw]: Invalid raw [redacted]\ufffd"+tail; got != want {
+		t.Errorf("raw refusal = %q, want %q", got, want)
+	}
+}
+
+// Puppet marks only a property Sensitive, so provider and type code that
+// interpolates a marked parameter prints it in every phase the host relays.
+func TestRealHostRedactsSensitiveValuesInLaterPhases(t *testing.T) {
+	h, load, _ := launchAt(t, "debug", func(string) []res {
+		return []res{
+			marked(res{"name": "later", "echo": "tok3n-xyz", "state": "after"}, "echo"),
+			resource("Vox_secret", "open", res{"echo": "tok3n-xyz", "state": "after"}),
+		}
+	})
+	text := func(logs []extension.Log) string {
+		var b strings.Builder
+		for _, l := range logs {
+			b.WriteString(l.Message + "\n")
+		}
+		return b.String()
+	}
+	// The unmarked resource's line is unchanged.
+	if g, want := text(load.GenerateLogs), "generating for [redacted]\ngenerating for tok3n-xyz\n"; g != want {
+		t.Errorf("generate_logs = %q, want %q", g, want)
+	}
+	ev, err := h.Evaluate("Vox_secret[later]", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := text(ev.Logs)
+	for _, e := range ev.Events {
+		got += e.Message + "\n"
+	}
+	if strings.Contains(got, "tok3n-xyz") || !strings.Contains(got, "cannot set state for [redacted]") {
+		t.Errorf("evaluate = %q", got)
+	}
+	rf, err := h.Refresh("Vox_secret[later]")
+	if err != nil {
+		t.Fatal(err)
+	}
+	refreshed := text(rf.Logs) + text(rf.ExceptionLogs)
+	if rf.Error != nil {
+		refreshed += *rf.Error
+	}
+	if strings.Contains(refreshed, "tok3n-xyz") || !strings.Contains(refreshed, "refresh broke for [redacted]") {
+		t.Errorf("refresh = %q", refreshed)
+	}
+	open, err := h.Evaluate("Vox_secret[open]", false)
+	if err != nil || len(open.Events) != 1 || !strings.Contains(open.Events[0].Message, "cannot set state for tok3n-xyz") {
+		t.Errorf("an unmarked resource's evaluate = %+v, %v", open, err)
+	}
+}
+
+// Prefetch runs once for every resource of a provider, on the first one
+// evaluated: an unmarked resource triggers it, and it prints and fails with a
+// different resource's marked value.
+func TestRealHostRedactsAnotherResourcesValueInPrefetch(t *testing.T) {
+	h, _, _ := launchAt(t, "debug", func(string) []res {
+		return []res{
+			resource("Vox_secret", "open", res{"echo": "visible-val", "state": "break"}),
+			marked(res{"name": "later", "echo": "tok3n-xyz", "state": "after"}, "echo"),
+		}
+	})
+	ev, err := h.Evaluate("Vox_secret[open]", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got strings.Builder
+	for _, l := range ev.Logs {
+		got.WriteString(l.Message + "\n")
+	}
+	for _, e := range ev.Events {
+		got.WriteString(e.Message + "\n")
+	}
+	if strings.Contains(got.String(), "tok3n-xyz") ||
+		!strings.Contains(got.String(), "prefetching visible-val [redacted]") ||
+		!strings.Contains(got.String(), "prefetch broke for visible-val [redacted]") {
+		t.Errorf("prefetch text = %q", got.String())
+	}
+}

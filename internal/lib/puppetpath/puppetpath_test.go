@@ -60,6 +60,21 @@ func TestDeclaredModeXNeedsPlus(t *testing.T) {
 	}
 }
 
+// D-78: a marked mode is [redacted] in the symbolic-mode error, in the clause
+// it names as well as in the mode.
+func TestDeclaredModeXNeedsPlusRedactsMarkedMode(t *testing.T) {
+	m, _ := ParseDeclaredMode("u+r,g=X,o+r", true)
+	want := "X only works with the '+' operator at [redacted] in symbolic mode [redacted]"
+	if _, err := m.Apply(0o644, false); err == nil || err.Error() != want {
+		t.Errorf("err = %v, want %q", err, want)
+	}
+	m, _ = ParseDeclaredMode("u-X", true)
+	want = "X only works with the '+' operator in symbolic mode [redacted]"
+	if _, err := m.Apply(0o644, false); err == nil || err.Error() != want {
+		t.Errorf("single clause: err = %v, want %q", err, want)
+	}
+}
+
 func TestParseDeclaredMode(t *testing.T) {
 	for _, ok := range []struct{ mode, desired string }{
 		{"0755", "0755"}, {"755", "0755"}, {"00755", "0755"}, {"7755", "7755"}, {"2775", "2775"},

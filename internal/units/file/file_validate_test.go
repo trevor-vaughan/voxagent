@@ -817,3 +817,45 @@ func TestFileValidateRequiresAnAbsolutePath(t *testing.T) {
 		}
 	}
 }
+
+// D-78: validate_cmd is a plain parameter Ruby cannot mark, which the catalog
+// may list; a listed command prints as [redacted] in the failure, the
+// Executing debug line and the refusal that repeats a bad value, and a
+// validator can echo itself, so its output is hidden too.
+func TestValidateCmdMarkedIsRedacted(t *testing.T) {
+	const cmd = `/bin/sh -c "echo s3cret-token; exit 3" %`
+	path := filepath.Join(t.TempDir(), "target")
+	r := raltest.FileRes(path, map[string]any{"content": "x\n", "validate_cmd": cmd})
+	r.SensitiveParameters = []string{"validate_cmd"}
+	ctx, got := raltest.DebugContext("debug")
+	changes, _, err := File{}.Apply(ctx, r, false)
+	if err != nil || len(changes) == 0 || changes[0].Err == nil {
+		t.Fatalf("Apply = %+v, %v; want a failed content change", changes, err)
+	}
+	if want := "Execution of '[redacted]' returned 3: [output redacted]"; changes[0].Err.Error() != want {
+		t.Errorf("err = %q, want %q", changes[0].Err, want)
+	}
+	if lines := raltest.LinesAt(*got, "Puppet"); !slices.Equal(lines, []string{"Executing: '[redacted]'"}) {
+		t.Errorf("Executing lines = %q", lines)
+	}
+
+	for _, tc := range []struct {
+		name   string
+		params map[string]any
+		marked string
+		want   string
+	}{
+		{"command", map[string]any{"validate_cmd": []any{"s3cret"}}, "validate_cmd",
+			`File[/x]: validate_cmd => [redacted] ([]interface {}) is refused: Puppet accepts it and fails every change it validates with "undefined method 'gsub'"`},
+		{"replacement", map[string]any{"validate_cmd": "/bin/true %", "validate_replacement": 42.0}, "validate_replacement",
+			`File[/x]: validate_replacement => [redacted] (float64) is refused: Puppet accepts it and fails every change it validates with "wrong argument type"`},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			r := raltest.FileRes("/x", tc.params)
+			r.SensitiveParameters = []string{tc.marked}
+			if err := validateValidateCmd(r); err == nil || err.Error() != tc.want {
+				t.Errorf("err = %v, want %q", err, tc.want)
+			}
+		})
+	}
+}

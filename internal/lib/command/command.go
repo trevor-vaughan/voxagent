@@ -75,7 +75,28 @@ func RunArgv(ctx context.Context, name string, args ...string) (int, string, err
 	redact, _ := ctx.Value(redactCommandKey{}).(bool)
 	cmd := exec.CommandContext(ctx, name, args...)
 	cmd.Env = WithoutUserEnv(os.Environ())
-	return RunLogged(ctx, cmd, QuoteOrRedact(line, redact), rubyvalue.RedactIf(redact, "%s", line))
+	what := QuoteOrRedact(line, redact)
+	code, out, err := RunLogged(ctx, cmd, what, rubyvalue.RedactIf(redact, "%s", line))
+	if redact {
+		err = withoutCommandName(what, err)
+	}
+	return code, out, err
+}
+
+// withoutCommandName rewrites the error for a command that could not start,
+// whose OS error repeats the command's name (fork/exec <path>, exec:
+// "<name>"), to name only the cause, for a command that names a marked value
+// (D-78). Any other error is returned as it is.
+func withoutCommandName(what string, err error) error {
+	var pathErr *fs.PathError
+	var execErr *exec.Error
+	switch {
+	case errors.As(err, &pathErr) && pathErr.Op == "fork/exec":
+		return fmt.Errorf("run %s: fork/exec: %w", what, pathErr.Err)
+	case errors.As(err, &execErr):
+		return fmt.Errorf("run %s: %w", what, execErr.Err)
+	}
+	return err
 }
 
 // RubyLocaleVars is util/posix.rb:6-7's LOCALE_ENV_VARS: the variables Puppet
@@ -94,6 +115,11 @@ type ArgvOpts struct {
 	// [command redacted] in the truncation warning: its argv or Stdin names a
 	// value that must not reach a log, such as a password hash.
 	Redact bool
+	// RedactOutput hides the output of a failed command in its
+	// ExecutionFailure, for a command whose argv carries a marked value that
+	// the tool may echo ("invalid comment 'x'"). It is separate from Redact: a
+	// command that carries no marked value has nothing to hide in its output.
+	RedactOutput bool
 }
 
 // RunArgvWith is RunArgv for a command Puppet runs through Puppet::Util::
@@ -135,7 +161,12 @@ func (HostShadowRunner) Run(ctx context.Context, o ArgvOpts, name string, args .
 // ExecFailure is the Puppet::ExecutionFailure for a command that exited with
 // code (util/execution.rb:312). cmd is joined by single spaces, so an empty
 // element leaves a double space; redact shows it as [redacted] (:162).
-func ExecFailure(cmd []string, redact bool, code int, output string) error {
+// redactOutput shows the output as [output redacted], as a tool such as
+// useradd echoes the value it rejects (D-78).
+func ExecFailure(cmd []string, redact, redactOutput bool, code int, output string) error {
+	if redactOutput {
+		output = "[output redacted]"
+	}
 	return &ExecutionFailure{Command: rubyvalue.RedactIf(redact, "%s", strings.Join(cmd, " ")), Status: code, Output: output}
 }
 

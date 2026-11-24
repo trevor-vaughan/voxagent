@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"slices"
 	"strings"
 	"testing"
 
@@ -459,5 +460,102 @@ func TestGroupPurgeWithoutUsermod(t *testing.T) {
 		groupRes("g", map[string]any{"members": []any{"bin"}, "auth_membership": true}), false)
 	if err != nil || len(changes) != 1 || raltest.ErrText(changes[0].Err) != "Command purgemember is missing" {
 		t.Errorf("changes = %+v, err = %v", changes, err)
+	}
+}
+
+// redactRecorder is a shadow runner that records the Redact flag of each call.
+type redactRecorder struct {
+	redact  []bool
+	results map[string]runResult
+}
+
+func (r *redactRecorder) Run(_ context.Context, o command.ArgvOpts, name string, args ...string) (int, string, error) {
+	r.redact = append(r.redact, o.Redact)
+	res := r.results[strings.Join(append([]string{filepath.Base(name)}, args...), " ")]
+	return res.code, res.out, res.err
+}
+
+// D-78: a Sensitive gid is [redacted] where Ruby prints it, in the format
+// refusal and in the munge failure whose detail repeats the value.
+func TestGroupParseRedactsSensitiveGID(t *testing.T) {
+	for _, tc := range []struct {
+		name      string
+		gid       string
+		sensitive bool
+		want      string
+	}{
+		{"format unmarked", "hunter2", false, "Parameter gid failed on Group[g]: Invalid GID hunter2"},
+		{"format marked", "hunter2", true, "Parameter gid failed on Group[g]: Invalid GID [redacted]"},
+		{"munge marked", "09", true, "Parameter gid failed on Group[g]: Munging failed for value [redacted] in class gid: invalid value for Integer(): [redacted]"},
+		{"munge unmarked octal", "09", false, `Parameter gid failed on Group[g]: Munging failed for value "09" in class gid: invalid value for Integer(): "09"`},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			r := groupRes("g", map[string]any{"gid": tc.gid})
+			if tc.sensitive {
+				r.SensitiveParameters = []string{"gid"}
+			}
+			_, err := ParseGroup(r)
+			if err == nil || err.Error() != tc.want {
+				t.Errorf("err = %v, want %q", err, tc.want)
+			}
+		})
+	}
+}
+
+// D-78: a marked member is [redacted] in the lookup failure, and a marked
+// property's commands run redacted with their output hidden.
+func TestGroupApplyRedactsSensitiveValues(t *testing.T) {
+	dir := withShadowBin(t)
+	for _, tc := range []struct {
+		name      string
+		params    map[string]any
+		marked    []string
+		groups    []nameservice.GroupEntry
+		results   map[string]runResult
+		wantErr   string
+		wantRedac bool
+	}{
+		{"member unmarked", map[string]any{"members": []any{"nosuch"}}, nil, nil, nil,
+			"Could not set 'present' on ensure: can't find user for nosuch (file: /etc/site.pp, line: 3)", false},
+		{"member marked", map[string]any{"members": []any{"nosuch"}}, []string{"members"}, nil, nil,
+			"Could not set 'present' on ensure: can't find user for [redacted] (file: /etc/site.pp, line: 3)", true},
+		{"create unmarked", map[string]any{"gid": 4321.0}, nil, nil,
+			map[string]runResult{"groupadd -g 4321 g": {code: 4, out: "groupadd: GID '4321' already exists\n"}},
+			"Could not create group g: Execution of '" + dir + "/groupadd -g 4321 g' returned 4: groupadd: GID '4321' already exists", false},
+		{"create marked", map[string]any{"gid": 4321.0}, []string{"gid"}, nil,
+			map[string]runResult{"groupadd -g 4321 g": {code: 4, out: "groupadd: GID '4321' already exists\n"}},
+			"Could not create group g: Execution of '[redacted]' returned 4: [output redacted]", true},
+		{"create with marked members keeps groupadd output", map[string]any{"gid": 4321.0, "members": []any{"bin"}}, []string{"members"}, nil,
+			map[string]runResult{"groupadd -g 4321 g": {code: 4, out: "groupadd: GID '4321' already exists\n"}},
+			"Could not create group g: Execution of '[redacted]' returned 4: groupadd: GID '4321' already exists", true},
+		{"modify gid marked", map[string]any{"gid": 7.0}, []string{"gid"}, []nameservice.GroupEntry{{Name: "g", GID: 1}},
+			map[string]runResult{"groupmod -g 7 g": {code: 4, out: "groupmod: GID '7' already exists\n"}},
+			"Could not set gid on group[g]: Execution of '[redacted]' returned 4: [output redacted]", true},
+		{"modify gid beside a marked members stays plain", map[string]any{"gid": 7.0}, []string{"members"}, []nameservice.GroupEntry{{Name: "g", GID: 1}},
+			map[string]runResult{"groupmod -g 7 g": {code: 4, out: "groupmod: GID '7' already exists\n"}},
+			"Could not set gid on group[g]: Execution of '" + dir + "/groupmod -g 7 g' returned 4: groupmod: GID '7' already exists", false},
+		{"members marked", map[string]any{"members": []any{"bin"}}, []string{"members"}, []nameservice.GroupEntry{{Name: "g", GID: 1}},
+			map[string]runResult{"groupmod -aU bin g": {code: 6, out: "groupmod: bin\n"}},
+			"Could not set members on group[g]: Execution of '[redacted]' returned 6: [output redacted]", true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			runner := &redactRecorder{results: tc.results}
+			r := groupRes("g", tc.params)
+			r.SensitiveParameters = tc.marked
+			ns := &groupNSS{FakeNSS: raltest.FakeNSS{Users: hostUsers, Groups: tc.groups}, runner: &recordingRunner{}}
+			changes, _, err := Group{ns: ns, runner: runner}.Apply(context.Background(), r, false)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(changes) == 0 || raltest.ErrText(changes[0].Err) != tc.wantErr {
+				t.Fatalf("changes = %+v, want Err %q", changes, tc.wantErr)
+			}
+			if tc.wantRedac && (len(runner.redact) == 0 || !runner.redact[len(runner.redact)-1]) {
+				t.Errorf("last command ran unredacted: %v", runner.redact)
+			}
+			if !tc.wantRedac && slices.Contains(runner.redact, true) {
+				t.Errorf("an unmarked command ran redacted: %v", runner.redact)
+			}
+		})
 	}
 }

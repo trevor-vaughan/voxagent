@@ -2311,3 +2311,69 @@ func TestExecPrefetchesToItself(t *testing.T) {
 		t.Fatalf("Prefetch = %v, %v; want Exec{}, nil", got, err)
 	}
 }
+
+// D-78: a marked returns, tries, try_sleep or creates is [redacted] in the
+// error and debug text that repeats it, where Ruby prints it. The unmarked
+// text is the tests above's.
+func TestExecRedactsSensitiveRetryParameters(t *testing.T) {
+	counter := filepath.Join(t.TempDir(), "n")
+	for _, tc := range []struct {
+		name   string
+		params map[string]any
+		marked string
+		want   []string
+	}{
+		{"tries marked", map[string]any{"command": countingCommand(counter, 99), "tries": 2.0, "try_sleep": 0.1}, "tries",
+			[]string{"Exec try 1/[redacted]", "Sleeping for 0.1 seconds between tries", "Exec try 2/[redacted]", "Sleeping for 0.1 seconds between tries"}},
+		{"try_sleep marked", map[string]any{"command": countingCommand(counter, 99), "tries": 2.0, "try_sleep": 0.1}, "try_sleep",
+			[]string{"Exec try 1/2", "Sleeping for [redacted] seconds between tries", "Exec try 2/2", "Sleeping for [redacted] seconds between tries"}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx, entries, returns := triesCtx()
+			r := raltest.ExecRes("x", tc.params)
+			r.SensitiveParameters = []string{tc.marked}
+			if _, _, err := (Exec{}).Apply(ctx, r, false); err != nil {
+				t.Fatal(err)
+			}
+			if got := raltest.LinesAt(*entries, returns); !slices.Equal(got, tc.want) {
+				t.Errorf("debug lines = %q, want %q", got, tc.want)
+			}
+		})
+	}
+
+	t.Run("fractional tries", func(t *testing.T) {
+		r := raltest.ExecRes("x", map[string]any{"command": "true", "tries": 2.5})
+		r.SensitiveParameters = []string{"tries"}
+		if want := "undefined method `times' for [redacted]:Float"; execChange(t, r).Err.Error() != want {
+			t.Errorf("Err = %v, want %q", execChange(t, r).Err, want)
+		}
+	})
+	t.Run("returns list", func(t *testing.T) {
+		r := raltest.ExecRes("x", map[string]any{"command": "exit 3", "returns": []any{"0", "7"}})
+		r.SensitiveParameters = []string{"returns"}
+		if got, want := execChange(t, r).Err.Error(), "returned 3 instead of one of [redacted]"; !strings.HasSuffix(got, want) {
+			t.Errorf("Err = %q, want suffix %q", got, want)
+		}
+	})
+	t.Run("creates", func(t *testing.T) {
+		notDir := filepath.Join(t.TempDir(), "file")
+		if err := os.WriteFile(notDir, nil, 0o644); err != nil {
+			t.Fatal(err)
+		}
+		secret := filepath.Join(notDir, "secret-creates")
+		ctx, entries, _ := triesCtx()
+		r := raltest.ExecRes("x", map[string]any{"command": "true", "creates": secret})
+		r.SensitiveParameters = []string{"creates"}
+		_, _, err := (Exec{}).Apply(ctx, r, false)
+		if want := "stat creates path [redacted]: not a directory"; err == nil || err.Error() != want {
+			t.Errorf("err = %v, want %q", err, want)
+		}
+		if got := raltest.LinesAt(*entries, "/Stage[main]/Main/Exec[x]/creates"); !slices.Equal(got, []string{"Checking that 'creates' path [redacted] exists"}) {
+			t.Errorf("creates debug lines = %q", got)
+		}
+		r.SensitiveParameters = nil
+		if _, _, err := (Exec{}).Apply(ctx, r, false); err == nil || err.Error() != "stat creates path "+secret+": stat "+secret+": not a directory" {
+			t.Errorf("unmarked err = %v", err)
+		}
+	})
+}

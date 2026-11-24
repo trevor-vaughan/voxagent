@@ -249,12 +249,14 @@ func (File) ListAttrs() ral.Attrs { return ral.NewAttrs("source") }
 // (defaultsWanted), and a removal, which syncs no SELinux property
 // (syncsSELinux).
 func (f File) Validate(r catalog.Resource) error {
-	given := r.Title
+	given, pathMarked := r.Title, false
 	if p, ok := r.Parameters["path"].(string); ok {
-		given = p
+		given, pathMarked = p, slices.Contains(r.SensitiveParameters, "path")
 	}
 	if !filepath.IsAbs(given) {
-		return fmt.Errorf("Parameter path failed on %s: File paths must be fully qualified, not '%s'", r.Ref(), given)
+		// path is a plain parameter Ruby cannot mark, which the catalog may list
+		// (D-78); a path that is only the title is not the parameter.
+		return fmt.Errorf("Parameter path failed on %s: File paths must be fully qualified, not %s", r.Ref(), rubyvalue.RedactIf(pathMarked, "'%s'", given))
 	}
 	if raw, ok := r.Parameters["mode"]; ok {
 		// mode.rb:78-96 validates while the catalog becomes a RAL, so an
@@ -276,7 +278,8 @@ func (f File) Validate(r catalog.Resource) error {
 	if hasIgnore && ignore != true && ignore != false && ignore != "true" && ignore != "false" {
 		// newvalues(:true, :false) (type/file/selcontext.rb:94), so unlike
 		// replace and force it takes no yes or no; measured wording.
-		return fmt.Errorf("Parameter selinux_ignore_defaults failed on %s: Invalid value \"%v\". Valid values are true, false.", r.Ref(), ignore)
+		return fmt.Errorf("Parameter selinux_ignore_defaults failed on %s: Invalid value %s. Valid values are true, false.",
+			r.Ref(), rubyvalue.RedactIf(slices.Contains(r.SensitiveParameters, "selinux_ignore_defaults"), "\"%v\"", ignore))
 	}
 	for _, prop := range selProps {
 		if v, ok := r.Parameters[prop]; ok {
@@ -304,7 +307,8 @@ func (f File) Validate(r catalog.Resource) error {
 	}
 	if v, ok := r.Parameters["links"]; ok && v != "manage" && v != "follow" {
 		// type/file.rb:272-281, newvalues(:follow, :manage); measured wording.
-		return fmt.Errorf("Parameter links failed on %s: Invalid value \"%v\". Valid values are follow, manage.", r.Ref(), v)
+		return fmt.Errorf("Parameter links failed on %s: Invalid value %s. Valid values are follow, manage.",
+			r.Ref(), rubyvalue.RedactIf(slices.Contains(r.SensitiveParameters, "links"), "\"%v\"", v))
 	}
 	raw, hasSource := r.Parameters["source"]
 	if hasSource {
@@ -753,6 +757,7 @@ func applyFile(ctx context.Context, fsys fileSystem, path string, r catalog.Reso
 		}
 		validated := *want
 		validated.validate = val
+		validated.redact = ral.IsMarked(File{}, r, "content")
 		want = &validated
 	}
 
@@ -1674,7 +1679,7 @@ func fileBoolParam(r catalog.Resource, name string, def bool) (bool, error) {
 		shown = `"` + shown + `"`
 	}
 	return false, fmt.Errorf("Parameter %s failed on %s: Invalid value %s. Valid values are true, false, yes, no.",
-		name, r.Ref(), shown)
+		name, r.Ref(), rubyvalue.RedactIf(slices.Contains(r.SensitiveParameters, name), "%s", shown))
 }
 
 // ensureChangeMessage is the ensure event's message for a path that was was and is
@@ -1728,6 +1733,9 @@ type content struct {
 	// before it is renamed over the path. Unstaged content is never validated
 	// (type/file.rb:935, 962-964).
 	validate *validation
+	// redact is set when content is marked Sensitive: the checksums of a
+	// discarded write are digests of it, so they print as [redacted] (D-78).
+	redact bool
 }
 
 // literalContent is content held in memory: what it writes is what it is.
@@ -1754,11 +1762,14 @@ func checksumOf(r io.Reader) (string, error) {
 // checksumMismatchError is type/file.rb:1076-1081's fail_if_checksum_is_wrong:
 // the bytes written are not the bytes that were measured, so the write is
 // discarded.
-type checksumMismatchError struct{ written, desired string }
+type checksumMismatchError struct {
+	written, desired string
+	redact           bool
+}
 
 func (e *checksumMismatchError) Error() string {
 	return fmt.Sprintf("File written to disk did not match desired checksum; discarding changes (%s vs %s)",
-		e.written, e.desired)
+		rubyvalue.RedactIf(e.redact, "%s", e.written), rubyvalue.RedactIf(e.redact, "%s", e.desired))
 }
 
 // createFile writes a brand new file at path, at exactly mode.
@@ -1890,7 +1901,7 @@ func writeViaTemp(ctx context.Context, fsys fileSystem, path string, c content, 
 		// Puppet checks inside replace_file's block: the temp file goes and
 		// the path keeps what it had.
 		_ = fsys.Remove(tmpPath)
-		return &checksumMismatchError{written: written, desired: c.sum}
+		return &checksumMismatchError{written: written, desired: c.sum, redact: c.redact}
 	}
 
 	if owner != nil {

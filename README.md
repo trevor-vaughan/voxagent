@@ -569,6 +569,7 @@ task dev:report-diff-container  # the report comparison for package, exec, user 
 task dev:report-diff-systemd    # the report comparison for service, in a systemd container
 task dev:report-diff-simp       # both agents apply the public SIMP catalog, in systemd containers
 task dev:augeas-lib             # the libaugeas binding against openvox's real library, in a container
+task dev:sensitive-canary       # no Sensitive value leaks from real applies and extension-host routes, in a container
 ```
 
 `dev:report-diff`, `dev:report-diff-extension` and `dev:idempotence` run inside
@@ -590,6 +591,12 @@ compares an `exec` event — `executed_command`, `returns` as the property a
 non-zero status is attributed to, the refresh callback event — against Ruby.
 `user` and `group` are compared there too: they change the machine's
 accounts, which only a disposable container may have changed for it.
+
+`dev:sensitive-canary` is run explicitly too: it proves no marked `Sensitive`
+value reaches the report, a log line or the console, in real applies of every
+type and on the extension-host routes, inside the same image (it needs
+`task fleet:images` and `task fleet:vendor`); `go test ./cmd/voxagent -run
+TestSensitiveCanarySweep` is its native half.
 
 `dev:report-diff-simp` is the extension host's acceptance gate: it compiles the
 public SIMP catalog from pinned forge modules, applies it for real with Ruby

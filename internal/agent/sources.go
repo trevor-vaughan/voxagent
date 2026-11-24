@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/voxagent/voxagent/internal/catalog"
+	"github.com/voxagent/voxagent/internal/lib/rubyvalue"
 	"github.com/voxagent/voxagent/internal/puppetapi"
 	"github.com/voxagent/voxagent/internal/runlog"
 )
@@ -78,8 +79,11 @@ func FetchSources(ctx context.Context, c *puppetapi.Client, cat *catalog.Catalog
 		} else {
 			n, err = fetchOne(fctx, c, environment, root, name, f)
 		}
+		if err != nil && f.marked {
+			err = hideMount(err, f.mountPath)
+		}
 		if err != nil {
-			return nil, fmt.Errorf("source %s: %w", f.uri, err)
+			return nil, fmt.Errorf("source %s: %w", shown, err)
 		}
 		runlog.Debugf(ctx, "voxagent", "source %s: %d bytes in %s", shown, n, time.Since(started).Round(time.Millisecond))
 		m[f.uri] = filepath.Join(dir, name)
@@ -108,9 +112,10 @@ func collectSources(cat *catalog.Catalog, server string) ([]sourceFetch, error) 
 			if !ok {
 				continue
 			}
-			mountPath, isPuppet, err := puppetMountPath(s, server)
+			marked := slices.Contains(r.SensitiveParameters, "source")
+			mountPath, isPuppet, err := puppetMountPath(s, server, marked)
 			if err != nil {
-				return nil, fmt.Errorf("%s: source %s: %w", r.Ref(), s, err)
+				return nil, fmt.Errorf("%s: source %s: %w", r.Ref(), rubyvalue.RedactIf(marked, "%s", s), err)
 			}
 			if !isPuppet {
 				continue
@@ -119,17 +124,17 @@ func collectSources(cat *catalog.Catalog, server string) ([]sourceFetch, error) 
 			if v, ok := r.Parameters["links"]; ok {
 				links, _ = v.(string)
 				if links != "manage" && links != "follow" {
-					return nil, fmt.Errorf("%s: source %s: links => %v is not implemented", r.Ref(), s, v)
+					return nil, fmt.Errorf("%s: source %s: links => %v is not implemented", r.Ref(), rubyvalue.RedactIf(marked, "%s", s), v)
 				}
 			}
 			recurse := fmt.Sprint(r.Parameters["recurse"]) == "true"
-			marked := slices.Contains(r.SensitiveParameters, "source")
 			if i, seen := index[s]; seen {
 				// One download serves every File with this source: a tree
 				// also serves a File that does not recurse, but links
 				// changes what the server sends.
 				if fetches[i].links != links {
-					return nil, fmt.Errorf("%s: source %s: links => %s, but another File with this source has links => %s", r.Ref(), s, links, fetches[i].links)
+					return nil, fmt.Errorf("%s: source %s: links => %s, but another File with this source has links => %s",
+						r.Ref(), rubyvalue.RedactIf(marked || fetches[i].marked, "%s", s), links, fetches[i].links)
 				}
 				fetches[i].recurse = fetches[i].recurse || recurse
 				fetches[i].marked = fetches[i].marked || marked
@@ -145,8 +150,9 @@ func collectSources(cat *catalog.Catalog, server string) ([]sourceFetch, error) 
 // puppetMountPath returns the mount path a puppet: source names on server, and
 // whether s is a puppet: URI at all. It parses s as ral's parseSourceURL does,
 // so the path is the literal text: % is escaped first (Request#set_uri_key).
-// A trailing "/" is not part of the mount path (source.rb strips it).
-func puppetMountPath(s, server string) (string, bool, error) {
+// A trailing "/" is not part of the mount path (source.rb strips it). When
+// marked, the error names no part of s.
+func puppetMountPath(s, server string, marked bool) (string, bool, error) {
 	u, err := url.Parse(strings.ReplaceAll(s, "%", "%25"))
 	if err != nil || u.Scheme != "puppet" || u.Opaque != "" {
 		return "", false, nil
@@ -155,13 +161,32 @@ func puppetMountPath(s, server string) (string, bool, error) {
 		return "", true, errors.New("a puppet: source with a user, query or fragment is not implemented")
 	}
 	if u.Host != "" && !strings.EqualFold(u.Host, server) {
-		return "", true, fmt.Errorf("names host %q; sources are fetched only from the server %s", u.Host, server)
+		return "", true, fmt.Errorf("names host %s; sources are fetched only from the server %s", rubyvalue.RedactIf(marked, "%q", u.Host), server)
 	}
 	mountPath := strings.TrimRight(strings.TrimPrefix(u.Path, "/"), "/")
 	if err := validRelPath(mountPath); err != nil {
+		if marked {
+			err = hideMount(err, mountPath)
+		}
 		return "", true, fmt.Errorf("not a mount path: %w", err)
 	}
 	return mountPath, true, nil
+}
+
+// hideMount is err, the failure of a marked source, with its mount path
+// replaced by [redacted] wherever the text names it: quoted (validRelPath),
+// escaped segment by segment (a request's URL, as puppetapi builds it) and as
+// written (a server's message).
+func hideMount(err error, mountPath string) error {
+	if mountPath == "" {
+		return err // a Replacer would insert [redacted] between every byte
+	}
+	escaped := strings.Split(mountPath, "/")
+	for i, seg := range escaped {
+		escaped[i] = url.PathEscape(seg)
+	}
+	return errors.New(strings.NewReplacer(strconv.Quote(mountPath), "[redacted]",
+		strings.Join(escaped, "/"), "[redacted]", mountPath, "[redacted]").Replace(err.Error()))
 }
 
 // fetchOne downloads a non-recursed source to name in root and returns the

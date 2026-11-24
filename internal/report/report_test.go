@@ -779,3 +779,70 @@ func TestObserveSeesEveryEntryInOrder(t *testing.T) {
 		t.Errorf("an observer set to nil still saw an entry: %+v", seen)
 	}
 }
+
+func redactSecret(s string) string { return strings.ReplaceAll(s, "SECRET", "[redacted]") }
+
+func TestAddLogScrubsEntriesAddedAfterSetScrubber(t *testing.T) {
+	r := New("n", "production", false)
+	r.Log("notice", "Puppet", "before SECRET")
+	r.SetScrubber(redactSecret)
+	r.Log("notice", "Puppet", "a SECRET")
+	r.AddLog(LogEntry{Level: "notice", Source: "Exec[SECRET]", Message: "b SECRET"})
+	if got := r.Logs[0].Message; got != "before SECRET" {
+		t.Errorf("entry added before SetScrubber = %q, want unchanged", got)
+	}
+	if got := r.Logs[1].Message; got != "a [redacted]" {
+		t.Errorf("Message = %q, want %q", got, "a [redacted]")
+	}
+	if got := r.Logs[2].Source; got != "Exec[SECRET]" {
+		t.Errorf("Source = %q, want unchanged", got)
+	}
+	r.SetScrubber(nil)
+	r.Log("notice", "Puppet", "c SECRET")
+	if got := r.Logs[3].Message; got != "c SECRET" {
+		t.Errorf("after SetScrubber(nil) Message = %q, want unchanged", got)
+	}
+}
+
+func TestObserverSeesEntryAsGiven(t *testing.T) {
+	r := New("n", "production", false)
+	r.SetScrubber(redactSecret)
+	var seen []string
+	r.Observe(func(e LogEntry) { seen = append(seen, e.Message) })
+	r.Log("notice", "Puppet", "a SECRET")
+	if len(seen) != 1 || seen[0] != "a SECRET" {
+		t.Errorf("observer saw %q, want [\"a SECRET\"]", seen)
+	}
+	if got := r.Logs[0].Message; got != "a [redacted]" {
+		t.Errorf("stored Message = %q, want %q", got, "a [redacted]")
+	}
+}
+
+func TestAddResourceScrubsEventMessages(t *testing.T) {
+	r := New("n", "production", false)
+	r.SetScrubber(redactSecret)
+	events := []Event{{Message: "changed SECRET", DesiredValue: "SECRET"}}
+	r.AddResource(ResourceStatus{Resource: "Exec[x]", Events: events})
+	got := r.ResourceStatuses["Exec[x]"].Events[0]
+	if got.Message != "changed [redacted]" {
+		t.Errorf("Message = %q, want %q", got.Message, "changed [redacted]")
+	}
+	if got.DesiredValue != "SECRET" {
+		t.Errorf("DesiredValue = %v, want unchanged", got.DesiredValue)
+	}
+	if events[0].Message != "changed SECRET" {
+		t.Errorf("caller's slice mutated: %q", events[0].Message)
+	}
+}
+
+func TestNoScrubberLeavesMessages(t *testing.T) {
+	r := New("n", "production", false)
+	r.Log("notice", "Puppet", "a SECRET")
+	r.AddResource(ResourceStatus{Resource: "Exec[x]", Events: []Event{{Message: "changed SECRET"}}})
+	if got := r.Logs[0].Message; got != "a SECRET" {
+		t.Errorf("log Message = %q", got)
+	}
+	if got := r.ResourceStatuses["Exec[x]"].Events[0].Message; got != "changed SECRET" {
+		t.Errorf("event Message = %q", got)
+	}
+}

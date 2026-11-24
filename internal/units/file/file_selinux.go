@@ -756,6 +756,9 @@ type selinuxPlan struct {
 	ops  selinuxOps
 	fsys fileSystem        // resolves path for ops: a generated child's stays in its tree
 	want map[string]string // by property; a property with no value is absent
+	// redact is set when any sel* property is marked Sensitive: a context
+	// names every field, so the warning that repeats one is [redacted] (D-78).
+	redact bool
 
 	// cur is the context retrieve_resource read before anything was synced;
 	// curOK is false when there was none.
@@ -800,7 +803,8 @@ func planSELinux(ctx context.Context, se selinuxOps, fsys fileSystem, path strin
 		}
 		return nil, nil
 	}
-	p := &selinuxPlan{ops: se, fsys: fsys, want: map[string]string{}}
+	p := &selinuxPlan{ops: se, fsys: fsys, want: map[string]string{},
+		redact: slices.ContainsFunc(selProps, func(prop string) bool { return ral.IsMarked(File{}, r, prop) })}
 	var undeclared []string
 	for _, prop := range selProps {
 		if v, ok := r.Parameters[prop].(string); ok {
@@ -938,7 +942,7 @@ func applySELinux(plan *selinuxPlan, path string, noop, fix bool) ([]ral.Change,
 				next := withField(raw, prop, want)
 				if plan.ops.set(plan.fsys, path, next) != nil {
 					warnings = append(warnings, ral.Warning{Source: "Puppet",
-						Message: fmt.Sprintf("Failed to set SELinux context %s on %s", next, path)})
+						Message: fmt.Sprintf("Failed to set SELinux context %s on %s", rubyvalue.RedactIf(plan.redact, "%s", next), path)})
 				}
 			}
 		}

@@ -1544,3 +1544,22 @@ func TestSELinuxLogsWhyADeclaredPropertyIsIgnored(t *testing.T) {
 		})
 	}
 }
+
+// D-78: the context a failed set warns about carries every field, so a marked
+// sel* property prints it as [redacted], where Ruby prints it.
+func TestSELinuxSetFailureWarningRedactsMarkedContext(t *testing.T) {
+	p := filepath.Join(t.TempDir(), "f")
+	mustWrite(t, p, "x")
+	se := enabledSE(p, tmpT)
+	se.setErr = syscall.EINVAL
+	r := raltest.FileRes(p, map[string]any{"ensure": "file", "seltype": "etc_t"})
+	r.SensitiveParameters = []string{"seltype"}
+	_, warnings, err := File{se: se}.Apply(context.Background(), r, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []ral.Warning{{Source: "Puppet", Message: "Failed to set SELinux context [redacted] on " + p}}
+	if !slices.Equal(warnings, want) {
+		t.Errorf("warnings = %+v, want %+v", warnings, want)
+	}
+}

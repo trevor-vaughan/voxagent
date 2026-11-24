@@ -2,7 +2,7 @@ package concat
 
 import (
 	"errors"
-	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/voxagent/voxagent/internal/catalog"
@@ -43,10 +43,14 @@ func nativeConcat(t ral.PluginTree, cat *catalog.Catalog, m unit.Manifest) (Conc
 			var p concatFileParams
 			p, err = parseConcatFile(r)
 			if p.Path != "" {
-				if paths[p.Path] {
-					return 0, fmt.Sprintf("two concat_file resources manage %s", p.Path), false
+				// path is a plain parameter Ruby cannot mark, which the catalog
+				// may list; the reason is logged, so a listed path is [redacted]
+				// whichever of the two it is on (D-78).
+				marked := slices.Contains(r.SensitiveParameters, "path")
+				if firstMarked, dup := paths[p.Path]; dup {
+					return 0, "two concat_file resources manage " + rubyvalue.RedactIf(firstMarked || marked, "%s", p.Path), false
 				}
-				paths[p.Path] = true
+				paths[p.Path] = marked
 			}
 		case "concat_fragment":
 			_, err = parseConcatFragment(r)

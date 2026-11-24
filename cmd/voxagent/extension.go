@@ -5,10 +5,12 @@ import (
 	"os"
 	"sort"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/voxagent/voxagent/internal/catalog"
 	"github.com/voxagent/voxagent/internal/extension"
+	"github.com/voxagent/voxagent/internal/lib/redact"
 	"github.com/voxagent/voxagent/internal/ral"
 )
 
@@ -20,6 +22,9 @@ type extensionConfig struct {
 	level    string // the run's level, which the host's Puppet logs at
 	disabled bool
 	timeouts extension.Timeouts
+	// scrubber is the run's current scrubber, which the host's stderr is
+	// scrubbed with as it arrives; nil leaves that stderr as the host wrote it.
+	scrubber *atomic.Pointer[redact.Scrubber]
 }
 
 // extensionIngest is what the extension host contributed to a run. A zero
@@ -57,7 +62,11 @@ func ingestExtensions(cfg extensionConfig, raw []byte, cat *catalog.Catalog,
 		return in, fmt.Sprintf("voxagent: --no-ruby: type(s) %s need the extension host; nothing applied",
 			strings.Join(needed, ", "))
 	}
-	host, err := extension.Launch(extension.Config{Ruby: cfg.ruby, Timeouts: cfg.timeouts}, os.Environ())
+	var scrub func(string) string
+	if cfg.scrubber != nil {
+		scrub = func(s string) string { return cfg.scrubber.Load().Scrub(s) }
+	}
+	host, err := extension.Launch(extension.Config{Ruby: cfg.ruby, Timeouts: cfg.timeouts, Scrub: scrub}, os.Environ())
 	if err != nil {
 		return in, fmt.Sprintf("voxagent: the extension host is unavailable: %v; nothing applied", err)
 	}
@@ -85,9 +94,14 @@ func ingestExtensions(cfg extensionConfig, raw []byte, cat *catalog.Catalog,
 	}
 	// Generation may add types the catalog did not name.
 	needed = nonNativeTypes(cat, claimed)
-	// Puppet logs these during conversion, before the report is a log destination.
+	// Puppet logs these during conversion, before the report is a log
+	// destination. cat now holds the host's generated resources too.
+	sc := redact.New(cat)
+	if cfg.scrubber != nil {
+		cfg.scrubber.Store(sc)
+	}
 	for _, l := range load.Logs {
-		fmt.Fprintf(os.Stderr, "voxagent: extension host: %s: %s\n", l.Level, l.Message)
+		stderrf(sc, "voxagent: extension host: %s: %s\n", l.Level, l.Message)
 	}
 
 	tier3 := map[string]struct{}{}

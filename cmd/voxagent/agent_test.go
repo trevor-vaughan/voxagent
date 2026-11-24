@@ -51,8 +51,9 @@ type fakeServer struct {
 	requests      []string
 	nodeQuery     url.Values
 	catalogForm   url.Values
-	catalogStatus int // non-200 answers the catalog request with this status
-	reportStatus  int // non-200 answers the report PUT with this status
+	catalogStatus int    // non-200 answers the catalog request with this status
+	reportStatus  int    // non-200 answers the report PUT with this status
+	reportError   string // that answer's message; "" is "report processor failed"
 	// holdContent, when set, is closed on the first file_content request, which
 	// is then left unanswered until the client gives up, as is any retry.
 	holdContent chan struct{}
@@ -222,7 +223,15 @@ func (f *fakeServer) serve(w http.ResponseWriter, r *http.Request) {
 	case p == "/puppet/v3/report/"+agentCertname && r.Method == http.MethodPut:
 		f.report = body
 		if f.reportStatus != 0 {
-			http.Error(w, `{"message":"report processor failed"}`, f.reportStatus)
+			msg := f.reportError
+			if msg == "" {
+				msg = "report processor failed"
+			}
+			b, err := json.Marshal(map[string]string{"message": msg})
+			if err != nil {
+				f.t.Error(err)
+			}
+			http.Error(w, string(b), f.reportStatus)
 			return
 		}
 		w.Write([]byte(`[]`))
@@ -508,6 +517,109 @@ func TestAgentReportFailureKeepsExit(t *testing.T) {
 		t.Errorf("the catalog was not applied: %v", err)
 	}
 	assertNoSourcesDir(t, base)
+}
+
+// The server's answer to the report PUT is printed after the catalog is
+// decoded, so a marked value it echoes is scrubbed.
+func TestAgentReportSendFailureIsScrubbed(t *testing.T) {
+	bin := buildBinary(t)
+	base := agentScratch(t)
+	f := newFakeServer(t, filepath.Join(base, "managed.txt"))
+	var cat map[string]any
+	if err := json.Unmarshal(f.catalog, &cat); err != nil {
+		t.Fatal(err)
+	}
+	notify := cat["resources"].([]any)[0].(map[string]any)
+	notify["parameters"] = map[string]any{"message": "SINKSECRET-3"}
+	notify["sensitive_parameters"] = []any{"message"}
+	var err error
+	if f.catalog, err = json.Marshal(cat); err != nil {
+		t.Fatal(err)
+	}
+	f.reportStatus, f.reportError = http.StatusInternalServerError, "processor saw SINKSECRET-3"
+
+	_, stderr, _ := run(t, bin, agentArgs(t, base, f)...)
+	if !strings.Contains(stderr, "processor saw [redacted]") || strings.Contains(stderr, "SINKSECRET-3") {
+		t.Errorf("stderr lacks the scrubbed report failure or holds SINKSECRET-3:\n%s", stderr)
+	}
+}
+
+// serveResources makes f's catalog hold resources instead of its own.
+func serveResources(t *testing.T, f *fakeServer, resources ...map[string]any) {
+	t.Helper()
+	var cat map[string]any
+	if err := json.Unmarshal(f.catalog, &cat); err != nil {
+		t.Fatal(err)
+	}
+	cat["resources"] = resources
+	var err error
+	if f.catalog, err = json.Marshal(cat); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// A source fetch fails after the catalog is decoded: the failure line names no
+// marked value, whether the File marks its source or another resource marks
+// the same text.
+func TestAgentSourceFetchFailureIsScrubbed(t *testing.T) {
+	bin := buildBinary(t)
+	const source = "puppet:///modules/m/D8FAILSRC" // the fake answers 400 for it
+	for _, c := range []struct {
+		name   string
+		marker map[string]any // the resource that marks source
+		want   string
+	}{
+		{name: "File marks it", want: "voxagent: source [redacted]: "},
+		{name: "Notify marks it", marker: map[string]any{"type": "Notify", "title": "m", "tags": []any{},
+			"parameters": map[string]any{"message": source}, "sensitive_parameters": []any{"message"}},
+			want: "voxagent: source [redacted]: "},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			base := agentScratch(t)
+			f := newFakeServer(t, filepath.Join(base, "managed.txt"))
+			file := map[string]any{"type": "File", "title": filepath.Join(base, "managed.txt"), "tags": []any{},
+				"parameters": map[string]any{"ensure": "file", "source": source}}
+			resources := []map[string]any{file}
+			if c.marker == nil {
+				file["sensitive_parameters"] = []any{"source"}
+			} else {
+				resources = append(resources, c.marker)
+			}
+			serveResources(t, f, resources...)
+			stdout, stderr, code := run(t, bin, append(agentArgs(t, base, f), "--debug", "--detailed-exitcodes")...)
+			if code != 1 {
+				t.Fatalf("exit = %d, want 1 (could not run)\n%s", code, stderr)
+			}
+			if !strings.Contains(stderr, c.want) {
+				t.Errorf("stderr lacks %q:\n%s", c.want, stderr)
+			}
+			for where, text := range map[string]string{"stdout": stdout, "stderr": stderr} {
+				if c.marker == nil && strings.Contains(text, "D8FAILSRC") || strings.Contains(text, source) {
+					t.Errorf("%s holds the marked source:\n%s", where, text)
+				}
+			}
+		})
+	}
+}
+
+// The lines logged between the catalog's decoding and applying it (the source
+// fetch's debug lines) reach the console scrubbed.
+func TestAgentPreApplyConsoleLinesAreScrubbed(t *testing.T) {
+	bin := buildBinary(t)
+	base := agentScratch(t)
+	f := newFakeServer(t, filepath.Join(base, "managed.txt"))
+	serveResources(t, f,
+		map[string]any{"type": "Notify", "title": "m", "tags": []any{},
+			"parameters": map[string]any{"message": "puppet:///modules/m/x"}, "sensitive_parameters": []any{"message"}},
+		map[string]any{"type": "File", "title": filepath.Join(base, "managed.txt"), "tags": []any{},
+			"parameters": map[string]any{"ensure": "file", "source": "puppet:///modules/m/x"}})
+	stdout, stderr, code := run(t, bin, append(agentArgs(t, base, f), "--debug")...)
+	if code != 0 {
+		t.Fatalf("exit = %d, want 0\n%s", code, stderr)
+	}
+	if !strings.Contains(stdout, "Debug: voxagent: source [redacted]: ") || strings.Contains(stdout, "puppet:///modules/m/x") {
+		t.Errorf("stdout lacks the scrubbed source line or holds the marked value:\n%s", stdout)
+	}
 }
 
 // A --report-dir write failure after applying is could-not-run, as for

@@ -27,9 +27,14 @@ module VoxagentHost
   class Sink
     def initialize
       @lines = []
+      @redacted = []
     end
 
+    # The forms each line arriving from now on has replaced by [redacted].
+    attr_writer :redacted
+
     def <<(msg)
+      msg.message = VoxagentHost.redact(msg.message, @redacted) unless @redacted.empty?
       @lines << msg
     end
 
@@ -50,6 +55,61 @@ module VoxagentHost
     copy.force_encoding('US-ASCII').encode('UTF-8', invalid: :replace, undef: :replace, replace: "�")
   end
 
+  # Every non-empty string a Sensitive value can print as: Puppet formats a
+  # value with to_s or inspect, and an Array or Hash's values each the same way.
+  # An empty collection's text carries no secret; a Hash's keys are not forms.
+  def self.forms(value)
+    return [] if value.nil?
+
+    nested = case value
+             when Hash then value.values
+             when Array then value
+             else []
+             end
+    ([value.to_s, value.inspect] + nested.flat_map { |v| forms(v) }).reject { |f| ['', '[]', '{}'].include?(f) }.uniq
+  end
+
+  # Replaces every form in text with [redacted]. It finds every match of every
+  # form, overlapping ones too, and replaces each run of overlapping or adjacent
+  # matches with one marker, so no fragment of a secret is left. It matches
+  # bytes, before the UTF-8 coercion, so invalid UTF-8 elsewhere in text cannot
+  # hide a secret. A form of 3 bytes or fewer matches only as a whole token.
+  # Puppet validates and munges a parameter before it marks any Sensitive
+  # (type.rb:2341-2345), so its refusals and debug lines print the value (D-78).
+  def self.redact(text, forms)
+    return utf8(text.to_s) if forms.empty?
+
+    bytes = text.to_s.b
+    spans = forms.flat_map do |form|
+      escaped = Regexp.escape(form.b)
+      escaped = "(?<![A-Za-z0-9_])#{escaped}(?![A-Za-z0-9_])" if form.bytesize <= 3
+      pattern = Regexp.new(escaped, Regexp::NOENCODING)
+      found = []
+      pos = 0
+      while (m = pattern.match(bytes, pos))
+        found << [m.begin(0), m.end(0)]
+        pos = m.begin(0) + 1
+      end
+      found
+    end
+    out = ''.b
+    done = 0
+    # A span joins the run while it starts at or before the run's furthest end,
+    # so a span nested in a longer one cannot cut the run short.
+    runs = spans.sort.each_with_object([]) do |span, merged|
+      if merged.any? && span[0] <= merged.last[1]
+        merged.last[1] = [merged.last[1], span[1]].max
+      else
+        merged << span.dup
+      end
+    end
+    runs.each do |from, to|
+      out << bytes[done...from] << '[redacted]'
+      done = to
+    end
+    utf8(out << bytes[done..])
+  end
+
   def self.clean(value)
     case value
     when String then utf8(value)
@@ -67,11 +127,11 @@ module VoxagentHost
   # and any value a provider reads as bytes are such Strings. The event is
   # given new values; the Strings and collections it shares with its resource
   # are left untouched.
-  def self.event_hash(event)
+  def self.event_hash(event, forms)
     %i[@status @property @desired_value @previous_value @message].each do |ivar|
       v = event.instance_variable_get(ivar)
       case v
-      when String then event.instance_variable_set(ivar, utf8(v))
+      when String then event.instance_variable_set(ivar, ivar == :@message ? redact(v, forms) : utf8(v))
       when Array then event.instance_variable_set(ivar, v.map { |e| e.is_a?(String) ? utf8(e) : e })
       when Set then event.instance_variable_set(ivar, Set.new(v.map { |e| e.is_a?(String) ? utf8(e) : e }))
       end
@@ -90,6 +150,8 @@ module VoxagentHost
       @sink = Sink.new
       @post_eval = []
       @providerless = []
+      @forms = []
+      @forms_of = {}.compare_by_identity
     end
 
     def run
@@ -99,6 +161,7 @@ module VoxagentHost
         return if request.nil?
 
         op, arg = request.first
+        scope([])
         reply =
           begin
             result = dispatch(op, arg)
@@ -106,7 +169,7 @@ module VoxagentHost
             { op => result.key?('logs') ? result : result.merge('logs' => logs) }
           rescue StandardError, ScriptError => e
             @sink.drain
-            { 'error' => { 'message' => VoxagentHost.utf8("#{e.class}: #{e.message}") } }
+            { 'error' => { 'message' => VoxagentHost.redact("#{e.class}: #{e.message}", @forms) } }
           end
         write(reply)
         return if op == 'shutdown'
@@ -114,6 +177,14 @@ module VoxagentHost
     end
 
     private
+
+    # What a delegated resource's Sensitive parameters print as, redacted from
+    # every log line and failure text the host emits until the next scope call
+    # (D-78). The request loop resets it, and each operation sets its resource's.
+    def scope(forms)
+      @forms = forms
+      @sink.redacted = forms
+    end
 
     def dispatch(op, arg)
       case op
@@ -305,16 +376,21 @@ module VoxagentHost
       @ref_of = {}.compare_by_identity
       invalid = []
       catalog.resources.each do |res|
+        forms = []
         ref = original.fetch(res.ref)
         copy = res.copy_as_resource
         copy.catalog = @catalog
+        forms = res.sensitive_parameters.flat_map { |name| VoxagentHost.forms(res[name]) }
+        scope(forms)
         ral = copy.to_ral
+        @forms_of[ral] = forms unless forms.empty?
         @catalog.add_resource(ral)
         @by_ref[ref] = ral
         @ref_of[ral] = ref
       rescue StandardError => e
-        invalid << { 'ref' => ref, 'message' => VoxagentHost.utf8(e.message) }
+        invalid << { 'ref' => ref, 'message' => VoxagentHost.redact(e.message, forms) }
       end
+      scope([])
       catalog.edges.each do |edge|
         source = @by_ref[original[edge.source.ref]]
         target = @by_ref[original[edge.target.ref]]
@@ -339,7 +415,13 @@ module VoxagentHost
           super(res, parent_resource, priority)
         end
       end)
-      changes = observe { @catalog.vertices.dup.each { |r| @generator.generate_additional_resources(r) } }
+      changes = observe do
+        @catalog.vertices.dup.each do |r|
+          scope(@forms_of.fetch(r, []))
+          @generator.generate_additional_resources(r)
+        end
+        scope([])
+      end
       changes['resources'].each do |made|
         name = made['type'].downcase
         types[name] ||= classify([{ 'type' => made['type'] }], libdir)[name]
@@ -352,6 +434,7 @@ module VoxagentHost
     # add_resources adds them; voxagent applies them as the parent's unit.
     def eval_generate(arg)
       r = resource(arg.fetch('ref'))
+      scope(@forms_of.fetch(r, []))
       # additional_resource_generator.rb:56-57: a type without eval_generate generates nothing.
       unless r.respond_to?(:eval_generate)
         return { 'resources' => [], 'containers' => {}, 'generators' => {}, 'before' => [], 'overrides' => [],
@@ -520,6 +603,7 @@ module VoxagentHost
 
     def evaluate(arg)
       r = resource(arg.fetch('ref'))
+      scope(@forms_of.fetch(r, []))
       # noop per call; the noop metaparameter would still win (type.rb:1132), and
       # voxagent refuses it at pre-flight.
       Puppet[:noop] = arg.fetch('noop') == true
@@ -535,7 +619,7 @@ module VoxagentHost
       end
       # Event#to_data_hash drops invalidate_refreshes, which event_manager.rb:82
       # reads, so it travels beside the events.
-      { 'events' => status.events.map { |e| VoxagentHost.event_hash(e) },
+      { 'events' => status.events.map { |e| VoxagentHost.event_hash(e, @forms) },
         'failed' => status.failed ? true : false, 'skipped' => status.skipped ? true : false,
         'invalidate_refreshes' => status.events.any?(&:invalidate_refreshes) }
     end
@@ -545,13 +629,14 @@ module VoxagentHost
     # (transaction.rb:111-121, :333-339). voxagent logs the skip itself.
     def skip(arg)
       r = resource(arg.fetch('ref'))
+      scope(@forms_of.fetch(r, []))
       return unsuitable unless r.suitable?
 
       events = []
       if prefetch_failed?(r)
         status = Puppet::Resource::Status.new(r)
         status.fail_with_event(prefetch_message(r))
-        events = status.events.map { |e| VoxagentHost.event_hash(e) }
+        events = status.events.map { |e| VoxagentHost.event_hash(e, @forms) }
       end
       { 'events' => events, 'failed' => !events.empty?, 'skipped' => true, 'invalidate_refreshes' => false }
     end
@@ -569,6 +654,7 @@ module VoxagentHost
     # teardown (finish). voxagent records the failed status itself.
     def overly_deferred(arg)
       r = resource(arg.fetch('ref'))
+      scope(@forms_of.fetch(r, []))
       if r.provider
         r.err format('Provider %<name>s is not functional on this host', name: r.provider.class.name)
       else
@@ -583,7 +669,11 @@ module VoxagentHost
     def prefetch_failed?(r)
       klass = r.provider.class
       @post_eval << klass if klass.respond_to?(:post_resource_eval) && !@post_eval.include?(klass)
+      # A provider prefetches every resource it serves at once, so its lines
+      # may print any of their values.
+      scope(provider_forms(klass))
       @tx.prefetch_if_necessary(r)
+      scope(@forms_of.fetch(r, []))
       @tx.prefetch_failed_providers[r.type][klass.name] ? true : false
     end
 
@@ -597,14 +687,20 @@ module VoxagentHost
     # log_exception's, so they are returned apart for voxagent to interleave.
     def refresh(arg)
       r = resource(arg.fetch('ref'))
+      scope(@forms_of.fetch(r, []))
       begin
         r.refresh
         { 'refreshed' => true, 'error' => nil, 'exception_logs' => [] }
       rescue StandardError => e
         callback = logs
         r.log_exception(e)
-        { 'refreshed' => false, 'error' => VoxagentHost.utf8(e.to_s), 'logs' => callback, 'exception_logs' => logs }
+        { 'refreshed' => false, 'error' => VoxagentHost.redact(e.to_s, @forms), 'logs' => callback, 'exception_logs' => logs }
       end
+    end
+
+    # The forms of every marked resource a provider class serves.
+    def provider_forms(klass)
+      @forms_of.select { |r, _| r.provider.class == klass }.values.flatten.uniq
     end
 
     # transaction.rb:143-153.
@@ -613,6 +709,7 @@ module VoxagentHost
         Puppet.err format('Could not find a suitable provider for %<type>s', type: type)
       end
       @post_eval.each do |provider|
+        scope(provider_forms(provider))
         provider.post_resource_eval
       rescue StandardError => e
         Puppet.log_exception(e, format('post_resource_eval failed for provider %<p>s', p: provider))
@@ -622,18 +719,22 @@ module VoxagentHost
   end
 end
 
-# The protocol keeps private duplicates of stdin and stdout. Ruby opens every
-# descriptor close-on-exec, so no command Puppet runs inherits them; fd 1 then
-# points at stderr and fd 0 at the null device, so module code that prints or
-# reads cannot corrupt the framing. ARGV is consumed so Kernel#gets in module
-# code does not read the state directory's path.
-protocol_out = $stdout.dup.binmode
-protocol_in = $stdin.dup.binmode
-$stdout.reopen($stderr)
-$stdin.reopen(File::NULL)
-state_dir = ARGV.shift
-raise ArgumentError, 'usage: host.rb <state-dir>' unless state_dir
+# Loading this file defines the module only; the tests load it to reach
+# VoxagentHost.redact and .forms. Only `ruby host.rb <state-dir>` serves.
+if $PROGRAM_NAME == __FILE__
+  # The protocol keeps private duplicates of stdin and stdout. Ruby opens every
+  # descriptor close-on-exec, so no command Puppet runs inherits them; fd 1 then
+  # points at stderr and fd 0 at the null device, so module code that prints or
+  # reads cannot corrupt the framing. ARGV is consumed so Kernel#gets in module
+  # code does not read the state directory's path.
+  protocol_out = $stdout.dup.binmode
+  protocol_in = $stdin.dup.binmode
+  $stdout.reopen($stderr)
+  $stdin.reopen(File::NULL)
+  state_dir = ARGV.shift
+  raise ArgumentError, 'usage: host.rb <state-dir>' unless state_dir
 
-require 'puppet'
-VoxagentHost::Server.new(protocol_in, protocol_out, state_dir).run
-exit 0
+  require 'puppet'
+  VoxagentHost::Server.new(protocol_in, protocol_out, state_dir).run
+  exit 0
+end

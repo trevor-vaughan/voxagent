@@ -1,6 +1,10 @@
 package rubyvalue
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/voxagent/voxagent/internal/catalog"
+)
 
 func errText(err error) string {
 	if err == nil {
@@ -76,5 +80,27 @@ func TestStrip(t *testing.T) {
 		if got := Strip(in); got != want {
 			t.Errorf("strip(%q) = %q, want %q", in, got, want)
 		}
+	}
+}
+
+// D-78: Integer's error repeats the value, so a Sensitive name redacts it in
+// the detail as well as in the munge wrapper.
+func TestMungeIntegerFailureRedactsSensitiveDetail(t *testing.T) {
+	_, err := Integer("09")
+	for _, tc := range []struct {
+		name      string
+		sensitive []string
+		want      string
+	}{
+		{"unmarked", nil, `Parameter gid failed on Group[g]: Munging failed for value "09" in class gid: invalid value for Integer(): "09"`},
+		{"marked", []string{"gid"}, "Parameter gid failed on Group[g]: Munging failed for value [redacted] in class gid: invalid value for Integer(): [redacted]"},
+		{"another name marked", []string{"members"}, `Parameter gid failed on Group[g]: Munging failed for value "09" in class gid: invalid value for Integer(): "09"`},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			r := catalog.Resource{Type: "Group", Title: "g", SensitiveParameters: tc.sensitive}
+			if got := errText(MungeIntegerFailure(r, "gid", "09", err)); got != tc.want {
+				t.Errorf("got %q, want %q", got, tc.want)
+			}
+		})
 	}
 }

@@ -3,6 +3,7 @@ package extension
 import (
 	"encoding/json"
 	"errors"
+	"io"
 	"os"
 	"os/exec"
 	"slices"
@@ -207,6 +208,17 @@ func fakeHost(mode string) int {
 		return 0
 	}
 	reply(`{"hello":{"protocol":1,"puppet_version":"8.10.0","ruby_version":"3.4.9"}}`)
+	if mode == "stderr-split" {
+		os.Stderr.WriteString("one SECRET\ntwo SE")
+	}
+	if mode == "stderr-grandchild" {
+		os.Stderr.WriteString("own SECRET\n")
+		gc := exec.Command("/usr/bin/sleep", "30") // inherits stderr: holds the pipe open past the host's exit
+		gc.Stderr = os.Stderr
+		if err := gc.Start(); err != nil {
+			os.Exit(8)
+		}
+	}
 	for {
 		raw, err := ReadFrame(os.Stdin)
 		if err != nil {
@@ -286,6 +298,13 @@ func fakeHost(mode string) int {
 				reply(`{"refresh":{"refreshed":false,"error":"refresh refused",` +
 					`"logs":[{"level":"notice","source":"Puppet","message":"callback"}],` +
 					`"exception_logs":[{"level":"err","source":"Puppet","message":"refresh refused"}]}}`)
+			case op == "finish" && mode == "stderr-split":
+				os.Stderr.WriteString("CRET\n")
+				reply(`{"finish":{"logs":[]}}`)
+			case op == "shutdown" && mode == "stderr-split":
+				reply(`{"shutdown":{"logs":[]}}`)
+				os.Stderr.WriteString("tail SECRET")
+				return 0
 			case op == "finish":
 				reply(`{"finish":{"logs":[{"level":"notice","source":"Puppet","message":"post ran"}]}}`)
 			case op == "shutdown":
@@ -304,7 +323,7 @@ func startFake(t *testing.T, mode string, timeouts Timeouts) (*Host, error) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	return Start([]string{exe, "-test.run=^$"}, []string{"VOXAGENT_FAKE_HOST=" + mode}, "", timeouts)
+	return Start([]string{exe, "-test.run=^$"}, []string{"VOXAGENT_FAKE_HOST=" + mode}, "", timeouts, nil)
 }
 
 func quick() Timeouts { return Timeouts{Evaluate: 2 * time.Second, Other: 2 * time.Second} }
@@ -373,7 +392,7 @@ func TestHostHandshakeFailures(t *testing.T) {
 }
 
 func TestStartRefusesAMissingInterpreter(t *testing.T) {
-	_, err := Start([]string{"/nonexistent/ruby", "host.rb"}, nil, "", quick())
+	_, err := Start([]string{"/nonexistent/ruby", "host.rb"}, nil, "", quick(), nil)
 	if err == nil {
 		t.Fatal("Start succeeded with no interpreter")
 	}
@@ -516,7 +535,7 @@ func TestStartPassesNoEnvironmentWhenGivenNone(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	h, err := Start([]string{exe, "-fake-host=print-env"}, nil, "", quick())
+	h, err := Start([]string{exe, "-fake-host=print-env"}, nil, "", quick(), nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -588,7 +607,7 @@ func TestFailedHandshakeRemovesTheDirectory(t *testing.T) {
 	if err := os.Mkdir(dir, 0o700); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := Start([]string{exe, "-fake-host=wrong-protocol"}, nil, dir, quick()); err == nil {
+	if _, err := Start([]string{exe, "-fake-host=wrong-protocol"}, nil, dir, quick(), nil); err == nil {
 		t.Fatal("Start succeeded against the wrong protocol")
 	}
 	if _, err := os.Stat(dir); !errors.Is(err, os.ErrNotExist) {
@@ -852,5 +871,122 @@ func TestCanonicalType(t *testing.T) {
 		if got := canonicalType(typ); got != want {
 			t.Errorf("canonicalType(%q) = %v, want %v", typ, got, want)
 		}
+	}
+}
+
+// captureStderr runs f with os.Stderr a pipe and returns what was written to
+// it, restoring os.Stderr however f ends.
+func captureStderr(t *testing.T, f func()) string {
+	t.Helper()
+	rd, wr, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	read := make(chan []byte, 1)
+	go func() {
+		b, _ := io.ReadAll(rd)
+		rd.Close()
+		read <- b
+	}()
+	saved := os.Stderr
+	os.Stderr = wr
+	func() {
+		defer func() {
+			os.Stderr = saved
+			wr.Close()
+		}()
+		f()
+	}()
+	return string(<-read)
+}
+
+// The host's stderr reaches voxagent's line by line through scrub, a line
+// split across writes and a form split with it included, and a final line
+// without a newline is written at Close as it is. An identity scrub, like none,
+// leaves every byte as the host wrote it.
+func TestHostStderrGoesThroughScrub(t *testing.T) {
+	const raw = "one SECRET\ntwo SECRET\ntail SECRET"
+	for _, c := range []struct {
+		name  string
+		scrub func(string) string
+		want  string
+	}{
+		{"scrubbed", func(s string) string { return strings.ReplaceAll(s, "SECRET", "[x]") }, "one [x]\ntwo [x]\ntail [x]"},
+		{"identity", func(s string) string { return s }, raw},
+		{"none", nil, raw},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			exe, err := os.Executable()
+			if err != nil {
+				t.Fatal(err)
+			}
+			got := captureStderr(t, func() {
+				h, err := Start([]string{exe, "-fake-host=stderr-split"}, nil, "", quick(), c.scrub)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if _, err := h.Finish(); err != nil {
+					t.Error(err)
+				}
+				if err := h.Close(); err != nil {
+					t.Error(err)
+				}
+			})
+			if got != c.want {
+				t.Errorf("stderr = %q, want %q", got, c.want)
+			}
+		})
+	}
+}
+
+// A descendant that keeps the host's stderr open does not hold Close once the
+// host itself has exited, and what the host wrote is still scrubbed.
+func TestHostCloseDoesNotWaitForStderrDescendants(t *testing.T) {
+	exe, err := os.Executable()
+	if err != nil {
+		t.Fatal(err)
+	}
+	var elapsed time.Duration
+	got := captureStderr(t, func() {
+		h, err := Start([]string{exe, "-fake-host=stderr-grandchild"}, nil, "",
+			Timeouts{Evaluate: 10 * time.Second, Other: 10 * time.Second},
+			func(s string) string { return strings.ReplaceAll(s, "SECRET", "[x]") })
+		if err != nil {
+			t.Fatal(err)
+		}
+		started := time.Now()
+		if err := h.Close(); err != nil {
+			t.Errorf("Close = %v, want nil", err)
+		}
+		elapsed = time.Since(started)
+	})
+	if elapsed > 5*time.Second {
+		t.Errorf("Close took %s, want it to return once the host exits", elapsed)
+	}
+	if got != "own [x]\n" {
+		t.Errorf("stderr = %q, want the host's own line scrubbed", got)
+	}
+}
+
+// A line that reaches maxPendingStderr bytes without a newline is written,
+// scrubbed, rather than held; the rest of it follows as usual.
+func TestScrubbedLinesFlushesALongLine(t *testing.T) {
+	var out strings.Builder
+	l := &scrubbedLines{w: &out, scrub: func(s string) string { return strings.ReplaceAll(s, "SECRET", "[x]") }}
+	filler := strings.Repeat("a", maxPendingStderr-len("SECRET")-1)
+	if _, err := l.Write([]byte("SECRET" + filler)); err != nil || out.Len() != 0 {
+		t.Fatalf("Write = %v; wrote %d bytes below the cap", err, out.Len())
+	}
+	if _, err := l.Write([]byte("bc")); err != nil {
+		t.Fatal(err)
+	}
+	if want := "[x]" + filler + "bc"; out.String() != want {
+		t.Fatalf("wrote %d bytes at the cap, want %d, scrubbed", out.Len(), len(want))
+	}
+	if _, err := l.Write([]byte("d\n")); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.HasSuffix(out.String(), "bcd\n") || len(l.pending) != 0 {
+		t.Errorf("the rest of the line was not written after the capped part")
 	}
 }

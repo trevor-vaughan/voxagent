@@ -182,10 +182,11 @@ type Report struct {
 	FailedToGenerate bool `json:"-"`
 
 	finalized bool
-	started   time.Time      // New: catalog_application, and total unless runStart is set
-	runStart  time.Time      // StartedAt: total, when set
-	phases    []phase        // AddTime, in the order recorded
-	observer  func(LogEntry) // Observe: called after each appended log entry
+	started   time.Time           // New: catalog_application, and total unless runStart is set
+	runStart  time.Time           // StartedAt: total, when set
+	phases    []phase             // AddTime, in the order recorded
+	observer  func(LogEntry)      // Observe: called after each appended log entry
+	scrub     func(string) string // SetScrubber: applied to stored log and event messages
 }
 
 // phase is one duration configurer.rb records with report.add_times.
@@ -330,13 +331,28 @@ func (r *Report) AddResource(rs ResourceStatus) {
 	if rs.ContainmentPath == nil {
 		rs.ContainmentPath = []string{}
 	}
+	if r.scrub != nil {
+		scrubbed := make([]Event, len(rs.Events))
+		copy(scrubbed, rs.Events)
+		for i := range scrubbed {
+			scrubbed[i].Message = r.scrub(scrubbed[i].Message)
+		}
+		rs.Events = scrubbed
+	}
 	r.ResourceStatuses[rs.Resource] = rs
 }
 
 // Observe sets the one function called with each log entry right after Log or
 // AddLog appends it, in order; nil removes it. The run's console is the
-// observer, so every entry is printed as it is recorded.
+// observer, so every entry is printed as it is recorded. The observer receives
+// the entry unscrubbed: the console scrubs its own output, and scrubbing twice
+// is wrong because a scrubber is not idempotent.
 func (r *Report) Observe(f func(LogEntry)) { r.observer = f }
+
+// SetScrubber sets the function applied to the Message of every log entry and
+// event stored after the call; nil removes it. Entries already stored are not
+// rewritten. A later call replaces the scrubber, for one that knows more forms.
+func (r *Report) SetScrubber(f func(string) string) { r.scrub = f }
 
 // Log appends a log entry.
 func (r *Report) Log(level, source, message string) {
@@ -351,7 +367,11 @@ func (r *Report) AddLog(entries ...LogEntry) {
 		if e.Time == "" {
 			e.Time = time.Now().UTC().Format(time.RFC3339Nano)
 		}
-		r.Logs = append(r.Logs, e)
+		stored := e
+		if r.scrub != nil {
+			stored.Message = r.scrub(e.Message)
+		}
+		r.Logs = append(r.Logs, stored)
 		if r.observer != nil {
 			r.observer(e)
 		}

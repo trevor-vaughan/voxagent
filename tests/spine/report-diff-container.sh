@@ -125,7 +125,8 @@ SEED_VALIDATE="dnf -y -q install sudo >/dev/null 2>&1 &&
 # previous value for Ruby to redact.
 SEED_SENSITIVE="printf 'old\\n' > /tmp/target/s-change &&
   printf 'plain\\n' > /tmp/target/s-mode && chmod 0644 /tmp/target/s-mode &&
-  touch /tmp/target/s-owner && printf 'g\\n' > /tmp/target/s-absent"
+  touch /tmp/target/s-owner && printf 'g\\n' > /tmp/target/s-absent &&
+  mkdir /tmp/target/s-cwd"
 
 # The exec identity fixture's starting state: a root-owned directory nobody
 # cannot search, which a user => nobody exec can start in only because cwd is
@@ -287,7 +288,10 @@ if ! podman run --rm "$IMAGE" sh -c "
     echo '/bin/false exits 0, so the failing exec does not reach the failure path'; exit 1
   fi
   if ! id nobody >/dev/null 2>&1; then
-    echo 'there is no user nobody, so the Sensitive owner change and the user => nobody execs cannot apply'; exit 1
+    echo 'there is no user nobody, so the user => nobody execs cannot apply'; exit 1
+  fi
+  if ! id operator >/dev/null 2>&1; then
+    echo 'there is no user operator, so the Sensitive owner change cannot apply'; exit 1
   fi
   if ! getent group nobody >/dev/null 2>&1; then
     echo 'there is no group nobody, so the group => nobody execs fail instead of running'; exit 1
@@ -486,14 +490,15 @@ node default {
   # Sensitive. A marked property's event and log read "[redacted]"; Notify logs "Sensitive [value redacted]"; a marked Exec
   # command or guard reads "[command redacted]" and its output
   # "[output redacted]". A marked cwd only warns on the console.
+  # Each marked value is unique to its case: voxagent scrubs every occurrence run-wide, so one that recurs in another message diverges from Ruby.
   file { '/tmp/target/s-create': ensure => file, content => Sensitive("topsecret-create\n") }
   file { '/tmp/target/s-change': ensure => file, content => Sensitive("topsecret-change\n") }
-  file { '/tmp/target/s-absent': ensure => absent, content => Sensitive("gone\n") }
-  file { '/tmp/target/s-mode':   ensure => file, content => "plain\n", mode => Sensitive('0600') }
-  file { '/tmp/target/s-owner':  ensure => file, owner => Sensitive('nobody') }
+  file { '/tmp/target/s-absent': ensure => absent, content => Sensitive("absent-secret\n") }
+  file { '/tmp/target/s-mode':   ensure => file, content => "plain\n", mode => Sensitive('0640') }
+  file { '/tmp/target/s-owner':  ensure => file, owner => Sensitive('operator') }
   notify { 'n1': message => Sensitive('notify-secret') }
-  exec { 'e-unless':  command => '/bin/echo ran-unless', unless => Sensitive('/bin/false'), logoutput => true }
-  exec { 'e-cwd':     command => '/bin/echo plain', onlyif => '/bin/true', cwd => Sensitive('/tmp'), logoutput => true }
+  exec { 'e-unless':  command => '/bin/echo ran-unless', unless => Sensitive('/usr/bin/false'), logoutput => true }
+  exec { 'e-cwd':     command => '/bin/echo plain', onlyif => '/bin/true', cwd => Sensitive('/tmp/target/s-cwd'), logoutput => true }
 
   # Exec output (logoutput). The container sets no LANG, so output is decoded
   # as US-ASCII and binary-fail's \377 fails the exec in both agents.
@@ -508,7 +513,7 @@ node default {
   exec { 'lo-string':       command => '/bin/sh -c "echo s"', logoutput => 'true' }
   exec { 'sens-true':       command => Sensitive('/bin/sh -c "echo s-true"'), logoutput => true }
   exec { 'sens-empty':      command => Sensitive('/bin/sh -c "exit 5"') }
-  exec { 'sens-unless':     command => '/bin/sh -c "echo s-unless; exit 6"', unless => Sensitive('/bin/false') }
+  exec { 'sens-unless':     command => '/bin/sh -c "echo s-unless; exit 6"', unless => Sensitive('/usr/bin/false') }
   exec { 'sens-ok-default': command => Sensitive('/bin/sh -c "echo s-ok"') }
   notify { 'kick': message => 'kick' }
   exec { 'refresh-true': command => '/bin/sh -c "echo refreshed"', refreshonly => true, logoutput => true, subscribe => Notify['kick'] }

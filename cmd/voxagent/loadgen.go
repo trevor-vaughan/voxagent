@@ -1,11 +1,10 @@
 package main
 
 import (
-	"fmt"
-	"os"
 	"slices"
 
 	"github.com/voxagent/voxagent/internal/catalog"
+	"github.com/voxagent/voxagent/internal/lib/redact"
 	"github.com/voxagent/voxagent/internal/ral"
 )
 
@@ -13,8 +12,10 @@ import (
 // they stood when it began and in catalog order, and merges what each adds
 // right after its generator. It then judges the new resources as pre-flight
 // and validation judge the catalog's, so a refusal prints through the same
-// lines. It reports whether the run must not start.
-func loadGenerate(cat *catalog.Catalog, reg *ral.Registry) (refused bool) {
+// lines, scrubbed of the values the catalog marks: sc's before generation,
+// and once it has added resources, theirs too. It reports whether the run must
+// not start.
+func loadGenerate(cat *catalog.Catalog, reg *ral.Registry, sc *redact.Scrubber) (refused bool) {
 	var added []catalog.Resource
 	for _, r := range slices.Clone(cat.Resources) {
 		p, ok := reg.Provider(r.Type)
@@ -30,27 +31,28 @@ func loadGenerate(cat *catalog.Catalog, reg *ral.Registry) (refused bool) {
 			err = catalog.MergeGeneration(cat, gen, catalog.PlaceAfterGenerator)
 		}
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "voxagent: %s: could not generate: %v; nothing applied\n", r.Ref(), err)
+			stderrf(sc, "voxagent: %s: could not generate: %v; nothing applied\n", r.Ref(), err)
 			return true
 		}
 		added = append(added, gen.Resources...)
 	}
 	fresh := &catalog.Catalog{Resources: added}
+	sc = redact.New(cat)
 	if gaps := ral.Preflight(reg, fresh); len(gaps) > 0 {
 		resources := map[string]struct{}{}
 		for _, g := range gaps {
-			fmt.Fprintf(os.Stderr, "voxagent: %s\n", g)
+			stderrf(sc, "voxagent: %s\n", g)
 			resources[g.Ref] = struct{}{}
 		}
-		fmt.Fprintf(os.Stderr, "voxagent: %d gap(s) across %d resource(s); nothing applied\n",
+		stderrf(sc, "voxagent: %d gap(s) across %d resource(s); nothing applied\n",
 			len(gaps), len(resources))
 		return true
 	}
 	if invalid := ral.Validate(reg, fresh); len(invalid) > 0 {
 		for _, i := range invalid {
-			fmt.Fprintf(os.Stderr, "voxagent: %s\n", i)
+			stderrf(sc, "voxagent: %s\n", i)
 		}
-		fmt.Fprintf(os.Stderr, "voxagent: %d invalid resource(s); nothing applied\n", len(invalid))
+		stderrf(sc, "voxagent: %d invalid resource(s); nothing applied\n", len(invalid))
 		return true
 	}
 	return false

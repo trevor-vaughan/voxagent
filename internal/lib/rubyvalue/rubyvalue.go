@@ -119,6 +119,9 @@ func Float(f float64) string {
 	return sign + digits[:exp+1] + "." + digits[exp+1:]
 }
 
+// invalidInteger is the start of Integer's error, before the value it repeats.
+const invalidInteger = "invalid value for Integer(): "
+
 // Integer is Kernel#Integer(String) (Ruby's rb_str_to_inum with badcheck):
 // surrounding whitespace, an optional sign, a 0b/0o/0d/0x prefix (any case) or a
 // bare leading 0 for octal, and single underscores between digits. Puppet
@@ -126,7 +129,7 @@ func Float(f float64) string {
 // is the number 31. A value that does not fit int64 is rejected with the same
 // error; no id in this slice can be that large.
 func Integer(s string) (int64, error) {
-	invalid := fmt.Errorf("invalid value for Integer(): %q", s)
+	invalid := fmt.Errorf(invalidInteger+"%q", s)
 	body := strings.Trim(s, " \t\n\v\f\r")
 	sign := ""
 	if body != "" && (body[0] == '+' || body[0] == '-') {
@@ -305,6 +308,16 @@ func ParamFailure(r catalog.Resource, name, detail string) error {
 // (parameter.rb:449): the value as inspect shows it, then the error.
 func MungeFailure(r catalog.Resource, name string, value any, detail string) error {
 	return ParamFailure(r, name, fmt.Sprintf("Munging failed for value %s in class %s: %s", ShownValue(r, name, value), name, detail))
+}
+
+// MungeIntegerFailure is MungeFailure for an error from Integer. The error's
+// text repeats the value, so a Sensitive name redacts it there as well (D-78).
+func MungeIntegerFailure(r catalog.Resource, name string, value any, err error) error {
+	detail := err.Error()
+	if slices.Contains(r.SensitiveParameters, name) {
+		detail = invalidInteger + "[redacted]"
+	}
+	return MungeFailure(r, name, value, detail)
 }
 
 // ShownValue is a value as Ruby's inspect renders it, or [redacted] when the

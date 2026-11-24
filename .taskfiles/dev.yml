@@ -110,6 +110,15 @@ tasks:
     deps: [build, ':fleet:vendor']
     cmd: bash "{{.ROOT_DIR}}/tests/spine/report-diff-extension.sh"
 
+  sensitive-canary:
+    desc: Prove no Sensitive canary leaks from real applies and the extension host
+    # The container half of TestSensitiveCanarySweep: real applies of every
+    # type and the delegated routes, in the openvox image. Deliberately NOT in
+    # `check`: it needs podman, the image (`task fleet:images`) and the
+    # vendored concat. Reports 2, not 1, when anything it needs is missing.
+    deps: [build, ':fleet:vendor']
+    cmd: bash "{{.ROOT_DIR}}/tests/spine/sensitive-canary.sh"
+
   idempotence:
     desc: Prove a second apply of the same catalog changes nothing
     # G2. Needs no Ruby, and catches a class the report differential cannot see:

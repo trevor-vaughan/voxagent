@@ -122,6 +122,15 @@ func (f File) Generate(ctx context.Context, r catalog.Resource, managed func(str
 	return children, warnings, nil
 }
 
+// withoutDir is err with dir shown as [redacted] when redact is set, for the
+// errors openDirNoFollow raises about a marked source's directory (D-78).
+func withoutDir(err error, dir string, redact bool) error {
+	if !redact {
+		return err
+	}
+	return errors.New(strings.ReplaceAll(err.Error(), dir, "[redacted]"))
+}
+
 // beforeWalkOpen, when set by a test, runs before walkTree opens a directory
 // to read it: the window in which a user can swap the directory for a fifo.
 var beforeWalkOpen func(path string)
@@ -150,7 +159,7 @@ func walkTree(dir string, redact bool) ([]string, []ral.Warning, error) {
 	}
 	root, err := openDirNoFollow(dir)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, withoutDir(err, dir, redact)
 	}
 	defer root.Close()
 
@@ -270,7 +279,7 @@ func childSourceFS(r catalog.Resource, sources map[string]string) (rootFS, map[s
 	}
 	root, err := openDirNoFollow(dir)
 	if err != nil {
-		return rootFS{}, nil, err
+		return rootFS{}, nil, withoutDir(err, dir, redact)
 	}
 	rfs := rootFS{root: root, dir: dir}
 	if fi, err := rfs.Lstat(path); err == nil && fi.Mode()&os.ModeSymlink != 0 {

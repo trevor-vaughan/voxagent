@@ -14,6 +14,8 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/voxagent/voxagent/internal/catalog"
 )
 
 // runServer is the v3 node and catalog endpoints on top of sourceServer
@@ -415,6 +417,28 @@ func TestPrepareSourceFailureRemovesSourcesDir(t *testing.T) {
 	}
 	if dirs := f.vardirEntries(t); len(dirs) != 0 {
 		t.Errorf("vardir holds %v after a failed source fetch", dirs)
+	}
+}
+
+// Decoded sees the catalog before its sources are fetched, so the caller can
+// scrub what the fetch logs or fails with; it is called on a failed run too.
+func TestPrepareHandsOverTheDecodedCatalogFirst(t *testing.T) {
+	f := newRunFixture(t)
+	f.srv.status["modules/m/x"] = http.StatusInternalServerError
+	var got *catalog.Catalog
+	var fetchedBefore []string
+	f.cfg.Decoded = func(cat *catalog.Catalog) {
+		got = cat
+		fetchedBefore = slices.DeleteFunc(f.srv.requests(), func(r string) bool { return !strings.Contains(r, "modules/m/x") })
+	}
+	if _, err := Prepare(context.Background(), f.cfg); err == nil {
+		t.Fatal("Prepare = nil, want the source failure")
+	}
+	if got == nil || len(got.Resources) != 1 || got.Resources[0].Ref() != "File[/tmp/voxagent-run-test]" {
+		t.Fatalf("Decoded got %+v, want the served catalog", got)
+	}
+	if len(fetchedBefore) != 0 {
+		t.Errorf("sources fetched before Decoded: %q", fetchedBefore)
 	}
 }
 

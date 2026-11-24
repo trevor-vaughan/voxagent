@@ -484,3 +484,60 @@ func TestServiceDefaultRunnerUsesAFile(t *testing.T) {
 		t.Errorf("default runner is %T, want command.FileOutputRunner", Service{}.runner())
 	}
 }
+
+// customRunner runs the user's custom commands for real, so the context a
+// service passes them reaches the logging runner, and answers systemctl and
+// journalctl from f.
+type customRunner struct{ f *raltest.FakeRunner }
+
+func (c customRunner) Run(ctx context.Context, name string, args ...string) (int, string, error) {
+	if name == "systemctl" || name == "env" {
+		return c.f.Run(ctx, name, args...)
+	}
+	return command.FileOutputRunner{}.Run(ctx, name, args...)
+}
+
+// D-78: a listed custom start, stop, status or restart is run and logged as
+// '[redacted]', where Ruby prints the command (util/execution.rb:181). The
+// unmarked line is Ruby's.
+func TestServiceCustomCommandsRedactedWhenMarked(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		params map[string]any
+		marked []string
+		want   []string // the Executing: lines
+	}{
+		{"status marked", map[string]any{"ensure": "running", "status": []any{"/bin/true", "status-secret"}}, []string{"status"},
+			[]string{"Executing: '[redacted]'"}},
+		{"status unmarked", map[string]any{"ensure": "running", "status": []any{"/bin/true", "status-secret"}}, nil,
+			[]string{"Executing: '/bin/true status-secret'"}},
+		{"start marked", map[string]any{"ensure": "running", "status": []any{"/bin/false", "a"}, "start": []any{"/bin/true", "start-secret"}}, []string{"start"},
+			[]string{"Executing: '/bin/false a'", "Executing: '[redacted]'"}},
+		{"stop marked", map[string]any{"ensure": "stopped", "status": []any{"/bin/true", "a"}, "stop": []any{"/bin/true", "stop-secret"}}, []string{"stop"},
+			[]string{"Executing: '/bin/true a'", "Executing: '[redacted]'"}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx, entries := raltest.DebugContext("debug")
+			f := &raltest.FakeRunner{Replies: map[string]raltest.FakeReply{showA: {Out: "NeedDaemonReload=no\n"}}}
+			r := svcRes("a", tc.params)
+			r.SensitiveParameters = tc.marked
+			if _, _, err := (Service{run: customRunner{f}}).Apply(ctx, r, false); err != nil {
+				t.Fatal(err)
+			}
+			if got := raltest.LinesAt(*entries, "Puppet"); !slices.Equal(got, tc.want) {
+				t.Errorf("Executing lines = %q, want %q", got, tc.want)
+			}
+		})
+	}
+}
+
+// D-78: a custom command that cannot start fails without naming the command
+// or its path when the command is listed.
+func TestServiceCustomCommandStartFailureRedactedWhenMarked(t *testing.T) {
+	r := svcRes("a", map[string]any{"ensure": "running", "status": []any{"/nonexistent/status-secret", "arg"}})
+	r.SensitiveParameters = []string{"status"}
+	_, _, err := (Service{run: customRunner{&raltest.FakeRunner{}}}).Apply(context.Background(), r, false)
+	if err == nil || strings.Contains(err.Error(), "secret") {
+		t.Errorf("err = %v, want one that names no part of the command", err)
+	}
+}

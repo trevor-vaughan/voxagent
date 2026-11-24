@@ -10,6 +10,7 @@ import (
 	"slices"
 	"sort"
 	"strconv"
+	"sync/atomic"
 	"time"
 
 	"github.com/voxagent/voxagent/internal/agent"
@@ -17,6 +18,7 @@ import (
 	"github.com/voxagent/voxagent/internal/extension"
 	"github.com/voxagent/voxagent/internal/lib/augeas"
 	"github.com/voxagent/voxagent/internal/lib/plugintree"
+	"github.com/voxagent/voxagent/internal/lib/redact"
 	"github.com/voxagent/voxagent/internal/node"
 	"github.com/voxagent/voxagent/internal/ral"
 	"github.com/voxagent/voxagent/internal/report"
@@ -31,19 +33,19 @@ type applyOptions struct {
 	noop, noRuby                    bool
 	reportDir, ruby, libdir, vardir string
 	timeouts                        extension.Timeouts
-	certname                        string                // "" -> node.Certname()
-	transactionUUID                 string                // "" -> the one report.New generates
-	sources                         map[string]string     // file.File.Sources: puppet: source -> local copy
-	runLogs                         []report.LogEntry     // the agent's pre-apply logs, first in the report
-	command                         string                // "apply" or "agent", for the run-start debug line
-	level                           string                // "notice", "info" or "debug": what the console and report keep
-	logger                          *runlog.Logger        // nil -> a notice logger with no console
-	start                           time.Time             // an agent run's start; zero for apply, which times no agent phases
-	phases                          []agent.Phase         // an agent run's phases timed before applying
-	console                         func(report.LogEntry) // prints a Puppet console line; nil prints none
-	providers                       []ral.Provider        // joins the native providers; tests only
-	augeasProbe                     augeas.Probe          // nil -> augeas.HostProbe; tests only
-	environ                         ral.Environ           // nil -> os.Getenv; tests only
+	certname                        string            // "" -> node.Certname()
+	transactionUUID                 string            // "" -> the one report.New generates
+	sources                         map[string]string // file.File.Sources: puppet: source -> local copy
+	runLogs                         []report.LogEntry // the agent's pre-apply logs, first in the report
+	command                         string            // "apply" or "agent", for the run-start debug line
+	level                           string            // "notice", "info" or "debug": what the console and report keep
+	logger                          *runlog.Logger    // nil -> a notice logger with no console
+	start                           time.Time         // an agent run's start; zero for apply, which times no agent phases
+	phases                          []agent.Phase     // an agent run's phases timed before applying
+	console                         *puppetConsole    // prints Puppet console lines; nil prints none
+	providers                       []ral.Provider    // joins the native providers; tests only
+	augeasProbe                     augeas.Probe      // nil -> augeas.HostProbe; tests only
+	environ                         ral.Environ       // nil -> os.Getenv; tests only
 }
 
 // nativeProviders lists the providers voxagent applies itself for cat: each
@@ -76,31 +78,46 @@ func applyCatalog(raw []byte, o applyOptions) (report.Status, *report.Report) {
 		fmt.Fprintf(os.Stderr, "voxagent: %v\n", err)
 		return report.Status{CouldNotRun: true}, nil
 	}
+	// Every line from here on may carry a catalog value. rescrub rebuilds the
+	// scrubber once the host or a native generator has added resources;
+	// current hands each rebuild to the host's stderr, which another
+	// goroutine copies.
+	var sc *redact.Scrubber
+	var current atomic.Pointer[redact.Scrubber]
+	rescrub := func() {
+		sc = redact.New(cat)
+		current.Store(sc)
+		if o.console != nil {
+			o.console.scrub = sc
+		}
+	}
+	rescrub()
 	// Before the host starts: loading the catalog, its resolve_and_replace
 	// would resolve or defer a Deferred value, which voxagent refuses (D-51).
 	if gaps := ral.DeferredGaps(cat); len(gaps) > 0 {
 		for _, g := range gaps {
-			fmt.Fprintf(os.Stderr, "voxagent: %s\n", g)
+			stderrf(sc, "voxagent: %s\n", g)
 		}
-		fmt.Fprintf(os.Stderr, "voxagent: %d Deferred value(s); nothing applied\n", len(gaps))
+		stderrf(sc, "voxagent: %d Deferred value(s); nothing applied\n", len(gaps))
 		return report.Status{CouldNotRun: true}, nil
 	}
 
 	natives, delegated := nativeProviders(cat, o, ral.HostPlatform)
 	ext, errMsg := ingestExtensions(extensionConfig{ruby: o.ruby, libdir: o.libdir, vardir: o.vardir, level: o.level, disabled: o.noRuby,
-		timeouts: o.timeouts}, raw, cat, natives)
+		timeouts: o.timeouts, scrubber: &current}, raw, cat, natives)
+	rescrub()
 	// done closes the host before the caller's outcome line, which must stay
 	// the last stderr line, so every return from here on goes through it.
 	done := func(st report.Status) report.Status {
 		if ext.host != nil {
 			if err := ext.host.Close(); err != nil {
-				fmt.Fprintf(os.Stderr, "voxagent: extension host: %v\n", err)
+				stderrf(sc, "voxagent: extension host: %v\n", err)
 			}
 		}
 		return st
 	}
 	if errMsg != "" {
-		fmt.Fprintln(os.Stderr, errMsg)
+		stderrf(sc, "%s\n", errMsg)
 		return done(report.Status{CouldNotRun: true}), nil
 	}
 	registry := ral.NewRegistry(append(natives, ext.providers...)...)
@@ -111,10 +128,10 @@ func applyCatalog(raw []byte, o applyOptions) (report.Status, *report.Report) {
 	if gaps := ral.Preflight(registry, cat); len(gaps) > 0 {
 		resources := map[string]struct{}{}
 		for _, g := range gaps {
-			fmt.Fprintf(os.Stderr, "voxagent: %s\n", g)
+			stderrf(sc, "voxagent: %s\n", g)
 			resources[g.Ref] = struct{}{}
 		}
-		fmt.Fprintf(os.Stderr, "voxagent: %d gap(s) across %d resource(s); nothing applied\n",
+		stderrf(sc, "voxagent: %d gap(s) across %d resource(s); nothing applied\n",
 			len(gaps), len(resources))
 		return done(report.Status{CouldNotRun: true}), nil
 	}
@@ -136,17 +153,20 @@ func applyCatalog(raw []byte, o applyOptions) (report.Status, *report.Report) {
 	sort.SliceStable(invalid, func(a, b int) bool { return invalid[a].Ref < invalid[b].Ref })
 	if len(invalid) > 0 {
 		for _, i := range invalid {
-			fmt.Fprintf(os.Stderr, "voxagent: %s\n", i)
+			stderrf(sc, "voxagent: %s\n", i)
 		}
-		fmt.Fprintf(os.Stderr, "voxagent: %d invalid resource(s); nothing applied\n", len(invalid))
+		stderrf(sc, "voxagent: %d invalid resource(s); nothing applied\n", len(invalid))
 		return done(report.Status{CouldNotRun: true}), nil
 	}
 
 	// Load-time generation the host did not run (spec §0): Ruby's generate ran
 	// on every vertex when the host loaded the catalog, so only without it do
 	// native generators build their resources, judged like the catalog's own.
-	if !ext.hostLoaded && loadGenerate(cat, registry) {
-		return done(report.Status{CouldNotRun: true}), nil
+	if !ext.hostLoaded {
+		if loadGenerate(cat, registry, sc) {
+			return done(report.Status{CouldNotRun: true}), nil
+		}
+		rescrub()
 	}
 
 	// configurer.rb's convert_catalog: Puppet's to_ral validates types and
@@ -167,7 +187,7 @@ func applyCatalog(raw []byte, o applyOptions) (report.Status, *report.Report) {
 			}
 			_, logs := ral.MarkSensitive(p, r)
 			for _, e := range logs {
-				o.console(e)
+				o.console.print(e)
 			}
 		}
 	}
@@ -182,12 +202,13 @@ func applyCatalog(raw []byte, o applyOptions) (report.Status, *report.Report) {
 	if certname == "" {
 		certname, err = node.Certname()
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "voxagent: cannot determine this node's certname: %v\n", err)
+			stderrf(sc, "voxagent: cannot determine this node's certname: %v\n", err)
 			return done(report.Status{CouldNotRun: true}), nil
 		}
 	}
 
 	rep := report.New(certname, cat.Environment, o.noop)
+	rep.SetScrubber(sc.Scrub)
 	rep.CatalogUUID = cat.CatalogUUID
 	rep.ConfigurationVersion = cat.Version
 	if cat.CodeID != nil && *cat.CodeID != "" {
@@ -206,7 +227,9 @@ func applyCatalog(raw []byte, o applyOptions) (report.Status, *report.Report) {
 	rep.AddLog(o.runLogs...)
 	// The console prints what the report records from here on; the agent's
 	// pre-apply lines in o.runLogs were printed as they were logged.
-	rep.Observe(o.console)
+	if o.console != nil {
+		rep.Observe(o.console.print)
+	}
 	logger := o.logger
 	if logger == nil {
 		logger = runlog.New("notice", nil, nil)
@@ -267,12 +290,12 @@ func applyCatalog(raw []byte, o applyOptions) (report.Status, *report.Report) {
 	// from Transaction#evaluate, once the transaction has begun.
 	g, err := transaction.BuildGraph(ctx, cat, registry)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "voxagent: %v; nothing applied\n", err)
+		stderrf(sc, "voxagent: %v; nothing applied\n", err)
 		return done(report.Status{CouldNotRun: true}), nil
 	}
 	tx := &transaction.Transaction{Registry: registry, Noop: o.noop}
 	if err := tx.Run(ctx, cat, g, rep); err != nil {
-		fmt.Fprintf(os.Stderr, "voxagent: %v\n", err)
+		stderrf(sc, "voxagent: %v\n", err)
 		rep.FinalizeIncomplete()
 		return done(report.Status{CouldNotRun: true}), rep
 	}
@@ -286,7 +309,7 @@ func applyCatalog(raw []byte, o applyOptions) (report.Status, *report.Report) {
 		runlog.Debugf(ctx, "voxagent", "extension host: finish in %s", time.Since(finishing).Round(time.Millisecond))
 		runlog.AddLogs(ctx, rep, ral.ConvertLogs(logs)...)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "voxagent: extension host: finish failed: %v\n", err)
+			stderrf(sc, "voxagent: extension host: finish failed: %v\n", err)
 		}
 		selfReport(ext.host)
 	}
@@ -298,10 +321,9 @@ func applyCatalog(raw []byte, o applyOptions) (report.Status, *report.Report) {
 			// run makes is its report, so with no report there is no claim --
 			// but the message must say the machine was modified, because
 			// "could not run" would otherwise imply nothing happened.
-			fmt.Fprintf(os.Stderr,
+			stderrf(sc,
 				"voxagent: the catalog was applied but the report could not be written: %v\n", err)
-			fmt.Fprintln(os.Stderr,
-				"voxagent: the machine WAS modified; this run cannot say how")
+			stderrf(sc, "voxagent: the machine WAS modified; this run cannot say how\n")
 			return done(report.Status{CouldNotRun: true}), rep
 		}
 	}

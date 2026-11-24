@@ -211,6 +211,42 @@ func leakCases() []leakCase {
 					}, "path"),
 				}
 			}},
+		// Plain parameters the catalog lists as marked (D-78): a creates path in
+		// the debug line, a backup bucket in the failure, and a validate_cmd in
+		// the failure and the Executing line. tries, try_sleep and returns
+		// cannot be driven here: a marker is a string and these hold numbers.
+		{name: "exec-creates", resources: func(dir string) []map[string]any {
+			return []map[string]any{
+				markedResource("Exec", "e-creates", map[string]any{
+					"command": "/bin/true", "creates": "/nonexistent/D8SECRET-Exec-creates",
+				}, "creates"),
+			}
+		}},
+		{name: "file-backup",
+			seed: func(t *testing.T, dir string) {
+				writeSeed(t, filepath.Join(dir, "b.txt"), "old\n", 0o644)
+			},
+			resources: func(dir string) []map[string]any {
+				return []map[string]any{
+					markedResource("File", filepath.Join(dir, "b.txt"), map[string]any{"ensure": "file", "content": "new\n", "backup": "D8SECRET-File-backup"}, "backup"),
+				}
+			}},
+		{name: "file-validate_cmd", resources: func(dir string) []map[string]any {
+			return []map[string]any{
+				markedResource("File", filepath.Join(dir, "v.txt"), map[string]any{
+					"ensure": "file", "content": "x\n", "validate_cmd": "/bin/false D8SECRET-File-validate_cmd %",
+				}, "validate_cmd"),
+			}
+		}},
+		// Custom service commands: like "service", only the refusal is reachable
+		// where PID 1 is not systemd.
+		{name: "service-custom-commands", refused: pid1IsNotSystemd(), resources: func(dir string) []map[string]any {
+			return []map[string]any{
+				markedResource("Service", "voxagent-no-such-service3", map[string]any{
+					"ensure": "running", "status": "/bin/false D8SECRET-Service-status", "start": "/bin/false D8SECRET-Service-start",
+				}, "status", "start"),
+			}
+		}},
 		// Package: dnf needs root, so every operation fails; the failure and its
 		// message must not carry the marked version.
 		{name: "package", resources: func(dir string) []map[string]any {
@@ -478,8 +514,8 @@ func TestNoSensitiveMarkerLeaks(t *testing.T) {
 				}
 				if tc.name == "user-comment" && kind != "noop" {
 					for _, w := range []string{
-						"Could not create user voxagent-leak-fail2: Execution of '[redacted]' returned 1: useradd: fake refusal of voxagent-leak-fail2",
-						"Could not set comment on user[nobody]: Execution of '[redacted]' returned 6: usermod: fake refusal of nobody",
+						"Could not create user voxagent-leak-fail2: Execution of '[redacted]' returned 1: [output redacted]",
+						"Could not set comment on user[nobody]: Execution of '[redacted]' returned 6: [output redacted]",
 						"Notice: /User[voxagent-leak-ok2]/ensure: created",
 					} {
 						if !strings.Contains(stderr+stdout, w) {

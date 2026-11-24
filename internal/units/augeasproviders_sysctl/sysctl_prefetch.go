@@ -89,7 +89,7 @@ func (s Sysctl) Prefetch(ctx context.Context, rs []catalog.Resource) (ral.Provid
 			return s, err
 		}
 		if code != 0 {
-			return s, command.ExecFailure(append([]string{s.sysctl}, args...), false, code, o)
+			return s, command.ExecFailure(append([]string{s.sysctl}, args...), false, false, code, o)
 		}
 		out.WriteString(o)
 	}

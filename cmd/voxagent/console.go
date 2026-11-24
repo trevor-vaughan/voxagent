@@ -1,9 +1,12 @@
 package main
 
 import (
+	"fmt"
 	"io"
+	"os"
 	"strings"
 
+	"github.com/voxagent/voxagent/internal/lib/redact"
 	"github.com/voxagent/voxagent/internal/report"
 )
 
@@ -28,6 +31,7 @@ type puppetConsole struct {
 	level          string // "notice", "info" or "debug"
 	stdout, stderr io.Writer
 	entries        []report.LogEntry // what record kept, for the report once it exists
+	scrub          *redact.Scrubber  // the run's, once the catalog is decoded; nil scrubs nothing
 }
 
 // record keeps a line logged before the report exists, for the report's first
@@ -59,7 +63,7 @@ func (c *puppetConsole) print(e report.LogEntry) {
 	if !c.shows(e.Level) {
 		return
 	}
-	msg := e.Message
+	msg := c.scrub.Scrub(e.Message)
 	if e.Source != "Puppet" {
 		msg = e.Source + ": " + msg
 	}
@@ -77,4 +81,10 @@ func (c *puppetConsole) print(e report.LogEntry) {
 		line += "\n"
 	}
 	io.WriteString(w, line)
+}
+
+// stderrf prints a command line that may carry a catalog value to os.Stderr,
+// scrubbed by s.
+func stderrf(s *redact.Scrubber, format string, a ...any) {
+	fmt.Fprint(os.Stderr, s.Scrub(fmt.Sprintf(format, a...)))
 }

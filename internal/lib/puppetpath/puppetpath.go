@@ -122,7 +122,7 @@ func combineBits(value, bits uint32, action byte) uint32 {
 func (m DeclaredMode) xError(clause string, multiClause bool) error {
 	msg := "X only works with the '+' operator"
 	if multiClause {
-		msg += " at " + rubyvalue.Inspect(clause)
+		msg += " at " + rubyvalue.RedactIf(m.redact, "%s", rubyvalue.Inspect(clause))
 	}
 	return fmt.Errorf("%s in symbolic mode %s", msg, rubyvalue.RedactIf(m.redact, "%s", rubyvalue.Inspect(m.Raw)))
 }

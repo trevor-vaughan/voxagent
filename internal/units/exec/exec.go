@@ -568,14 +568,17 @@ func (e Exec) run(ctx context.Context, r catalog.Resource, noop bool) ([]ral.Cha
 	}
 	// Tries (type/exec.rb:123-164) loops `tries.times`, which a Float does not
 	// have (M19): returns fails before anything runs.
+	// tries and try_sleep are plain parameters Ruby cannot mark, which the
+	// catalog may list; a listed one is shown as [redacted] (D-78).
+	triesMarked := slices.Contains(r.SensitiveParameters, "tries")
 	if p.Tries != math.Trunc(p.Tries) {
-		exeErr = fmt.Errorf("undefined method `times' for %s:Float", rubyvalue.Float(p.Tries))
+		exeErr = fmt.Errorf("undefined method `times' for %s:Float", rubyvalue.RedactIf(triesMarked, "%s", rubyvalue.Float(p.Tries)))
 	}
 	var code int
 	var output string
 	for try := 1.0; exeErr == nil && try <= p.Tries; try++ {
 		if p.Tries > 1 {
-			runlog.Debugf(ctx, sources.SourcesFrom(ctx).Resource+"/returns", "Exec try %.0f/%.0f", try, p.Tries)
+			runlog.Debugf(ctx, sources.SourcesFrom(ctx).Resource+"/returns", "Exec try %.0f/%s", try, rubyvalue.RedactIf(triesMarked, "%.0f", p.Tries))
 		}
 		code, output, err = e.execute(ctx, r, commandValue, redact, false)
 		var e127 exit127Error
@@ -599,7 +602,8 @@ func (e Exec) run(ctx context.Context, r catalog.Resource, noop bool) ([]ral.Cha
 		}
 		// The sleep follows the last failed try too (M6, I-32).
 		if p.TrySleep > 0 && p.Tries > 1 {
-			runlog.Debugf(ctx, sources.SourcesFrom(ctx).Resource+"/returns", "Sleeping for %s seconds between tries", p.TrySleepShown)
+			runlog.Debugf(ctx, sources.SourcesFrom(ctx).Resource+"/returns", "Sleeping for %s seconds between tries",
+				rubyvalue.RedactIf(slices.Contains(r.SensitiveParameters, "try_sleep"), "%s", p.TrySleepShown))
 			select {
 			case <-ctx.Done():
 				return nil, ctx.Err()
@@ -662,8 +666,8 @@ func (e Exec) run(ctx context.Context, r catalog.Resource, noop bool) ([]ral.Cha
 	// spells it twice: format_value_for_display puts ", " between the elements
 	// of desired_value, while this detail is `should.join(",")` -- measured
 	// `change from 'notrun' to ['0', '3'] failed: ... instead of one of [0,3]`.
-	change.Err = fmt.Errorf("%s returned %d instead of one of [%s]",
-		command.QuoteOrRedact(commandDisplay(commandValue), redact), code, strings.Join(desired, ","))
+	change.Err = fmt.Errorf("%s returned %d instead of one of %s",
+		command.QuoteOrRedact(commandDisplay(commandValue), redact), code, rubyvalue.RedactIf(returnsMarked, "[%s]", strings.Join(desired, ",")))
 	return []ral.Change{change}, nil
 }
 
@@ -676,10 +680,12 @@ func (e Exec) guardsPass(ctx context.Context, r catalog.Resource, command any, r
 	if err != nil {
 		return false, err
 	}
+	createsMarked := slices.Contains(r.SensitiveParameters, "creates")
 	for _, path := range creates {
-		// type/exec.rb:454, source <resource>/creates. creates is a parameter,
-		// which Sensitive cannot mark (ral.MarkSensitive), so the path shows as is.
-		runlog.Debugf(ctx, sources.SourcesFrom(ctx).Resource+"/creates", "Checking that 'creates' path '%s' exists", path)
+		// type/exec.rb:454, source <resource>/creates. creates is a plain
+		// parameter Ruby cannot mark, which the catalog may list; a listed
+		// path is shown as [redacted] (D-78).
+		runlog.Debugf(ctx, sources.SourcesFrom(ctx).Resource+"/creates", "Checking that 'creates' path %s exists", rubyvalue.RedactIf(createsMarked, "'%s'", path))
 		if _, err := os.Stat(path); err == nil {
 			debugBlocked(ctx, command, redact, "creates")
 			return false, nil
@@ -687,6 +693,10 @@ func (e Exec) guardsPass(ctx context.Context, r catalog.Resource, command any, r
 			// "we could not check" is not "the path is missing". Treating an
 			// EACCES (or any other stat failure) as missing would re-run the
 			// command every time, silently, on every agent run.
+			if pathErr := (*fs.PathError)(nil); createsMarked && errors.As(err, &pathErr) {
+				// The error names the path, so only its cause is kept.
+				return false, fmt.Errorf("stat creates path [redacted]: %w", pathErr.Err)
+			}
 			return false, fmt.Errorf("stat creates path %s: %w", path, err)
 		}
 	}

@@ -222,7 +222,7 @@ func TestUserCreateFailureWithPasswordIsRedacted(t *testing.T) {
 		want    string
 	}{
 		{"useradd -M u", "Could not create user u: Execution of '[redacted]' returned 4: useradd: boom"},
-		{"usermod -p " + testHash + " u", "Could not set password on user[u]: Execution of '[redacted]' returned 4: useradd: boom"},
+		{"usermod -p " + testHash + " u", "Could not set password on user[u]: Execution of '[redacted]' returned 4: [output redacted]"},
 	} {
 		changes, runner := applyUser(t, context.Background(), userRes("u", map[string]any{"password": testHash}), false, ns,
 			map[string]runResult{tc.failing: {code: 4, out: "useradd: boom\n"}})
@@ -341,7 +341,7 @@ func TestUserMarkedPropertyRedactsItsCommands(t *testing.T) {
 		}
 		changes, _ = applyUser(t, context.Background(), r, false, ns,
 			map[string]runResult{"useradd -c SECRET -M u": {code: 6, out: "boom\n"}})
-		if want := "Could not create user u: Execution of '[redacted]' returned 6: boom"; raltest.ErrText(changes[0].Err) != want {
+		if want := "Could not create user u: Execution of '[redacted]' returned 6: [output redacted]"; raltest.ErrText(changes[0].Err) != want {
 			t.Errorf("err = %q, want %q", raltest.ErrText(changes[0].Err), want)
 		}
 	})
@@ -361,7 +361,7 @@ func TestUserMarkedPropertyRedactsItsCommands(t *testing.T) {
 		}
 		for _, c := range changes {
 			if c.Property == "comment" {
-				if want := "Could not set comment on user[u4]: Execution of '[redacted]' returned 6: boom"; raltest.ErrText(c.Err) != want {
+				if want := "Could not set comment on user[u4]: Execution of '[redacted]' returned 6: [output redacted]"; raltest.ErrText(c.Err) != want {
 					t.Errorf("err = %q, want %q", raltest.ErrText(c.Err), want)
 				}
 			}
@@ -698,5 +698,85 @@ func TestUserGIDLookupErrorFailsUnderNoop(t *testing.T) {
 		if len(changes) != 1 || raltest.ErrText(changes[0].Err) != "getgrnam_r g4: EIO" || len(runner.calls) != 0 {
 			t.Errorf("noop %v: changes %+v calls %v", noop, changes, runner.argvs())
 		}
+	}
+}
+
+// D-78: a marked gid, groups or shell is [redacted] in the failure text that
+// repeats it, where Ruby prints it, and the command of a marked property and
+// its output are hidden. The unmarked text is TestUserModifyFailures'.
+func TestUserModifyFailuresRedactSensitive(t *testing.T) {
+	existing := func(name string, uid int64) userNSS {
+		return userNSS{FakeNSS: raltest.FakeNSS{
+			Users:  map[string]nameservice.PasswdEntry{name: {Name: name, UID: uid, GID: uid, Shell: "/bin/sh"}},
+			Groups: userHostGroups,
+		}}
+	}
+	for _, tc := range []struct {
+		name    string
+		params  map[string]any
+		marked  string
+		results map[string]runResult
+		wantErr string
+	}{
+		{"gid without group", map[string]any{"gid": "nosuchgroup-secret"}, "gid", nil, "Could not find group(s) [redacted]"},
+		{"groups whitespace", map[string]any{"groups": []any{"a b"}}, "groups", nil, "Invalid value [redacted]: Groups must be comma-separated"},
+		{"shell missing", map[string]any{"shell": "/nonexistent/sh-secret"}, "shell", nil, "Shell [redacted] must exist"},
+		{"shell not executable", map[string]any{"shell": "/etc/passwd"}, "shell", nil, "Shell [redacted] must be executable"},
+		{"comment command output", map[string]any{"comment": "secret"}, "comment",
+			map[string]runResult{"usermod -c secret u": {code: 3, out: "usermod: invalid comment 'secret'\n"}},
+			"Could not set comment on user[u]: Execution of '[redacted]' returned 3: [output redacted]"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			r := userRes("u", tc.params)
+			r.SensitiveParameters = []string{tc.marked}
+			changes, _ := applyUser(t, context.Background(), r, false, existing("u", 2000), tc.results)
+			if len(changes) != 1 || raltest.ErrText(changes[0].Err) != tc.wantErr {
+				t.Errorf("changes = %+v, want err %q", changes, tc.wantErr)
+			}
+		})
+	}
+}
+
+// D-78: the shell check at create names a marked shell as [redacted].
+func TestUserCreateShellCheckRedactsSensitive(t *testing.T) {
+	ns := userNSS{FakeNSS: raltest.FakeNSS{Users: map[string]nameservice.PasswdEntry{}}}
+	r := userRes("u", map[string]any{"shell": "/nonexistent/sh-secret"})
+	r.SensitiveParameters = []string{"shell"}
+	changes, _ := applyUser(t, context.Background(), r, false, ns, nil)
+	if want := "Shell [redacted] must exist"; len(changes) != 1 || raltest.ErrText(changes[0].Err) != want {
+		t.Errorf("changes = %+v, want err %q", changes, want)
+	}
+}
+
+// D-78: a failed create hides the tool's output only when the command's argv
+// carries a marked value; the command line is redacted for any marked property.
+// password alone is in neither argv (it goes to usermod -p), so useradd and
+// chage keep their output (TestUserCreateFailureWithPasswordIsRedacted).
+func TestUserCreateFailureOutputRedactedOnlyForMarkedArgv(t *testing.T) {
+	ns := userNSS{FakeNSS: raltest.FakeNSS{Users: map[string]nameservice.PasswdEntry{}}}
+	for _, tc := range []struct {
+		name    string
+		params  map[string]any
+		marked  string
+		failing string
+		want    string
+	}{
+		{"useradd with marked uid", map[string]any{"uid": 2011.0}, "uid", "useradd -u 2011 -M u",
+			"Could not create user u: Execution of '[redacted]' returned 4: [output redacted]"},
+		{"useradd with marked age, uid plain", map[string]any{"uid": 2011.0, "password_max_age": 90.0}, "password_max_age", "useradd -u 2011 -M u",
+			"Could not create user u: Execution of '[redacted]' returned 4: useradd: boom"},
+		{"chage with marked age", map[string]any{"password_max_age": 90.0}, "password_max_age", "chage -M 90 u",
+			"Could not create user u: Execution of '[redacted]' returned 4: [output redacted]"},
+		{"chage with marked comment", map[string]any{"comment": "c", "password_max_age": 90.0}, "comment", "chage -M 90 u",
+			"Could not create user u: Execution of '[redacted]' returned 4: useradd: boom"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			r := userRes("u", tc.params)
+			r.SensitiveParameters = []string{tc.marked}
+			changes, _ := applyUser(t, context.Background(), r, false, ns, map[string]runResult{tc.failing: {code: 4, out: "useradd: boom\n"}})
+			if len(changes) != 1 || raltest.ErrText(changes[0].Err) != tc.want {
+				t.Errorf("changes = %s, want err %q", scrub(changes), tc.want)
+			}
+		})
 	}
 }

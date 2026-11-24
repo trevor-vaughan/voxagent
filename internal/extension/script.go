@@ -15,7 +15,7 @@ var hostScript []byte
 // HostScriptSHA256 is the SHA-256 of host.rb as reviewed. The staged copy is
 // checked against it before exec, and TestHostScriptHashIsPinned fails when
 // host.rb changes without it.
-const HostScriptSHA256 = "8c2f1a3ae4a1680e55cce754f16a486143dc7a94e2b7a5eab4fc12dac051ac62"
+const HostScriptSHA256 = "2057bb765ce2b8e0f5b5ed473cc2ccd687f2956dc60af33fb6409cec60fda0df"
 
 // Config is how voxagent runs the host.
 type Config struct {
@@ -23,6 +23,12 @@ type Config struct {
 	// looked up on PATH.
 	Ruby     string
 	Timeouts Timeouts
+	// Scrub, when not nil, is applied to the host's stderr (module puts and
+	// warn, Ruby's backtraces) a run of complete lines at a time before it
+	// reaches os.Stderr; a last line without a newline is passed at Close.
+	// It is called from another goroutine while the host runs, so it must be
+	// safe for concurrent use. Nil passes stderr through untouched.
+	Scrub func(string) string
 }
 
 // Launch stages the embedded host and starts it with the host environment
@@ -35,7 +41,7 @@ func Launch(cfg Config, environ []string) (*Host, error) {
 	if err != nil {
 		return nil, err
 	}
-	h, err := Start([]string{cfg.Ruby, script, filepath.Join(dir, "state")}, HostEnv(environ), dir, cfg.Timeouts)
+	h, err := Start([]string{cfg.Ruby, script, filepath.Join(dir, "state")}, HostEnv(environ), dir, cfg.Timeouts, cfg.Scrub)
 	if err != nil {
 		_ = os.RemoveAll(dir)
 		return nil, err

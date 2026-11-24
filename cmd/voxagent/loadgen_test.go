@@ -81,7 +81,7 @@ func TestLoadGenerateRunsWithoutHost(t *testing.T) {
 	cat := &catalog.Catalog{Resources: []catalog.Resource{
 		{Type: "Vox_lg", Title: "a"}, {Type: "Notify", Title: "n"}, {Type: "Vox_lg", Title: "b"},
 	}}
-	if loadGenerate(cat, reg) {
+	if loadGenerate(cat, reg, nil) {
 		t.Fatal("loadGenerate refused a valid generation")
 	}
 	var refs []string

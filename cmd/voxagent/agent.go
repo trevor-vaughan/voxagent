@@ -13,7 +13,9 @@ import (
 	"time"
 
 	"github.com/voxagent/voxagent/internal/agent"
+	"github.com/voxagent/voxagent/internal/catalog"
 	"github.com/voxagent/voxagent/internal/extension"
+	"github.com/voxagent/voxagent/internal/lib/redact"
 	"github.com/voxagent/voxagent/internal/node"
 	"github.com/voxagent/voxagent/internal/report"
 	"github.com/voxagent/voxagent/internal/runlog"
@@ -127,9 +129,12 @@ func runAgent(console *puppetConsole, rc agent.RunConfig, o applyOptions) report
 	ctx = runlog.WithLogger(ctx, o.logger)
 	rc.Log = func(level, message string) { o.logger.Log(level, "Puppet", message) }
 	rc.Start = processStart
+	// The source fetch's lines and errors may carry a catalog value; applyCatalog
+	// rebuilds the scrubber from the same catalog.
+	rc.Decoded = func(cat *catalog.Catalog) { console.scrub = redact.New(cat) }
 	p, err := agent.Prepare(ctx, rc)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "voxagent: %v\n", err)
+		stderrf(console.scrub, "voxagent: %v\n", err)
 		return report.Status{CouldNotRun: true}
 	}
 	defer func() {
@@ -143,7 +148,7 @@ func runAgent(console *puppetConsole, rc agent.RunConfig, o applyOptions) report
 		return report.Status{CouldNotRun: true}
 	}
 	o.sources = p.Sources
-	o.console = console.print
+	o.console = console
 	o.runLogs = console.entries
 	o.start, o.phases = processStart, p.Phases
 	st, rep := applyCatalog(p.Catalog, o)
@@ -159,7 +164,7 @@ func runAgent(console *puppetConsole, rc agent.RunConfig, o applyOptions) report
 	if err != nil {
 		// Puppet logs this and keeps the run's status (configurer.rb
 		// send_report): the catalog was applied either way.
-		fmt.Fprintf(os.Stderr, "voxagent: Could not send report: %v\n", err)
+		stderrf(console.scrub, "voxagent: Could not send report: %v\n", err)
 	}
 	return st
 }

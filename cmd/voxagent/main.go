@@ -97,7 +97,7 @@ func applyCommand(args []string) int {
 		noop: *noop, noRuby: *noRuby,
 		reportDir: *reportDir, ruby: *ruby, libdir: *libdir, vardir: *vardir,
 		timeouts: extension.Timeouts{Evaluate: *extEvalTimeout, Other: *extTimeout},
-		console:  console.print,
+		console:  console,
 	})
 	return finish(st, *detailed)
 }

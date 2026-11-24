@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"errors"
+	"fmt"
 	"io/fs"
 	"maps"
 	"net/http"
@@ -529,5 +530,69 @@ func TestFetchSourcesAppliedByRal(t *testing.T) {
 	want := "Could not retrieve information from environment production source(s) puppet:///modules/m/missing"
 	if err == nil || err.Error() != want {
 		t.Errorf("missing: err = %v\nwant %q", err, want)
+	}
+}
+
+// Every refusal and failure of a marked source names it [redacted], and no
+// part of it shows; an unmarked one is named as written (D-78).
+func TestFetchSourcesErrorsRedactMarkedSource(t *testing.T) {
+	for _, c := range []struct {
+		name, uri string
+		params    map[string]any
+		other     *catalog.Resource // a second File sharing the source
+	}{
+		{name: "fetch fails", uri: "puppet:///modules/m/D8SECRET"},
+		{name: "escaped fetch fails", uri: "puppet:///modules/m/D8 SECRET"},
+		{name: "tree fetch fails", uri: "puppet:///modules/m/D8SECRET", params: map[string]any{"recurse": true}},
+		{name: "other host", uri: "puppet://D8SECRET.example/modules/m/f"},
+		{name: "not a mount path", uri: "puppet:///modules/../D8SECRET"},
+		{name: "links", uri: "puppet:///modules/m/D8SECRET", params: map[string]any{"links": "ignore"}},
+		{name: "links differ", uri: "puppet:///modules/m/D8SECRET", params: map[string]any{"links": "follow"},
+			other: &catalog.Resource{Type: "File", Title: "/etc/g", Parameters: map[string]any{"source": "puppet:///modules/m/D8SECRET"}}},
+	} {
+		for _, marked := range []bool{true, false} {
+			t.Run(fmt.Sprintf("%s/marked=%v", c.name, marked), func(t *testing.T) {
+				s := newSourceServer()
+				s.file("modules/m/D8SECRET", "served\n")
+				s.status["modules/m/D8SECRET"] = http.StatusInternalServerError
+				// Its content is missing: the server's 404 message names the path.
+				s.file("modules/m/D8 SECRET", "served\n")
+				delete(s.content, "modules/m/D8 SECRET")
+				params := map[string]any{"source": c.uri}
+				maps.Copy(params, c.params)
+				r := fileResource("/etc/f", params)
+				if marked {
+					r.SensitiveParameters = []string{"source"}
+				}
+				rs := []catalog.Resource{r}
+				if c.other != nil {
+					rs = append([]catalog.Resource{*c.other}, rs...)
+				}
+				_, dir := sourcesDir(t)
+				_, err := FetchSources(context.Background(), startSources(t, s), catalogOf(rs...), "production", testServer, dir)
+				if err == nil {
+					t.Fatal("err = nil, want a failure")
+				}
+				if marked {
+					if strings.Contains(err.Error(), "SECRET") || !strings.Contains(err.Error(), "source [redacted]") {
+						t.Errorf("err = %v, want the source [redacted] and no part of it", err)
+					}
+				} else if !strings.Contains(err.Error(), "source "+c.uri) {
+					t.Errorf("err = %v, want the source named", err)
+				}
+			})
+		}
+	}
+}
+
+// An empty mount path has nothing to hide, and the refusal keeps its words.
+func TestFetchSourcesMarkedEmptyMountPath(t *testing.T) {
+	r := fileResource("/etc/f", map[string]any{"source": "puppet:///"})
+	r.SensitiveParameters = []string{"source"}
+	_, dir := sourcesDir(t)
+	_, err := FetchSources(context.Background(), startSources(t, newSourceServer()), catalogOf(r), "production", testServer, dir)
+	want := `File[/etc/f]: source [redacted]: not a mount path: relative_path "" has an empty, "." or ".." segment`
+	if err == nil || err.Error() != want {
+		t.Errorf("err = %v, want %s", err, want)
 	}
 }
