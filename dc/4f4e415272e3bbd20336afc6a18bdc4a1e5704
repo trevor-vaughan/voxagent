@@ -1,0 +1,46 @@
+docs/maintainers/apply-spine.md
+  s_a5ae08ab9db009::t_7989608c49a8ee 191,2127-2130,2282,2336,2396,2555
+internal/units/group/route.go
+  s_a5ae08ab9db009::t_3f29d63769ddc3 11-15,19
+internal/units/augeas_route_test.go
+  s_a5ae08ab9db009::t_dffd71c3e0e54b 477
+internal/units/augeasproviders_sysctl/route_test.go
+  s_a5ae08ab9db009::t_2eadc401a3f143 96
+internal/units/units_test.go
+  s_a5ae08ab9db009::t_e1f44e61824321 287-289,306
+  s_a5ae08ab9db009::t_20e9e842393ef0 4,10,26-32
+  s_a5ae08ab9db009::t_2056fc10cdf830 220-229,250,254,260-266,284-286,290-305,307-329
+  s_a5ae08ab9db009::t_9aec292dc1b90e 330
+internal/units/cron_core/manifest.go
+  s_a5ae08ab9db009::t_a73733db6c1ccc 87
+internal/units/mount_core/manifest.go
+  s_a5ae08ab9db009::t_0aab80868fcfd0 92
+docs/maintainers/units.md
+  s_a5ae08ab9db009::t_7989608c49a8ee 88,147,151,157,164,173
+internal/units/user/manifest.go
+  s_a5ae08ab9db009::t_3f29d63769ddc3 58
+internal/units/group/manifest.go
+  s_a5ae08ab9db009::t_3f29d63769ddc3 54
+internal/units/sshkeys_core/manifest.go
+  s_a5ae08ab9db009::t_0aab80868fcfd0 122,153
+internal/units/host_core/manifest.go
+  s_a5ae08ab9db009::t_0aab80868fcfd0 75
+internal/units/augeasproviders_sysctl/manifest.go
+  s_a5ae08ab9db009::t_0aab80868fcfd0 103
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "dc4f4e415272e3bbd20336afc6a18bdc4a1e5704",
+  "prompts": {},
+  "sessions": {
+    "s_a5ae08ab9db009": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2c38b644-c932-4d6d-958b-f95b9f72ad0a",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "peiriannydd <peiriannydd@gmail.com>"
+    }
+  }
+}
