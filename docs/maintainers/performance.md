@@ -1,5 +1,7 @@
 # Performance evidence
 
+For maintainers. Back to the [README](../../README.md).
+
 What has been measured about voxagent's speed and memory against Ruby
 Puppet, how, and what it does and does not show. Measurements only; each
 section names its date, versions and method so it can be repeated.
@@ -23,7 +25,9 @@ clock from `$EPOCHREALTIME`, peak RSS from GNU `time`; every run's report
 checked for `changed` (cold) or `unchanged` (steady). Puppet 8.10.0 on the
 host; voxagent built with the host's Go toolchain (`go version`: go1.26.7,
 Red Hat 1.26.7-1.el10, read when this was recorded rather than during the
-runs). Raw results are in the throwaway `.test-output/bench/full/results.tsv`
+runs).
+
+Raw results are in the throwaway `.test-output/bench/full/results.tsv`
 (not committed). RSS is kB/1024, labelled MiB. The host was shared and its
 load was not recorded during these runs (a later reading, 2026-10-05 18:17,
 was 29.6/46.2/54.9 over 1/5/15 minutes on 24 CPUs), so absolute times carry
@@ -105,11 +109,11 @@ sentinel Puppet adds for a resource that eval-generates
 (`transaction/additional_resource_generator.rb:87`), logged as
 `/etc/bench.conf`.
 
-voxagent refuses this catalog (`voxagent apply --noop`, exit 2,
-`outcome=could-not-run`), measured with the host's Go
+When measured, voxagent refused this catalog (`voxagent apply --noop`, exit 2,
+`outcome=could-not-run`), with the host's Go
 toolchain (go1.26.7, as for the table above). By count:
 
-Defined types, refused wrongly:
+Defined types, refused wrongly (`Preflight` now skips them as containers):
 
 ```text
     300 resource type Bench_profile::Site is not implemented
@@ -117,7 +121,7 @@ Defined types, refused wrongly:
       1 resource type Concat is not implemented
 ```
 
-Types genuinely not implemented:
+Types not implemented then (`Service`, `Concat_file` and `Concat_fragment` now have native units):
 
 ```text
     300 resource type Concat_fragment is not implemented
@@ -129,7 +133,7 @@ The first three are defined types: the catalog marks them
 `"kind":"defined_type"` (601 resources). Puppet turns every catalog-format-2
 resource whose kind is not `compilable_type` into an inert `Component`
 (`puppet/resource.rb:515-526`, 8.10.0), so Ruby applies nothing for them.
-voxagent refusing them is a voxagent defect, not a coverage gap.
+voxagent refusing them was a voxagent defect, not a coverage gap, and is fixed.
 
 ## What this does and does not show
 
@@ -138,7 +142,9 @@ time on this catalog, the engine thesis is weaker than the spike suggested.
 On this catalog it is not under half: in the one instrumented run, ingest
 (0.87 s) plus graph work (the 4.33 s span less the 1.73 s evaluation sum,
 2.60 s) is 3.47 s of 6.36 s, about 55%; counting evaluation inside the span it
-is 5.20 s, about 82%. That is a ratio from a single run under load noise, not
+is 5.20 s, about 82%.
+
+That is a ratio from a single run under load noise, not
 a precise share. Two caveats pull in opposite directions: the 6.36 s
 denominator includes the 1.02 s (1.015 s in `ts.out`) of startup that the
 numerator excludes, which lowers both shares (without it they are about 65%
@@ -153,23 +159,29 @@ The catalogs above are synthetic. This one is compiled from SIMP's published
 modules, so its resources are the ones a SIMP node really gets, though for a
 scratch node rather than a customer's.
 
-**Environment** (scratch, not committed). `puppet module install simp-simp`,
-run in `localhost/fleet-node-el` (openvox 8.29.0) because the host Ruby cannot
-fork under Puppet's tar extraction. Then every module's
-`simp.optional_dependencies` was installed until none was missing, along with
-Puppet 8's split-out `*_core` type modules, which gave 77 modules. One pin was
-needed: `simp_firewalld` 3.0.0 does not satisfy `iptables` 7.1.2's
-`>= 0.1.3 < 2.0.0`, so 1.0.1 was installed. Key versions: `simp` 9.0.1,
+**Environment** (scratch, not committed). In order:
+
+1. Run `puppet module install simp-simp` in `localhost/fleet-node-el` (openvox
+   8.29.0), because the host Ruby cannot fork under Puppet's tar extraction.
+2. Install every module's `simp.optional_dependencies` until none is missing,
+   along with the `*_core` type modules that Puppet 8 split out. This gave 77
+   modules.
+3. Pin one module: `simp_firewalld` 3.0.0 does not satisfy `iptables` 7.1.2's
+   `>= 0.1.3 < 2.0.0`, so install 1.0.1.
+4. Write `site.pp` and Hiera. `site.pp` is `include simp` with
+   `simp::scenario: simp` and Hiera `simp_options` for a node without LDAP or
+   PKI (`ldap`, `pki`, `stunnel`, `tcpwrappers`, `fips`, `libkv` and `clamav`
+   false; `firewall`, `auditd`, `selinux`, `sssd`, `pam`, `haveged`,
+   `logrotate` and `syslog` true).
+5. Install `openssh-server` on the host, because `ssh::server::params` needs the
+   `openssh_version` fact.
+6. Compile on the host with Puppet 8.10.0 against the host's own facts (CentOS
+   Stream 10, which `simp` 9.0.1 supports).
+
+Key versions: `simp` 9.0.1,
 `simplib` 4.14.2, `stdlib` 9.7.0, `concat` 9.1.0, `inifile` 6.5.0,
 `augeasproviders_core` 4.2.0, `augeasproviders_sysctl` 4.1.0,
 `augeasproviders_ssh` 7.0.0, `augeasproviders_grub` 6.0.1, `svckill` 5.1.1.
-`site.pp` is `include simp` with `simp::scenario: simp` and Hiera
-`simp_options` for a node without LDAP or PKI (`ldap`, `pki`, `stunnel`,
-`tcpwrappers`, `fips`, `libkv` and `clamav` false; `firewall`, `auditd`,
-`selinux`, `sssd`, `pam`, `haveged`, `logrotate` and `syslog` true). Compiled
-on the host with Puppet 8.10.0 against the host's own facts (CentOS Stream 10,
-which `simp` 9.0.1 supports). `openssh-server` was installed on the host first,
-because `ssh::server::params` needs the `openssh_version` fact.
 
 Resources: 725, with 746 edges. By kind, 460 `compilable_type`, 136
 `defined_type`, 124 `unknown` (classes) and 5 `class`. The largest types are
@@ -178,6 +190,14 @@ Resources: 725, with 746 edges. By kind, 460 `compilable_type`, 136
 `Augeas` 18 and `Exec` 11.
 
 ### What voxagent refuses
+
+This section records the 2026-10-06 run. Native units added since serve `Sysctl`,
+`Ssh_config`, `Sshd_config`, `Sshd_config_subsystem`, `Concat_fragment`,
+`Concat_file`, `Augeas`, `Mount`, `Cron`, `Group`, `User` and `Host`, so the
+counts below no longer describe what voxagent refuses. Of the types listed,
+`Ini_setting`, `Anchor`, `Reboot_notify`, `Tidy`, `Kernel_parameter`, `Runlevel`,
+`Selinux_state`, `Simp_file_line`, `Svckill` and `Init_ulimit` have no native unit
+(`voxagent units` lists the ones that do).
 
 `voxagent apply --noop`, exit 2: `293 gap(s) across 277
 resource(s); nothing applied`. No defined-type instance is refused.
@@ -269,7 +289,9 @@ the representative catalog: ingest (2.44 s) plus graph work (8.78 − 7.89 =
 end, and well under half by any choice of denominator. Ruby's time here is
 spent evaluating resources, and most of that is one resource: `Svckill`
 enumerating every service on the host. Excluding it, evaluation is 2.48 s,
-which is still less than ingest plus graph. So the engine's share depends
+which is still less than ingest plus graph.
+
+So the engine's share depends
 heavily on the catalog. The synthetic catalogs were dominated by many cheap
 resources; a real SIMP node runs a few hundred cheap resources and a handful
 of expensive ones. This is one noop run, of one scenario, in a container that
@@ -277,29 +299,32 @@ is not a real host, and evaluation would cost more in a real apply.
 
 For coverage, the result is that the remaining gaps on a real SIMP catalog
 are almost entirely Ruby types shipped in modules, especially the
-augeasproviders family. Tier 1 types (`user`, `group`, `tidy`) would clear 8
+augeasproviders family. Tier 1 (native) types (`user`, `group`, `tidy`) would clear 8
 resources; the `File` attribute gaps would clear 33. voxagent was not timed,
 because it refuses the catalog.
 
 ## Public SIMP catalog applied (2026-10-08)
 
 The section above could not time voxagent, because voxagent refused the
-catalog. With the extension host it applies it, so this section times both
-agents applying the SIMP acceptance gate's catalog for real.
+catalog. With the [extension host](../usage/extension-host.md) it applies it, so
+this section times both agents applying the catalog from the SIMP acceptance
+gate (see [The SIMP gate](gate-evidence.md#the-simp-gate)), for real.
 
-**Environment** (scratch shell loop, not committed). voxagent is built with
-`task dev:build`, at the first state where the gate agreed with every exception
-measured. The catalog is the one `tests/spine/report-diff-simp.sh`
-builds: the pinned modules of `tests/spine/simp/modules.pin`, the fixture
-beside it, compiled in a booted `localhost/voxagent-simp` container (openvox
-8.29.0) with that container's facts. It has 737 resources, 63 `Sysctl` and 16
-`Binary` values. Every run used a fresh container, booted with `simp_boot` and
-applied once with `simp_apply` from `tests/spine/simp/lib.sh`, so each agent
-starts from the same files a pluginsynced agent would. The runs went one at a
-time, alternating Ruby and voxagent. Wall time is measured inside the
-container around the agent's command, so unlike the section above it excludes
-`podman exec` overhead. `Applied catalog in` is read from each report's log,
-because voxagent writes that notice only to the report. The host had 24 CPUs,
+**Environment** (scratch shell loop, not committed). In order:
+
+1. Build voxagent with `task dev:build`, at the first state where the gate
+   agreed with every exception measured.
+2. Compile the catalog that `tests/spine/report-diff-simp.sh` builds: the pinned
+   modules of `tests/spine/simp/modules.pin` and the fixture beside it, in a
+   booted `localhost/voxagent-simp` container (openvox 8.29.0) with that
+   container's facts. It has 737 resources, 63 `Sysctl` and 16 `Binary` values.
+3. For each run, boot a fresh container with `simp_boot` and apply once with
+   `simp_apply` from `tests/spine/simp/lib.sh`, so each agent starts from the
+   same files a pluginsynced agent would.
+4. Run one at a time, alternating Ruby and voxagent.
+
+Wall time is measured inside the container around the agent's command, so unlike
+the section above it excludes `podman exec` overhead. `Applied catalog in` is read from each report's log. The host had 24 CPUs,
 and other work was running on it: the 1-minute load average was 5.3 to 10.0
 across these runs, against 20 to 48 in the prototype that first measured this.
 
@@ -311,7 +336,8 @@ one that converges, so these timings cover a catalog in which a fifth of the
 statuses fail.
 
 "Tier 3 types" in the table are the types voxagent sends to the host, which is
-every type except `file`, `package`, `service`, `exec` and `notify`. Ruby's
+every type no native unit serves (`voxagent units` lists the types that are
+served natively, so the host's types are the rest). Ruby's
 column for them sums the same `metrics.time` entries from Ruby's own report.
 
 | Run | Load before/after | Wall | Applied catalog in | Host start | Host-evaluated | Spent in host | Tier 3 `metrics.time` sum | Native `metrics.time` sum |
@@ -350,8 +376,8 @@ Medians of 5 runs each:
 The host overhead is everything the host spends outside the Tier 3 resources'
 own evaluation: `load` (`from_data_hash` and `to_ral` of all 737 resources,
 plus generation), relationships, prefetch, `finish` and the framing. So 13.7 ms
-per resource is an upper bound on the protocol's cost, not a measurement of it.
-It varied by 0.3 ms across the five runs. The prototype's figure was about
+per resource is an upper bound on what the protocol costs. It does not measure
+that cost directly. It varied by 0.3 ms across the five runs. The prototype's figure was about
 16 ms, on its probe catalog and at a load average of 20 to 48.
 
 The five largest Tier 3 types, by Ruby's time (median of 5 runs, with the
@@ -365,6 +391,11 @@ range):
 | `Sysctl` | 63 | 0.645 s (0.572–0.688) | 0.648 s (0.603–0.649) |
 | `Augeas` | 18 | 0.410 s (0.347–0.467) | 0.383 s (0.343–0.448) |
 
+These timings predate the native units for `Ssh_config`, `Sshd_config`, `Sysctl`
+and `Augeas` (`augeasproviders_ssh` 7.0.0, `augeasproviders_sysctl` 4.1.0 and
+`augeas_core` 2.1.0, the versions pinned in `tests/spine/simp/modules.pin`), so
+of these five only `Svckill` is still sent to the host.
+
 `Ssh_config` is the only one whose two ranges do not overlap. It is 0.13 s, or
 about 10%, slower in the host, which is 2.6 ms for each of its 49 resources.
 
@@ -376,10 +407,14 @@ moves is the mirror-metadata fetch. voxagent's `package` prefetch, which runs
 before the walk and outside every resource's timer, runs `dnf -y check-update`
 because the catalog's two `latest` packages are installed, and that fetches the
 metadata. Ruby's prefetch reads only the installed set, so its first `dnf`
-command, haveged's install, pays the fetch. Measured in a booted container
+command, haveged's install, pays the fetch.
+
+Measured in a booted container
 from a cold cache, 3 runs each: the install alone took 5.45 to 8.75 s, while
 `check-update` took 3.98 to 11.09 s and the install after it 0.29 to 0.34 s.
-apply-spine.md D-57 records this. Without that resource, voxagent's native
+[apply-spine.md](apply-spine.md) D-57 records this.
+
+Without that resource, voxagent's native
 types take 5.47 s against Ruby's 6.46 s. By type: `file` takes 0.082 s against
 0.231 s, and `service` 3.375 s against 3.784 s. `package` without haveged
 takes 2.10 s against 2.36 s. The fetch still counts in voxagent's applied
@@ -403,16 +438,22 @@ average was 6.5 to 11.5.
 None of the 15 runs prints an `extension host` line. Every run exits 0 with
 the same two failures: `Package[haveged]`, and `File[/etc/puppetlabs/puppet]`,
 whose `group => puppet` names a group that the filter removed along with its
-`Group` resource. Each default run's report was compared with the `--no-ruby`
+`Group` resource.
+
+Each default run's report was compared with the `--no-ruby`
 and the bad-`--ruby` reports from the same round, using `gatekit
 compare-reports` and an allowlist cut down to `run_to_run` alone, with every
 `cross_implementation` entry removed. All 10 comparisons found 0 divergent
-leaves out of 5,128. `gatekit run-to-run` on such a pair reports no leaf that
-the list fails to cover. It does report `resource_statuses.*.evaluation_time`
+leaves out of 5,128.
+
+`gatekit run-to-run` on such a pair reports every leaf
+as covered by the list. It does report `resource_statuses.*.evaluation_time`
 as over-broad, here with 6 stable leaves, which is the shared pattern that
-`docs/maintainers/apply-spine.md`, "The SIMP gate", already records. The host
+[The SIMP gate](gate-evidence.md#the-simp-gate) already records.
+
+The host
 is never launched: `ingestExtensions` returns at
-`cmd/voxagent/extension.go:49-51` when no type needs it, before
+`cmd/voxagent/extension.go` when no type needs it (`len(needed) == 0`), before
 `extension.Launch`, which is the only place `--ruby` is used. To show that the
 flags really reached voxagent, the full catalog was applied once with each of
 them. With `--ruby /nonexistent/ruby` it stopped with "the extension host is
@@ -425,7 +466,7 @@ Every run's native `metrics.time` sum lies between 5.39 and 6.07 s. What
 varies is the time from the report's start to the `dnf -y install haveged`
 failure, which ran from 4.2 to 13.5 s across the 15 runs. That span holds the
 `package` prefetch's `dnf -y check-update`, whose mirror-metadata fetch took
-3.98 to 11.09 s when measured alone (D-57). That flag cannot act
+3.98 to 11.09 s when measured alone ([D-57](apply-spine.md)). That flag cannot act
 on this catalog, because no code that reads it runs.
 
 ### What this shows
@@ -436,11 +477,15 @@ applies through the host in 12% less wall time than Ruby (25.10 against
 against 5.85 s of start-up and ingest, even though voxagent's figure includes
 0.71 s of host start-up. The applied-catalog times differ by 1.6 s, which is
 less than either agent's own range (2.7 s for Ruby, 8.3 s for voxagent, whose
-range comes from run 1). The host's Tier 3 evaluation costs about 5% more than
+range comes from run 1).
+
+The host's Tier 3 evaluation costs about 5% more than
 Ruby's own, and `ssh_config` is the only type whose difference is outside the
 run-to-run range. On top of that evaluation the host spends 3.35 s, which is
 13.7 ms per evaluated resource and an upper bound on what the protocol costs.
-The figure held to within 0.3 ms across five runs. A catalog with no Tier 3
+The figure held to within 0.3 ms across five runs.
+
+A catalog with no Tier 3
 type pays nothing for the host: the host does not start, its flags have no
 effect, and the reports agree outside the run-to-run list.
 
@@ -449,9 +494,11 @@ the services present and the 62 `Sysctl` that fail here would apply. Nor
 does it show the cost on a catalog with more host resources, where
 per-resource overhead may not scale linearly, because `load` handles the whole
 catalog whatever share of it goes to the host. It does not split the 3.35 s
-between `load`, prefetch and framing. The native comparison is only as good as
+between `load`, prefetch and framing.
+
+The native comparison is only as good as
 its haveged-free line, because the two agents fetch dnf's metadata at
-different points (D-57), and the fetch's 4 to 11 s depends on the mirrors. It
+different points ([D-57](apply-spine.md)), and the fetch's 4 to 11 s depends on the mirrors. It
 does not show the cost under `--noop`. Every measured run is a first apply on
 a fresh container, so a second, converged run was not timed either. Five runs
 a side cannot resolve differences smaller than the 0.2 to 0.4 s spread of

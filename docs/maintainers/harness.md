@@ -1,5 +1,7 @@
 # Differential harness internals
 
+For maintainers. Back to the [README](../../README.md).
+
 ## Why this exists before any agent code
 
 The harness is the instrument that turns "the Go agent behaves correctly" into a
@@ -14,7 +16,7 @@ resource collector, and a collector-based override — produced byte-identical
 output across all 20 resources and 19 edges, apart from `version` (an epoch
 timestamp) and `catalog_uuid` (random per compile).
 
-The list is measured, not assumed. Any addition needs the same evidence, and
+The list is `AllowlistedFields` in `internal/catalog/normalize.go`. It is measured, not assumed. Any addition needs the same evidence, and
 every addition weakens the harness.
 
 ## Why resource order is compared
@@ -45,17 +47,21 @@ report is byte-stable across runs, which is what lets CI diff harness output.
 The test's fixture is deliberately asymmetric in a specific way: both the left
 and right resources carry multi-key parameter maps
 (`internal/catalog/diff_test.go`, in `TestDiffOutputIsDeterministic`), not
-just one side. An earlier version of the test only put multiple keys on
+just one side.
+
+An earlier version of the test only put multiple keys on
 the right side, leaving the left with a single key — a map with one key is
 trivially "sorted" no matter what Go's iteration order does, so that version
-could pass even if the left-hand loop's key sort was broken. Both sides now
+could pass even if the key sort in the left-hand loop was broken.
+
+Both sides now
 carry `a`..`d` (shared, so they exercise the `KindChanged` left-hand loop) and
 the right carries an additional `w`..`z` (right-only, so they exercise the
 `KindOnlyInRight` right-hand loop). Collapsing either side back to a single
-key silently weakens this test back to the version that couldn't fail. Keep
+key silently weakens this test back to the version that always passed. Keep
 both multi-key.
 
-## Why `extractJSON` matches at line start
+## Why `ExtractJSON` matches at line start
 
 Puppet writes `Notice: Compiled catalog for ... in N seconds` to stdout, with
 ANSI escapes, before the JSON body. Scanning for the first line that *begins*
@@ -67,7 +73,7 @@ text cannot be mistaken for the body.
 ### `scan`'s error policy: exhaustiveness outranks findings
 
 `scan` (`cmd/voxdiff/main.go`'s `runScan`, backed by `internal/instability/scan.go`)
-backs the P0 completion gate: "`voxdiff scan` has been run across the fleet's
+backs the harness's completion gate (quoted in [fleet.md](fleet.md)): "`voxdiff scan` has been run across the fleet's
 module tree, and every finding has been reviewed." That sentence only holds if
 `scan` actually looked at every file. Two things follow from that:
 
@@ -78,14 +84,10 @@ module tree, and every finding has been reviewed." That sentence only holds if
   is still accumulated and printed to stderr, separately from the findings on
   stdout, so tooling that parses findings does not have to filter errors out
   of that stream.
-- **Any accumulated error forces exit 2, even when findings were also
-  produced.** Exit 1 means "the scan completed and found something"; exit 0
-  means "the scan completed and found nothing." Neither is true when a file
-  was skipped, so reporting exit 1 in that case would let an incomplete scan
-  masquerade as a trustworthy one. Exit 2 is the only code that says "do not
-  treat this run as having reviewed the whole tree." Do not weaken this to
-  "exit 2 only if there are zero findings" — that would silently downgrade a
-  real incompleteness signal back into the case it exists to prevent.
+- **Any accumulated error forces exit 2, even when findings were also produced.**
+  - Exit 1 means "the scan completed and found something"; exit 0 means "the scan completed and found nothing." Neither is true when a file was skipped, so reporting exit 1 in that case would let an incomplete scan masquerade as a trustworthy one.
+  - Exit 2 is the only code that says "do not treat this run as having reviewed the whole tree."
+  - Do not weaken this to "exit 2 only if there are zero findings" — that would silently downgrade a real incompleteness signal back into the case it exists to prevent.
 
 ### The 1 MiB per-line scan limit
 
@@ -106,12 +108,13 @@ keep the last one and the diff would compare a catalog it never mentions
 dropping resources from — no error, no `KindOnlyInLeft`/`KindOnlyInRight`
 entry, just a quiet undercount.
 
-This cannot arise in P0: both sides are compiled by Puppet, and Puppet
-enforces ref uniqueness at compile time. It becomes a live concern in P1, once
-a second, independent implementation is under test — whose ref-uniqueness
-guarantee is exactly the kind of invariant P1 exists to check. Revisit
-`indexResources` when P1 lands; do not assume the current comment is still
-accurate once a non-Puppet compiler is on either side.
+This cannot arise today: both sides are compiled by Puppet, and Puppet
+enforces ref uniqueness at compile time. It becomes a live concern once a
+second, independent implementation is under test, whose ref-uniqueness
+guarantee is exactly the kind of invariant the differential gates ([gates.md](../dev/gates.md)) exist to
+check. Revisit `indexResources` when that implementation lands; do not assume
+the comment above `indexResources` in `internal/catalog/diff.go` is still accurate once a non-Puppet compiler is on either
+side.
 
 ### `left`/`right` are omitted-when-nil in JSON output
 
@@ -161,7 +164,7 @@ This looks less minimal than the bare statement. Resist "simplifying" it back
 
 ### `ABS_TEST_DIR`, not `TEST_DIR`, in the `.taskfiles` includes
 
-`.taskfiles/dev.yml` and `.taskfiles/integration.yml` both compute
+`.taskfiles/dev.yml`, `.taskfiles/integration.yml` and `.taskfiles/fleet.yml` each compute
 `ABS_TEST_DIR: '{{.ROOT_DIR}}/{{.TEST_DIR | default ".test-output"}}'` rather
 than naming that variable `TEST_DIR`. This is not a style choice.
 
@@ -183,9 +186,8 @@ absolute, non-repo-relative test output directory.
 
 ## Deferred components
 
-Two components of the design are not implemented here, because neither produces
-a meaningful result until a second implementation exists:
+One component of the design is deferred, because it produces no meaningful result
+before its precondition:
 
-- **`state-diff`** — needs two agents to compare. Lands with P1.
-- **`spec-runner`** — reports pass rate for ported Go components. Lands with P5,
-  which is itself conditional on D7.
+- **`spec-runner`** — reports pass rate for ported Go components. Lands once components are
+  ported to Go, which is itself conditional on D7.

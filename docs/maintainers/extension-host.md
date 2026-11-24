@@ -1,16 +1,19 @@
 # The Ruby extension host
 
-For maintainers. Operators want the README. This page says how the code that exists works. Ruby citations are against
+For maintainers. Back to the [README](../../README.md).
+
+For maintainers. Operators want [the extension host usage page](../usage/extension-host.md). This page says how the code that exists works. Ruby citations are against
 Puppet 8.10.0. Go citations are files in this repository.
 
 voxagent applies the types its units serve natively: `augeas`, `concat_file`,
-`concat_fragment`, `exec`, `file`, `group`, `notify`, `package`, `service`,
-`ssh_config`, `sshd_config`, `sshd_config_subsystem`, `sysctl` and `user`
+`concat_fragment`, `cron`, `exec`, `file`, `group`, `host`, `mount`, `notify`,
+`package`, `service`, `ssh_authorized_key`, `ssh_config`, `sshd_config`,
+`sshd_config_subsystem`, `sshkey`, `sysctl` and `user`
 (`voxagent units` lists them; see [units.md](units.md)). A unit serves a type
 natively only when its `Route` says so for the run, and delegates it here
 otherwise, with a reason (the module types are native only against a measured
 plugin tree, `user` and `group` only on the measured platform). Every other legacy `Puppet::Type.newtype` type, core or shipped by a
-module, is applied by a Ruby process, the host, that runs Puppet's own
+module, is a Tier 3 type and is applied by a Ruby process, the host, that runs Puppet's own
 `ResourceHarness` on it. Evaluation, generation, Tier 3 name aliases and
 `loglevel => notice` are implemented (see "Generation").
 
@@ -39,176 +42,42 @@ is exactly what it was before the host existed.
 
 ## The protocol
 
-Transport and framing (`frame.go`): a 4-byte big-endian length, then a UTF-8
-JSON object. A frame over 64 MiB (`MaxFrame`) is refused on both read and
-write, and the length is checked before anything is allocated. A stream that
-ends exactly between frames is `io.EOF`; inside a frame it is
-`io.ErrUnexpectedEOF`. Exchanges are strictly one request, one reply.
+Moved to [the protocol](extension-host-protocol.md). Its sections:
 
-Handshake: the host speaks first with `{"hello": {"protocol", "puppet_version",
-"ruby_version"}}`. voxagent speaks protocol 1 (`Protocol`) and refuses another.
-
-A request is an object with one key, the operation. A reply is an object with
-one key: the operation, or `error`. Every reply body carries `logs`.
-
-| Operation | Request | Reply body (`messages.go`) |
-|---|---|---|
-| `load` | `catalog` (the bytes voxagent read), `libdir`, `vardir` (voxagent's `--vardir`) | `types` (per type: `class` `tier3`, `tier2` or `missing`; `origin` `core` or `libdir`; `refreshable`; `eval_generates`; `self_refresh`, only ever on a `tier3` type), `metaparams`, `invalid` (a list of `{ref, message}`), `generated` (a generation, below: what the load-time `generate` pass added), `resources` (per ref: `provider_used`; `aliases`, the other refs the resource is known by; `puppet_ref` and `puppet_title`, Puppet's own ref and title when its type overrides title, which `checkLoad` requires to be a ref of the resource's own type that no other resource has; `unresolvable`, set only with `puppet_ref`, when Puppet's catalog cannot look the resource up by its catalog ref), `order` (every resource of the host's catalog, catalog and generated refs alike, in Puppet's catalog order after the generation pass), `logs`, `generate_logs`, `failed_to_generate` |
-| `relationships` | `refs` | `relations`: per ref, `require`, `before`, `subscribe`, `notify`, each a list of the OTHER end's refs |
-| `evaluate` | `ref`, `noop` | `events` (as `Event#to_data_hash`), `failed`, `skipped`, `unsuitable` (no suitable provider: failed, not skipped, no events, nothing logged), `invalidate_refreshes`, `logs` |
-| `skip` | `ref` | the same shape as `evaluate` |
-| `eval_generate` | `ref` | a generation, plus `existing` (the refs `eval_generate` returned that the catalog already held), `failed` (it raised), `logs` |
-| `overly_deferred` | `ref` | `logs`: the overly-deferred handler's `Provider X is not functional on this host`, or none for a type with no provider, which `finish` then logs |
-| `refresh` | `ref` | `refreshed`, `error` (the callback's message, or null), `logs` (the callback's own lines), `exception_logs` (`log_exception`'s lines for a failed callback; empty otherwise) |
-| `finish` | none | `logs`: teardown's once-per-type "Could not find a suitable provider", then `post_resource_eval`'s |
-| `shutdown` | none | `logs`, then the host exits 0 |
-
-A generation (`Generation` in `messages.go`) is what one generator call did to
-the host's catalog: `resources`, the new resources in catalog JSON shape
-(`type`, `title`, `tags`, `exported`, `kind`, `parameters`); `containers` and
-`generators`, each a map from a new resource's ref to its container's and to
-the resource that generated it; `before`, the `{source, target}` values a
-generator appended to `before`; and `overrides`, `{ref, parameters,
-sensitive}` for each resource that already existed and whose parameters the
-generator changed. There is no `generate` operation: `load` runs that pass.
-`unsupported`, the earlier list of generating resources, is gone.
-
-Points a reader will not guess:
-
-- `load` is called once. It starts Puppet (`Puppet.initialize_settings` with
-  run-private `--confdir` and `--codedir`, the configured `--libdir`, and
-  voxagent's own `--vardir`), then classifies every non-container type before
-  converting, because `to_ral` turns an unknown type without a `kind` into a
-  component (`resource.rb:518-524`).
-- The vardir is shared, as an agent run shares one, so what Tier 3 type code
-  keeps under `Puppet[:vardir]` lands where the agent's does: simplib's
-  `reboot_notify` keeps `reboot_notifications.json` there, and a filebucket a
-  type backs up into lives there. `Puppet::Util::Storage` is never stored:
-  the harness caches `checked` and `synced` in memory, and only
-  `Catalog#apply` stores `state.yaml`, which the host never calls (D-6).
-- Between reading the catalog and converting it, `load` runs Puppet's own
-  `DeferredResolver.resolve_and_replace`, as `puppet apply --catalog` does
-  (`application/apply.rb:357`): each `Binary` becomes its bytes and a
-  top-level `Sensitive` is unwrapped into `sensitive_parameters`
-  (`pops/evaluator/deferred_resolver.rb:87-118`, `:154-172`). Every other rich
-  value (`Timestamp`, `Regexp`, `SemVer`, ...) stays Puppet's own object, which
-  the type's code then handles as on a Ruby agent. It is Puppet's code rather
-  than a Go port because the host must hand the type exactly what an agent
-  would. voxagent refuses a `Deferred` before the host starts (D-51), so the
-  resolver calls no function and needs no facts.
-- `load` converts resource by resource and lists every refusal in `invalid`.
-  Puppet stops at the first. This is an improvement over Puppet and is logged
-  as I-13 in `improvements.md`.
-- `load` also runs Puppet's load-time generation pass (see "Generation") and
-  answers what it added as `generated`. A `generate` that raises is logged as
-  Puppet logs it, makes the resource generate nothing, and sets
-  `failed_to_generate`. Its lines are `generate_logs`; lines emitted while
-  converting are `logs`. They are kept apart because they go to different
-  places (see Lifecycle).
-- The host answers refs in the catalog's own spelling. Puppet canonicalises
-  `Class[main]` to `Class[Main]` when it reads one (`resource.rb:581-588`), so
-  `convert` keeps a map from Puppet's ref to the catalog's.
-- There is no `prefetch` operation. The host prefetches lazily inside
-  `evaluate` and `skip`, once per provider class, as `transaction.rb:115` and
-  `:252-257` do. A prefetch failure is therefore scoped to its provider class.
-  `evaluate` on a resource of a failed class returns the event "Prefetch failed
-  for T provider 'P'" with `skipped` true.
-- `skip` is for a resource voxagent skips for failed dependencies. Puppet still
-  runs `pre_process` for it (`transaction.rb:111-121`), so its provider class is
-  still prefetched, and a failed prefetch still yields its failure event
-  (`:333-339`). voxagent reproduces this through `skip`. It is a quirk, not
-  something to simplify away: a resource that is never evaluated can still run
-  its provider's prefetch.
-- `invalidate_refreshes` travels beside the events because
-  `Event#to_data_hash` drops it and `event_manager.rb:82` reads it.
-- Events are serialised as the PuppetDB terminus serialises them, not as
-  `Event#to_data_hash` alone would: `event_hash` (`host.rb`) first coerces
-  the event's `status`, `property`, `desired_value`, `previous_value` and
-  `message` strings to UTF-8, with invalid bytes replaced by U+FFFD, the
-  coercion `tests/spine/lib/puppet/reports/gatejson.rb:23-104` reproduces from
-  the terminus. Without it, an ASCII-8BIT String (a `Binary` parameter's
-  bytes, or anything a provider reads as bytes) would be written as Base64
-  (`pops/serialization/to_stringified_converter.rb:97-103`). It is the
-  terminus's code because voxagent's report must carry what PuppetDB would
-  receive, and the protocol accepts only valid UTF-8. The event gets new
-  values; the strings it shares with its resource are left untouched.
-- An `error` reply (`{"error": {"message": ...}}`) is for an exception outside
-  Puppet's own rescue. It is `extension.CallError`, and unlike every other
-  failure it leaves the host usable: an `evaluate` error fails that resource
-  (a `resource_error`), a `load` error is could-not-run.
-- Types are keyed lowercase. `load`'s `types` also classifies the types of
-  generated resources, which the catalog may not name.
-
-### Validation
-
-`decodeStrict` (`strict.go`) is the deserialization point, and every reply goes
-through it:
-
-- bytes that are not valid UTF-8 are refused;
-- a `\u` escape that is a lone UTF-16 surrogate is refused, because
-  `encoding/json` would otherwise turn it into U+FFFD past the UTF-8 rule;
-- an array with more than `MaxItems` (65,536) elements, an object with more
-  than `MaxItems` members, or arrays and objects nested more than `MaxDepth`
-  (64) deep are refused. `prescan` counts on the raw bytes, one counter per
-  open container, before `encoding/json` decodes anything: a 64 MiB frame of
-  `{}` would otherwise decode to tens of millions of values first;
-- a field the Go struct does not declare is refused
-  (`DisallowUnknownFields`);
-- anything after the JSON value is refused;
-- numbers decode as `json.Number`, so an integer reaches the report verbatim.
-
-`host.go` then checks the decoded reply against the request:
-
-- a reply has exactly one key, and it is the operation or `error`;
-- the body is never `null`, which would decode as an empty successful reply,
-  and an `error` body needs a non-empty `message`;
-- a `refresh` reply either refreshed (`refreshed` true, `error` null) or
-  failed (`refreshed` false, `error` set); the host never sends the other two
-  shapes, nor `exception_logs` without an `error`;
-- every ref the host names must be in the catalog voxagent loaded (`known`),
-  including the targets of auto-relations, and `relationships` must answer
-  exactly the refs asked;
-- `load`'s types must be in the catalog, with class `missing` and no origin, or
-  `tier2`/`tier3` with origin `core` or `libdir`;
-- log levels must be Puppet's, and a log line number cannot be negative;
-- event statuses must be `success`, `failure`, `noop` or `audit`; `property`
-  must be a string or absent, `redacted` a bool or absent; an event needs a
-  `name` and a `time`;
-- a generation (`checkGeneration`, for `load` and `eval_generate` alike) adds
-  only well-formed resources: a type and a title, no `[` or `]` in the type,
-  the type capitalised as Puppet renders one (each `::` segment capitalised,
-  the rest lower case, so `file[/x]` cannot sit beside `File[/x]`),
-  `kind` `compilable_type`, not exported, never a ref already known, an alias,
-  or added twice. A `containers` or `generators` key must be a resource it
-  added, and the value a ref known or added by the same generation, as must
-  both ends of a `before` value. An override must name a known resource, and
-  mark sensitive only parameters it changes. `eval_generate`'s `existing` must
-  be known. The new refs join the known set only once all of this passes, so
-  every ref the host names is either in the catalog or made by that same
-  generation, and is never looked up;
-- each alias must be a well-formed ref of its resource's own type, not a
-  known ref, and not another resource's alias (`checkAliases`);
-- `load`'s `order` must name known refs, generated ones included, each once,
-  the catalog's own refs in the catalog's order (Puppet only inserts generated
-  resources), and, when `invalid` is empty, every one of them (`checkOrder`). A refused
-  load's order may omit refs, as the host's catalog holds no resource whose
-  conversion failed;
-
-A violation is a protocol error: the host is killed (see Lifecycle).
-
-**`MaxItems` is a functional limit.** It applies to every list, including the
-log lines one call returns. A resource whose evaluation, refresh or prefetch
-logs more than 65,536 lines in one call is a protocol error and kills the host,
-like any other violation; it is not raised silently.
-
-**Case-insensitive keys.** `encoding/json` matches field names without regard to
-case, so `{"Failed": true}` fills `failed`. This is left alone on purpose: Ruby's
-JSON never emits a key in another case, and a case-variant key cannot carry a
-value the declared field could not. It is recorded at `decodeStrict` in
-`strict.go` and here so nobody mistakes it for an oversight. The `error` and
-operation keys are matched exactly, because they are map keys.
+- [Validation](extension-host-protocol.md#validation)
 
 ## Lifecycle
+
+```mermaid
+%%{init: {'theme': 'base', 'themeVariables': {
+  'primaryColor': '#2f6dab',
+  'primaryTextColor': '#1e1e1e',
+  'primaryBorderColor': '#7c8ba1',
+  'lineColor': '#7c8ba1',
+  'edgeLabelBackground': '#eef2f8',
+  'tertiaryColor': 'transparent',
+  'tertiaryTextColor': '#7c8ba1',
+  'tertiaryBorderColor': '#7c8ba1',
+  'clusterBkg': 'transparent',
+  'clusterBorder': '#7c8ba1',
+  'titleColor': '#7c8ba1',
+  'noteBkgColor': '#eef2f8',
+  'noteTextColor': '#1e1e1e',
+  'fontFamily': 'system-ui, sans-serif'
+}, 'themeCSS': '.node .nodeLabel{color:#ffffff!important;fill:#ffffff!important;}'}}%%
+stateDiagram-v2
+  [*] --> Staged: Launch writes host.rb
+  Staged --> Refused: SHA-256 mismatch, directory removed
+  Staged --> Running: ruby host.rb started
+  Running --> Failed: Host.fail on I/O error, timeout, protocol error or validation failure
+  Failed --> Failed: every later call returns the first cause
+  Running --> Closing: Close sends shutdown
+  Failed --> Closing: Close, host already killed
+  Closing --> Closed: stdin closed, host exits
+  Closing --> Closed: extension-timeout, host killed
+  Closed --> [*]: directory removed
+  Refused --> [*]
+```
 
 `extension.Launch` (`script.go`) stages and starts the host. The sequence:
 
@@ -225,8 +94,9 @@ operation keys are matched exactly, because they are map keys.
 **Environment.** Exactly `PATH`, `HOME`, `LANG`, `LC_ALL`, `GEM_HOME` and
 `GEM_PATH`, taken from voxagent's own, and nothing else. When none are set the
 host gets an empty environment, never an inherited one (`exec.Cmd` reads a nil
-`Env` as "inherit"). `GEM_*` passes because a gem-managed Ruby cannot find the
-puppet gem without them (measured on the G1 host's rvm Ruby); openvox's own Ruby
+`Env` as "inherit"). `GEM_*` passes because a gem-managed Ruby needs them to find the
+puppet gem (measured on the rvm Ruby of the host that runs the G1 gate, see
+"What the gates prove"); openvox's own Ruby
 does not need them. `RUBYLIB`, `RUBYOPT` and `LD_PRELOAD` do not pass, because
 they change what Ruby loads. `HOME` passes because the agent process keeps it;
 Puppet strips it only from the commands it executes (`util/execution.rb:387`),
@@ -252,14 +122,14 @@ kills the process and closes the parent's ends of the pipes. Closing the pipes
 is what unblocks a pending read, because a descendant of the host may hold the
 other ends open past the kill. The failure is sticky: every later call returns
 it. There is no restart, because Puppet's prefetch cannot be replayed mid-run.
-The resources not yet evaluated then fail with a `resource_error` naming the
+The resources still awaiting evaluation then fail with a `resource_error` naming the
 cause, their dependents are skipped, and native resources keep applying.
 
 **Close is time-bounded.** A healthy host is sent `shutdown`; a dead one is
 already killed. Then stdin is closed and the process is waited for, for at most
 `--extension-timeout`, after which it is killed. `Close` is idempotent. It runs
 before the `outcome=` line, which must stay the last line of stderr
-(`cmd/voxagent/main.go`, `done`).
+(`cmd/voxagent/apply.go`, `done`).
 
 **Where logs go.**
 
@@ -287,10 +157,10 @@ with nothing applied):
 - `--no-ruby` with a catalog that needs the host, naming the types;
 - the host cannot start (no Ruby, bad handshake, hash mismatch);
 - `load` or `relationships` fails;
-- `generated` cannot be merged into voxagent's catalog (`mergeGeneration`,
-  `cmd/voxagent/generation.go`), which would be a voxagent logic error, since
+- `generated` cannot be merged into voxagent's catalog (`catalog.MergeGeneration`,
+  `internal/catalog/generation.go`, called from `ingestExtensions`), which would be a voxagent logic error, since
   the host already validated it;
-- `order` cannot be applied to it (`applyOrder`, the same file), for the same
+- `order` cannot be applied to it (`catalog.ApplyOrder`, the same file), for the same
   reason;
 - `invalid` is not empty: each is printed as Puppet's refusal. If voxagent's own
   `Validate` also refused the resource, voxagent's message is used.
@@ -299,6 +169,36 @@ A `tier2` (Resource API) type is not given a provider, so pre-flight refuses it
 as unimplemented; stderr names it as a Resource API type.
 
 ## Auto-relations
+
+```mermaid
+%%{init: {'theme': 'base', 'themeVariables': {
+  'primaryColor': '#2f6dab',
+  'primaryTextColor': '#1e1e1e',
+  'primaryBorderColor': '#7c8ba1',
+  'lineColor': '#7c8ba1',
+  'edgeLabelBackground': '#eef2f8',
+  'tertiaryColor': 'transparent',
+  'tertiaryTextColor': '#7c8ba1',
+  'tertiaryBorderColor': '#7c8ba1',
+  'clusterBkg': 'transparent',
+  'clusterBorder': '#7c8ba1',
+  'titleColor': '#7c8ba1',
+  'noteBkgColor': '#eef2f8',
+  'noteTextColor': '#1e1e1e',
+  'fontFamily': 'system-ui, sans-serif'
+}, 'themeCSS': '.node .nodeLabel{color:#ffffff!important;fill:#ffffff!important;}'}}%%
+stateDiagram-v2
+  [*] --> Unsuitable: no suitable provider
+  Unsuitable --> SetAside: evaluate and skip answer unsuitable, nothing logged
+  Unsuitable --> Failed: eval_generate member fails at once
+  SetAside --> Offered: walk asks again at the next offer
+  Offered --> SetAside: still unsuitable, other work placed
+  Offered --> OverlyDeferred: a whole drain places nothing else
+  OverlyDeferred --> Failed: overly_deferred records status, dependents blocked, never refreshed
+  note right of OverlyDeferred: a chosen but unsuitable provider is logged here
+  Failed --> Finished: host finish logs a type with no provider at all
+  Finished --> [*]
+```
 
 `ral.AutoRelating` returns typed relations (require, before, subscribe,
 notify). `transaction/build.go` (`autoRequireEdges`) merges them as
@@ -312,15 +212,17 @@ notify). `transaction/build.go` (`autoRequireEdges`) merges them as
   every event.
 
 The host answers `relationships` for every Tier 3 resource, and its answers are
-already filtered to resources in the catalog (`type.rb:2076-2113`). The
-native `File` also autorequires `User[owner]` and `Group[group]` by name
+already filtered to resources in the catalog (`type.rb:2076-2113`).
+
+The native `File` also autorequires `User[owner]` and `Group[group]` by name
 (`type/file.rb:403-418`; `internal/units/file/file.go`), skipping an owner that is all
 digits, and the native `exec` autorequires `User[user]` for a `user` that is
 not numeric (`type/exec.rb:642-648`; `internal/units/exec/exec.go`). `user` and
 `group` are themselves native on the platform their contract was measured on
-(the user and group units' `Route`, apply-spine.md's `user` and `group` provider section)
+(the user and group units' `Route`, the [`user` and `group`](not-implemented.md#user-and-group) section)
 and Tier 3 everywhere else, so these edges join two native resources there
 and cross the boundary elsewhere; the graph orders them the same either way.
+
 A catalog with a `User` whose `purge_ssh_keys` is anything but `false`, `"false"` or
 `[]` sends every `User` to the host, so a native `Group` and host-applied
 users can share one catalog (the mixed-routing case of
@@ -333,13 +235,14 @@ and when a whole drain of the ready queue places nothing else
 time, whatever its dependencies did. `evaluate` and `skip` both answer
 `unsuitable` and log nothing; the walk sets the resource aside
 (`graph.Walker`) and asks again at its next offer.
+
 When the walk hands it back overly deferred, it calls `overly_deferred`, which
 does what Puppet's handler does: a chosen but unsuitable provider is logged
 then (`Provider X is not functional on this host`); a type with no provider
 at all is logged once, at teardown (`Could not find a suitable provider for
 X`), which the host emits from `finish`. The walk records the resource's
 status, blocks its dependents, and never refreshes it. A member of an
-`eval_generate` unit is not deferred but failed at once (D-56 in
+`eval_generate` unit is failed at once, not deferred (D-56 in
 apply-spine.md).
 
 A failed refresh is logged in `event_manager.rb:160-165`'s order: the
@@ -364,40 +267,92 @@ refreshed through `refresh` in the same step. A self-refreshing type with no
 
 ## Generation
 
+```mermaid
+%%{init: {'theme': 'base', 'themeVariables': {
+  'primaryColor': '#2f6dab',
+  'primaryTextColor': '#1e1e1e',
+  'primaryBorderColor': '#7c8ba1',
+  'lineColor': '#7c8ba1',
+  'edgeLabelBackground': '#eef2f8',
+  'tertiaryColor': 'transparent',
+  'tertiaryTextColor': '#7c8ba1',
+  'tertiaryBorderColor': '#7c8ba1',
+  'clusterBkg': 'transparent',
+  'clusterBorder': '#7c8ba1',
+  'titleColor': '#7c8ba1',
+  'noteBkgColor': '#eef2f8',
+  'noteTextColor': '#1e1e1e',
+  'fontFamily': 'system-ui, sans-serif'
+}, 'themeCSS': '.node .nodeLabel{color:#ffffff!important;fill:#ffffff!important;}'}}%%
+flowchart TD
+  load["load: generate pass, merged into the catalog"] --> turn["resource's turn in the walk"]
+  turn --> eg["eval_generate, before the skip decision"]
+  eg --> failed{"failed or host call error?"}
+  failed -->|yes| ftg["failed_to_generate set, run fails"]
+  failed -->|no| ov{"override on a resource not yet reached?"}
+  ftg --> ov
+  ov -->|yes| rejudge["re-judge: provider gaps and Validate, or metaparameters"]
+  ov -->|no| newres["new resources"]
+  rejudge --> newres
+  newres --> order["order: ancestorsFirst for File, else as returned"]
+  order --> judge{"judged applicable?"}
+  judge -->|no| rerr["resource error, blocks generator's dependents"]
+  judge -->|yes| apply["applied after the generating resource"]
+  apply --> exist{"existing member ready?"}
+  exist -->|yes| now["applied right after the resource"]
+  exist -->|no| own["keeps its own turn"]
+  class load,turn,eg sysA
+  class ov,rejudge,newres,order,apply sysB
+  class failed,ftg,judge,rerr sysC
+  class exist,now,own sysD
+  classDef sysA fill:#2f6dab,color:#ffffff,stroke:#7c8ba1
+  classDef sysB fill:#1d7848,color:#ffffff,stroke:#7c8ba1
+  classDef sysC fill:#7457b8,color:#ffffff,stroke:#7c8ba1
+  classDef sysD fill:#2d747e,color:#ffffff,stroke:#7c8ba1
+  classDef sysE fill:#4d68c4,color:#ffffff,stroke:#7c8ba1
+  classDef sysF fill:#5c6a82,color:#ffffff,stroke:#7c8ba1
+```
+
 **Where it happens, and why it is Puppet's code.** Puppet generates in two
 places. Before the walk, `Transaction#evaluate` runs `generate` on every
 resource (`transaction.rb:99-100`), and the generator recurses into, tags,
 contains and orders what it makes (`additional_resource_generator.rb:21-53`,
 `:131-211`). During the walk, `eval_generate` runs at a resource's turn
 (`:56-75`). The host runs both through Puppet's own
-`AdditionalResourceGenerator`; voxagent never reimplements a generator. The
-load-time pass is part of `load` (`generate_all` in `host.rb`) and covers every
+`AdditionalResourceGenerator`; voxagent never reimplements a generator.
+
+The load-time pass is part of `load` (`generate_all` in `host.rb`) and covers every
 resource in the host's catalog, native ones included; of voxagent's five original
 native types none defines `generate` (in Puppet 8.10.0 only `user`, `resources` and
 `tidy` do), and a native `concat_file` runs its own only when no host loaded the
-catalog (see "`concat`", below). `eval_generate` runs when the walk asks for it. voxagent observes
+catalog (see "`concat`", below). `eval_generate` runs when the walk asks for it.
+
+voxagent observes
 the effects: `observe` in `host.rb` reports what the generator call did to the
 host's catalog (resources added, each one's container, `before` values
-appended, parameters changed on resources that already existed). Puppet keeps
-no record of which resource generated which, so the host prepends a module to
+appended, parameters changed on resources that already existed). Puppet does
+not track which resource generated which, so the host prepends a module to
 its own generator instance that records `add_resource`'s `parent_resource`
 (`:137`) and calls `super` with the same arguments.
 
 **At load.** `ingestExtensions` merges `generated` into voxagent's catalog right
-after `load` (`mergeGeneration`, `cmd/voxagent/generation.go`). New resources
+after `load` (`catalog.MergeGeneration`, `internal/catalog/generation.go`). New resources
 are appended, each `containers` entry becomes a containment edge, `before`
 values are appended to the source's `before`, overrides replace parameters, and
 each new resource's `GeneratedFrom` is set from `generators`, so its report
-status has Ruby's null `file` and `line` (`resource/status.rb:169-170`). When
+status has Ruby's null `file` and `line` (`resource/status.rb:169-170`).
+
+When
 `invalid` is empty, the catalog's resources are then put in the host's `order`
-(`applyOrder`): Puppet's `add_resource` puts each generated resource beside its
+(`catalog.ApplyOrder`): Puppet's `add_resource` puts each generated resource beside its
 parent in the catalog array, before it for a depth-first type such as `tidy`
 and after it, in generate order, otherwise (`additional_resource_generator.rb:36-50`,
 `resource/catalog.rb:99-124`), so the walk's catalog-order keys follow Puppet's.
+
 The needed types are then recomputed, because generation can add types the catalog
 did not name. The merged catalog goes through pre-flight and validation like
 any other, so a generated resource voxagent cannot apply refuses the run before
-anything is applied. An override's `sensitive` marks are kept: `mergeGeneration` adds them to the
+anything is applied. An override's `sensitive` marks are kept: `catalog.MergeGeneration` adds them to the
 resource's own (`Resource.MarkSensitive`), so the merged catalog's event for
 that property is redacted (D-8).
 
@@ -426,29 +381,20 @@ the walk decides whether to skip it for failed dependencies, the walk calls
   the order of Puppet's priorities and ancestor edges
   (`additional_resource_generator.rb:119-135`). A failed new resource blocks
   the generating resource's dependents;
-- `existing`, the catalog resources `eval_generate` returned, joins the unit
-  (`visitHostUnit`): a member every other predecessor of which has had its turn
-  is applied right after the resource, and is skipped when the resource is
-  skipped or failed; the resource's subscribers are refreshed through the unit,
-  as in Puppet; one already applied is not
-  applied again; the rest keep their own turn. `before` is dropped
-  (`ral.Extension.EvalGenerate`), and so is `generators`: every new resource is
-  marked generated by the resource the walk asked, which is the only parent the
-  host passes to `add_resource`.
+- `existing`, the catalog resources `eval_generate` returned, joins the unit (`visitHostUnit`):
+  - a member every other predecessor of which has had its turn is applied right after the resource, and is skipped when the resource is skipped or failed
+  - the resource's subscribers are refreshed through the unit, as in Puppet
+  - one already applied is not applied again
+  - the rest keep their own turn
+  - `before` is dropped (`ral.Extension.EvalGenerate`), and so is `generators`: every new resource is marked generated by the resource the walk asked, which is the only parent the host passes to `add_resource`.
 
 The registered limits, in `apply-spine.md`:
 
-- **D-43, the sentinel.** Puppet moves the generating resource's other
-  out-edges onto a `completed_<title>` sentinel that waits for everything
-  `eval_generate` returned, and makes those resources depend on it. voxagent's
-  unit reproduces that for a ready existing member, but its order is fixed
-  before the walk: it does not apply `before` values an `eval_generate`
-  appends; a ready member is applied right after its generator, where Ruby
-  keeps the member's own priority; a member not ready keeps its own turn and
-  loses its dependency on the generator. It is observable for a raw
-  `concat_file` (its `File` is an existing member), which the extension gate
-  covers, and Ruby misbehaves when the returned resource has no edge from the
-  generator, a shape left unmeasured (the register has the detail).
+- **D-43, the sentinel.** Puppet moves the generating resource's other out-edges onto a `completed_<title>` sentinel that waits for everything `eval_generate` returned, and makes those resources depend on it. voxagent's unit reproduces that for a ready existing member, but its order is fixed before the walk:
+  - it does not apply `before` values an `eval_generate` appends
+  - a ready member is applied right after its generator, where Ruby keeps the member's own priority
+  - a member not ready keeps its own turn and loses its dependency on the generator
+  - It is observable for a raw `concat_file` (its `File` is an existing member), which the extension gate covers, and Ruby misbehaves when the returned resource has no edge from the generator, a shape left unmeasured (the detail is in [the divergence register](apply-spine.md#the-divergence-register)).
 - **D-42, children voxagent cannot apply.** A new resource is a resource error,
   where Puppet applies it, when its type has no provider in voxagent at all,
   when its judgement refuses it, or when it generates in turn: nested
@@ -476,7 +422,9 @@ when `--libdir` holds puppetlabs-concat 9.1.0 or 10.0.1 (both type files match
 a measured digest) and every resource of both types has a measured shape
 (the concat unit's `Route`, D-89); then `concat_file`'s `generate` is voxagent's, and
 runs only when the host did not load the catalog (`hostLoaded`), since the
-host's `load` has already run Puppet's own on every vertex. Otherwise both
+host's `load` has already run Puppet's own on every vertex.
+
+Otherwise both
 types go to the host, which is the oracle for any release or shape not
 measured, and `--no-ruby` refuses the catalog. When the host is loaded for
 another type it converts the native concat resources as well and reports
@@ -524,6 +472,10 @@ load from.
 | `vox_evalgen` | `eval_generate` returns `make` (default 1) `Notify`s named `<title>-child-<n>`, and raises when `make` is `raise`. Exercises `eval_generate`, its order and its failure |
 | `vox_die` | Its provider kills the host when its value is set, so a host lost mid-run is tested end to end |
 | `vox_rapi` | Registered with `Puppet::ResourceApi.register_type`, so `load` classifies it `tier2` |
+| `vox_deep` | A depth-first `generate` (`depthfirst?`, as `tidy`'s): Puppet inserts what it makes before the generator in the catalog |
+| `vox_secret` | Echoes its parameters in every phase (munge refusals, `sync`, `generate`, prefetch, a failing `refresh`), so the scrubbing of what the host prints is tested |
+| `vox_selfref` | `self_refresh: true`: refreshes itself after its own events; the refresh appends to a log under `--vardir`, which proves the host shares it |
+| `vox_titled` | Overrides `title` (`name:bootmode`, as `kernel_parameter` does), so `puppet_ref` and `puppet_title` are exercised |
 
 The G1 gate also uses `stdlib`'s `file_line` and `anchor`, and `concat`, from
 the vendored modules (`task fleet:vendor`). Every concat in its catalog stays on
@@ -540,29 +492,20 @@ compares the reports with `gatekit compare-reports` and the same allowlist
 `dev:report-diff` uses. Exit 0 agrees, 1 diverges, 2 could not run, so a
 missing `puppet`, `ruby` or vendored stdlib is never mistaken for agreement.
 
-- **G1** compares the first applies. Besides evaluation it covers generation
-  (concat's cases exercise the host path only):
-  `concat_file`'s load-time `generate` of its `File`; `concat`'s
-  `eval_generate` filling that `File`'s content from two fragments declared out
-  of order, and, for a `concat` with no fragments and `create_empty_file =>
-  false`, overriding its `ensure` to `absent` over a seeded file;
-  `vox_evalgen`'s two new resources and its raising `eval_generate`, and
-  `ge`, whose `eval_generate` returns an existing `File` that is applied in its
-  unit, with a subscriber refreshed through it;
-  `vox_gen`'s generated `Notify`; and `Notify['needs-alias']`'s `require` of
-  `Vox_value['vn']`, an alias of `Vox_value['vt']`. One fragment is
-  `Sensitive`, which makes Ruby redact the generated `File`'s content event;
-  voxagent redacts it the same way through the override's marks (D-8).
-- **G2** compares each side's second apply with the other's, and then asserts
-  that the resources which converge changed nothing in voxagent's second report.
-  `vox_prefetch`'s `good` provider never persists state, so `Vox_prefetch[ok]`
-  changes on every run under both agents and the whole fixture cannot be held
-  to "changed nothing"; the comparison alone would pass a resource that failed
-  to converge under *both* agents. So `File_line[add]`, `Vox_value[refreshed]`,
-  `Vox_value[notifier]`, `Vox_value[refuser]` and the files that converge must
-  have changed in the first report and be absent (both sides drop a resource
-  nothing happened to, as PuppetDB does) or unchanged in the second; `Anchor[mid]`,
-  the target directory and the seeded file must be unchanged in both.
+- **G1** compares the first applies. Besides evaluation it covers generation (concat's cases exercise the host path only):
+  - `concat_file`'s load-time `generate` of its `File`
+  - `concat`'s `eval_generate` filling that `File`'s content from two fragments declared out of order, and, for a `concat` with no fragments and `create_empty_file => false`, overriding its `ensure` to `absent` over a seeded file
+  - `vox_evalgen`'s two new resources and its raising `eval_generate`, and `ge`, whose `eval_generate` returns an existing `File` that is applied in its unit, with a subscriber refreshed through it
+  - `vox_gen`'s generated `Notify`
+  - `tidy`'s depth-first `generate`, and the `eval_generate` of a recursing `File`
+  - a `concat_file` whose fragment `source` is missing, so its `eval_generate` fails on every run
+  - a raw `concat_file` whose `eval_generate` returns `File[raw.conf]` as an existing resource, which notifies `Notify['after-raw']`
+  - `Notify['needs-alias']`'s `require` of `Vox_value['vn']`, an alias of `Vox_value['vt']`
+  - One fragment is `Sensitive`, which makes Ruby redact the generated `File`'s content event; voxagent redacts it the same way through the override's marks (D-8).
+- **G2** compares each side's second apply with the other's, and then asserts that the resources which converge changed nothing in voxagent's second report.
+  - `vox_prefetch`'s `good` provider never persists state, so `Vox_prefetch[ok]` changes on every run under both agents and the whole fixture cannot be held to "changed nothing".
+  - The comparison alone would pass a resource that failed to converge under *both* agents.
+  - So `File_line[add]`, `Vox_value[refreshed]`, `Vox_value[notifier]`, `Vox_value[refuser]`, `Vox_value[vt]`, `Vox_value[after-group]`, `Vox_value[after-ge]` and the files that converge must have changed in the first report and be absent (both sides drop a resource nothing happened to, as PuppetDB does) or unchanged in the second; `Anchor[mid]`, the target directory, the seeded file, the `Concat_file` and `Concat_fragment` resources, `Vox_evalgen[g]`, `Vox_evalgen[ge]`, `Vox_gen[loud]`, `Group[nobody]` and `User[nobody]` must be unchanged in both.
 
 Last, both seeded files `concat` replaces or removes are bucketed under its
 default `backup => 'puppet'`, and the two agents' clientbuckets must be
@@ -589,8 +532,8 @@ resource generated at load that voxagent cannot apply refuses the run at
 pre-flight like a catalog resource; one `eval_generate` makes is a resource
 error (D-42).
 
-See also the SIMP gate (`dev:report-diff-simp`, "The SIMP gate" in
-`apply-spine.md`) and the performance note.
+See also the SIMP gate (`dev:report-diff-simp`, [The SIMP gate](gate-evidence.md#the-simp-gate))
+and the [performance note](performance.md).
 
 ## Divergences
 
@@ -598,6 +541,12 @@ The extension host's registered divergences are in `apply-spine.md`: D-36 (a
 Tier 3 resource skipped for a failed prefetch has `evaluation_time` `0` where
 Ruby writes `null`), D-38 and D-56 (a resource with no suitable provider), and
 D-42 and D-43 (generation's limits, above), D-51 (a `Deferred` is refused
-even on a Tier 3 resource), D-55 (a relationship to a title Puppet cannot look
-up, which `unresolvable` reports) and D-58 (`self_refresh` without `refresh`). The improvement it
+even on a Tier 3 resource), D-55 (a relationship to a title that Puppet fails to
+look up, which `unresolvable` reports) and D-58 (`self_refresh` without `refresh`). Four more cover the host's harness and
+report: D-6 (the host keeps Tier 3 checked and synced times in memory and never
+writes `state.yaml`), D-39 (only the Tier 3 never-evaluated paths are untimed, so
+a type all of whose resources were skipped has a `metrics.time` entry of `0`),
+D-78 (the host redacts `Sensitive` values in its refusal and relayed phases) and
+D-93 (the host sets no run mode, so a host-applied `augeas` gets lens path `""`
+under both commands). The improvement it
 records (listing every conversion refusal) is I-13 in `improvements.md`.

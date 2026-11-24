@@ -1,8 +1,25 @@
 # Maintainer notes: the apply spine
 
+For maintainers. Back to the [README](../../README.md).
+
 `voxagent apply --catalog <file>` reads a Puppet catalog, refuses anything it
 cannot fully implement, applies the rest, writes a `report_format 12` report,
 and exits on a contract that matches measured Puppet.
+
+Terms used throughout:
+
+- **G1, G2, G3, G5** are the differential gates:
+  G1 is `dev:report-diff`, G2 is `dev:idempotence`, G3 is `dev:state-diff`, and
+  G5 is `dev:report-diff-container` (its per-type halves are the scripts
+  `tests/spine/<type>/g5.sh`).
+  Run one with `task dev:<name>`.
+  [docs/dev/gates.md](../dev/gates.md) lists the gates and what each needs,
+  such as the `fleet-node-el` image.
+- **Tier 3** types are the ones applied through the extension host; see
+  [extension-host.md](extension-host.md).
+- **Ruby citations** such as `type/file.rb:1119` are file and line in Puppet's
+  Ruby source (`lib/puppet/`), in the Puppet or openvox version named by the
+  measurement beside them.
 
 ## The divergence register
 
@@ -38,7 +55,7 @@ does what Ruby does:
   `internal/units/file/file_test.go:TestFileOwnershipRendersNamesButKeepsRawValues`
 - **`ensure => absent` reports the path's actual type**, `file` or `link`, not
   the constant `"present"`. Ruby reads the `ensure` property's `retrieve`, which
-  answers what the path currently *is*. Under `links => manage`, the default,
+  answers what the path *is*. Under `links => manage`, the default,
   the type comes from `Lstat`, so a symlink answers for itself rather than for
   its target; under `follow` it comes from `Stat` (`type/file.rb:895-903`).
   Pinned by `internal/units/file/file_test.go:TestFileAbsentRemovesDanglingSymlink`
@@ -70,25 +87,29 @@ Tier 1 `package` closed one more after it shipped. It was registered as D-14
 and the number is retired rather than reused:
 
 - **A versioned install is verified, and fails when the result is not in
-  sync.** openvox's `yum.rb:312-321` re-runs `query` after any install that
-  carried a declared version and raises `Failed to update to version X, got
-  version Y instead` unless the *provider's* `insync?` accepts the result,
-  which `newvalue(/./)` re-raises as `Could not update: …`. The query falls
-  back to `--whatprovides` (`allow_virtual` defaults to true) and raises `Could
-  not find package` when both queries fail. Measured in the container with
-  `kernel-core`, which is installonly: 266 installed, `ensure =>
-  '6.12.0-267.el10'`, and dnf adds 267 *beside* 266. Ruby fails the resource
-  on the first run and on every run after, because the re-query reads
-  `266; 267` and `yum.rb:46` refuses any joined value. voxagent reported a
-  successful change both times. After the fix, all three cases (upgrade,
-  install from absent, re-run) compare 81 leaves with 0 divergent, and the
-  failure and log texts match byte for byte. Pinned by
-  `internal/units/package/package_test.go:TestPackageVersionInstallLeavingTwoVersionsFails`,
-  `TestPackageMultiversionWithADeclaredVersionAlwaysSyncs` and the
-  `TestPackageVersionCheck*` tests. **No gate reaches the failure path**: G5's
-  versioned resources take the check's success path, but its fixture has no
-  installonly package, and the measurement script is under
-  `.test-output/package-oracle/d14/`, which is gitignored
+  sync.**
+  - openvox's `yum.rb:312-321` re-runs `query` after any install that carried a
+    declared version and raises `Failed to update to version X, got version Y
+    instead` unless the *provider's* `insync?` accepts the result, which
+    `newvalue(/./)` re-raises as `Could not update: …`.
+  - The query falls back to `--whatprovides` (`allow_virtual` defaults to true)
+    and raises `Could not find package` when both queries fail.
+  - Measured in the container with `kernel-core`, which is installonly: 266
+    installed, `ensure => '6.12.0-267.el10'`, and dnf adds 267 *beside* 266.
+    Ruby fails the resource on the first run and on every run after, because
+    the re-query reads `266; 267` and `yum.rb:46` refuses any joined value.
+    voxagent reported a successful change both times.
+  - After the fix, all three cases (upgrade, install from absent, re-run)
+    compare 81 leaves with 0 divergent, and the failure and log texts match
+    byte for byte.
+  - Pinned by
+    `internal/units/package/package_test.go:TestPackageVersionInstallLeavingTwoVersionsFails`,
+    `TestPackageMultiversionWithADeclaredVersionAlwaysSyncs` and the
+    `TestPackageVersionCheck*` tests.
+  - **No gate reaches the failure path**: G5's versioned resources take the
+    check's success path, but its fixture has no installonly package, and the
+    measurement script is under `.test-output/package-oracle/d14/`, which is
+    gitignored
 
 | # | Divergence | Reason | Pinned by |
 |---|---|---|---|
@@ -97,13 +118,13 @@ and the number is retired rather than reused:
 | D-3 | Could-not-run is `2` in plain mode; Ruby exits `1` in both | Plain mode's `0` is already spoken for by every completed outcome, so `2` is the value it leaves free. Matches `voxdiff` and the fleet gates, which a wrapper reads alongside this | `cmd/voxagent/main_test.go:TestPreflightRefusesAndChangesNothing` |
 | D-4 | Retired. A symlinked path used to be refused; it now reproduces Puppet's `links` | The file-attribute work added `links => manage \| follow` (`type/file.rb:272-281, 895-903`). Under `manage` a link is replaced by `ensure => file` or `directory` through `removeExisting`, satisfies `present`, keeps its mode (`type/file/mode.rb:133`) and is `lchown`ed (`provider/file/posix.rb:99-144`). Under `follow` the target decides type and mode, `chmod` and `chown` go through the link, and a content write replaces the link by renaming a temp file over it (I-5). Nothing else goes through a link. The title is still cleaned first (`type/file.rb:66-73`), so `File['/d/link/']` acts on the link exactly as `File['/d/link']` does | `internal/units/file/file_test.go:TestFileManageReplacesALinkWithAFile`, `TestFileEnsureFileWithoutContentReplacesALink`, `TestFileDirectoryReplacesALink`, `TestFileManageLeavesALinksModeAlone`, `TestFilePresentIsSatisfiedByALink`, `TestFileFollowContentReplacesTheLinkNotItsTarget`, `TestFileFollowModeChangesTheTarget`, `TestFileNonCleanTitleOverSymlinkActsAsTheCleanTitle`; `internal/units/file/file_fs_test.go:TestFileOwnershipOnALinkLchownsUnderManageAndChownsUnderFollow`; `cmd/voxagent/main_test.go:TestTrailingSlashTitleOverASymlinkReplacesTheLink`; G1's `lnf`, `lnfollow`, `lnmode`, `lnfmode` and `lnd` fixtures |
 | D-5 | Retired. An explicit `ensure => absent` on a directory used to fail; it now reproduces Puppet | `force` was outside the bounded set and decides whether a directory may be removed. The file-attribute work added `force` and `removeExisting` (`type/file.rb:1022-1049`): with `force` the tree is removed (`RemoveAll`, which never follows a link); without it Puppet's notice is logged once and a successful `ensure: removed` event is reported while the directory stays, every run (I-1). A purged child behaves the same and inherits the parent's `force` (`type/file.rb:595-600`). A purge over an unmanaged directory is therefore not idempotent, under either agent | `internal/units/file/file_test.go:TestFileAbsentWithoutForceNoticesAndReportsRemoved`, `TestFileAbsentForceRemovesTheTree`; `internal/units/file/file_recurse_test.go:TestFilePurgedDirectoryReportsRemovedAndStays`; G1's `rmdir`, `keepdir` and `pur` fixtures |
-| D-6 | `corrective_change` is always `false`, and the ` (corrective)` message suffix is never produced; and voxagent never writes `state.yaml` | Both come from `@persistence`, Puppet's `state.yml`: `resource_harness.rb:169` compares the current value against the value the *last run recorded*, not against the catalog, and `:170` appends the suffix when they differ. voxagent has no counterpart to that store, so it has nothing to derive the distinction from. Nor does it write Puppet's other run state under `--vardir`. Natively it has no store at all. The extension host's harness records each Tier 3 resource's `checked` and `synced` times in `Puppet::Util::Storage` (`resource_harness.rb:66-71`), but only in memory: `Catalog#apply` is what loads and stores `state.yaml` (`resource/catalog.rb:234`, `:248`), and `Transaction#evaluate` is what saves the transaction store (`transaction.rb:155`), and the host calls neither (read, not measured). A Ruby run later on the same vardir therefore finds what the last *Ruby* run stored, not this run's times | Nothing pins the difference. `dev:report-diff` compares the leaf and sees `false` on both sides — but only because the fixture's `vardir` is a fresh `mktemp -d`, so Ruby has no persisted value there either. See the trap below |
-| D-7 | `audited` is always `false` and `historical_value` is never carried, so `sync_if_needed`'s audit branch has no analogue | `audit` is in no provider's attribute set and not in `engineAttrs`, so a catalog declaring it is a **pre-flight refusal** rather than a run that silently drops the auditing requirement. The report fields exist only so the two implementations agree on the keys | `internal/ral/ral_test.go:TestEngineAttrsCoverRelationshipMetaparameters`, which asserts `audit` is not engine-handled |
+| D-6 | `corrective_change` is always `false`, and the ` (corrective)` message suffix is never produced; and voxagent never writes `state.yaml` | Both come from `@persistence`, Puppet's `state.yml`: `resource_harness.rb:169` compares the current value against the value the *last run recorded*, not against the catalog, and `:170` appends the suffix when they differ. voxagent has no counterpart to that store, so it has nothing to derive the distinction from. Nor does it write Puppet's other run state under `--vardir`. Natively it has no store at all. The extension host's harness records each Tier 3 resource's `checked` and `synced` times in `Puppet::Util::Storage` (`resource_harness.rb:66-71`), but only in memory: `Catalog#apply` is what loads and stores `state.yaml` (`resource/catalog.rb:234`, `:248`), and `Transaction#evaluate` is what saves the transaction store (`transaction.rb:155`), and the host calls neither (read, not measured). A Ruby run later on the same vardir therefore finds what the last *Ruby* run stored, not this run's times | Nothing pins the difference. `dev:report-diff` compares the leaf and sees `false` on both sides — but only because the fixture's `vardir` is a fresh `mktemp -d`, so Ruby has no persisted value there either. See *The failure-detail elision has a latent fragility* under "Traps this project keeps hitting" below |
+| D-7 | `audited` is always `false` and `historical_value` is never carried, so `sync_if_needed`'s audit branch has no analogue | `audit` is in no provider's attribute set and not in `engineAttrs`, so voxagent refuses a catalog that declares it during pre-flight, rather than running and silently dropping the auditing requirement. The report fields exist only so the two implementations agree on the keys | `internal/ral/ral_test.go:TestEngineAttrsCoverRelationshipMetaparameters`, which asserts `audit` is not engine-handled |
 | D-8 | Retired. A `Sensitive` value used to be written in full where Ruby writes `[redacted]`, with `redacted` always the zero value. It is now redacted as Ruby does, outside the text D-78 redacts beyond Ruby | Measured 2026-11-17 on openvox 8.33.0 (puppet 8.10.0 source for the rules). A top-level `Sensitive` reaches the catalog as the plain value plus a sibling `sensitive_parameters` array, which `catalog.Resource` now reads. `ral.MarkSensitive` applies `set_sensitive_parameters` (`type.rb:2389`): only a *property* is marked; `File` `content` also marks `ensure`, and `source` marks `content` and `ensure`, while a link `target` marks only itself; any of `Exec`'s `command`, `unless` and `onlyif` marks the three present ones. A marked property's event has `previous_value` and `desired_value` `[redacted]`, `historical_value` null, `redacted: true` and the message and log `changed [redacted] to [redacted]` (`resource_harness.rb:182`, `property.rb:260`), under `--noop` `current_value [redacted], should be [redacted] (noop)`, and on failure `change from [redacted] to [redacted] failed: <error>`. A name that cannot be marked (a parameter such as `cwd`, an unknown or unassigned one) is warned on the console only, `Warning: /Exec[x]: Unable to mark 'cwd' as sensitive: …`, printed by `applyCatalog` (`voxagent: ` prefixed under `apply`) and never put in the report. A host override's `sensitive` list is kept and concatenated with the catalog's (`Resource.MarkSensitive`), so `concat`'s generated `File` is redacted like Ruby's. An override's `ContentMark` sets `content`'s flag as Ruby's parameter flag instead (`Resource.SetSensitivity`, concat design §5.4): sensitive marks `content` only, with no `ensure` cascade; not sensitive gives `redacted: false` with the ordinary message; unset gives `null`. The last two also drop a catalog `content` mark, keeping the `ensure` mark its cascade made, set directly so it holds when the `File` has no `ensure` parameter (`type/file.rb:989`). Children a native `File` recursion generates carry no marks, as in Ruby. Notify's and Exec's log text is `Sensitive [value redacted]`, `[command redacted]`, `[output redacted]`. voxagent shows no diffs, so `show_diff`'s `[diff redacted]` has nothing to redact. The two gates that held this back are now compared in full: `concat` with a `Sensitive` fragment is in `report-diff-extension.sh`, and `File[/etc/chrony.keys]`'s six registered leaves are gone from `tests/spine/allowlist.json` (the SIMP gate compares them). Before the allowlist entries were removed the SIMP gate was red on exactly those six leaves. Ruby leaks a marked value in error text; voxagent does not, D-78 | `internal/ral/sensitive_test.go:TestMarkSensitive`; `internal/transaction/sensitive_test.go:TestMarkedPropertyEventIsRedacted`, `TestMarkedPropertyNoopEventIsRedacted`, `TestMarkedPropertyFailureIsRedacted`; `internal/transaction/evalgen_test.go:TestOverrideSensitiveMarksTheTarget`; `cmd/voxagent/generation_test.go:TestMergeGenerationKeepsSensitive`; `internal/units/file/file_recurse_test.go:TestFileGenerateChildrenCarryNoSensitiveMarks`; `internal/units/exec/exec_test.go:TestExecOnlyUnlessMarkedRedactsCommand`; `cmd/voxagent/main_test.go:TestApplyWarnsOnAnUnmarkableSensitiveParameter`, `TestApplyDoesNotWarnOnAMarkableSensitiveProperty`; `cmd/voxagent/agent_test.go:TestAgentWarnsOnAnUnmarkableSensitiveParameter`; `cmd/voxagent/sensitive_test.go:TestNoSensitiveMarkerLeaks` (no marker value appears in the report, the logs or the console of a run). Gates: `dev:report-diff-container` (`Sensitive` and `Exec` cases), `dev:report-diff-extension` (a `Sensitive` `concat` fragment), `dev:report-diff-simp` (no D-8 allowlist entry) |
 | D-9 | Go and Ruby render the same errno differently — `chown <p>: operation not permitted` against `Operation not permitted @ apply2files - <p>` | **Unclosable.** It is each runtime's own error text, not voxagent's; matching it would mean hand-writing errno strings that then drift from the syscall producing them. `internal/gatekit/reportcmp`'s `elideFailureDetail` masks exactly that span and keeps the `change from X to Y failed: ` prefix, the `Could not set 'V' on P: ` wrapper and the `(file: F, line: N)` suffix compared — those three *are* the attribution the gate exists to check | `dev:report-diff`, whose fixture now contains a failing resource, so the elision runs on every green rather than being dead code |
-| D-10 | A noop message of `service` or `package` never carries a trailing ` (noop)`, where `resource_harness.rb:243` appends one (`Package.sync` under noop returns the plain `ensureMessage`, `internal/units/package/package.go`); `file`'s, `notify`'s and `exec`'s do since the concat gates (below) | A report-shape decision for whichever round measures `service` or `package` noop end to end. **The evidence for `service` and `package` is weaker than the rest of this table and must not be read as equal to it:** it rests on reading `:243`. The other three are measured: the concat measurements' `noop.txt` (openvox 8.33.0) show `defined content as '{sha256}…' (noop)`, `created (noop)`, `removed (noop)`, `content`/`owner`/`group`/`mode changed … (noop)`, `defined 'message' as '…' (noop)` and `executed successfully (noop)`, and G5's concat `--noop` pass and the extension gate's `--noop` recursion pass compare them. Native `File.Apply` appends the suffix to every change that is not a failure; `Notify` adds it and logs no bare `Puppet` notice (message's sync never runs); `Exec`'s noop event is Ruby's: `previous_value` `notrun`, `desired_value` the accepted list, message `executed successfully (noop)` | `internal/units/file/file_test.go:TestFileNoopMessagesEndInNoop`; `internal/units/notify/notify_test.go:TestNotifyNoopStillReportsTheChange`; `internal/units/exec/exec_test.go:TestExecNoopChangeDoesNotFabricateExitCode` |
+| D-10 | A noop message of `service` or `package` never carries a trailing ` (noop)`, where `resource_harness.rb:243` appends one (`Package.sync` under noop returns the plain `ensureMessage`, `internal/units/package/package.go`); `file`'s, `notify`'s and `exec`'s do since the concat gates ([`concat_file` and `concat_fragment`](not-implemented.md#concat_file-and-concat_fragment)) | A report-shape decision for whichever round measures `service` or `package` noop end to end. **The evidence for `service` and `package` is weaker than the rest of this table and must not be read as equal to it:** it rests on reading `:243`. The other three are measured: the concat measurements' `noop.txt` (openvox 8.33.0) show `defined content as '{sha256}…' (noop)`, `created (noop)`, `removed (noop)`, `content`/`owner`/`group`/`mode changed … (noop)`, `defined 'message' as '…' (noop)` and `executed successfully (noop)`, and G5's concat `--noop` pass and the extension gate's `--noop` recursion pass compare them. Native `File.Apply` appends the suffix to every change that is not a failure; `Notify` adds it and logs no bare `Puppet` notice (message's sync never runs); `Exec`'s noop event is Ruby's: `previous_value` `notrun`, `desired_value` the accepted list, message `executed successfully (noop)` | `internal/units/file/file_test.go:TestFileNoopMessagesEndInNoop`; `internal/units/notify/notify_test.go:TestNotifyNoopStillReportsTheChange`; `internal/units/exec/exec_test.go:TestExecNoopChangeDoesNotFabricateExitCode` |
 | D-11 | On a created path the collapsed metadata failure is wrapped as `Could not set 'V' on ensure: …` unconditionally; Ruby wraps only some | `property.rb:490` re-raises a `Puppet::Error` untouched and `:492` wraps every other `StandardError`. A `chown` failing inside `property_fix` raises `Puppet::Error` (`provider/file/posix.rb:110` for owner, `:142` for group) and is **not** wrapped, while an unresolvable owner *name* is a bare `RuntimeError` from `type/file/owner.rb:29` and **is**. voxagent's collapse runs after the raise and cannot tell the two layers apart, so it wraps both. Reachable only when a created path's metadata fails, which the spine fixture does not do; `task check` is unaffected | `internal/units/file/file_test.go:TestFileCreatedMetadataFailureCollapsesOntoEnsure` |
-| D-12 | Provider selection is not implemented. voxagent is dnf and only dnf, so a catalog naming another provider is a **pre-flight refusal** where Ruby selects at runtime among the forty-three files under `provider/package/` | Selection is suitability and specificity evaluated against the host, and reproducing it means reproducing the confines, features and `defaultfor` of providers none of which exists here. Bounding it is also what keeps the retrospective's "no suitable provider" gap unforced: Puppet's failed-with-zero-events shape — `transaction.rb:132-135`, then one `Puppet.err` per type at teardown (`:146`) — is unrepresentable in a contract whose bare `err` always synthesizes a `resource_error`, and a refusal that happens before the walk means nothing ever needs it. **One half of the design is not implemented as written:** a host with no usable `dnf` is *not* refused at pre-flight. `Prefetch` resolves both commands with `exec.LookPath` (`internal/units/package/package.go:287` and `:291`) and a failure there is the type-wide prefetch failure instead — one `err` log, one `resource_error` per package resource, `failed` and `skipped` together — while every other type in the catalog still applies, which is the half-converged node the value-level refusal exists to prevent | `internal/units/package/package_test.go:TestPackageSupportsValue` pins the provider refusal in both directions (`dnf` accepted, `gem` and `yum` refused) and `internal/ral/preflight_test.go:TestPreflightRefusesAnUnimplementedAttributeValue` pins the mechanism. **Nothing pins the absent-`dnf` path.** No test drives `LookPath` into failure, and no gate can: every container G3 and G5 start has dnf |
+| D-12 | Provider selection is not implemented. voxagent is dnf and only dnf, so voxagent refuses, during pre-flight, a catalog that names another provider, where Ruby selects at runtime among the forty-three files under `provider/package/` | Selection is suitability and specificity evaluated against the host, and reproducing it means reproducing the confines, features and `defaultfor` of providers none of which exists here. Bounding it is also what keeps the retrospective's "no suitable provider" gap unforced: Puppet's failed-with-zero-events shape — `transaction.rb:132-135`, then one `Puppet.err` per type at teardown (`:146`) — is unrepresentable in a contract whose bare `err` always synthesizes a `resource_error`, and a refusal that happens before the walk means nothing ever needs it. **One half of the design is not implemented as written:** a host with no usable `dnf` is *not* refused at pre-flight. `Prefetch` resolves both commands with `exec.LookPath` (`internal/units/package/package.go:287` and `:291`) and a failure there is the type-wide prefetch failure instead — one `err` log, one `resource_error` per package resource, `failed` and `skipped` together — while every other type in the catalog still applies, which is the half-converged node the value-level refusal exists to prevent | `internal/units/package/package_test.go:TestPackageSupportsValue` pins the provider refusal in both directions (`dnf` accepted, `gem` and `yum` refused) and `internal/ral/preflight_test.go:TestPreflightRefusesAnUnimplementedAttributeValue` pins the mechanism. **Nothing pins the absent-`dnf` path.** No test drives `LookPath` into failure, and no gate can: every container G3 and G5 start has dnf |
 | D-13 | Four `ensure` values are pre-flight refusals: `purged`, `disabled`, `held`, and every version **range** (`>=8.1`, `>8.1 <9.0`) | Four refusals for four different reasons, and the differences are the point. `purged` (`type/package.rb:107`) needs `:purgeable`, which is method-derived (`:47-51`, `:methods => [:purge]`) and which `provider/package/yum.rb:355` satisfies — so Ruby really does purge, and this is voxagent declining a value Puppet implements, for the feature-confinement machinery nothing else here needs. `disabled` (`:111`) needs `:disableable` (`:67-69`), whose `:methods => [:disable]` only `dnfmodule.rb:128` defines, so no yum-family provider has it and Ruby refuses the value too; this row is about *when* the refusal lands, not whether, and where Ruby's lands is unmeasured. `held` is not an `ensure` value at all — holding is the `mark` property (`:664`, values at `:676`) — so Ruby's catch-all `newvalue(/./)` (`:136`) would read it as a version and hand dnf `nano-held`; refusing it by name is what keeps voxagent from reproducing that. Ranges are implemented and real: `dnf.rb:14` declares `:version_ranges` and `best_version` resolves them by running `dnf list <name> --showduplicates` and taking the greatest available version inside the range (openvox `yum.rb:199-228`, called at `:283`; the gem's are `:201` and `:288` — the line numbers differ between the trees, the behaviour does not). All four are refused at pre-flight rather than at apply because `ensure` carries an open-ended version string: an apply-time refusal applies the rest of the catalog first and leaves the node half-converged | `TestPackageSupportsValue` asserts all four refused **and** each implemented value accepted, so it cannot pass against a provider that supports nothing; `internal/units/package/package_test.go:TestPackageRefusesAVersionRange` pins the leading-operator test and the multiversion string (`6.12.0-1.el10; 6.12.0-2.el10`) it must *not* catch; `TestPreflightRefusesAnUnimplementedAttributeValue` pins the `Package[foo]: ensure => "purged" is not implemented` form |
 | D-15 | Non-adjacent multiversion grouping: where one name appears twice in `rpm -qa` with another package between, voxagent joins every version into one `previous_value` and Ruby reports only the last adjacent group's | One of the predictions recorded when the apply spine was designed (made by reading Ruby's source before running it), still unmeasured, registered here rather than decided in code. `rpm.rb:238-242` flushes its accumulator whenever the name changes, so it groups **adjacent** lines only and a non-adjacent repeat becomes two entries in the instance list; `provider/package.rb:7-14`'s prefetch then does `packages[prov.name] = prov` once per instance, so the **last** entry wins. voxagent's `parseInstalled` (`internal/units/package/dnf.go:52`) keys a `map[string]string` and groups globally. Keeping the global map because it is the more useful answer is exactly the improvement the standing directive forbids making before parity. Read further, the case may not be reachable at all: `rpm.rb:70` pipes the bulk query through `| sort`, and sorting makes every line sharing a `name ` prefix contiguous, so Ruby's adjacency requirement is satisfied by Ruby's own command line. That second reading is a stronger kind than the first: whether `| sort` is in the command line is a question about **which code path runs**, which reading source answers reliably, where the first reading is about **what ends up in the output**, which is the form this project has been wrong about repeatedly. So the likeliest state of the world is that the two implementations cannot disagree here. It stays a register row rather than being closed because nobody has produced the input and watched, and an unreachable divergence that is later made reachable -- by a query that drops the sort, say -- would otherwise become a silent defect | **Nothing pins the difference.** `internal/units/package/dnf_test.go:TestParseInstalledJoinsMultipleVersions` and `TestParseInstalledSkipsRepeatedVersions` pin voxagent's own side only, and the captured `internal/units/package/testdata/rpm-qa.txt` is sorted, so it cannot exhibit the input that would separate the two |
 | D-16 | One `Could not check for updates` per run is reached by a different mechanism than Ruby's, while the output matches | Ruby's `latest_package_version` (openvox `yum.rb:91-101`) memoises `check_updates` into a class-level `@latest_versions` keyed `[disablerepo, enablerepo, disableexcludes]`, so the first `latest` resource to reach `insync?` pays for the call and every later one reads the cache. The warning itself (openvox `yum.rb:128`, the gem's `:129`) is plain `warning`, which does not dedupe at all — the single entry is an artifact of the memo, not of logging. voxagent resolves the updates map once in `Prefetch`, the only place that can see "some `latest` resource is already installed" before any `Apply`, and returns the stored warning from every `latest` resource with `Warning.DedupeClass` set to `Puppet::Type::Package::ProviderDnf`, which the transaction collapses on class-plus-message (`internal/transaction/transaction.go:205-212`). Both halves are needed: dedupe alone would still spawn N subprocesses, which `dev:state-diff` can see and no report differential can; eager resolution alone would log N times. The observable counts agree — one warning and one `dnf check-update` per run, zero of each when no installed resource asks (`type/package.rb:165` returns before `provider.latest` for an absent or purged package). What differs is *when*: Ruby's call happens lazily at the first `latest` resource, voxagent's before any resource is applied. That is not observable in any compared report leaf; it shows in `evaluation_time`, which no gate compares (D-57) | Ruby's side is measured — three installed `latest` resources against an unreachable repo emit exactly one warning (another of the predictions recorded when the apply spine was designed). voxagent's side is pinned by unit test rather than by a differential against that same catalog: `internal/units/package/package_test.go:TestPackageResolveUpdatesRunsOnceForTheWholeRun`, `TestPackageResolveUpdatesSkipsWhenNoInstalledResourceAsks` and `TestPackageLatestOnAPurgedPackageRaisesNoCheckUpdateWarning` for the call count and its guard, `TestPackageCheckUpdateFailureWarnsAndLeavesTheResourceInSync` for `DedupeClass` and the no-change outcome, and `internal/transaction/transaction_test.go:TestWarningCarriesItsOwnSource` for the collapse. **No gate reaches it**: G5's containers have healthy repos, so the branch never fires there |
@@ -115,14 +136,14 @@ and the number is retired rather than reused:
 | D-22 | A host whose PID 1 is not systemd refuses the **whole catalog** when it holds a `service`, as a could-not-run before anything is applied; Puppet selects another provider | Provider selection is not implemented (D-12). Checked in `Service.Validate`, not `Prefetch`, because a prefetch failure applies every other type first and leaves the node half-converged, the case the whole-catalog refusal exists to prevent. The test is PID 1's `comm` containing `systemd`, so a container that is not run under systemd is refused | `internal/units/service/service_test.go:TestServiceValidateRequiresSystemdAsInit`; `cmd/voxagent/main_test.go:TestServiceIsRegistered` pins that the pre-flight gap is gone, and `TestServiceOnANonSystemdHostRefusesTheWholeCatalog` pins, at the binary, that a valid `file` beside a `service` is not written and the run exits 2 as could-not-run (skipped where PID 1 is systemd) |
 | D-23 | Retired. `service` and `exec` commands used to inherit voxagent's `HOME`, `USER` and `LOGNAME`; no child voxagent starts gets them now, as under Puppet | `util/execution.rb:387` deletes each of `util/posix.rb:11`'s `USER_ENV_VARS` in the child before every command Puppet executes (measured, M10). `exec` builds every child's environment, guards and `refresh` included, from `command.WithoutUserEnv` (`internal/lib/command/command.go`), and `command.RunArgv` (`internal/lib/command/command.go`), which starts `service`'s `systemctl` and `package`'s dnf, applies the same function; `validate_cmd`'s `rubyEnvDropped` holds the same `userEnvVars`. A `user` exec is given no `HOME` either: Puppet sets none. Their `PATH` still differs: D-49 | `internal/units/exec/exec_env_test.go:TestExecChildHasNoUserEnv` (a command, its guard and the `runArgv` runner), `TestWithoutUserEnv`; `task dev:report-diff-systemd` and G5's package cases after the change |
 | D-24 | A daemon that a `service` or `exec` command backgrounds can keep writing to stdout after the command returns; under Puppet its next write gets `EPIPE`, and `SIGPIPE` unless it ignores the signal | Puppet captures a command's output through a pipe on POSIX (`util/execution.rb:200`) and closes the read end once the direct child has exited (`:325`), so a backgrounded descendant's later writes reach a pipe with no reader. voxagent's `runCapturingToFile` (`internal/lib/command/command.go`, used by `command.FileOutputRunner` and `Exec.execute`) gives the command a temporary file instead: writes after the command returns land in a file whose name is already removed. Reproducing the pipe would mean killing a service for logging to stdout, an artifact of Puppet's capture rather than a contract | **Nothing pins it.** `TestFileOutputRunnerReturnsWhenABackgroundedChildInheritsStdout` and `TestExecReturnsWhenABackgroundedChildInheritsStdout` pin only that the command returns when its shell exits; no test has the backgrounded child write afterwards, and the systemd gate's custom commands write nothing after they return |
-| D-25 | Retired. A generating parent's unit now logs Puppet's whit notice under `--noop`: `Would have triggered 'refresh' from N events` at the parent's title, N the events of the parent and every member (measured: `/tmp/rx/tgt`, N = 3) | Puppet's completed whit is a real vertex whose `process_noop_events` logs the notice; `applyUnit` reproduces it from the unit's aggregate before sending the one event on | Pinned by `TestFileRecursionUnitNoopNotice` and `TestUnitNoopNoticeCountsEvents`; the report-diff gates' noop pass compares it. The notice is gated on the run's `--noop` only (`applyUnit`, `internal/transaction/transaction.go`): a per-resource `noop => true` in a live run gives no notice, where Ruby's whit may log one (unmeasured) |
-| D-26 | A `source` that is a FIFO, socket or device fails the resource; Puppet describes it with a `{none}` checksum. (The symlink part is retired: a link source now reproduces Puppet, below) | Source metadata is read with `lstat` under `links => manage` (`file_serving/base.rb:79`), and a FIFO or socket is a type Puppet describes rather than refuses. voxagent refuses anything but a regular file, a directory or (below) a link. **Retired part:** under `manage` a symlink source makes the resource a link to the source's raw `readlink` (`type/file/source.rb:170-176`; `file_serving/metadata.rb:118-124`), as `link_created ... created`; under `follow` the source is read with `stat` and its target's content is copied (`file_created`, `defined content as ...`). `links` is consulted when reading a top-level source; a symlink inside a recursed source tree is still refused, as before | `internal/units/file/file_source_test.go:TestResolveSourceRefusesASpecialFile`, `TestFileSymlinkSourceUnderManageMakesALink`, `TestFileSymlinkSourceUnderFollowCopiesTheTarget`; G1's `src-ln` and `src-follow` fixtures; `internal/units/file/file_recurse_test.go:TestFileSymlinkInASourceTreeFailsThatChild` (recursion) |
+| D-25 | Retired. A generating parent's unit now logs Puppet's whit notice under `--noop`: `Would have triggered 'refresh' from N events` at the parent's title, N the events of the parent and every member (measured: `/tmp/rx/tgt`, N = 3) | Puppet's completed whit is a real vertex whose `process_noop_events` logs the notice; `applyUnit` reproduces it from the unit's aggregate before sending the one event on | Pinned by `TestFileRecursionUnitNoopNotice` and `TestUnitNoopNoticeCountsEvents`; the `--noop` pass of the report-diff gates compares it. The notice is gated on the run's `--noop` only (`applyUnit`, `internal/transaction/transaction.go`): a per-resource `noop => true` in a live run gives no notice, where Ruby's whit may log one (unmeasured) |
+| D-26 | A `source` that is a FIFO, socket or device fails the resource; Puppet describes it with a `{none}` checksum. (The symlink part is retired: a link source now reproduces Puppet, see [`file` source, recurse and purge](not-implemented.md#file-source-recurse-and-purge)) | Source metadata is read with `lstat` under `links => manage` (`file_serving/base.rb:79`), and a FIFO or socket is a type Puppet describes rather than refuses. voxagent refuses anything but a regular file, a directory or (below) a link. **Retired part:** under `manage` a symlink source makes the resource a link to the source's raw `readlink` (`type/file/source.rb:170-176`; `file_serving/metadata.rb:118-124`), as `link_created ... created`; under `follow` the source is read with `stat` and its target's content is copied (`file_created`, `defined content as ...`). `links` is consulted when reading a top-level source; a symlink inside a recursed source tree is still refused, as before | `internal/units/file/file_source_test.go:TestResolveSourceRefusesASpecialFile`, `TestFileSymlinkSourceUnderManageMakesALink`, `TestFileSymlinkSourceUnderFollowCopiesTheTarget`; G1's `src-ln` and `src-follow` fixtures; `internal/units/file/file_recurse_test.go:TestFileSymlinkInASourceTreeFailsThatChild` (recursion) |
 | D-27 | Retired. A recursion child whose source type differs from what exists used to fail; it now reproduces Puppet | A source directory over a file replaces the file (`directory_created`, `ensure changed 'file' to 'directory'`). A source file over a directory fails the child's ensure with the notice twice (I-3) unless the parent's `force`, inherited by every child, lets it replace the directory (`file_created`, `defined content as ...`; `type/file.rb:791-818`) | `internal/units/file/file_recurse_test.go:TestFileChildTypeConflictReplacesOrFailsByForce`; G1's `fdir`, `nofdir` and `wasfile` fixtures |
 | D-28 | Retired. A symlink found by a recursion walk used to get no permission changes and no SELinux relabel; it now gets Puppet's treatment of the link itself | Puppet's `newchild` makes a walked link a `File` like any other (`type/file.rb:583-602`), with the parent's `links`, which is `manage` because `Validate` refuses `follow` with `recurse` (D-32). Its mode is left alone (`type/file/mode.rb:133`), `owner` and `group` are `lchown`ed (`provider/file/posix.rb:99-144`; measured as root on Puppet 8.10.0: `owner changed 'llm' to 'nobody'` and `group changed 'llm' to 'nobody'` on links into the tree, out of it and dangling, no `mode` event, the outside target untouched, and `(noop)` events with nothing changed under noop) and it is relabelled itself (the SELinux gate: `seltype changed 'tmp_t' to 'etc_t'`). Every operation goes through the tree's `rootFS`: `Lchown`, and the `O_PATH\|O_NOFOLLOW` handle the label is read and set through, act on the link and never its target, and `purge` still unlinks it | `internal/units/file/file_recurse_test.go:TestFileWalkedSymlinkIsLchownedAndKeepsItsMode`, `TestFileWalkedSymlinkUnderNoopChangesNothing`; `internal/units/file/file_selinux_test.go:TestSELinuxRelabelsAWalkedLinkItself`, `TestXattrHelpersActOnALinkItselfThroughTheRoot`; the SELinux gate's `tree` fixture, run as root: `tree/ln` and `tree/lnout` (to `lnreal`, outside the tree) are compared with Ruby for their `owner` and `group` events and no `mode` event, `tree/ln` (seeded `tmp_t`) for its `seltype` event, and `tree/lnout`, seeded `etc_t` and so already in sync, for having none; and the ownership listing shows `lnreal` keeping `root:root`. G1's `lnwalk` sees only a mode or group event that should not be there |
-| D-29 | Retired. On an SELinux-enabled host a managed `File` used to keep whatever context it had; it now gets the `selabel_lookup` default as Puppet does | Closed by the `sel*` properties, defaults and relabelling, and by reading and writing a recursion child's label through its `os.Root`. `type/file/selcontext.rb:42-48` gives every `File` the four `sel*` properties, defaulted unless `selinux_ignore_defaults`, whenever `Selinux.is_selinux_enabled == 1` (`util/selinux.rb:21-28`); see "`file` SELinux contexts" below. The number is retired rather than reused | `internal/units/file/file_selinux_test.go` (the `TestSELinux*` tests, against a fake host); this container cannot mount `selinuxfs`, so Puppet's side is measured on an enforcing VM (`tests/spine/report-diff-selinux.sh`) |
+| D-29 | Retired. On an SELinux-enabled host a managed `File` used to keep whatever context it had; it now gets the `selabel_lookup` default as Puppet does | Closed by the `sel*` properties, defaults and relabelling, and by reading and writing a recursion child's label through its `os.Root`. `type/file/selcontext.rb:42-48` gives every `File` the four `sel*` properties, defaulted unless `selinux_ignore_defaults`, whenever `Selinux.is_selinux_enabled == 1` (`util/selinux.rb:21-28`); see [`file` SELinux contexts](not-implemented.md#file-selinux-contexts) below. The number is retired rather than reused | `internal/units/file/file_selinux_test.go` (the `TestSELinux*` tests, against a fake host); this container cannot mount `selinuxfs`, so Puppet's side is measured on an enforcing VM (`tests/spine/report-diff-selinux.sh`) |
 | D-30 | `links => follow`, `ensure => file` and no `content` or `source` over a dangling link fails the create; Puppet creates the file the link points at | Puppet opens the path in place (`type/file.rb:964-966`), and `File.open` follows the link. voxagent creates such a file with `O_EXCL` and never writes through a link, so the link fails it with `file exists` and nothing is created at its target (measured on Puppet 8.10.0 2026-10-06) | `internal/units/file/file_test.go:TestFileFollowEnsureFileOverADanglingLinkWritesNothingThroughIt` |
 | D-31 | A generated recursion child under an inherited `links => follow` whose destination is a symlink is not chmod'ed or chown'ed through it: a declared `mode` fails (`refusing to chmod through it`) and `owner`/`group` are `lchown`ed. Puppet chmods and chowns through the link | Under `follow` Puppet's `mode=` is `File.chmod` and `owner=`/`group=` are `File.chown` (`provider/file/posix.rb:99-144, 155-156`), all following the link. A child is applied through `rootFS`, whose `Chmod` refuses a link and whose `Chown` is `Lchown`, because inside the `os.Root` a link swapped in after the walk must not carry a chmod or chown anywhere, even within the tree. Not reachable from a catalog since `Validate` refuses `links => follow` with `recurse` (D-32), so every generated child is under `manage`; `rootFS` keeps the guarantee for any child applied regardless | `internal/units/file/file_fs_test.go:TestFileFollowChildLinkIsNeitherChmodedNorChownedThroughTheRoot` |
-| D-32 | `links => follow` with `recurse => true` is refused before anything is applied (`Validate`, exit 2 could-not-run); Puppet follows a linked source directory and copies its tree | Measured on Puppet 8.10.0: `source => '<dir>/dl', recurse => true, links => follow`, where `dl` links to a directory holding `a`, creates the destination and copies the tree (`File[/d/a]` `file_created`, `defined content as '{sha256}...'`); under `manage` it makes the destination a link and yields no children. voxagent's walk (`walkTree`) is `os.Root`-confined and never follows a link, so following one is a security-sensitive change not made yet. It is a `Validate` refusal, not a pre-flight `Gap`, because `SupportsValue` sees one attribute at a time and cannot express a combination; it is therefore not in the porting histogram | `internal/units/file/file_source_test.go:TestFileValidateSourceAndCreators` (case `follow and recurse`) |
+| D-32 | `links => follow` with `recurse => true` is refused before anything is applied (`Validate`, exit 2 could-not-run); Puppet follows a linked source directory and copies its tree | Measured on Puppet 8.10.0: `source => '<dir>/dl', recurse => true, links => follow`, where `dl` links to a directory holding `a`, creates the destination and copies the tree (`File[/d/a]` `file_created`, `defined content as '{sha256}...'`); under `manage` it makes the destination a link and yields no children. voxagent's walk (`walkTree`) is `os.Root`-confined and never follows a link, so following one is a security-sensitive change not made yet. `Validate` refuses it, not a pre-flight `Gap`, because `SupportsValue` sees one attribute at a time and cannot express a combination; it is therefore not in the porting histogram | `internal/units/file/file_source_test.go:TestFileValidateSourceAndCreators` (case `follow and recurse`) |
 | D-33 | voxagent reads and writes raw SELinux contexts; Puppet's non-raw calls translate through mcstrans | `selcontext.rb:35-36, 121-122` runs `selrange` through `selinux_category_to_label` and `lgetfilecon` is the translating call, so Puppet compares and writes translated ranges. The two differ only on a host with mcstrans translations configured (`setrans.conf`), which a default RHEL or SIMP install does not have. voxagent's `current` reads `security.selinux` raw and `defaultFor` takes `selabel_lookup`'s non-raw output, which is the same string Puppet's non-raw lookup returns. On a host with translations the effect is not small: voxagent compares a translated default range against a raw label, so every `File` that wants defaults reports a `selrange` change on every run, and writing the translated range, which the kernel does not accept as a raw label, fails as a warning (I-4) | **Nothing pins it**: no mcstrans host here |
 | D-34 | `ensure => present` with `content` over a path that is not a regular file omits Puppet's warning | Puppet keeps the path, as voxagent does, and `checksum_insync?` (`type/file/data_sync.rb:31-33`) logs `Ensure set to :present but file type is <ftype> so no content will be synced` at warning level, sourced at the resource (measured on a fifo: `/Stage[main]/Main/File[<path>]`). voxagent's provider warnings carry a fixed source (`ral.Warning`), and a resource-sourced one is not implemented. The disk state and the events agree; only that log line is missing | **Nothing pins it.** `internal/units/file/file_test.go:TestFilePresentWithContentLeavesAFifo` pins the kept fifo and the absence of a blocking read, not the warning |
 | D-35 | When the SELinux file-contexts handle does not open, voxagent refuses only a catalog with a `File` that would look a default up; Puppet fails every run | **Measured** 2026-10-06 on the SELinux gate's VM (openvox 8.29.0, enforcing) with `file_contexts` and `file_contexts.bin` moved aside, so `selabel_lookup` prints `ERROR: selabel_open - Could not obtain handle`: `puppet apply --catalog` printed `Error: Could not prepare for execution: Could not create resources for managing OpenVox's files and directories in sections [:main, :agent, :ssl]: Cannot get default context with nil handle`, exited 1, applied nothing (the catalog's notifies and files did not run) and wrote no report. Puppet 8.10.0 has the same path with `Puppet's files` (`settings.rb:1145`, `application.rb:415`). The failure is in Puppet's own settings resources, at setup, so it does not depend on the catalog. voxagent has no settings resources: its `Validate` probes the handle once and refuses the catalog, nothing applied, for each `File` that wants defaults and syncs its SELinux properties on a filesystem with labels, as `File[<path>]: Cannot get default context with nil handle`. A catalog with no such `File` is applied, where Puppet would not run. Before this, voxagent failed each such `File` and applied the rest. Verified in a second run of the same broken VM: voxagent printed `File[/etc/voxgate/i3a]: Cannot get default context with nil handle` for the one `File` wanting defaults (not the one with `selinux_ignore_defaults`), applied nothing and wrote no report; it exits with its own could-not-run code, `2` (README), where Puppet exited `1` | `internal/units/file/file_selinux_test.go:TestFileValidateRefusesTheCatalogWhenNoHandleOpens`, `TestHandleOpensProbesOnceAndReportsANilHandle`. No gate fixture: breaking `file_contexts` would fail every other fixture of the SELinux gate, so it was measured in a separate VM run |
@@ -132,7 +153,7 @@ and the number is retired rather than reused:
 | D-39 | A type all of whose resources were skipped for failed dependencies has a `metrics.time` entry of `0` in voxagent's report and none in Ruby's | `report.rb:499-510`'s `calculate_time_metrics` adds only a status with an `evaluation_time`, and a skipped resource's is `null` (D-36). voxagent's `Finalize` sums every status not marked `Untimed`, and only the Tier 3 never-evaluated paths (prefetch-skipped and unsuitable) set it; a resource skipped for dependencies, native or Tier 3, is still summed as `0`. Left so to keep native behaviour unchanged in the extension-host work. **Measured** 2026-10-07 in the D-38 catalog: Ruby's `metrics.time` has no `file` entry, voxagent's has `file: 0` | Nothing |
 | D-40 | Retired. Under `--noop` the `events` metric had no `noop` entry, where Ruby counts noop events there | `report.rb:467-478`'s `calculate_event_metrics` adds one to `metrics[event.status]` for every event, so a noop run gains a `noop` entry (measured 2026-10-07 on `report-diff-extension.sh`'s catalog under `--noop`: Ruby `["noop","Noop",11]`, voxagent had none). `Finalize` now counts `noop` events and emits the entry when there is one (commit de209e3). The stale part of this row was its claim that no gate runs `--noop`: G5's `--noop` pass compares every report leaf, `events` included (measured, 2026-11-20, openvox 8.33.0: 1500 leaves compared, 0 divergent on the main fixture, and 0 divergent across the concat cases' noop runs), and the extension gate's `--noop` pass over a `File` recursion compares its leaves too (149 leaves, 0 divergent). The gate's tier-3 `--noop` pass over `report-diff-extension.sh`'s main catalog is still not run; the noop recursion pass is one `File` unit, not that catalog | `internal/report/report_test.go:TestEventsMetricCountsNoopEvents`. Gates: `dev:report-diff-container`'s `--noop` pass, `dev:report-diff-extension`'s `--noop` pass |
 | D-41 | Retired. Under `--noop` a native `File` that a changed resource notifies used to log `Would have triggered 'refresh' from N event(s)`; it now logs nothing, as Puppet does | `event_manager.rb:73` queues an event only for a target that responds to the callback, and neither `type/file.rb` nor `type/notify.rb` defines `refresh` (among the native types only `exec`, `service` and `package` do). `ral.Refreshing` carries that answer: `File` and `Notify` return false, an extension-host type answers with its type's `refreshable`, and a provider that does not implement it is refreshable. The walk drops a pending refresh silently for a target that is not, so the `File` and `Notify` members of a notified class are not scheduled either. **Measured** 2026-10-07, before the fix, on `report-diff-extension.sh`'s catalog under `--noop`: Ruby logged `Would have triggered` for `Vox_value[refreshed]` and `Vox_value[refuser]` only; voxagent also for `File[$T/notified]`, which `Vox_value[notifier]` notifies. The gates' `--noop` passes now run (D-40) | `internal/transaction/transaction_test.go:TestNoopDoesNotScheduleANonRefreshableNative`, `TestRefreshIntoAContainedClassIsOneEvent`; `internal/units/file/file_test.go:TestFileIsNotRefreshable`; `internal/units/notify/notify_test.go:TestNotifyIsNotRefreshable` |
-| D-42 | A new resource an extension-host `eval_generate` makes is a resource error, where Puppet applies it, when (a) its type has no provider at all: `resource type <Type> is not implemented`; (b) pre-flight's judgement or the provider's `Validate` refuses it: the first gap, or the validation error; (c) its own generation yields resources: `<ref> generates resources, and resources generated during evaluation that generate further are not implemented` | The walk applies each new resource through its own type's provider (`visitHostUnit`). A type the catalog never named is prefetched at its first generated resource, as `prefetch_if_necessary` prefetches lazily (`transaction.rb:243-260`), so (a) is only a type voxagent's registry does not know. Pre-flight never saw a generated resource, so (b) judges it then; a resource Puppet evaluates in the host is judged only by the metaparameters the walk would have to honour. (c) runs the child's own generation at its turn and refuses it rather than applying it without what it made. Three consequences follow. A nested generator whose turn is skipped, because its parent or a generated ancestor failed, never runs its `eval_generate`, so its logs, `failed_to_generate` and overrides are lost where Puppet's `pre_process` would run it. An override a nested generation makes on a sibling in the same unit is lost, because the walk overrides only catalog resources. A skipped child of a type that was never primed reports no `provider_used` | `internal/transaction/evalgen_test.go:TestGeneratedChildWithNoProviderIsRefused`, `TestGeneratedChildIsJudgedLikeACatalogResource`, `TestGeneratedChildThatGeneratesIsRefused` |
+| D-42 | When an extension-host `eval_generate` makes a new resource, voxagent fails that resource with a resource error, where Puppet applies it, when (a) its type has no provider at all: `resource type <Type> is not implemented`; (b) pre-flight's judgement or the provider's `Validate` refuses it: the first gap, or the validation error; (c) its own generation yields resources: `<ref> generates resources, and resources generated during evaluation that generate further are not implemented` | The walk applies each new resource through its own type's provider (`visitHostUnit`). A type the catalog never named is prefetched at its first generated resource, as `prefetch_if_necessary` prefetches lazily (`transaction.rb:243-260`), so (a) is only a type voxagent's registry does not know. Pre-flight never saw a generated resource, so (b) judges it then; a resource Puppet evaluates in the host is judged only by the metaparameters the walk would have to honour. (c) runs the child's own generation at its turn and refuses it rather than applying it without what it made. Three consequences follow. A nested generator whose turn is skipped, because its parent or a generated ancestor failed, never runs its `eval_generate`, so its logs, `failed_to_generate` and overrides are lost where Puppet's `pre_process` would run it. An override a nested generation makes on a sibling in the same unit is lost, because the walk overrides only catalog resources. A skipped child of a type that was never primed reports no `provider_used` | `internal/transaction/evalgen_test.go:TestGeneratedChildWithNoProviderIsRefused`, `TestGeneratedChildIsJudgedLikeACatalogResource`, `TestGeneratedChildThatGeneratesIsRefused` |
 | D-43 | Narrowed. Existing resources an `eval_generate` returns join its unit (native and host), so a member is skipped when its generator is skipped or failed and the generator's subscribers are refreshed through it, as in Ruby; when `eval_generate` itself raises there are no members, as in Ruby. Left: (a) relationship values an `eval_generate` appends (`before`) are not applied; (b) a ready existing member is applied immediately after its generator, where Ruby keeps the member's own catalog priority, so an unrelated resource between the two in priority runs first there (unmeasured); the completion whit's notice follows the member, where Ruby may first run a lower-priority ready resource; (c) a member not ready at the generator's turn keeps its own turn, outside the unit, and loses its dependency on the generator, so a failed or skipped generator no longer skips it, where Ruby keeps the edge and its whit waits for it; (d) Ruby misbehaves when an `eval_generate` returns a catalog resource the generator has no edge to (a `negative number of dependencies` warning, the resource's status missing from the report, a subscriber triggered `from 2 events`: measured, 2026-11-20, openvox 8.33.0, with `vox_evalgen`'s `ge`), and the extension gate's `ge` is given `concat`'s `before` edge to avoid it, so the edgeless shape is unmeasured and not reproduced | `additional_resource_generator.rb:86-117` moves the parent's out-edges onto a `completed_<title>` sentinel that waits for every generated resource, and `made` includes the existing resources (`replace_duplicates_with_catalog_resources`, :80-84), so `connect_resources_to_ancestors` (:119-128) makes each depend on the generator. `visitHostUnit` reproduces the unit: a ready member is applied after the generator and before the unit's one event, so the generator's out-edges wait for it. voxagent's walk order is fixed before the walk and the sentinel is not a vertex, which is why (b) and (c) differ; `ral.Extension.EvalGenerate` still drops the host's `before`, and its overrides are applied to a resource not yet visited. Ruby's `add_resource` (:136-137) does not re-prioritise a resource the catalog already holds, hence (b). Measured: concat's `eval_generate` returns its `File` (M3c, M19: a raise leaves no members) | `internal/transaction/evalgen_test.go:TestExistingMemberKeepsOutEdgesAndRefreshesParentTargets`, `TestExistingMemberAppliedOnceThroughPrimed`, `TestExistingMemberAlreadyVisitedIsNotReapplied`, `TestExistingMemberNotReadyStaysAtItsTurn`, `TestExistingMemberWithFailedPredecessorIsSkipped`, `TestExistingMemberFailureBlocksParentDependents`, `TestExistingMemberOfASkippedParentIsSkipped`, `TestEvalGenerateFailedHasNoMembers`; `internal/ral/extension_test.go:TestExtensionEvalGenerateConvertsTheHostsAnswer`. Gates: the extension gate's `ge` (an existing `File`, with a subscriber) and G5's concat cases |
 | D-44 | Retired. Resources no relationship orders used to be applied in byte order of their refs; they are now applied in catalog order, as Puppet applies them | Puppet keys every vertex by its index in the catalog array (`SequentialPrioritizer`, `graph/sequential_prioritizer.rb:17-24`) and always takes the smallest ready key (`relationship_graph.rb:97-99`); generated children slot under their parent (`[p,1]`, `[p,2]`, ...) and a container is walked as its admissible and completed whits, which take its key (`relationship_graph.rb:259-261`). The walk now does the same: catalog-order keys, the unsuitable-provider deferral, generated positions and whits, all measured. `gatekit compare-order` compares the order each resource first logs in, and every report gate runs it. **Measured** 2026-10-08: `walk order agrees over 112 resources` (`dev:report-diff`, whose `wo*` fixtures exercise these cases), `29` and `15` (`dev:report-diff-extension`, first and second apply), `23` (`dev:report-diff-container`), `8` (`dev:report-diff-systemd`) and `22` (`dev:report-diff-selinux`). The earlier byte-order walk fails G1 with `walk order diverges at 0: ruby Notify[spine], voxagent File[$T/a.txt]` | `internal/graph/graph_test.go:TestOrderTakesTheSmallestReadyKey`, `TestOrderFollowsKeysForIndependentResources`; `internal/transaction/build_test.go:TestBuildGraphKeysResourcesByCatalogIndex`, `TestBuildGraphOrdersContainerContentsThroughWhits`, `TestWhitIsAQueueEntryNotASplice`, `TestWhitOrderMatchesPuppet`; `cmd/voxagent/main_test.go:TestWalkOrderAroundARecursedDirectory`; `dev:report-diff` and its siblings through `gatekit compare-order` |
 | D-45 | `backup`: a resource's backup warnings are logged before its notices, where Puppet interleaves them; a bucket failure logs one `Puppet` error line fewer; a `fifo`, socket or device inside a directory backed up to a suffix is refused; a link retargeted between its stat and its open can still have a device opened; a directory suffix backup fails closed, and stays refused, where the agent does not own the directories it makes | (a) `remove_existing` runs twice on one failed `ensure => file` over a directory without `force` (I-3), logging warning, notice, warning, notice (measured); `ral.Change` carries `PathWarnings` and `PathNotices` apart, so voxagent logs warning, warning, notice, notice. G1 compares logs as a multiset. (b) Dipper's rescue (`file_bucket/dipper.rb:55-59`) calls `Puppet.log_exception` with `Could not back up <file>: <detail>` before raising it, so a failed bucket write has one more `err` line sourced `Puppet` than voxagent's, which logs the failure as any property failure (read, not measured: no gate fails a bucket write). (c) `FileUtils.cp_r` recreates a fifo or device node (`mkfifo`, `mknod`); `copyTree` fails the backup with `Could not back <path> up: cannot copy <path> of type <ftype>`, so the replacement does not happen, and removes the partial copy (`RemoveAll`, which never follows a link) so the next run is not refused by `Will not remove directory backup` (read). Residual: that removal is by path, so a writer of the copy's parent, when the parent is not sticky, who renames a directory onto `<path><suffix>` between the failure and the removal makes the agent delete that directory's contents (`RemoveAll` never follows a link, so only a renamed-in directory is exposed); the robust form, for later, empties the copy through the descriptor `copyRoot` opened (an `os.Root` on it) and then removes the emptied directory. (d) A link below a directory backed up to the bucket is stat'ed through its directory's checked descriptor, and only a regular file is opened (`openLinkAt`). A writer of that directory who retargets the link at a device between the stat and the `openat` has the device opened, with `O_NONBLOCK|O_NOCTTY`, before the second check refuses it, and opening a device as root can act on it. Puppet has the same gap: `File.file?` stats the path (`util/backups.rb:29`), then Dipper reads it by path (`file_bucket/dipper.rb:39-44`). The robust form, for later, never opens anything but a regular file: `openat` the link with `O_PATH` (which follows it but opens no device), `fstat` that descriptor and refuse anything but a regular file, then reopen it through `/proc/self/fd/<pathfd>` with `O_RDONLY|O_NONBLOCK|O_NOCTTY`. (e) The top of a directory's suffix copy must be owned by the agent's effective user (`copyRoot`). Where the filesystem gives a directory the agent just made to another owner, NFS with `root_squash` being the usual case, the check fails closed: the copy is refused with `Could not back <path> up: <path><suffix> is not the private directory the backup made`, the change it guards does not happen, and the empty `0700` `<path><suffix>` directory is left, because the agent cannot tell it from one a writer of the parent swapped in. Every later run is then refused with `Will not remove directory backup <path><suffix>; use a filebucket` (`remove_backup`, `util/backups.rb:56-79`) until the directory is removed by hand (`rmdir '<path><suffix>'`, which removes it only while it is empty). On such a filesystem a suffix backup of a directory cannot succeed, so the resource needs `backup => false` or `'puppet'`. Puppet copies there without the check (read, not measured: no gate runs on a filesystem that squashes root). Info and debug lines (`Filebucketed …`, `Removing old backup …`, the lock lines) are not divergences: Puppet's report carries them only with `--debug` (measured), and voxagent has no debug level | `internal/units/file/file_backup_test.go:TestFileBackupWarnsForADirectoryWithoutForce`, `internal/transaction/transaction_test.go:TestPathWarningsAreLoggedAtTheResourceBeforeItsNotices`; (c) `TestFileBackupSuffixRemovesAPartialTreeCopy`; (e) the refusal, `TestFileBackupSuffixRefusesADestinationSwappedAfterItsMkdir`; (b), (d) nothing |
@@ -168,10 +189,10 @@ and the number is retired rather than reused:
 | D-75 | An agent run's catalog gets none of Puppet's default resources. Ruby's agent finalizes the catalog it receives (`catalog.rb` `make_default_resources`), adding `Schedule[puppet]`, `[hourly]`, `[daily]`, `[weekly]`, `[monthly]`, `[never]` and `Filebucket[puppet]`; they apply nothing, but its `resources.total` counts them (7 more than voxagent's) and its time metric has `schedule` and `filebucket` entries. `puppet apply --catalog` skips the finalize, so the apply gates never see them | They exist for the `schedule` metaparameter, which voxagent refuses, and for `backup => 'puppet'`, which File's backup implements itself (`<vardir>/clientbucket`). Adding them would mean inert native Schedule and Filebucket types beside the extension host's and the pre-flight Filebucket refusal, to change a count | `tests/agent/run.sh` asserts Ruby's total minus 7 equals voxagent's; `tests/agent/allowlist.json` drops the total and the two time entries |
 | D-76 | `voxagent agent` requests the node (and so the server's environment) on every run, so its report always has a `node_retrieval` timing. Ruby skips the request once `lastrunfile` exists (`use_last_environment`, `configurer.rb` `last_server_specified_environment`), so its second and later reports have none | voxagent keeps no `lastrunfile`; the node answer is always fresh, at the cost of one request a run | `internal/agent/run_test.go:TestPreparePhasesArePuppetsTimings`; `tests/agent/allowlist.json` drops the entry |
 | D-77 | The agent's phase timings measure voxagent's nearest step, not Ruby's: `startup_time` runs from the Go process's initialisation (Ruby: option parsing) to the end of the SSL bootstrap; `config_retrieval` is the catalog request plus decoding; `convert_catalog` is decoding through the extension host's load, pre-flight and validation (Ruby: `to_ral` and `finalize`); fetching `puppet:` sources happens before applying, so it is in `total` but in no phase, where Ruby's lazy fetch is in `catalog_application` | The keys, labels and order of work are Puppet's; the values are durations of voxagent's own code, which the gates mask as run-to-run variance anyway | `internal/report/report_test.go:TestTimeMetricCarriesAgentPhases`; `cmd/voxagent/agent_test.go:TestAgentFirstRunAppliesAndReports` |
-| D-78 | voxagent redacts a `Sensitive` value from error and warning text where Ruby prints it. Every place a provider interpolates a marked attribute prints a fixed placeholder (`[redacted]` for a `File` value) instead: `Exec`'s `[command redacted]` in the noop, bad-return, guard, lookup, not-qualified and run errors (Ruby's own text for a bad return only); `File`'s owner, group, mode, `ensure`, `target` and `source` errors, a recursive `source` walk's errors and soft-limit warning, and symlink errors; `Package`'s `ensure` value errors, including the dnf command line and its output; and the pre-flight refusal text, a delegated resource's included, where the extension host redacts its refusal, its conversion debug lines (`Reraising ...`) and every other phase it relays for the resource (generate, prefetch, evaluate, refresh, eval_generate and finish logs, event messages and failure texts) the same way; `Exec`'s `returns` value error and its invalid `logoutput` value error are redacted too. So are, in the same style: `Exec`'s bad-return `instead of one of [<returns>]` list, its Float `tries` `NoMethodError`, its `Exec try <n>/<tries>` and `Sleeping for <n> seconds between tries` debug lines, and a listed `creates` path in its `Checking that 'creates' path` line and its `stat creates path` error; `File`'s refused `backup` value, its `Could not find filebucket` error and the suffix in `Will not remove directory backup`, `Could not remove old backup` and `Could not back <path> up`, the `Invalid value` errors for `replace`, `force`, `links` and `selinux_ignore_defaults`, a `path` parameter in `File paths must be fully qualified`, a listed `validate_cmd` in the validator's failure and `Executing` line, hiding the validator's output and redacting the `validate_cmd` and `validate_replacement` refusal texts, the digests in `File written to disk did not match desired checksum`, the context in `Failed to set SELinux context`, and a marked `source`'s directory in the errors of its recursed walk and of a generated child that cannot open it; `User`'s and `Group`'s `Invalid GID <gid>`, the value a munge failure repeats (`invalid value for Integer(): [redacted]`), `Could not find group(s)`, `Invalid value <groups>: Groups must be comma-separated`, `Shell <shell> must exist` and `must be executable`, `can't find user for <member>`, and the output of a failed command whose argv carries a marked value (`Execution of '[redacted]' returned <n>: [output redacted]`; `useradd` for a marked comment, expiry, gid, groups, home, shell or uid, `chage` for a marked age, `usermod -p` always, `groupadd` for a marked gid), `Group` now redacting the command of a marked `gid` or `members` as `User` does; the `The value retrieved ... is different than the required state` debug line for a marked `gid`; the clause in a marked symbolic mode's `X only works with the '+' operator at <clause>` error; a listed custom `start`, `stop`, `status` or `restart` of a `Service` in its `Executing` line and in the error of a command that could not start, which names only the cause; and a listed `path` in the `two concat_file resources manage <path>` delegation reason. Ruby prints each of these except the `stat creates path` error and the delegation reason, which are voxagent's own text, and some are unmeasured against openvox (the digests, the SELinux context, the walk's open errors, the backup suffix, `validate_cmd` and the nameservice debug line); D-78 is the rule. A `File` child a native or `eval_generate` generation makes from a marked parent `source` redacts the parent's `source` in error text only: the child's own events carry no marks. Call-site redaction, all of the above, stays. Beyond it, the sinks scrub every printed form of every marked value run-wide, so a message no call site thought of cannot carry one: `report.Report.SetScrubber` scrubs each stored log and event message (the observer receives the entry unscrubbed), `puppetConsole.print` scrubs its own lines, the over-budget debug lines and the lines logged before the report exists included, and `stderrf` scrubs the post-decode stderr lines. `stderrf` scrubs the whole line, so a resource title equal to a marked value reads `[redacted]` on stderr, an over-redaction accepted rather than parsed out. Each sink scrubs exactly once, because `Scrub` is not idempotent. The extension host's child stderr (module `puts` and `warn`, Ruby's backtraces; `host.rb` reopens `$stdout` onto it) is a sink too: `extension.Config.Scrub` routes it through a line writer (`scrubbedLines`, `internal/extension/host.go`) that scrubs each run of complete lines with the run's current scrubber, read through an `atomic.Pointer` that every rebuild stores into because exec's copy goroutine calls it, and that writes a last line left without a newline as it is when `Host.Close` has waited for the host, adding no newline; unmarked bytes pass unchanged. A line that reaches 64 KiB without a newline is written, scrubbed, at that point, so a form split there, like a form that spans two lines, is not found. The pipe is voxagent's own, read outside `cmd.Wait`: once the host process has exited, `Close` waits at most one second (`stderrGrace`) for the pipe's end, then closes its read end, so a descendant the module left holding the host's stderr (a `spawn`, a `system('... &')`) cannot hold the run; what the host wrote is still printed, scrubbed, and the descendant's later writes fail (EPIPE, or SIGPIPE where it does not ignore the signal) and are not printed. While the host loads the catalog, Ruby's `generate` included, its stderr is scrubbed with the forms known before generation: marks that only the generated resources carry apply from the merge of the host's generation on, not to that window. Host-relayed text (logs, event messages, failures) is redacted by Ruby and scrubbed again by the Go sinks: safe, but a marked form of 4 bytes or more that occurs inside `[redacted]` (such as `dact`) yields `[re[redacted]ed]`. On the agent path, `agent.RunConfig.Decoded` hands `runAgent` the catalog as soon as `Prepare` decodes it, and the console's scrubber is built from it there, so the source fetch's debug lines and `Prepare`'s error line (through `stderrf`) are scrubbed before `applyCatalog` builds its own. A marked `puppet:` source is redacted at its sites as well: `[redacted]` in its fetch debug line and its HTTP lines (`puppetapi.RedactPath`), in its refusals (another host, not a mount path, `links`) and in its fetch errors, where `hideMount` (`internal/agent/sources.go`) replaces the mount path quoted, URL-escaped and as written, so neither a request URL nor a server's message naming it shows any part of the source. `redact.New(cat)` (`internal/lib/redact`) collects the forms of every value of every parameter a resource lists in `SensitiveParameters` (a string and its `inspect` text; an Array's `inspect` text and each element's forms; each value of a Hash); it is built after the catalog decodes and rebuilt after the extension host loads and after native load-time generation, and forms are never removed. Over-redaction rule: a form of 4 bytes or more is replaced at every occurrence; a form of 3 bytes or fewer only as a whole token, with neighbours outside `[A-Za-z0-9_]`, so a marked `0` or `ab` does not eat every digit or word. The cost, accepted: an unmarked message that holds a marked value is redacted there too, so a gate fixture keeps each marked value unique to its case or the gate diverges from Ruby by over-redaction. Matching is identical to `VoxagentHost.redact` and `VoxagentHost.forms` in `host.rb`, which redacts what the host relays; `internal/lib/redact/testdata/vectors.json` holds the shared cases, run by Go (`TestScrubMatchesSharedVectors`, `TestFormsMatchSharedVectors`) and by Ruby (`internal/extension/vectors_test.go:TestHostRedactMatchesSharedVectors`, which loads `host.rb`, its bootstrap guarded by `$PROGRAM_NAME == __FILE__`). Known gaps: no whole-Hash form, because Go's map order is lost (an element's own form is still scrubbed); an integral Float such as `1.0` yields the form `1`, which leaves the `.0`; a value derived from a marked one (a substring, a hash, a concatenation) is a different string and is not scrubbed; and titles, refs and property values are structural and never scrubbed, so a namevar's value stays visible in refs, as it does in Ruby. | Ruby leaks the value in these messages (`Could not find user nosuchuser-secret`, `Could not find command '/nonexistent/cmd-secret'`, `The file mode specification is invalid: "bogus-secret"`, `'relative-secret' is not qualified and no path was specified`), so a report that matched Ruby leaf for leaf would carry a secret the property's own events hide. The redaction is voxagent's deliberate choice, and each such leaf is a divergence from Ruby's text. Ruby's leak is the divergence; voxagent does not copy it. Ruby cannot mark the plain parameters `environment` and `cwd`, but the catalog still lists them as marked, and voxagent redacts a marked `environment` where it interpolates the value: `Overriding environment setting '<var>' with [redacted]`, `Cannot understand environment setting [redacted]` and `Invalid environment setting [redacted]`, where Ruby prints it. This follows the plan's decision (its Review Focus 4) over the exec-complete spec §10, which says Ruby's `Overriding` text prints the value; the variable name in `Empty environment setting '<var>'` is still printed. No message voxagent writes interpolates `cwd`, so a marked `cwd` has nothing to redact: a `cwd` that cannot be entered fails the command with status 1 and no text. The same rule covers the `--debug` lines (an `Executing` line): a marked command or package version prints as `Executing '[redacted]'`, `Executing check '[redacted]'` or `Executing: '[redacted]'`, as Ruby does. D-78 covers only an *interpolated* value, so Ruby's fixed-text `Package` lines `Ensuring latest, so using <op>` and `Ensuring latest, but package is absent, so using install` still print when `ensure` is marked: they interpolate no value, and the `<op>` is dnf's subcommand, never the version. Since `exec` gained `user`, `group` and `refresh`, three more: an exit-127 failure, whose text is the command's output, reads `[output redacted]` when the command or guard that exited 127 is marked; a marked `user` or `group` reads `[redacted]` in the identity errors (`Error: Could not execute posix command: Invalid user: [redacted]`, where Ruby prints the name); and a marked `refresh` alone redacts the refresh command, in its `Executing` debug lines and in its `Could not find command [command redacted]` failure, though `command` is not marked. The `--debug` line `Executing with uid=<user> gid=<group>: '<cmd>'` (`util/execution.rb:167-180`) prints `[redacted]` for a marked `user` or `group`, where Ruby prints the value, and for a marked command as before. A `File`'s `validate_cmd` output is redacted when its `content` is marked: the failure reads `Execution of '<line>' returned <n>: [output redacted]`, and a passing validator logs no output line under `--debug`, where Ruby prints the output (`type/file.rb:940`, `util/execution.rb:311-312`), because a validator such as `visudo` can echo the content it checks. The same holds for the `File` a `Concat_file` fills when any fragment it collects has `Sensitive` content, under both concat releases: 10.0.1 marks the `File`'s content, but 9.1.0 leaves it unmarked (M12, kept), so `Override.RedactOutput` (`catalog.Resource.OutputRedacted`) redacts the validator's output alone, the `File`'s events keeping Ruby's hash and `redacted: null`; `TestNoSensitiveMarkerLeaks` found this leak under 9.1.0, where Ruby prints the echo. Native concat's validation texts (`Parameter path failed on Concat_file[rel]: File paths must be fully qualified, not '[redacted]'`) and the text of a delegation print a marked value as `[redacted]` where Ruby prints it, and a `Concat_fragment`'s orphan warning prints a marked `target` or `tag` as `[redacted]` (Ruby interpolates both; unmeasured). A new `File` a `Concat_file` generates takes the `Concat_file`'s marks on `owner`, `group` and `mode` when it sets them; Ruby's `generate` (`type/concat_file.rb:340-341`) copies the bare values onto the new `File`, dropping the marks, so its events print them where voxagent's redact them. A declared `File` the `Concat_file` reuses is not touched: Ruby discards the `Concat_file`'s `owner`, `group` and `mode` for it (M14), so no marked value reaches it | `internal/units/concat/concat_generate_test.go:TestConcatGenerateCarriesMarks`; `internal/ral/preflight_test.go:TestPreflightRedactsAMarkedValue`; `internal/units/exec/exec_test.go:TestExecOnlyUnlessMarkedRedactsCommand`; `internal/units/exec/exec_run_test.go:TestExecExit127RedactedWhenMarked`; `internal/units/exec/exec_stage_test.go:TestExecUnknownSensitiveUserIsRedacted`, `TestExecUnknownSensitiveIdentityIsRedacted`; `internal/units/exec/exec_test.go:TestExecRefreshMarkedOnlyIsRedacted`, `TestExecDebugLineNamesIdentity`; `internal/units/exec/exec_env_test.go:TestExecEnvironmentMarkedIsRedactedInWarnings`; `internal/units/exec/exec_params_test.go:TestExecParamsRedactsSensitiveValues`; `internal/units/file/file_validate_test.go:TestValidateCmdOutputRedactedWhenContentMarked`; `internal/units/concat/concat_evalgen_test.go:TestConcatEvalGenerateContentMarkV10` (the `RedactOutput` rows), `TestConcatOrphanWarnings` (`marked`, `marked-tag`); `internal/units/concat/concat_params_test.go:TestConcatFileParams` (its marked rows), `TestConcatDelegationRedactsMarkedValues`; `internal/transaction/sensitive_test.go:TestOverrideRedactOutputKeepsContentUnmarked`; `internal/units/group/group_test.go:TestGroupParseRedactsSensitiveGID`, `TestGroupApplyRedactsSensitiveValues`; `internal/units/user/user_apply_test.go:TestUserModifyFailuresRedactSensitive`, `TestUserCreateShellCheckRedactsSensitive`; `internal/units/user/user_params_test.go:TestUserParamsRedactsSensitiveMungeFailure`; `internal/lib/rubyvalue/rubyvalue_test.go:TestMungeIntegerFailureRedactsSensitiveDetail`; `internal/lib/command/command_test.go:TestExecFailureText`, `TestArgvRunnersRedactAStartFailureOfAMarkedCommand`; `internal/lib/nameservice/nameservice_test.go:TestPosixGIDRedactsMarkedValue`; `internal/lib/puppetpath/puppetpath_test.go:TestDeclaredModeXNeedsPlusRedactsMarkedMode`; `internal/units/exec/exec_test.go:TestExecRedactsSensitiveRetryParameters`; `internal/units/service/service_test.go:TestServiceCustomCommandsRedactedWhenMarked`, `TestServiceCustomCommandStartFailureRedactedWhenMarked`; `internal/units/file/file_sensitive_test.go:TestFileMarkedBackupIsRedacted`, `TestFileMarkedContentMismatchHidesTheDigests`, `TestFileMarkedChildSourceDirectoryOpenError`, `TestFileMarkedPlainParameterValidationErrors`; `internal/units/file/file_selinux_test.go:TestSELinuxSetFailureWarningRedactsMarkedContext`; `internal/units/file/file_recurse_test.go:TestWalkTreeOpenFailureRedactsAMarkedSourceDirectory`; `internal/units/file/file_validate_test.go:TestValidateCmdMarkedIsRedacted`; `internal/units/concat/concat_route_test.go:TestConcatDelegationReasons` (its marked rows); `cmd/voxagent/canary_test.go:TestSensitiveCanarySweep` (every type's marked values, natively: `--noop` everywhere, real applies of the types whose effects stay in a temp dir) and `task dev:sensitive-canary` (`tests/spine/sensitive-canary.sh`: real applies of every type in the openvox image, and the delegated routes; `user` and `group` on the delegated route and a `service` real apply are not covered, since the image is native for the first and has no systemd for the second); `internal/agent/sources_test.go:TestFetchSourcesErrorsRedactMarkedSource`; `cmd/voxagent/agent_test.go:TestAgentSourceFetchFailureIsScrubbed`, `TestAgentPreApplyConsoleLinesAreScrubbed`; `internal/extension/host_test.go:TestHostStderrGoesThroughScrub`; `cmd/voxagent/extension_test.go:TestHostStderrIsScrubbed`; `cmd/voxagent/sensitive_test.go:TestNoSensitiveMarkerLeaks` (its `concat-9.1.0`, `concat-10.0.1`, `exec-creates`, `file-backup`, `file-validate_cmd` and `service-custom-commands` cases), which fails if any marker value reaches the report, a log line or the console. The gates do not compare this text: the fixtures' failures that hit it are masked failure detail |
+| D-78 | voxagent redacts a `Sensitive` value from error and warning text where Ruby prints it. Every place a provider interpolates a marked attribute prints a fixed placeholder (`[redacted]` for a `File` value) instead: `Exec`'s `[command redacted]` in the noop, bad-return, guard, lookup, not-qualified and run errors (Ruby's own text for a bad return only); `File`'s owner, group, mode, `ensure`, `target` and `source` errors, a recursive `source` walk's errors and soft-limit warning, and symlink errors; `Package`'s `ensure` value errors, including the dnf command line and its output; and the pre-flight refusal text, a delegated resource's included, where the extension host redacts its refusal, its conversion debug lines (`Reraising ...`) and every other phase it relays for the resource (generate, prefetch, evaluate, refresh, eval_generate and finish logs, event messages and failure texts) the same way; `Exec`'s `returns` value error and its invalid `logoutput` value error are redacted too. So are, in the same style: `Exec`'s bad-return `instead of one of [<returns>]` list, its Float `tries` `NoMethodError`, its `Exec try <n>/<tries>` and `Sleeping for <n> seconds between tries` debug lines, and a listed `creates` path in its `Checking that 'creates' path` line and its `stat creates path` error; `File`'s refused `backup` value, its `Could not find filebucket` error and the suffix in `Will not remove directory backup`, `Could not remove old backup` and `Could not back <path> up`, the `Invalid value` errors for `replace`, `force`, `links` and `selinux_ignore_defaults`, a `path` parameter in `File paths must be fully qualified`, a listed `validate_cmd` in the validator's failure and `Executing` line, hiding the validator's output and redacting the `validate_cmd` and `validate_replacement` refusal texts, the digests in `File written to disk did not match desired checksum`, the context in `Failed to set SELinux context`, and a marked `source`'s directory in the errors of its recursed walk and of a generated child that cannot open it; `User`'s and `Group`'s `Invalid GID <gid>`, the value a munge failure repeats (`invalid value for Integer(): [redacted]`), `Could not find group(s)`, `Invalid value <groups>: Groups must be comma-separated`, `Shell <shell> must exist` and `must be executable`, `can't find user for <member>`, and the output of a failed command whose argv carries a marked value (`Execution of '[redacted]' returned <n>: [output redacted]`; `useradd` for a marked comment, expiry, gid, groups, home, shell or uid, `chage` for a marked age, `usermod -p` always, `groupadd` for a marked gid), `Group` now redacting the command of a marked `gid` or `members` as `User` does; the `The value retrieved ... is different than the required state` debug line for a marked `gid`; the clause in a marked symbolic mode's `X only works with the '+' operator at <clause>` error; a listed custom `start`, `stop`, `status` or `restart` of a `Service` in its `Executing` line and in the error of a command that could not start, which names only the cause; and a listed `path` in the `two concat_file resources manage <path>` delegation reason. Ruby prints each of these except the `stat creates path` error and the delegation reason, which are voxagent's own text, and some are unmeasured against openvox (the digests, the SELinux context, the walk's open errors, the backup suffix, `validate_cmd` and the nameservice debug line); D-78 is the rule. A `File` child a native or `eval_generate` generation makes from a marked parent `source` redacts the parent's `source` in error text only: the child's own events carry no marks. Call-site redaction, all of the above, stays. Beyond it, the sinks scrub every printed form of every marked value run-wide, so a message no call site thought of cannot carry one: `report.Report.SetScrubber` scrubs each stored log and event message (the observer receives the entry unscrubbed), `puppetConsole.print` scrubs its own lines, the over-budget debug lines and the lines logged before the report exists included, and `stderrf` scrubs the post-decode stderr lines. `stderrf` scrubs the whole line, so a resource title equal to a marked value reads `[redacted]` on stderr, an over-redaction accepted rather than parsed out. Each sink scrubs exactly once, because `Scrub` is not idempotent. The extension host's child stderr (module `puts` and `warn`, Ruby's backtraces; `host.rb` reopens `$stdout` onto it) is a sink too: `extension.Config.Scrub` routes it through a line writer (`scrubbedLines`, `internal/extension/host.go`) that scrubs each run of complete lines with the run's current scrubber, read through an `atomic.Pointer` that every rebuild stores into because exec's copy goroutine calls it, and that writes a last line left without a newline as it is when `Host.Close` has waited for the host, adding no newline; unmarked bytes pass unchanged. A line that reaches 64 KiB without a newline is written, scrubbed, at that point, so a form split there, like a form that spans two lines, is not found. The pipe is voxagent's own, read outside `cmd.Wait`: once the host process has exited, `Close` waits at most one second (`stderrGrace`) for the pipe's end, then closes its read end, so a descendant the module left holding the host's stderr (a `spawn`, a `system('... &')`) cannot hold the run; what the host wrote is still printed, scrubbed, and the descendant's later writes fail (EPIPE, or SIGPIPE where it does not ignore the signal) and are not printed. While the host loads the catalog, Ruby's `generate` included, its stderr is scrubbed with the forms known before generation: marks that only the generated resources carry apply from the merge of the host's generation on, not to that window. Host-relayed text (logs, event messages, failures) is redacted by Ruby and scrubbed again by the Go sinks: safe, but a marked form of 4 bytes or more that occurs inside `[redacted]` (such as `dact`) yields `[re[redacted]ed]`. On the agent path, `agent.RunConfig.Decoded` hands `runAgent` the catalog as soon as `Prepare` decodes it, and the console's scrubber is built from it there, so the source fetch's debug lines and `Prepare`'s error line (through `stderrf`) are scrubbed before `applyCatalog` builds its own. A marked `puppet:` source is redacted at its sites as well: `[redacted]` in its fetch debug line and its HTTP lines (`puppetapi.RedactPath`), in its refusals (another host, not a mount path, `links`) and in its fetch errors, where `hideMount` (`internal/agent/sources.go`) replaces the mount path quoted, URL-escaped and as written, so neither a request URL nor a server's message naming it shows any part of the source. `redact.New(cat)` (`internal/lib/redact`) collects the forms of every value of every parameter a resource lists in `SensitiveParameters` (a string and its `inspect` text; an Array's `inspect` text and each element's forms; each value of a Hash); it is built after the catalog decodes and rebuilt after the extension host loads and after native load-time generation, and forms are never removed. Over-redaction rule: a form of 4 bytes or more is replaced at every occurrence; a form of 3 bytes or fewer only as a whole token, with neighbours outside `[A-Za-z0-9_]`, so a marked `0` or `ab` does not eat every digit or word. The cost, accepted: an unmarked message that holds a marked value is redacted there too, so a gate fixture keeps each marked value unique to its case or the gate diverges from Ruby by over-redaction. Matching is identical to `VoxagentHost.redact` and `VoxagentHost.forms` in `host.rb`, which redacts what the host relays; `internal/lib/redact/testdata/vectors.json` holds the shared cases, run by Go (`TestScrubMatchesSharedVectors`, `TestFormsMatchSharedVectors`) and by Ruby (`internal/extension/vectors_test.go:TestHostRedactMatchesSharedVectors`, which loads `host.rb`, its bootstrap guarded by `$PROGRAM_NAME == __FILE__`). Known gaps: no whole-Hash form, because Go's map order is lost (an element's own form is still scrubbed); an integral Float such as `1.0` yields the form `1`, which leaves the `.0`; a value derived from a marked one (a substring, a hash, a concatenation) is a different string and is not scrubbed; and titles, refs and property values are structural and never scrubbed, so a namevar's value stays visible in refs, as it does in Ruby. | Ruby leaks the value in these messages (`Could not find user nosuchuser-secret`, `Could not find command '/nonexistent/cmd-secret'`, `The file mode specification is invalid: "bogus-secret"`, `'relative-secret' is not qualified and no path was specified`), so a report that matched Ruby leaf for leaf would carry a secret the property's own events hide. The redaction is voxagent's deliberate choice, and each such leaf is a divergence from Ruby's text. Ruby's leak is the divergence; voxagent does not copy it. Ruby cannot mark the plain parameters `environment` and `cwd`, but the catalog still lists them as marked, and voxagent redacts a marked `environment` where it interpolates the value: `Overriding environment setting '<var>' with [redacted]`, `Cannot understand environment setting [redacted]` and `Invalid environment setting [redacted]`, where Ruby prints it. This follows the plan's decision (its Review Focus 4) over the exec-complete spec §10, which says Ruby's `Overriding` text prints the value; the variable name in `Empty environment setting '<var>'` is still printed. No message voxagent writes interpolates `cwd`, so a marked `cwd` has nothing to redact: a `cwd` that cannot be entered fails the command with status 1 and no text. The same rule covers the `--debug` lines (an `Executing` line): a marked command or package version prints as `Executing '[redacted]'`, `Executing check '[redacted]'` or `Executing: '[redacted]'`, as Ruby does. D-78 covers only an *interpolated* value, so Ruby's fixed-text `Package` lines `Ensuring latest, so using <op>` and `Ensuring latest, but package is absent, so using install` still print when `ensure` is marked: they interpolate no value, and the `<op>` is dnf's subcommand, never the version. Since `exec` gained `user`, `group` and `refresh`, three more: an exit-127 failure, whose text is the command's output, reads `[output redacted]` when the command or guard that exited 127 is marked; a marked `user` or `group` reads `[redacted]` in the identity errors (`Error: Could not execute posix command: Invalid user: [redacted]`, where Ruby prints the name); and a marked `refresh` alone redacts the refresh command, in its `Executing` debug lines and in its `Could not find command [command redacted]` failure, though `command` is not marked. The `--debug` line `Executing with uid=<user> gid=<group>: '<cmd>'` (`util/execution.rb:167-180`) prints `[redacted]` for a marked `user` or `group`, where Ruby prints the value, and for a marked command as before. A `File`'s `validate_cmd` output is redacted when its `content` is marked: the failure reads `Execution of '<line>' returned <n>: [output redacted]`, and a passing validator logs no output line under `--debug`, where Ruby prints the output (`type/file.rb:940`, `util/execution.rb:311-312`), because a validator such as `visudo` can echo the content it checks. The same holds for the `File` a `Concat_file` fills when any fragment it collects has `Sensitive` content, under both concat releases: 10.0.1 marks the `File`'s content, but 9.1.0 leaves it unmarked (M12, kept), so `Override.RedactOutput` (`catalog.Resource.OutputRedacted`) redacts the validator's output alone, the `File`'s events keeping Ruby's hash and `redacted: null`; `TestNoSensitiveMarkerLeaks` found this leak under 9.1.0, where Ruby prints the echo. Native concat's validation texts (`Parameter path failed on Concat_file[rel]: File paths must be fully qualified, not '[redacted]'`) and the text of a delegation print a marked value as `[redacted]` where Ruby prints it, and a `Concat_fragment`'s orphan warning prints a marked `target` or `tag` as `[redacted]` (Ruby interpolates both; unmeasured). A new `File` a `Concat_file` generates takes the `Concat_file`'s marks on `owner`, `group` and `mode` when it sets them; Ruby's `generate` (`type/concat_file.rb:340-341`) copies the bare values onto the new `File`, dropping the marks, so its events print them where voxagent's redact them. A declared `File` the `Concat_file` reuses is not touched: Ruby discards the `Concat_file`'s `owner`, `group` and `mode` for it (M14), so no marked value reaches it | `internal/units/concat/concat_generate_test.go:TestConcatGenerateCarriesMarks`; `internal/ral/preflight_test.go:TestPreflightRedactsAMarkedValue`; `internal/units/exec/exec_test.go:TestExecOnlyUnlessMarkedRedactsCommand`; `internal/units/exec/exec_run_test.go:TestExecExit127RedactedWhenMarked`; `internal/units/exec/exec_stage_test.go:TestExecUnknownSensitiveUserIsRedacted`; `internal/units/exec/exec_test.go:TestExecRefreshMarkedOnlyIsRedacted`, `TestExecDebugLineNamesIdentity`; `internal/units/exec/exec_env_test.go:TestExecEnvironmentMarkedIsRedactedInWarnings`; `internal/units/exec/exec_params_test.go:TestExecParamsRedactsSensitiveValues`; `internal/units/file/file_validate_test.go:TestValidateCmdOutputRedactedWhenContentMarked`; `internal/units/concat/concat_evalgen_test.go:TestConcatEvalGenerateContentMarkV10` (the `RedactOutput` rows), `TestConcatOrphanWarnings` (`marked`, `marked-tag`); `internal/units/concat/concat_params_test.go:TestConcatFileParams` (its marked rows), `TestConcatDelegationRedactsMarkedValues`; `internal/transaction/sensitive_test.go:TestOverrideRedactOutputKeepsContentUnmarked`; `internal/units/group/group_test.go:TestGroupParseRedactsSensitiveGID`, `TestGroupApplyRedactsSensitiveValues`; `internal/units/user/user_apply_test.go:TestUserModifyFailuresRedactSensitive`, `TestUserCreateShellCheckRedactsSensitive`; `internal/units/user/user_params_test.go:TestUserParamsRedactsSensitiveMungeFailure`; `internal/lib/rubyvalue/rubyvalue_test.go:TestMungeIntegerFailureRedactsSensitiveDetail`; `internal/lib/command/command_test.go:TestExecFailureText`, `TestArgvRunnersRedactAStartFailureOfAMarkedCommand`; `internal/lib/nameservice/nameservice_test.go:TestPosixGIDRedactsMarkedValue`; `internal/lib/puppetpath/puppetpath_test.go:TestDeclaredModeXNeedsPlusRedactsMarkedMode`; `internal/units/exec/exec_test.go:TestExecRedactsSensitiveRetryParameters`; `internal/units/service/service_test.go:TestServiceCustomCommandsRedactedWhenMarked`, `TestServiceCustomCommandStartFailureRedactedWhenMarked`; `internal/units/file/file_sensitive_test.go:TestFileMarkedBackupIsRedacted`, `TestFileMarkedContentMismatchHidesTheDigests`, `TestFileMarkedChildSourceDirectoryOpenError`, `TestFileMarkedPlainParameterValidationErrors`; `internal/units/file/file_selinux_test.go:TestSELinuxSetFailureWarningRedactsMarkedContext`; `internal/units/file/file_recurse_test.go:TestWalkTreeOpenFailureRedactsAMarkedSourceDirectory`; `internal/units/file/file_validate_test.go:TestValidateCmdMarkedIsRedacted`; `internal/units/concat/concat_route_test.go:TestConcatDelegationReasons` (its marked rows); `cmd/voxagent/canary_test.go:TestSensitiveCanarySweep` (every type's marked values, natively: `--noop` everywhere, real applies of the types whose effects stay in a temp dir) and `task dev:sensitive-canary` (`tests/spine/sensitive-canary.sh`: real applies of every type in the openvox image, and the delegated routes; `user` and `group` on the delegated route and a `service` real apply are not covered, since the image is native for the first and has no systemd for the second); `internal/agent/sources_test.go:TestFetchSourcesErrorsRedactMarkedSource`; `cmd/voxagent/agent_test.go:TestAgentSourceFetchFailureIsScrubbed`, `TestAgentPreApplyConsoleLinesAreScrubbed`; `internal/extension/host_test.go:TestHostStderrGoesThroughScrub`; `cmd/voxagent/extension_test.go:TestHostStderrIsScrubbed`; `cmd/voxagent/sensitive_test.go:TestNoSensitiveMarkerLeaks` (its `concat-9.1.0`, `concat-10.0.1`, `exec-creates`, `file-backup`, `file-validate_cmd` and `service-custom-commands` cases), which fails if any marker value reaches the report, a log line or the console. The gates do not compare this text: the fixtures' failures that hit it are masked failure detail |
 | D-79 | `Exec`'s `logoutput` decodes the command's output as US-ASCII under any locale codeset that is neither UTF-8 nor absent. Ruby uses `Encoding.default_external`, so under `LANG=en_US.ISO-8859-1` it would decode as ISO-8859-1. voxagent takes the first non-empty of `LC_ALL`, `LC_CTYPE`, `LANG`; a codeset of `UTF-8` or `utf8` (any case) is UTF-8, no codeset (including `C` and `POSIX`) is US-ASCII (measured as Ruby's), and every other codeset is treated as US-ASCII, so a byte above 0x7F in output that is to be logged fails the exec with `invalid byte sequence in US-ASCII` where Ruby would log it | Supporting every Ruby encoding would mean a table of Ruby's encoding names and their decoders for a host a fleet runs under `C.UTF-8` or `en_US.UTF-8`; the difference needs a legacy single-byte locale and non-ASCII output that is logged (`logoutput => true`, or a failing command under the `on_failure` default). Output that is not logged is never decoded. Ruby takes the encoding from `nl_langinfo(CODESET)` after `setlocale`, so two more cases differ: (a) an installed locale with no codeset (`LANG=en_US`) is ISO-8859-1 in Ruby but US-ASCII in voxagent; (b) a UTF-8 locale that is set but not installed falls back to US-ASCII in Ruby, while voxagent treats it as UTF-8 | `internal/units/exec/exec_output_test.go:TestOutputEncoding`; `internal/units/exec/exec_test.go:TestExecLogoutputEncoding`. The locale measurement covered `C` and `C.UTF-8` only, so the legacy-codeset behaviour of Ruby is from its documented rule, not a probe |
 | D-80 | voxagent keeps at most 64 MiB (`maxCommandOutput`) of any one command's combined stdout and stderr. The kept part ends at its last `\n`, or, when it holds none, at its last complete UTF-8 sequence, so the cut never makes the output undecodable. voxagent then logs one warning at source `voxagent`, `<ref>: output of <what> truncated at 64 MiB` (`<what>` is `[command redacted]` for a `Sensitive` command, as in D-78). Truncation never fails the run and keeps the command's exit status. The cap covers every command voxagent runs, because all of them go through `command.RunLogged`/`command.RunArgv` in `internal/lib/command/command.go`: `Exec` commands and their `onlyif`/`unless` guards, `validate_cmd`, `dnf` and `rpm`, the SELinux helpers and `systemctl` | Ruby reads a command's output whole, so one command that floods its output grows the agent without bound. The cap is a constant, not a flag, and a command that prints exactly 64 MiB is not truncated (the reader takes one byte more to detect overflow). Output past the cap is lost for good, not spooled elsewhere: a `logoutput` or a failure message shows only the kept part | `internal/lib/command/command_test.go:TestRunCapturingToFileCaps`, `TestRunCapturingToFileKeepsExitStatusWhenTruncated`, `TestFileOutputRunnerWarnsOnTruncation`, `TestExecLogoutputTruncatedStaysDecodable`, `TestExecTruncationWarningRedactsASensitiveCommand`, `TestValidateCmdTruncationWarns`, `TestExecRunnerTruncatesAndWarns` (dnf, rpm and the SELinux helpers). No gate: no fixture prints 64 MiB |
-| D-81 | voxagent stores at most 16 MiB (`reportDebugBudget`, `internal/runlog`) of debug-level message text in a run's report. The first debug line that would pass it is not recorded: voxagent records one warning at source `voxagent`, `debug log truncated in the report after 16 MiB; the console has the rest`, and from then on sends debug lines to the console only. Lines at info and above always reach the report, before and after the truncation, and the console prints every debug line whatever the budget. A line that fits the remaining budget exactly is recorded; one byte more is not. The budget is one per run: it is spent across the pre-report phases of `agent` and the transaction, because `Redirect` keeps the count | Ruby's report holds every log line, with no bound, so a `--debug` run on a large catalog grows the report as far as the catalog's own volume of lines. The report is held in memory until the run ends; a bound keeps a debug run's memory finite however much the providers log. The console is a stream, so it needs none. A truncated report is therefore not Ruby's report: it lacks debug lines the console shows. A run without `--debug` is unaffected, and the report-diff gates run without it | `internal/runlog/runlog_test.go:TestReportDebugBudget`, `TestBudgetExactFitIsRecorded`, `TestRedirectKeepsBudget`, `TestSmallDebugAfterTruncationIsNotRecorded`; `cmd/voxagent/sensitive_test.go:TestNoSensitiveMarkerLeaks` runs every case under `--debug`. The measured cost on the SIMP catalog is under "Debug logging's memory cost" in "The SIMP gate" |
+| D-81 | voxagent stores at most 16 MiB (`reportDebugBudget`, `internal/runlog`) of debug-level message text in a run's report. The first debug line that would pass it is not recorded: voxagent records one warning at source `voxagent`, `debug log truncated in the report after 16 MiB; the console has the rest`, and from then on sends debug lines to the console only. Lines at info and above always reach the report, before and after the truncation, and the console prints every debug line whatever the budget. A line that fits the remaining budget exactly is recorded; one byte more is not. The budget is one per run: it is spent across the pre-report phases of `agent` and the transaction, because `Redirect` keeps the count | Ruby's report holds every log line, with no bound, so a `--debug` run on a large catalog grows the report as far as the catalog's own volume of lines. The report is held in memory until the run ends; a bound keeps a debug run's memory finite however much the providers log. The console is a stream, so it needs none. A truncated report is therefore not Ruby's report: it lacks debug lines the console shows. A run without `--debug` is unaffected, and the report-diff gates run without it | `internal/runlog/runlog_test.go:TestReportDebugBudget`, `TestBudgetExactFitIsRecorded`, `TestRedirectKeepsBudget`, `TestSmallDebugAfterTruncationIsNotRecorded`; `cmd/voxagent/sensitive_test.go:TestNoSensitiveMarkerLeaks` runs every case under `--debug`. The measured cost on the SIMP catalog is under [Debug logging's memory cost](gate-evidence.md#debug-loggings-memory-cost) in [The SIMP gate](gate-evidence.md#the-simp-gate) |
 | D-82 | Under `--debug` voxagent does not emit these of Ruby's debug lines, because it has no counterpart or does not do the act. *Never emitted:* state-cache load and store; environment caching and eviction; text domains; missing-feature probes; `Applying settings catalog`; report processors; `Runtime environment: ...`; `Finishing transaction <object_id>`. *Dropped by the graph and transaction task:* `Prefetching <provider> resources for <type>` for `file`, `exec` and `service` (Ruby's posix and systemd providers define no prefetch, so only `Package` announces it); `Nothing to manage: no ensure and the resource doesn't exist` for `exec`, `package` and `service` (Ruby's `resource_present?` is true for them). *Dropped by the File, Package and Service task:* `remove_existing`'s current-equals-wanted early return (callers reach it only for a different type); the File SELinux lines for `ensure => absent` (voxagent plans no SELinux properties there) and `Not managing symlink mode` after a `target` sync that left a link (voxagent drops `mode` from the params); the `Package` `install_only` variants (outside the bounded attributes); `systemd.rb:61` `Service <n> is in 'indirect' state and cannot be enabled/disabled` (outside the approved row set); `yum.rb:290` `Detected Arch argument in package! - Moving arch to end of version string` (voxagent does no arch detection). *Emitted with a different source:* `<cmd> check-update exited with 0; no package updates available.` has source `Puppet::Type::Package::ProviderDnf`, not `Package[n](provider=dnf)`, because Ruby's `yum.rb:114` `self.check_updates` is a class method and its `Puppet.debug` names the provider class. *Emitted where Ruby differs, `cron`:* the write's `Executing: '<path> -'` line, which Ruby (`IO.popen`, not `Execution.execute`) does not log, and every cron `Executing:` line naming the resolved path (`/usr/bin/crontab -l`) where Ruby's says `crontab`; error texts say `crontab`, as Ruby's do. *`mount`:* its `Executing:` lines name the resolved path (`/usr/bin/mount`, `/usr/bin/umount`), as Ruby's `commands` do (M11 confirmed), so no difference to expect | A debug line is emitted only where voxagent performs the same act, so a line for an act voxagent never does would claim work that did not happen. Each row above was checked against the Ruby source and the code path voxagent takes. `Debug:` output is therefore a subset of Ruby's, not a copy; a comparison of the two logs must expect these gaps. The generated-unit `will propagate` line was dropped by the graph and transaction task and is emitted since the recurse and generate units log their propagation lines, so it is not in this set | `internal/units/package/package_test.go`, `internal/units/file/file_test.go`, `internal/units/service/service_test.go` and `cmd/voxagent/debuglog_test.go` pin the lines that are emitted, with their text and source; nothing pins an absence, except `internal/units/cron_core/cron_apply_test.go:TestCronExecutingLines` for the cron `Executing:` lines. The gates do not compare debug lines: the report-diff fixtures run without `--debug` |
 | D-83 | On a `timeout`, voxagent SIGTERMs the exec's whole process group; Puppet SIGTERMs only the direct child, so under Puppet the descendants of a timed-out command keep running | Measured (M3): Puppet's timeout handler TERMs `child_pid` alone. voxagent starts every exec child as a group leader, and signalling the negated pid is what reaches a forked grandchild (dash forks for `sh -c`; see `runExec`). Neither escalates: the group gets SIGTERM once, `execute` returns `Command exceeded timeout` at once without waiting, and a process that traps or ignores TERM keeps running until it exits, when `runExec`'s waiter goroutine, which only calls `Wait`, reaps it (Ruby's `Thread.new { Process.waitpid(child_pid) }`, `util/execution.rb:283`). SIGKILL is sent only when the run's context is cancelled while `execute` is waiting: `runExec` selects on `ctx.Done()` beside the waiter and the timer, and arms nothing that outlives the call (no `context.AfterFunc`, no `exec.CommandContext`, whose `WaitDelay` would SIGKILL the leader), so the agent's own exit, which cancels the context, never signals a command that already timed out. Such a command can still write to its capture file, which `runCapped` has unlinked and no longer reads, as Puppet's survivor writes to its tempfile. Reports agree; the system state can differ | `internal/units/exec/exec_run_test.go:TestExecTimeoutKillsGrandchild`, `TestExecTimeoutTermTrapperSurvivesAndIsReaped`, `TestExecTimeoutChildSurvivesLaterCancel`. G5's `to-main`, `to-guard` and `to-refresh` compare the reports; they background no grandchild, because the difference is in the process table, not the report |
 | D-84 | A whole-number Float in the catalog (`2.0`, `1.0`) is read as the Integer of the same value. `exec`'s `tries => 2.0` runs the command where Puppet fails `returns` with ``undefined method `times' for 2.0:Float``, and `try_sleep => 1.0` logs the debug line `Sleeping for 1 seconds between tries` where Puppet logs `1.0` | The compiled catalog keeps the Float (measured: `"tries":2.0,"try_sleep":1.0`), and Ruby parses it back as one; openvox 8.33.0 then fails `tries => 2.0` and prints `1.0` (measured, `puppet apply --debug`). `catalog.Decode` reads every JSON number as a `float64`, and `catalog.NormaliseNumbers` does the same for the extension host, so `2.0` and `2` are one value before any provider sees it. `tries` and `try_sleep` are the only attributes known to behave differently for the two. A non-whole Float (`2.5`, `0.5`) is unaffected | `internal/units/exec/exec_test.go:TestExecTrySleepIntegerShown` pins `1.0` printing `1`. G5's `tries-third` uses `try_sleep => 0.2`, which both print the same. A concat fragment's `order => 2.0` is read as `2` only when no extension host loads the catalog: the host converts every resource, native-claimed ones included, so with one loaded Ruby's refusal `Parameter order failed on Concat_fragment[<n>]: $order is not a string or integer.` is printed beside native validation's, `cmd/voxagent/concat_test.go:TestConcatFloatOrderRefusedWhenHostLoads` |
@@ -181,7 +202,7 @@ and the number is retired rather than reused:
 | D-88 | Under `--debug`, voxagent does not emit Ruby's provider-suitability lines for `useradd` and `groupadd`, nor `Puppet::Util::POSIX`'s fallback lines `Falling back to Puppet::Etc.group: can't find user for <u>` and `Removing any duplicate group entries` (`util/posix.rb:20,30`). A member of the D-82 family | voxagent performs neither act: it chooses no provider, and it reads a user's groups with `getgrouplist` or, for a user that does not exist, one group scan, without Ruby's exception-driven fallback. The scan's result is the same (M2, M43) | Nothing pins an absence. The gates do not compare debug lines |
 | D-89 | `concat_file` and `concat_fragment` are native only when the libdir's plugin tree is a measured one and the catalog stays inside the measured shapes; otherwise both go to the extension host, so with `--no-ruby` such a catalog is refused where Ruby applies it. The tree is measured when `puppet/type/concat_file.rb` and `puppet/type/concat_fragment.rb` both match the sha256 of the same release, 9.1.0 or 10.0.1; a missing, unreadable, non-regular or over-1 MiB file, an unknown digest or a mixed pair delegates. The shapes that delegate are a `format` other than `plain`, a fragment `source`, `backup => true`, a path that is not absolute and clean (a trailing `/`, `//`, a `.` or `..` segment), two `Concat_file`s sharing a path, a rich value (`Deferred`, `Binary` and the like) in a parameter, and a value shape the native parser does not implement (a `tag` that is not a String or an Array of Strings, an Array or Hash `owner` or `group`, a Hash where a Boolean belongs). A value Ruby itself refuses stays native and is refused with Ruby's text. The two types move together, so one delegated resource of either sends every one of both to the host | Behaviour is measured only at these two trees, and the host is Ruby itself, so delegating is never a regression (the argument of D-87). Routing is decided per run from the libdir and the catalog; when the host is loaded for another type it converts native-claimed concat resources too (D-84). On the SIMP gate's catalog (concat 9.1.0) what is measured is native routing plus the gate's assertion that neither type is named in the `applied via extension host` lines; no count is printed, and the 26 resources (20 `concat_fragment`, 6 `concat_file`) leaving the host list is derived from the by-type list | `internal/units/concat/concat_route_test.go:TestNativeConcatFingerprints`, `TestNativeConcatFIFO`, `TestLibdirTreeReadLimit`, `TestNativeConcatShapes`, `TestNativeConcatRealTrees`; `cmd/voxagent/concat_test.go:TestConcatIsNativeOnlyWithAMeasuredTree`, `TestConcatAppliesNativelyEndToEnd`. Gates: G5's concat half (99 comparisons, 14 refusals), the extension gate's concat cases (host path), and the SIMP gate (a fingerprint assertion, and a failure if concat is named in `applied via extension host`). Under `--debug`, each type delegated here gets one line, `<type> applied via extension host: <reason>`, logged by `applyCatalog` (`cmd/voxagent/apply.go`) from the `Delegated` map `unit.RouteAll` returns, sorted by type; `cmd/voxagent/debuglog_test.go:TestDelegationReasonsSortedByType` pins the reasons |
 | D-90 | Fragments whose sort keys compare equal keep catalog order; Ruby's order for them is its `sort`'s and is not reproduced | Ruby's block `sort` and Array-keyed `sort_by` are not stable in general, but with glibc's `qsort_r` (a merge sort) and a Ruby built with `HAVE_GNU_QSORT_R` they keep input order on equal keys (read from source and checked on Ruby 3.4.9, glibc 2.39), so voxagent's stable sort agrees on that platform. The tie order is libc-dependent, so on another libc Ruby's may differ. Reachable in both order modes. Unmeasured | `internal/units/concat/concat_content_test.go:TestConcatSortTiesKeepCatalogOrder` |
-| D-91 | `sysctl`, `ssh_config`, `sshd_config`, `sshd_config_subsystem` and `augeas` are native only when all of these hold, each type decided on its own; otherwise it goes to the extension host, so with `--no-ruby` such a catalog is refused where Ruby applies it. *Plugin tree:* the libdir holds augeasproviders_core 4.2.0 (three files), and the type's own type and provider file, at the sha256 of _sysctl 4.1.0 or _ssh 7.0.0 (the manifests of `augeasproviders_core`, `augeasproviders_sysctl` and `augeasproviders_ssh` hold twelve digests, `augeas_core`'s manifest of `augeas_core` the four of `augeas`; `augeas` instead needs augeas_core 2.1.0's `puppet/type/augeas.rb`, `puppet/provider/augeas/augeas.rb` and `puppet_x/augeas/util/parser.rb`, plus the `puppet/feature/augeas.rb` that both modules ship byte for byte, and not augeasproviders_core's three; `sshd_config` also needs _ssh 7.0.0's `puppet/type/sshd_config_match.rb`, whose key attributes decide which names its autorequire can match), and the type's `puppet/provider/<type>/` holds no `.rb` but `augeas.rb`. *Library:* openvox's own `/opt/puppetlabs/puppet/lib/libaugeas.so.0` loads through `dlopen`, resolves every symbol voxagent binds, opens a handle and reads `/augeas/version` as `1.15.0`, and openvox's three ruby-augeas files (`augeas.rb`, `augeas/facade.rb`, `_augeas.so`) match their 8.33.0 digests (`_augeas.so` also its 8.34.0 rebuild's); the system `augeas-libs` is never used. *Environment:* `AUGEAS_ROOT`, `AUGEAS_LENS_LIB`, `AUGEAS_DEBUG`, `AUGEAS_DEBUG_DIR`, `LD_PRELOAD` and `LD_LIBRARY_PATH` unset or empty, and `--libdir` absolute and clean; the library is probed only after these hold. *Shapes:* every catalog string a provider puts in an Augeas path expression or passes as a value has the shape the native parser admits, and no resource sets `comment`, sysctl's `val`, `persist => false`, `ensure => absent` on a `sysctl`, a `provider` other than `augeas` or a `name` different from its title, or a `Sensitive` attribute (the rest of the shapes are in `augeas_params.go`; the generic `augeas` type's are in "The generic `augeas` type" below). An `sshd_config` `condition` with any number of distinct keys stays native: Ruby's autorequire names every permutation of the keys as a `Sshd_config_match` title, bare and followed by ` in <target>`, while the native one matches each `Sshd_config_match` title and `alias` string of the catalog the graph is built from (so after load-time generation, which can add matches) against the condition in linear time, and emits the same edges in Ruby's order (permutation order, bare before suffixed). That the title and `alias` strings are every name a match is known by rests on the fingerprinted `sshd_config_match` type: its uniqueness key has three attributes, so Puppet adds no single-key alias. *`sysctl` only:* RHEL family 10 or later, not Fedora, and a `sysctl` executable found on Puppet's search path (`PATH`, then `/usr/sbin` and `/sbin` each appended when absent, the first regular executable file winning). A `PATH` entry beginning with `~` reached before a hit delegates, because Ruby expands it against `HOME` and raises when `HOME` is unset. The path found at routing is used for the whole run, where Ruby resolves it per command. Only the libdir is fingerprinted: Ruby's autoloader searches the environment's module directories (`/opt/puppetlabs/puppet/vendor_modules` among them) before `$LOAD_PATH`, so a different copy of these provider or type files in a module there changes Ruby's behaviour and not voxagent's. A condition that sends a type to the host is logged once at debug, `<type> applied via extension host: <condition>` | Behaviour is measured only at these versions, on this library, and the providers' code is reimplemented, so that code is what must be the measured version. The library and the lenses run in voxagent's process as in Ruby's, so lens behaviour, node formatting and error texts agree by construction; a different library, or an override that changes which files libaugeas reads or which code loads, makes the two processes disagree. The host is Ruby itself, so delegating is never a regression (the argument of D-87). The modulepath shadowing above is not detected, and nothing pins its absence | `internal/units/augeas_route_test.go:TestNativeAugeasFingerprints`, `TestNativeAugeasOnlyTypesPresent`, `TestNativeAugeasEnvironment`, `TestNativeAugeasLibdirClean`, `TestNativeAugeasProbe`, `TestNativeAugeasNameShapes`, `TestNativeAugeasShapes`, `TestNativeAugeasSysctlPlatform`; `internal/lib/command/command_test.go:TestRubyWhich`; `internal/units/augeasproviders_ssh/ssh_params_test.go:TestConditionKeysUnbounded`, `TestAugeasAutoRequires`; `internal/units/augeasproviders_ssh/sshd_match_test.go:TestSshdAutoRequiresMatchesPermutations` (against the permutation oracle), `TestSshdAutoRequiresTwelveKeys`; `internal/units/augeasproviders_ssh/sshd_match_test.go:TestSshdMatchNames`; `cmd/voxagent/augeas_test.go:TestAugeasIsNativeOnlyWithAMeasuredTree`, `TestAugeasNoRuby`, `TestAugeasDelegationIsLoggedAtDebug`, `TestSshdConfigRequiresItsMatchByTitleOrAlias`, `TestSshdConfigRequiresAGeneratedMatch`; for `augeas`, `internal/units/augeas_core/augeas_generic_route_test.go:TestNativeAugeasGenericFiles`, `TestNativeAugeasGenericProbeAlone`; `internal/units/augeas_route_test.go:TestNativeAugeasGenericAndProvidersAreIndependent`, `TestNativeAugeasGenericEnvironmentAndProbe`, `TestNativeAugeasGenericShape. Gates: G5's augeas half (63 native cases, 4 that must stay on the host and 4 refusals), `task dev:augeas-lib` for the real library, and the SIMP gate (the fingerprint assertion, and a failure if any of the five types is named in `applied via extension host`) |
+| D-91 | `sysctl`, `ssh_config`, `sshd_config`, `sshd_config_subsystem` and `augeas` are native only when all of these hold, each type decided on its own; otherwise it goes to the extension host, so with `--no-ruby` such a catalog is refused where Ruby applies it. *Plugin tree:* the libdir holds augeasproviders_core 4.2.0 (three files), and the type's own type and provider file, at the sha256 of _sysctl 4.1.0 or _ssh 7.0.0 (the manifests of `augeasproviders_core`, `augeasproviders_sysctl` and `augeasproviders_ssh` hold twelve digests, `augeas_core`'s manifest of `augeas_core` the four of `augeas`; `augeas` instead needs augeas_core 2.1.0's `puppet/type/augeas.rb`, `puppet/provider/augeas/augeas.rb` and `puppet_x/augeas/util/parser.rb`, plus the `puppet/feature/augeas.rb` that both modules ship byte for byte, and not augeasproviders_core's three; `sshd_config` also needs _ssh 7.0.0's `puppet/type/sshd_config_match.rb`, whose key attributes decide which names its autorequire can match), and the type's `puppet/provider/<type>/` holds no `.rb` but `augeas.rb`. *Library:* openvox's own `/opt/puppetlabs/puppet/lib/libaugeas.so.0` loads through `dlopen`, resolves every symbol voxagent binds, opens a handle and reads `/augeas/version` as `1.15.0`, and openvox's three ruby-augeas files (`augeas.rb`, `augeas/facade.rb`, `_augeas.so`) match their 8.33.0 digests (`_augeas.so` also its 8.34.0 rebuild's); the system `augeas-libs` is never used. *Environment:* `AUGEAS_ROOT`, `AUGEAS_LENS_LIB`, `AUGEAS_DEBUG`, `AUGEAS_DEBUG_DIR`, `LD_PRELOAD` and `LD_LIBRARY_PATH` unset or empty, and `--libdir` absolute and clean; the library is probed only after these hold. *Shapes:* every catalog string a provider puts in an Augeas path expression or passes as a value has the shape the native parser admits, and no resource sets `comment`, sysctl's `val`, `persist => false`, `ensure => absent` on a `sysctl`, a `provider` other than `augeas` or a `name` different from its title, or a `Sensitive` attribute (the rest of the shapes are in `augeas_params.go`; the generic `augeas` type's are in [The generic `augeas` type](provider-boundary.md#the-generic-augeas-type) below). An `sshd_config` `condition` with any number of distinct keys stays native: Ruby's autorequire names every permutation of the keys as a `Sshd_config_match` title, bare and followed by ` in <target>`, while the native one matches each `Sshd_config_match` title and `alias` string of the catalog the graph is built from (so after load-time generation, which can add matches) against the condition in linear time, and emits the same edges in Ruby's order (permutation order, bare before suffixed). That the title and `alias` strings are every name a match is known by rests on the fingerprinted `sshd_config_match` type: its uniqueness key has three attributes, so Puppet adds no single-key alias. *`sysctl` only:* RHEL family 10 or later, not Fedora, and a `sysctl` executable found on Puppet's search path (`PATH`, then `/usr/sbin` and `/sbin` each appended when absent, the first regular executable file winning). A `PATH` entry beginning with `~` reached before a hit delegates, because Ruby expands it against `HOME` and raises when `HOME` is unset. The path found at routing is used for the whole run, where Ruby resolves it per command. Only the libdir is fingerprinted: Ruby's autoloader searches the environment's module directories (`/opt/puppetlabs/puppet/vendor_modules` among them) before `$LOAD_PATH`, so a different copy of these provider or type files in a module there changes Ruby's behaviour and not voxagent's. A condition that sends a type to the host is logged once at debug, `<type> applied via extension host: <condition>` | Behaviour is measured only at these versions, on this library, and the providers' code is reimplemented, so that code is what must be the measured version. The library and the lenses run in voxagent's process as in Ruby's, so lens behaviour, node formatting and error texts agree by construction; a different library, or an override that changes which files libaugeas reads or which code loads, makes the two processes disagree. The host is Ruby itself, so delegating is never a regression (the argument of D-87). The modulepath shadowing above is not detected, and nothing pins its absence | `internal/units/augeas_route_test.go:TestNativeAugeasFingerprints`, `TestNativeAugeasOnlyTypesPresent`, `TestNativeAugeasEnvironment`, `TestNativeAugeasLibdirClean`, `TestNativeAugeasProbe`, `TestNativeAugeasNameShapes`, `TestNativeAugeasShapes`, `TestNativeAugeasSysctlPlatform`; `internal/lib/command/command_test.go:TestRubyWhich`; `internal/units/augeasproviders_ssh/ssh_params_test.go:TestConditionKeysUnbounded`, `TestAugeasAutoRequires`; `internal/units/augeasproviders_ssh/sshd_match_test.go:TestSshdAutoRequiresMatchesPermutations` (against the permutation oracle), `TestSshdAutoRequiresTwelveKeys`; `internal/units/augeasproviders_ssh/sshd_match_test.go:TestSshdMatchNames`; `cmd/voxagent/augeas_test.go:TestAugeasIsNativeOnlyWithAMeasuredTree`, `TestAugeasNoRuby`, `TestAugeasDelegationIsLoggedAtDebug`, `TestSshdConfigRequiresItsMatchByTitleOrAlias`, `TestSshdConfigRequiresAGeneratedMatch`; for `augeas`, `internal/units/augeas_core/augeas_generic_route_test.go:TestNativeAugeasGenericFiles`, `TestNativeAugeasGenericProbeAlone`; `internal/units/augeas_route_test.go:TestNativeAugeasGenericAndProvidersAreIndependent`, `TestNativeAugeasGenericEnvironmentAndProbe`, `TestNativeAugeasGenericShape. Gates: G5's augeas half (63 native cases, 4 that must stay on the host and 4 refusals), `task dev:augeas-lib` for the real library, and the SIMP gate (the fingerprint assertion, and a failure if any of the five types is named in `applied via extension host`) |
 | D-92 | A member of the D-82 family. Under `--debug`, `sysctl`'s `Executing: '<sysctl> -w <key>=<value>'` line and, for a `silent` key whose `-w` fails, the `augeasprovider_sysctl ignoring failed attempt to set <key> due to :silent mode` line are logged before the property's change notice. Ruby logs the notice first, because it logs it when the property syncs and runs `flush`, which holds `sysctl -w`, afterwards. Nothing at `info` or above moves. Separately, the run's teardown closes only the handles the run opened: Ruby opens and closes one handle for a class it traversed but never opened, which is observable only when that `aug_init` fails; and the handles close in a different order: Ruby's is the first-traversal order of the provider classes (`post_evalable_providers` is a Set filled in `pre_process`, `transaction.rb:110-113`), voxagent's is the order the handles were opened (`Run.opened` in `augeasproviders_core`) | The change comes back from `Apply` together with the `FlushError` (D-91's engine support, "The provider boundary"), and the transaction logs notices when it assembles the status, after `Apply` returned, so a line `Apply` itself logs precedes them. Reordering it would mean logging from the transaction what the provider did. The gates compare no debug lines (D-82), and the replay traces are of libaugeas calls, which the two differences do not change except for the failed `aug_init` named | `internal/units/augeasproviders_sysctl/sysctl_apply_test.go:TestSysctlReplays01e` pins the silent-mode line's text and source. The order itself is unpinned: no test asserts it, and the teardown's behaviour is `internal/units/augeasproviders_core/augeas_mixin_test.go:TestAugeasRunEndRunClosesEveryHandleOnce` |
 | D-93 | The `augeas` type's lens path follows the voxagent command. Under `agent` it is Ruby's agent branch: `<libdir>/augeas/lenses` when that path exists, else `""`. Under `apply` it is `""` always, because voxagent has no modulepath, so a module on the node's modulepath that ships lenses is not on the path, where Ruby's `puppet apply` would add it. `aug_init` always receives `"/"` and this string, never NULL | Ruby's provider branches on `Puppet.run_mode` (`provider/augeas/augeas.rb:362-387`); SIMP's libdir ships `augeas/lenses/resolv.aug`, so under `agent` it changes which `Resolv.lns` SIMP's resolv.conf resource uses, as it does under a real openvox agent. The G5 and SIMP gates compare against `puppet apply`, whose modulepath in the gate images holds no module with lenses, so both sides pass `""`. The agent branch is derived from source and unmeasured (it needs a server); a custom lens under an agent run is the exposure, and a server-backed measurement would close it | `internal/units/augeas_core/augeas_generic_route_test.go:TestNativeAugeasLensPath`, `internal/units/augeas_core/augeas_generic_test.go:TestAugeasReplaysApplyIgnoresLibdirLens`; G5's `augeas-apply-ignores-libdir-lens`, where a broken `modprobe.aug` in the libdir must not matter under `apply` on either side. The `agent` branch has a unit test only. The extension host never sets a run mode (`internal/extension/host.rb:193-196`; Puppet defaults to `user`), so a host-applied `augeas` resource gets lens path `""` under both commands; native under `agent` uses `<libdir>/augeas/lenses`, so an agent run whose libdir ships lenses (SIMP's `resolv.aug`) differs from what voxagent did before the native `augeas` type, and the lens path changes when the type is routed to the host (one resource with `onlyif`, say) |
 | D-94 | `cron` is native only when all of these hold, checked in this order, and otherwise goes to the extension host, so with `--no-ruby` such a catalog is refused where Ruby applies it. *Platform:* RHEL family 10 or later, not Fedora (`not the measured platform`). *crontab:* `command.RubyWhich` finds `crontab` over `PATH` as Puppet extends it (`/usr/sbin` and `/sbin` appended), executability from `Platform.Executable` (`crontab not found on PATH`). *Provider:* no `Cron` names a `provider` other than `crontab`. *Plugin tree:* the libdir holds none of cron_core's three files (openvox's vendored 1.3.0 then applies, M10) or all three at the digests of 1.3.0 or 2.1.0, and `puppet/provider/cron/` holds no `.rb` but `crontab.rb` and `filetype.rb` (`another cron provider in libdir`, or `MatchFiles`'s reason). *Purge:* no `Resources` resource for `cron` may purge (`resources purge of cron`; anything but an absent `purge`, `false` or `"false"` counts). *Shapes:* no `Cron` has a value the native parser does not implement: a `command` element that is not a String; a non-String first element of `user` or `target` (a `nil` one is not delegated: it counts as unset); a Hash or a whole number beyond 2^53 as an `ensure`, `special`, time-field or `environment` element; and, under 1.3.0 only, a time-field element that is not a String or Integer and an `environment` element that is not a String | Behaviour is measured only at these releases and with `crontab` present. Without `crontab` Ruby itself fails every `Cron` with `Could not find a suitable provider for cron` (M4). Purge needs `instances` and generated `Cron` resources, which voxagent does not implement. Ruby 1.3.0 fails the non-String shapes with NoMethodError texts that depend on the Ruby version (M12 on the oracle's ruby 3.2.11: `undefined method `=~' for true:TrueClass`; ruby 3.4.9, observed locally, words it `for true`), so they are not reproduced; 2.1.0's guards refuse the same shapes with stable texts and stay native. Ruby's own refusals stay native with Ruby's message. The host is Ruby itself, so delegating is never a regression (the argument of D-87) | `internal/units/cron_core/route_test.go:TestRouteConditionsInOrder`, `TestRouteCrontabLookup`, `TestRoutePlatformUnreadable`, `TestRouteEveryCronChecked`, `TestRouteTreeConditions`, `TestRoutePurge`, `TestRouteValueShapesPerRelease`; `cmd/voxagent/cron_test.go:TestCronNoRubyRefusesDelegated`. Gates: G5's cron half (21 native cases and one refusal, none may be named in `applied via extension host`) and the SIMP gate (cron_core 2.1.0's three digests, and a failure if `cron` is named in `applied via extension host`) |
@@ -189,7 +210,7 @@ and the number is retired rather than reused:
 | D-96 | The ParsedFile engine's state is per run (`parsedfile.Run`, held by the provider `Prefetch` returns), and so is the counter that names unmanaged jobs (`unmanaged:<command>-<n>`, in the `cronClass` closure). Ruby's class state lives for the process, so a daemonised agent re-reads every target an earlier run touched, continues the counter across runs, and can bind a resource to a stale record from the previous run | `Prefetch` builds a new `Run` for each run, so what a run sees is what Ruby's first run in a process sees. Unmeasured: it needs a daemonised Ruby agent, so it is read from `provider/parsedfile.rb` (`pf:388`, `pf:315-318`; the `@name_index` counter, `prov:187`) | `internal/lib/parsedfile/parsedfile_test.go:TestRunsAreIndependent`; `internal/units/cron_core/cron_grammar_test.go:TestCronPrefetchHookCounterIsPerClass`. The four new consumers (`host`, `sshkey`, `ssh_authorized_key`, `mount`) take `parsedfile.Run` from the same `Prefetch` (`PrefetchParsedFile`, `internal/ral/parsedfile_provider.go`), so the row applies to each: a record, a modified target or a backup mark never survives into another run |
 | D-97 | A crontab write whose text fails to encode under a US-ASCII `default_external` (any non-ASCII character in the generated crontab) fails the flush with Ruby's text and leaves the crontab as it was: `crontab` is not run. Ruby's pipe raises before anything is written, closes empty, and cronie installs an empty crontab, losing every job in the target. Messages, events and statuses are Ruby's (`Puppet::Provider::Cron::FileType::FileTypeCrontab could not write root: U+00E9 from UTF-8 to US-ASCII`, logged once as `err`, then a `resource_error` after the `created` event) | Reproducing the loss would let one non-ASCII character in a catalog empty a crontab (M7: nothing reaches the pipe, cronie installs 0 bytes). Decided by the user on 2026-11-22 over reproducing the loss or delegating | `internal/lib/parsedfile/filetype_test.go:TestCrontabWriteEncoding`, `TestEncodeError`; `internal/units/cron_core/cron_apply_test.go:TestCronEncodingFailures` |
 | D-98 | `host`, `sshkey`, `ssh_authorized_key` and `mount` are native only when all of these hold for the type, checked in this order, and otherwise go to the extension host, so with `--no-ruby` such a catalog is refused where Ruby applies it (spec §2.1). *Platform:* RHEL family 10 or later, not Fedora (Fedora has no `ID_LIKE`) (the unit's `Platforms`, `ral.OnPlatform`; `not the measured platform`). *Suitability*, Ruby's confines: `host` needs `/etc/hosts` to exist (`Platform.FileExists`, `/etc/hosts does not exist`); `mount` needs `mount` and `umount` on `PATH` as `command.RubyWhich` resolves them (`mount not found on PATH`, `umount not found on PATH`); the other two have none. *Provider:* no resource of the type names a `provider` other than `parsed`. *Plugin tree:* the libdir holds none of the module's pinned files (openvox's vendored release then applies: host_core 1.3.0, mount_core 1.3.0, sshkeys_core 2.5.0) or all of one measured release's (host_core 2.1.0, equal to the vendored 1.3.0's; mount_core 1.3.0 or 2.1.0; sshkeys_core 2.5.0 or 3.1.0), and `puppet/provider/<type>/` holds no `.rb` but `parsed.rb` (`another <type> provider in libdir`). *Purge:* no `Resources` resource purges the type (`resources purge of <type>`), and for `ssh_authorized_key` no `User` has a `purge_ssh_keys` other than `false`, `"false"` or `[]` (`user.PurgeKeepsNative`). *Shapes:* no resource has a value the native parser does not implement (`rubyvalue.UnimplementedValue`; the attributes per type are in the sections below). *`mount` only:* when the catalog holds a `File`, every `Mount` name contains none of `\`, `(?`, `{` and `[` and compiles as RE2 with `(?m)` (`mount name <n> is not a portable regular expression`). When `host`'s or `mount`'s confine fails, Ruby fails the whole run (`undefined method `ancestors' for nil:NilClass`, exit 1, no report; M16, M11), and delegating hands that outcome to the host unchanged | Behaviour is measured only on this platform and at these releases, and the providers' code is reimplemented, so that code is what must be the measured version. Purge needs `instances` and generated resources, which voxagent does not implement, and `purge_ssh_keys` would have the host edit the same files in one run. Onigmo and RE2 differ in the four characters the pattern check excludes (`{,3}` is a quantifier in Onigmo, a literal in RE2). The host is Ruby itself, so delegating is never a regression (the argument of D-87) | `internal/units/host_core/route_test.go:TestRouteConditionsInOrder`, `TestRouteSuitabilityFollowsSymlinkSemantics`, `TestRouteTreeConditions`, `TestRoutePurge`; `internal/units/mount_core/route_test.go:TestRouteConditionsInOrder`, `TestRouteResolvesCommandsAsPuppetDoes`, `TestRouteTreeConditions`, `TestRoutePurge`, `TestRouteValueShapes`, `TestRouteAutobeforePattern`; `internal/units/sshkeys_core/route_test.go:TestRouteConditionsInOrder`, `TestRouteTreeConditions`, `TestRoutePurge`, `TestRouteSakConditionsInOrder`, `TestRouteSakUserPurge`, `TestRouteSakValueShapes`, `TestRouteTypesAreIndependent`. Gates: G5's four halves (none of their cases may be named in `applied via extension host`) and the SIMP gate (the host_core, mount_core and sshkeys_core fingerprints, and a failure if one of the four types is named there). Under `--debug`, each type delegated here gets one line, `<type> applied via extension host: <reason>`, as D-87's |
-| D-99 | Privilege drop by child process: Ruby changes the agent's own euid and egid and leaves the real uid 0 (`suid:63-78`); voxagent's `asuser` helper has real and effective ids of the user. File access checks are the same (the kernel uses fsuid = euid). Ruby's restore calls `initgroups(0)` (`suid:74-75`, `:134-136`), so after the first drop the Ruby agent's supplementary groups become root's from the group database for the rest of the run; voxagent's never change | Go cannot change one thread's credentials safely (`setgroups` is process-wide), so a child started with `SysProcAttr.Credential` is the only faithful way to make the kernel check every path component as the user. See "Privilege drop (`voxagent asuser`)" | `internal/lib/asuser/asuser_test.go`; `cmd/voxagent/asuser_test.go:TestAsuserRoot*` (root only) |
+| D-99 | Privilege drop by child process: Ruby changes the agent's own euid and egid and leaves the real uid 0 (`suid:63-78`); voxagent's `asuser` helper has real and effective ids of the user. File access checks are the same (the kernel uses fsuid = euid). Ruby's restore calls `initgroups(0)` (`suid:74-75`, `:134-136`), so after the first drop the Ruby agent's supplementary groups become root's from the group database for the rest of the run; voxagent's never change | Go cannot change one thread's credentials safely (`setgroups` is process-wide), so a child started with `SysProcAttr.Credential` is the only faithful way to make the kernel check every path component as the user. See [Privilege drop (`voxagent asuser`)](not-implemented.md#privilege-drop-voxagent-asuser) | `internal/lib/asuser/asuser_test.go`; `cmd/voxagent/asuser_test.go:TestAsuserRoot*` (root only) |
 | D-100 | A `ssh_authorized_key` flush that writes a second target (the old target after a `target` change) backs that target up in the root parent. Ruby's engine backs it up inside `asuser` (`kp:72-75`, `pf:91-99`), as the new user: skipped silently when that user cannot stat the file; when it can, `Info: Computing checksum on file <old>`, then err `Could not back up <old>: Permission denied @ dir_s_mkdir - /opt/puppetlabs/puppet/cache/clientbucket` (source `Puppet`; the cache and `clientbucket` are 0750 root) and the resource's `Could not evaluate: <same>`. voxagent's backup succeeds there, so its flush goes on to the write, which fails as the user (`could not write <old>: Permission denied @ rb_sysopen`) unless the user may write the old file; the bucket gains an entry Ruby lacks | Reproducing it would put the clientbucket code and writes into root's vardir in the user-run helper, and need the failing bucket path in a result the helper protocol keeps closed (spec §3.4). Measured (M8 `05k-move2`, `05k-move3`) | `internal/units/sshkeys_core/sak_apply_test.go:TestSakTargetMove` |
 | D-101 | The helper's environment is `PATH` and `TMPDIR` only (each when set); Ruby's write runs in the agent's full environment. The write's temp directory is chosen in the helper, as the user, by Ruby 3.2's `Dir.tmpdir` rule (`asuser.TempDir`, `tmpdir.rb:21-39`): the first of `TMPDIR`, `TMP`, `TEMP`, `/tmp` and `.` that is a directory, writable by its mode bits (`File::Stat#writable?`) and not world-writable without the sticky bit; with none the write fails `Puppet::Util::FileType::FileTypeFlat could not write <path>: could not find a temporary directory` (result `tmpdir 0`). So a `TMPDIR` only root may write (pam_tmpdir's `/tmp/user/0`) falls to `/tmp`, as in Ruby (measured in the oracle image as `nobody` under `SUIDManager.asuser`). What still differs: `TMP` and `TEMP` never reach the helper, so where Ruby picks one of them voxagent goes on to `/tmp`; Ruby's stderr warning for each candidate it passes over (`TMPDIR is not writable: <dir>`) is not printed (the helper's stderr is the null device); a leading `~` is not expanded, and a relative candidate is passed over when the working directory cannot be read, where Ruby raises. A target its user swaps for a directory after the prefetch gets the copy as a new file inside it (`puppet<random>`), as in Ruby; when that open fails, the error names the target, `… could not write <path>: Permission denied @ rb_sysopen - <path>`, where Ruby names the copy it tried, `… @ rb_sysopen - <path>/puppet20261123-5-lqpl7c` (measured in the oracle image as `nobody` under `SUIDManager.asuser`): the result carries no name, and nothing from the child is quoted. The same row records what the helper adds. Two voxagent-only failures, which Ruby's in-process `asuser` cannot hit: `Could not start the asuser helper via /proc/self/exe (is /proc mounted?): <err>` and `asuser helper for <path> returned an invalid result`. One ordering nuance: the parent checks the write's US-ASCII encoding (`parsedfile.FlatEncodeError`) before it starts the helper's write, because the closed result has no step for it, so when the temp file cannot be created either, voxagent reports the encoding failure where Ruby reports the temp file's. And a user can stall the run: in Ruby with a FIFO at `~/.ssh/authorized_keys` (root's prefetch read or the as-user write blocks forever); in voxagent with the FIFO too, and also by ptrace-stopping the helper, which runs as that user, or by making it a child that writes stdout forever without exiting (its output is drained, so it never blocks, and never ends). No timeout is added | The agent's environment may hold secrets (proxy credentials, tokens) and a process running with the user's real and effective uid exposes `/proc/<pid>/environ` to that user (spec §11). The stall needs no timeout: Ruby is stallable by the same user | `internal/lib/asuser/asuser_test.go:TestProcCmd`, `TestProcStarterStartFailure`, `TestProcStarterInvalidResult`, `TestTempDir`, `TestTempDirRelative`, `TestTempDirNoneFound`; `cmd/voxagent/asuser_test.go:TestAsuserRootRootOnlyTmpdir`, `TestAsuserWriteUnwritableTmpdir`; `internal/lib/parsedfile/filetype_test.go:TestFlatEncodeError` |
 | D-102 | A `ssh_authorized_key` flush writes only its own record's targets: the record's target before a change (a move's old target) and its should target (`parsedfile.Run.FlushTargets`). Ruby's flush (`pf:64-87`) writes every modified target, so a target left modified by an earlier sak flush that failed before `super` (unknown user, refused `mkdir`, untrusted path) is written by the next sak resource's flush under that resource's identity, another user's or root's (M8 `08a-modified-leak`: `r2` fails `could not write /srv/x/authorized_keys` for `r1`'s fault; `08a-drop-false-walk`: `w6`'s root flush creates the untrusted `/srv/o/file` root:root). voxagent never writes such a target for the rest of the run unless a later resource's own record touches it, which then writes it with every record of the run in it. Differs from Ruby only after an earlier failed sak flush in the same run: the later resource succeeds where Ruby fails it, or the leaked file is not created. With `drop_privileges => false`, every own target, so a move's old target too, must pass `trusted_path` before anything is written; Ruby walks only the new target, then writes the old one as root as well. When an old target is untrusted the flush fails `drop_privileges is false but the target path is not trusted` and writes nothing (Ruby writes both): that is the only other difference in what is written. Each walked target that passes logs debug `Path trusted, writing the file as the current user`, so a trusted move logs it twice where Ruby, walking only the new target, logs it once | The leaked write runs under another resource's identity, root included, bypassing `trusted_path` and the privilege drop: the CVE-2011-3870 class those checks exist for. User decision 2026-11-23; I-41 records the Ruby bug. Every other ParsedFile flush keeps `Run.Flush` | `internal/units/sshkeys_core/sak_apply_test.go:TestSakLeakedTargetUnknownUser`, `TestSakLeakedTargetRefusedMkdir`, `TestSakLeakedTargetUntrusted`, `TestSakSharedTargetWrittenWithEveryRecord`, `TestSakDropFalseMoveWalksEveryTarget`; `internal/lib/parsedfile/parsedfile_test.go:TestFlushTargetsWritesOnlyOwn`, `TestFlushTargetsNewRecordTarget`, `TestFlushTargetsFailureKeepsLaterMarked` |
@@ -200,7 +221,7 @@ in `tests/spine/allowlist.json`, because each is dropped from the **Ruby side
 only** — the same entry appearing on voxagent's side would still surface as a
 divergence:
 
-- `puppet_version`. Ruby reports its own version and Go cannot match it without
+- `puppet_version`. Ruby reports its own version and Go can match it only by
   lying.
 - Ruby's `Wrapped exception:` log. `resource_harness.rb:149` logs the
   `ResourceError` itself, so `util/logging.rb`'s `format_exception` appends a
@@ -228,7 +249,9 @@ A fifth left it the same way: a failed apply reported one `resource_error` event
 naming no property, where Puppet attributes the failure to the property that
 failed. Closing it took a whole round rather than a patch — `Apply` had to be
 able to carry per-property failures at all, which is the contract change below —
-and it is now proven against Ruby by G1 rather than by a reading. The fixture
+and it is now proven against Ruby by G1 rather than by a reading.
+
+The fixture
 carries a file whose parent directory does not exist; that resource fails on both
 sides and both wrap the underlying errno, so `events.*.property`, the event name
 and the failure message are compared rather than asserted. `resource_error`
@@ -240,7 +263,9 @@ A sixth was fixed the day it was recorded: a package built with an explicit
 shorter query format inlined the epoch whenever the tag *existed*, while
 `rpm.rb:214` drops an epoch *equal to* `'0'`. `rpmQueryFormat` is now rpm.rb's
 `NEVRA_FORMAT` verbatim, and `parseInstalled` rebuilds the version as
-`nevra_to_hash` does. Measured in the container with a locally built `Epoch: 0`
+`nevra_to_hash` does.
+
+Measured in the container with a locally built `Epoch: 0`
 rpm and `ensure => absent`: before, `previous_value` was the one divergent leaf
 of 81; after, 0. Pinned by `internal/units/package/dnf_test.go:TestParseInstalledDropsAZeroEpoch`,
 `TestParseInstalledMatchesNevraRegexExactly` and
@@ -253,7 +278,9 @@ installed package carries; any other fills its state at its own turn in the walk
 from rpm.rb's `query` — `rpm -q NAME`, then `--whatprovides` — and is `purged`
 only when both find nothing. voxagent keyed on the prefetched set alone, so
 `package { 'vi': ensure => present }`, which `vim-minimal` provides, reported a
-`created` change on every run where Ruby reports none. `Apply` now runs the same
+`created` change on every run where Ruby reports none.
+
+`Apply` now runs the same
 query for any name prefetch did not carry, under noop too. Measured in the
 container (`.test-output/package-oracle/unmeasured/measure.sh`, gitignored):
 `vi` with `ensure => present`, 51 leaves and 0 divergent; `vi` with an older
@@ -288,7 +315,7 @@ Base64-encodes (`transaction/event.rb:89-105`,
 plain string ("What OpenVoxDB stores for a binary-encoded value" below), and
 the user decided that is the contract, so voxagent was right and the gates
 were comparing an artefact. The gates now capture Ruby's report as the
-puppetdb terminus would send it ("How the gates capture Ruby's report"). G1
+puppetdb terminus would send it ([How the gates capture Ruby's report](gate-evidence.md#how-the-gates-capture-rubys-report)). G1
 compares a real content change (`pur/keep.txt` is seeded with other content)
 and the SELinux VM gate exits 0.
 
@@ -304,10 +331,10 @@ and the SELinux VM gate exits 0.
 ## What OpenVoxDB stores for a binary-encoded value
 
 Reproduction of the 2026-10-06 measurement that closed the `content`/`sel*` known defect, and the
-justification for the coercion in "How the gates capture Ruby's report". Line numbers
+justification for the coercion in [How the gates capture Ruby's report](gate-evidence.md#how-the-gates-capture-rubys-report). Line numbers
 for the terminus are from openvox-agent 8.29.0 and openvoxdb-termini 8.16.0 (the `fleet-node-el` image,
 under `/opt/puppetlabs/puppet/lib/ruby/vendor_ruby/puppet/`); the `to_data_hash` converter lines are
-from the Puppet 8.10.0 gem G1 captures with. They are different packages, so the numbers do not align.
+from the Puppet 8.10.0 gem that G1 uses to capture reports. They are different packages, so the numbers do not align.
 
 1. `task fleet:up`. Then, in `fleet_node_el`, copy `/etc/puppetlabs/puppet/{puppet.conf,puppetdb.conf}`
    and the `fleet-ssl` certificates to a writable directory and point `puppet.conf` at the copies. The
@@ -382,10 +409,14 @@ one earliest in the catalog's `resources` array: Puppet's
 (`graph/sequential_prioritizer.rb:17-24`) and `relationship_graph.rb:97-99`
 takes the smallest ready key, and `graph.Walker` does the same. So resources no
 relationship orders apply in catalog order, which is the order the compiler
-evaluated the manifest in. A resource the load-time `generate` pass adds takes
+evaluated the manifest in.
+
+A resource the load-time `generate` pass adds takes
 the place Puppet's `add_resource` gives it (the host's `order`,
 `extension-host.md`), and the resources an `eval_generate` makes are applied at
-their parent's turn. A Tier 3 resource whose type has no suitable provider is
+their parent's turn.
+
+A Tier 3 resource whose type has no suitable provider is
 **deferred**, not applied, when the walk reaches it: once the ready queue
 drains it is offered again if anything was placed since the last drain, and
 otherwise handed back overly deferred and failed (`relationship_graph.rb:114-145`,
@@ -400,10 +431,14 @@ container's catalog index. Each containment edge `X -> v` becomes
 `s -> X` lands on `admissible_X` and `X -> t` leaves from `completed_X`. So
 `Class['a'] -> Class['b']` still means every resource in `a` precedes every
 resource in `b`, and a class that is both `include`d and `contain`ed sits under
-both of its containers. The whits are walked but never applied or reported: a
+both of its containers.
+
+The whits are walked but never applied or reported: a
 whit collapses the refresh events it was sent into one for each of its targets
 (see "Refresh propagation"), or, behind a failed dependency, drops them
-without a log line. They take their own turn in the ready queue, which
+without a log line.
+
+They take their own turn in the ready queue, which
 is why rewriting each edge member-to-member is not equivalent: a measured case
 gave `xm r d`, where the splice gives `xm d r`. A cycle message
 names a whit as its container (`Class[A]`), though not in Puppet's format
@@ -411,12 +446,14 @@ names a whit as its container (`Class[A]`), though not in Puppet's format
 `containment_path` follows its first containment edge, as Puppet's
 pathbuilder does.
 
-One consequence was a named change in behaviour. Autorelations are found
+One consequence changed behaviour in a way that this section names. Autorelations are found
 before the containers are rewired, on the catalog's refs, because
 `populate_from` (`graph/relationship_graph.rb:24-33`) runs
 `build_autorelation_dependencies` before `replace_containers_with_anchors`. So
 a relationship *to a class* does not stop an autorequire between one of the
-class's members and the resource that stated it. When voxagent spliced, it
+class's members and the resource that stated it.
+
+When voxagent spliced, it
 saw the spliced member-to-member edges as stated, and quietly dropped that
 autorequire. Example: `class app { file { '/opt/app/conf': } }` with
 `file { '/opt/app': require => Class['app'] }`. The directory now autorequires
@@ -428,6 +465,50 @@ dependency cycle: (File[/tmp/t8bapp/conf] => Class[App] => File[/tmp/t8bapp]
 File[/opt/app/conf]` (`TestAutoRequireIsNotSuppressedByARelationshipToTheContainer`).
 
 ## Refresh propagation
+
+```mermaid
+%%{init: {'theme': 'base', 'themeVariables': {
+  'primaryColor': '#2f6dab',
+  'primaryTextColor': '#1e1e1e',
+  'primaryBorderColor': '#7c8ba1',
+  'lineColor': '#7c8ba1',
+  'edgeLabelBackground': '#eef2f8',
+  'tertiaryColor': 'transparent',
+  'tertiaryTextColor': '#7c8ba1',
+  'tertiaryBorderColor': '#7c8ba1',
+  'clusterBkg': 'transparent',
+  'clusterBorder': '#7c8ba1',
+  'titleColor': '#7c8ba1',
+  'noteBkgColor': '#eef2f8',
+  'noteTextColor': '#1e1e1e',
+  'fontFamily': 'system-ui, sans-serif'
+}, 'themeCSS': '.node .nodeLabel{color:#ffffff!important;fill:#ffffff!important;}'}}%%
+flowchart TD
+  ev["events queued on a resource or a whit"] --> rf{"target type defines refresh?"}
+  rf -->|no| none["nothing sent, as File or Notify"]
+  rf -->|yes| nz{"global noop, or all events or the resource noop?"}
+  nz -->|yes| wh["log Would have triggered 'refresh' from N event(s)"]
+  wh --> nr["queue one noop_restart onward; no status, restarted not set"]
+  nz -->|no| run["run refresh, a whit's is a no-op returning true"]
+  run --> ok{"refresh succeeded?"}
+  ok -->|yes| trig["resource logs Triggered 'refresh' from N event(s), restarted set"]
+  trig --> re["queue one restarted event of its own, one per whit"]
+  ok -->|no| fail["failed_to_restart and failed set"]
+  fail --> blk["dependents blocked"]
+  re --> nxt["each dependent repeats the same decision"]
+  nr --> nxt
+  nxt --> ev
+  class ev,rf,nz,ok sysC
+  class wh,nr sysD
+  class trig,re,run,nxt sysB
+  class fail,blk sysA
+  class none sysF
+  classDef sysA fill:#2f6dab,color:#ffffff,stroke:#7c8ba1
+  classDef sysB fill:#1d7848,color:#ffffff,stroke:#7c8ba1
+  classDef sysC fill:#7457b8,color:#ffffff,stroke:#7c8ba1
+  classDef sysD fill:#2d747e,color:#ffffff,stroke:#7c8ba1
+  classDef sysF fill:#5c6a82,color:#ffffff,stroke:#7c8ba1
+```
 
 A refresh **chains**. Measured against `transaction/event_manager.rb`
 `process_events`: a resource that was successfully refreshed queues a
@@ -449,7 +530,9 @@ Under `--noop` none of that happens. `process_callback?` is
 `process_noop_events` path: it logs `Would have triggered 'refresh' from N
 event(s)`, queues a `noop_restart` event to *other* resources — so the chain
 still propagates — and adds nothing to this resource's own status. It returns
-false, so `restarted` is never set. Reporting `restarted: true` under noop also
+false, so `restarted` is never set.
+
+Reporting `restarted: true` under noop also
 left the resource out of sync, which meant it survived report pruning and every
 noop run over a catalog with a notify emitted a resource status Ruby does not.
 
@@ -461,7 +544,9 @@ triggers `x` `from 1 event` however many of `A`'s members changed, a target
 subscribed to two classes and one resource gets one event per class plus every
 event of the resource, and a refresh *into* a class reaches each member
 `from 1 event`, including the members of a class it `contain`s but not those of
-one it only `include`s. Under `--noop` every whit with a queue also logs
+one it only `include`s.
+
+Under `--noop` every whit with a queue also logs
 `Would have triggered 'refresh' from N event(s)` at its container's name
 (`Class[Allnoop]`, `Class[Main]`, `Stage[main]`), N being the raw count it
 collected, before passing one `noop_restart` on; the admissible and the
@@ -484,239 +569,11 @@ satisfies a single-hop fixture exactly as well as a correct one.
 
 ## The provider boundary
 
-`ral.Provider` is the only interface the transaction sees, and
-`Apply(ctx, r, noop) (changes []Change, warnings []string, err error)` has three
-return values carrying three different kinds of answer. Which one a provider
-reaches is not a style choice; each maps to something different that Puppet's
-transaction does with it.
+Moved to [the provider boundary](provider-boundary.md). Its sections:
 
-**A `Change` is one property that moved, or one property that was attempted and
-failed.** `Change.Err`, when non-nil, means the latter: `Was` and `Is` then
-describe the transition that was *tried*, and the transaction builds Puppet's
-`change from X to Y failed: …` wording from them. `resource_harness.rb:123`
-`sync_if_needed` wraps each property's sync individually and its rescue at `:147`
-records a failure event for *that* property and lets the next one proceed — so a
-provider must keep going after one property fails rather than returning early.
-
-`Change.WasDisplay` and `IsDisplay` belong to the same value: they change how
-`Was` and `Is` are rendered **into the message** without changing the values the
-event carries. This is Ruby's `is_to_s`/`should_to_s`, which `previous_value` and
-`desired_value` do not go through. Measured: an `owner` event carries
-`previous_value` as the integer `1000` while its message reads `'llm'`. Without
-the split there is no way to be right about both at once — and getting it wrong
-produces a report that looks correct to a human reading the message and is wrong
-to anything reading the fields.
-
-`Change.DisplayVerbatim` makes the transaction use `WasDisplay` and `IsDisplay`
-exactly as given, empty strings included and with no quotes added, in the
-failure line (`change from <was> to <is> failed: …`) and nowhere else; the
-provider then owns Ruby's quoting. `user` sets it on every change but `ensure`,
-and `group` on `members` only (not `ensure` or `gid`). Their `is_to_s`/`should_to_s` print some values bare and some quoted, and a
-group with no members fails as `change from  to nosuchuser failed: …` (M39,
-two spaces), which no quoting rule applied by the transaction can produce.
-
-**A bare `error` return means only that no property can be blamed.** It is
-Ruby's `status.failed_because` (`resource/status.rb:140`), which synthesizes a
-`resource_error` event for the resource as a whole. It is a result about the resource, not about the run:
-the transaction records it, skips the resource's dependents, and carries on.
-Returning a non-nil error **discards the accompanying change list**, so a
-provider must never rely on reporting both — an attributable failure belongs in a
-`Change.Err` instead.
-
-**`warnings` exist because a provider had no channel to the run log at all.**
-Ruby's `warnonce` (`util/warnings.rb:17`) goes through `Puppet.warning`, the
-global logger, so the entry belongs to no resource: it is logged at level
-`warning` with source `Puppet` rather than at the resource's path. `package`
-made both halves of that sentence too narrow, so `Warning` now carries its own
-`Source` and its own `DedupeClass`, independently:
-
-- **Source**, because a warning raised on a *provider instance* is not sourced
-  at the resource's path either. `log_source` returns `path` only for a
-  `Puppet::Type` or `Puppet::Parameter` (`util/logging.rb:298-302`), and a
-  provider is neither, so it falls through to `to_s` — measured verbatim as
-  `Puppet::Type::Package::ProviderDnf`.
-- **Dedupe**, keyed on the class *and* the message together, which is what
-  `maybe_log`'s `@stampwarnings` does (`util/warnings.rb:26-29`: the hash is
-  keyed by class at `:28` and tested against the message at `:29`). An empty
-  `DedupeClass` means the warning is logged every time it is
-  raised, because plain `Puppet.warning` — what package providers actually call
-  — does not dedupe at all.
-
-So a condition every `file` in the catalog hits is still reported once rather
-than once per resource, and two providers raising different warnings no longer
-collide. A provider returns its warning every time it applies and never tries to
-remember whether it already has; it is stateless and could not. Reaching Ruby's
-*count* is not always the same job as reaching its dedupe: for `package`'s
-check-update warning it took resolving once in `Prefetch` as well, because a log
-key cannot unspawn a subprocess (D-16).
-
-### Failed flushes, per-run state and prefetch at a type's first turn
-
-The augeasproviders types (below) needed four things of the engine that no
-earlier type did. All four are optional: a provider that implements none of
-them behaves as before.
-
-- **A failed flush keeps its changes.** `Apply` may return its changes **and** a
-  `*ral.FlushError` (`internal/ral/ral.go`), the one exception to "a non-nil
-  error discards the change list" above. Ruby's `resource_harness.rb:23-31`
-  calls `flush` after the properties synced and fails the resource on its
-  exception, so the property's `success` event is already recorded. The
-  transaction records the changes (lines and events), then the `resource_error`
-  event and `Could not evaluate: <message>`, marks the resource failed, queues
-  none of its events (no refresh) and blocks its dependents. The status is
-  `changed: true`, `failed: true`, `change_count` 1 and `out_of_sync_count` 2
-  (measured: M5, M8). I-35 records that this is a report that claims a change
-  the failure undid. `internal/transaction/transaction_test.go:TestFlushErrorKeepsChangesThenFails`,
-  `TestFlushErrorQueuesNoRefresh`, `TestFlushErrorBlocksDependents`.
-- **Per-run state and its teardown.** `Prefetch` still returns the primed
-  provider, and the contract still says it does not change during the walk, with
-  one amendment: a primed provider may hold a pointer to per-run mutable state
-  that the unprimed value created (the augeas handles, sysctl's prefetch table).
-  Only the walk goroutine mutates it. A provider that holds such state
-  implements `ral.RunEnding`, and the transaction calls its `EndRun` once after
-  the walk, whether the walk finished, was cancelled or a prefetch failed
-  (`Transaction.endRun`). `EndRun` must be idempotent, because primed copies
-  share the state. `TestEndRunCalledOnceAfterWalk`,
-  `TestEndRunAfterPrefetchFailureAndCancel`, `TestEndRunNotRequiredOfOtherProviders`.
-- **Prefetch at a type's first traversed resource.** A provider that implements
-  `ral.TurnPrefetching` is not prefetched before the walk. The walk calls its
-  `Prefetch` at the first resource of that type it traverses, whether that
-  resource is then evaluated or skipped (failed dependency, tag, schedule), as
-  Puppet's `pre_process` does (`transaction.rb:110-115`). The code is the lazy
-  path `generatedProvider` already used. A prefetch that fails fails every
-  resource of the type, as for any other type. This matters for `sysctl`:
-  prefetching before an earlier resource that writes `/etc/sysctl.conf` would
-  leave a stale tree that the first save writes back over that resource's
-  content. `TestTurnPrefetchSeesEarlierResourcesChanges`,
-  `TestTurnPrefetchRunsForSkippedResource`, `TestTurnPrefetchFailureFailsEveryResource`,
-  `TestTurnPrefetchNotEager`.
-- **Two report fixes the type's gate found, which hold for every type.** A
-  resource skipped because its type's prefetch failed was never evaluated, so
-  Ruby writes a null `evaluation_time` and `calculate_time_metrics` skips it:
-  such a type has no `metrics.time` entry, where voxagent wrote the type with 0
-  (`TestPrefetchFailedTypeHasNoTimeMetric`, commit 601e9b7). And `noop_pending`
-  is true when any resource status holds a `noop` event
-  (`transaction/report.rb:203-205, :223`), not when the run is `--noop` and a
-  resource is out of sync, which a failure event also makes true
-  (`internal/report/report_test.go:TestNoopPendingIsAnyNoopEvent`, commit
-  d89c82f). In Ruby a resource's own `noop => true` makes a live run record noop
-  events too; that path is unreachable here, because a per-resource `noop`
-  stays a pre-flight gap (`internal/ral/ral.go`, the engine attributes), so in
-  a live run `noop_pending` is false.
-
-### The augeasproviders types
-
-`sysctl`, `ssh_config`, `sshd_config` and `sshd_config_subsystem`
-(augeasproviders_core 4.2.0, _sysctl 4.1.0, _ssh 7.0.0) are applied by
-`internal/ral` (`sysctl_*.go`, `ssh_config.go`, `sshd_config.go`,
-`sshd_subsystem.go`, over the shared mixin in `augeas_*.go`) through a cgo
-`dlopen` of openvox's own libaugeas 1.15.0, never linked and never the system
-`augeas-libs`. Ruby links that same library, so running it on the same files
-gives the same lens behaviour, node formatting and error texts by construction;
-what voxagent reimplements is the provider code and ruby-augeas' return-value
-mapping, so both are fingerprinted (D-91).
-
-- **Routing.** The `Route` of `augeasproviders_sysctl` and `augeasproviders_ssh`
-  (`internal/units/*/manifest.go`) answers per type, in this order: the fingerprints and provider directory, then the environment and the
-  libdir's form, then the library probe (only after the environment is known
-  clean, so libaugeas never reads an `AUGEAS_*` override), then the value
-  shapes, then for `sysctl` the platform and the command. D-91 lists the
-  conditions. `nativeProviders` (`cmd/voxagent/apply.go`) calls `unit.RouteAll`
-  and appends the providers of the native types; the probe is one
-  `augeas.Session` (`Env.Augeas`) the units share, so it runs at most once per
-  run and only when a unit gets as far as the probe. A type that is not native is delegated
-  as before, with the debug line naming the first condition that failed.
-- **Handles.** One handle per provider class per run, opened at the class's
-  first use with `aug_init(NULL, <loadpath>, AUG_NO_MODL_AUTOLOAD)`. The
-  loadpath is Ruby's: `<libdir>/augeas/lenses` when that path exists, else
-  NULL, so SIMP's `ssh.aug` is reproduced by libaugeas itself, never read by
-  voxagent. `parsed_as?` opens its own short-lived handle with a NULL loadpath.
-  `sshd_config` and `sshd_config_subsystem` therefore edit one file through two
-  handles with independent trees, as Ruby does. Every call is made from the walk
-  goroutine; every handle is registered with the run's `EndRun`.
-- **Lazy prefetch.** `sysctl` implements `TurnPrefetching`: at its
-  first `Sysctl` it reads every title from the first resource's target through
-  the shared handle and runs `sysctl -e` over cumulative slices of the titles;
-  `sysctl -n` runs per resource at apply. The other three prefetch nothing.
-- **Trace replay is the contract.** The native code must make the same libaugeas
-  calls as Ruby, reads included, in the same order with the same arguments and
-  handles. `testdata/augeas/traces/<case>.txt` of the unit that tests the case (`internal/units/augeasproviders_sysctl` for 01, `augeasproviders_ssh` for 02-04 and 07, `internal/units/augeas_core` for the generic augeas cases; `augeasproviders_core` keeps copies of the few its tests replay) holds Ruby's calls
-  for 36 recorded cases, one call per line (`h<N> <function> <args>
-  [=> <rc> <results>]`, the grammar is in `internal/lib/raltest/trace.go`), and a fake
-  library replays each trace against the native provider and fails on any
-  call that differs, and on a trace not fully consumed (`TestSysctlReplays01a`,
-  `TestSshConfigReplays07b`, `TestSshdConfigReplays03f`, `TestSubsystemReplays04d`
-  and the rest of the `Test*Replays*` family; `TestAugopenReplays01aFirstResource`
-  and `TestFlushReplays01a` for the mixin). Treat a trace file as read-only: when
-  Ruby's behaviour is in question, re-record it. A trace is recorded by an
-  `LD_PRELOAD` interposer that wraps the thirteen `aug_*` functions and appends one
-  line per call to the file named by `AUGTRACE`. Run the real
-  `/opt/puppetlabs/puppet/bin/puppet apply --catalog <case>/catalog.json
-  --libdir <libdir>` with `LD_PRELOAD` set, once, live, in a fresh container of
-  the augeas image ("G5's augeas half", below) set up as the gate sets the case
-  up (modules, libdir, seed). Call `puppet` itself, not the `puppet` wrapper
-  script, which unsets `LD_PRELOAD`. The interposer and the recording script are
-  `tests/spine/augeas/trace/aug-trace.c` and `trace.sh`; its README says how to
-  rebuild the image and re-record a case into the traces directory.
-- **Value semantics worth knowing.** A native `sysctl -w` runs before the save,
-  so a new key whose live apply fails is not persisted, while an existing key's
-  edit stays pending in the shared handle and the next `Sysctl`'s save writes it
-  (I-36). Prefetch reads every title from the first resource's target (I-37).
-  A failed flush reports a success event beside the failure (I-35). All three
-  are Ruby's behaviour, kept because parity is the contract. D-92 records the two
-  places the order of observable output differs.
-
-### The generic `augeas` type
-
-`augeas` (augeas_core 2.1.0) is applied by `internal/units/augeas_core/augeas_generic.go` and
-`augeas_generic_params.go`, through the same libaugeas and the same trace-replay
-contract as the types above. It is routed by the `Route` of `augeas_core`
-(`manifest.go`) and is decided on its own: the four augeasproviders types
-can be native with `augeas` on the host and the reverse.
-
-- **Routing.** Same order and probe as the four. Its fingerprints are augeas_core's
-  type, provider and `puppet_x/augeas/util/parser.rb` plus the shared
-  `puppet/feature/augeas.rb` (D-91), and `puppet/provider/augeas/` may hold
-  nothing but `augeas.rb`; augeasproviders_core is not required. Absent from
-  the libdir, the host cannot load the type either, so pre-flight refuses it as
-  before. `parseAugeas` is the shape check; routing and the run share it, so a
-  native run never meets a parse error.
-- **Lens path by command.** The `augeas_core` `Route` takes the voxagent command
-  (`cmd/voxagent/apply.go`). `aug_init` gets `"/"`, the lens path, and flags 64
-  (`NO_MODL_AUTOLOAD`) with `incl`, else 32 (`NO_LOAD`). The path is
-  `<libdir>/augeas/lenses` for `agent` when it exists, else `""` (D-93).
-- **Run contract.** One handle per resource evaluation, opened in retrieve and
-  closed by a `defer` in `Apply` where Ruby closes it: in retrieve when nothing
-  needs to run, under `--noop` or on any failure, else after sync. Retrieve
-  is Ruby's dry run: `Set /augeas/save newfile`, the commands, `Save`, then
-  `/augeas/events/saved` decides whether anything changed, and each
-  `<file>.augnew` is deleted (a failure carries libc's `strerror` text, as Ruby's
-  `Errno` does). Sync is `Set /augeas/save overwrite`, `Load`, the commands,
-  `Save`. A failed `aug_match` raises Ruby's `Matching path expression` error
-  wherever it occurs. `Refreshable()` is false: the type has no `refresh`, and
-  Ruby's event manager skips such a target. `show_diff` never prints a diff, as in
-  `file` (below). The binding gained `aug_mv`, the 13th symbol, for `mv` and `move`.
-- **Stays on the host.** The type goes to the extension host when any resource
-  has a shape native does not reproduce, each for a reason measured or
-  unreproducible: `onlyif` (Ruby's Onigmo `=~` and encoding comparisons),
-  `force` (always crashes Ruby), `setm`, `clearm` and `rename` (unmeasured, and
-  ruby-augeas maps their failures to silence), `get`, `values`, `match`, `size`,
-  `include`, `not_include` and the comparators, a `changes` parse error (Ruby's
-  stray `puts` is not reproduced), `changes` that parse to zero commands
-  (unmeasured), a `root` other than `/`, a non-empty `load_path`, a `type_check`
-  other than `false`, a non-zero `returns`, `lens` without `incl` or the
-  reverse, and any byte outside printable ASCII in a command argument, `context`,
-  `incl` or `lens` (so no NUL reaches C and Ruby's `Array#inspect` in messages is
-  exact). An empty argument is printable ASCII and stays native. `incl => ''`
-  counts as set, as Ruby's truthiness test treats the empty string
-  (`TestAugeasEmptyInclIsSet`); `context => ''` stays `''` even with `incl`.
-- **Gates.** G5's augeas half runs the 06 cases (the kmod and resolv.conf
-  shapes, SIMP's among them), the run-time failure subset of 06h as
-  `augeas-runtime-errors`, `augeas-notified` (no refresh line) and four
-  `refuse-augeas-*` cases that must be applied by the host on both sides. The
-  SIMP gate asserts `augeas` is not among the hosted types and compares
-  `/etc/modprobe.d/blacklist.conf` byte for byte; `/etc/resolv.conf` is a mount
-  there, so its resource fails the save on both sides and the reports carry that.
+- [Failed flushes, per-run state and prefetch at a type's first turn](provider-boundary.md#failed-flushes-per-run-state-and-prefetch-at-a-types-first-turn)
+- [The augeasproviders types](provider-boundary.md#the-augeasproviders-types)
+- [The generic `augeas` type](provider-boundary.md#the-generic-augeas-type)
 
 ## Writing files
 
@@ -766,28 +623,37 @@ plain `Open` for that reason.
 `remove_existing` does (`type/file.rb:791-805`): before `ensure` replaces or
 removes what is at the path, before a content write over an existing file,
 and before `mklink`, never on a mode-only change or a new file, and never
-under `--noop`. `true` is the suffix `.puppet-bak`; a suffix copies the path
+under `--noop`.
+
+`true` is the suffix `.puppet-bak`; a suffix copies the path
 to `<path><suffix>` as `FileUtils.cp_r(preserve: true)` does (a link at the
 path is copied as what it reaches, a link below a directory as a link, mode,
 owner and times kept). A stale copy is unlinked first, never written through,
 and the copy is created afresh (`O_EXCL|O_NOFOLLOW`, `Mkdir`, `Symlink`).
+
 The path and its copy are reached through the provider's `fileSystem`, so a
 generated child's copy stays inside its `os.Root`; everything below them is
 reached through an `os.Root` made from the directory descriptor already
 opened and checked, never by a joined path, and each entry opened is checked
 against its `lstat`, so a directory swapped for a link during the copy is
 refused rather than read. Bytes and metadata come from the descriptor
-opened. `backup =>
+opened.
+
+`backup =>
 'puppet'` writes the local clientbucket under `--vardir`:
 `clientbucket/<d1>/…/<d8>/<sha256>/{contents,paths}`, contents `0440`, paths
 `0640` holding each original path's `realpath`, directories `0770`, the
 clientbucket itself `0750`, all byte-identical to Ruby's (G1 diffs the two
-trees). A directory is walked as the suffix copy walks it, through the
+trees).
+
+A directory is walked as the suffix copy walks it, through the
 descriptor of each directory already opened and checked, and each file is
 hashed and stored from one descriptor, whose `/proc/self/fd` link (checked
 against an `lstat` of it) is the path `paths` records: bytes are always
 recorded under the file they came from, so a later restore cannot write a
-swapped-in file's bytes to the managed path. A link below the directory is
+swapped-in file's bytes to the managed path.
+
+A link below the directory is
 followed, as `File.file?` follows it, and recorded under its target's path:
 what it reaches is first stat'ed through its directory's checked descriptor
 (`/proc/self/fd/<fd>/<name>`), and anything but a regular file is skipped
@@ -795,22 +661,29 @@ unopened, as `File.file?` only stats; a regular file is then opened with
 `openat` (`O_NONBLOCK|O_NOCTTY`) on that descriptor, which follows only the
 link itself, and what opened is checked again for a regular file, so nothing
 in a directory swapped in during the walk is ever read, link entries
-included. A link retargeted at a device between that stat and the `openat`
+included.
+
+A link retargeted at a device between that stat and the `openat`
 still has the device opened before the second check refuses it; Puppet's
 `File.file?` then `open` has the same gap, and the robust form is D-45(d).
 For a generated child the link's target must lie inside the recursed tree
 (D-47).
+
 The top of a suffix copy's directory is made with `Mkdir` at `0700`,
 `lstat`ed and opened without following; the opened directory must be the
 one `lstat`ed (`SameFile`), owned by the agent's effective user and with no
-group or other permission bits. That guarantees the directory written into
+group or other permission bits.
+
+That guarantees the directory written into
 is the agent's own and private, not that it is the one `Mkdir` made: a
 directory that fails the check -- swapped in before the `lstat` or after --
 is neither written into nor removed, and the copy is refused; one that
 passes it, an existing private directory of the agent's renamed into place,
-is not told apart. Where the agent does not own a directory it has just
-made, the check fails closed (D-45(e)). A copy that fails later is removed
-by path (D-45(c)). Everything below the vardir is opened through `os.Root`, one directory
+is not told apart. The check fails closed unless the agent owns a directory it
+has just made (D-45(e)). A copy that fails later is removed
+by path (D-45(c)).
+
+Everything below the vardir is opened through `os.Root`, one directory
 at a time, and a link anywhere there -- the clientbucket, a shard directory,
 `paths` or `contents` -- fails the resource rather than being followed (Puppet
 follows it). A failed backup fails the change it guards, unwrapped, and the
@@ -823,7 +696,9 @@ wins, else a non-keyword `ensure` is the target, so `ensure => symlink` links
 to the relative path `symlink` (I-2). A path that is not a link is cleared by
 `removeExisting` twice, once by `ensure`'s sync and once by `mklink`, which is
 why a directory kept for want of `force` is noticed twice (I-3); the first
-removal happens even when there is no target to link to. `mklink` refuses with
+call removes the existing path even when there is no target to link to.
+
+`mklink` refuses with
 Puppet's `Could not remove existing file` when anything is left, creates the
 link, then applies `mode`, `owner` and `group` unreported against a fresh read,
 as `property_fix` does: under `manage` the link keeps its mode and is
@@ -863,7 +738,7 @@ therefore changes its own, process-wide cwd and umask for the length of
    status 1 with nothing started, and the cwd is unchanged.
 4. **umask.** Set with `syscall.Umask` immediately before `Start` and restored
    to the returned value immediately after, and only when `umask` is set.
-5. **Restore or stop.** `umask(2)` cannot fail, but `fchdir` back to the
+5. **Restore or stop.** `umask(2)` always succeeds, but `fchdir` back to the
    origin can (a non-root agent whose origin lost its search permission
    mid-run). Then `execute` returns `ErrStagingBroken`, wrapping the cause,
    and the transaction applies nothing more: it logs the error and the run's
@@ -872,12 +747,12 @@ therefore changes its own, process-wide cwd and umask for the length of
 6. **The child does syscalls only.** `Dir` is `""`. `Credential` is applied
    by Go's raw-syscall child (`setgroups`, `setgid`, `setuid`), which runs no
    NSS lookup, no allocation and no Go scheduler; names are resolved in the
-   agent first (`resolveIdentity`). Every fd the agent holds is close-on-exec,
+   agent first (`suid.Resolve`). Every fd the agent holds is close-on-exec,
    so the child inherits only stdin (`/dev/null`) and the capture file.
-7. **No staging without need.** A command with no `cwd`, `umask`, `user` or
-   `group` starts without the lock, as before. A command with only a `cwd`
+7. **Stage only when needed.** A command that sets none of `cwd`, `umask`,
+   `user` or `group` starts without the lock, as before. A command with only a `cwd`
    still stages, so a cwd failure has one path.
-8. **Serial apply is pinned.** See below.
+8. **Serial apply is pinned.** See *Why serial apply is required* below.
 
 The `ENOEXEC` retry, which runs a file with no `#!` line through `/bin/sh`,
 starts with the same staging.
@@ -887,15 +762,20 @@ not to a goroutine. While one is staged, any other goroutine that resolved a
 relative path, created a file or started a child would do it in the exec's
 `cwd` with the exec's umask, as root, and the lock would not stop it, because
 only staged starts take the lock. Staging is safe only because voxagent
-applies one resource at a time and nothing else runs during a start. The one
-goroutine `internal/ral` and `internal/transaction` start is `runExec`'s
+applies one resource at a time and nothing else runs during a start.
+
+The one goroutine `internal/ral` and `internal/transaction` start is `runExec`'s
 waiter, which calls nothing but `cmd.Wait`.
 `internal/ral/goroutines_test.go:TestOnlyTheExecWaiterStartsAGoroutine`
-parses every non-test `.go` file of both packages with `go/ast` and fails on
-any other `go` statement. Elsewhere, `internal/extension`'s host starts a
+parses every non-test `.go` file of `internal/ral`, `internal/transaction`, every `internal/lib/*` and every `internal/units/*` directory with `go/ast`, and fails on
+any other `go` statement; the one it allows is in `internal/units/exec/exec_run.go`.
+
+Elsewhere, `internal/extension`'s host starts a
 goroutine per frame round trip and one at shutdown. They do only pipe I/O on
 descriptors that are already open, and `cmd.Wait`, and the pin does not cover
-them. A change that adds a goroutine able to touch the filesystem during an
+them.
+
+A change that adds a goroutine able to touch the filesystem during an
 apply, such as parallel apply or a background prefetch, must first move
 staging out of the agent's process. A re-exec launcher is the known
 alternative, rejected so far for its cost: more code running as root, and
@@ -927,9 +807,10 @@ the verdicts that Python did, on the inputs that Python saw.
 **Exit contract.** Every subcommand exits 0 for the expected outcome, 1 for a
 finding, and 2 when it could not run: bad arguments, an unreadable file, or
 input that is not the shape it judges. A 2 is never a statement about what was
-judged. Every shell gate that calls `bin/gatekit` refuses a missing or stale
-one with exit 2, for the reason recorded under *A stale binary is a false
-green* below -- a stale judge is the same trap from the other side.
+judged. Every spine and fleet shell gate that calls `bin/gatekit` refuses a
+missing or stale one with exit 2; `dev:agent-gate` refuses only a missing one.
+The reason is recorded under *A stale binary is a false green* below -- a stale
+judge is the same trap from the other side.
 
 **The judge does not share code with the judged.** `reportcmp` reads reports
 as decoded JSON and must not import `internal/report`, `internal/transaction`
@@ -962,893 +843,26 @@ repeated within a group, and two leaves that flatten to one path.
 
 ## What the gates do and do not prove
 
-| Gate | Proves | Does not prove |
-|---|---|---|
-| `dev:report-diff` | voxagent's report matches Ruby's from identical catalog bytes, outside a measured allowlist. It also compares the order resources were evaluated in (`gatekit compare-order`, read from each report's log order), over every resource that logs; its `wo*` fixtures cover the walk-order cases, and it reports `walk order agrees over 112 resources`. For `backup` alone it also compares state: the suffix copy's content, mode and mtime, and every entry of each agent's clientbucket, byte for byte | Anything else about the disk. Two implementations can agree on a report while both are wrong about the filesystem |
-| `dev:report-diff-extension` | The same differential for Tier 3 types run through the extension host — stdlib's `file_line` and `anchor`, `concat`, and the host's own test types, mixed with native `File`s in refresh and failure chains — from one pluginsync-style `libdir` both sides load. Generation is covered: `concat_file`'s load-time `generate` of its `File`, `concat`'s `eval_generate` overriding that `File`'s content from two fragments declared out of order, one of them `Sensitive` so Ruby's redacted content event and voxagent's must agree (D-8) (and its `ensure` to `absent` for a `concat` with no fragments), `vox_evalgen` making two resources and raising, `vox_gen`'s `generate` making a `Notify`, and a relationship through a Tier 3 name alias. Every `concat` in the fixture runs on the host: a `format => json` `concat_file` and a fragment with `source` are in the catalog, shapes native delegates, and both types move together (D-89); native concat is G5's and the SIMP gate's. `vox_evalgen`'s `ge` returns an existing `File`, applied in `ge`'s unit at its turn with a subscriber refreshed through it (D-43). Then G2: each side applies again on the target its own first run converged, the two second reports must agree too, and the resources that converge must have changed nothing in voxagent's second report. Last, `concat`'s default `backup => 'puppet'` must have left both agents' clientbuckets byte-identical. The comparisons report `1279` and `588 leaves compared, 0 divergent` (measured 2026-11-20), and the walk order agrees over `29` and `15` resources; the first includes `tidy` children, which `generate` places before their parent | That a second apply changes *nothing* everywhere: `Vox_prefetch[ok]`'s test provider never persists, so it changes on every run under Ruby as well; the converging resources are asserted by name instead. Anything under `--noop` beyond one `File` recursion: the `--noop` pass compares only that unit (its `Would have triggered` notice and children's noop events), not the main catalog, whose Tier 3 resources a measured pass once agreed on (D-40). `validate_cmd`, which forks and is G5's. The refusals of D-42, which no fixture reaches, and D-43's sentinel, which `concat` reaches without being able to observe it. The `evaluation_time` of a skipped resource: Ruby writes `null` and voxagent `0`, and `resource_statuses.*.evaluation_time` hides both. The order of the recursing `File[$T/d]` children: they change nothing, so they log nothing and have no position in the walk; a G1 fixture holds an `eval_generate` recursion's order |
-| `dev:idempotence` | A second apply changes nothing | Anything about agreement with Ruby. A consistently wrong provider is perfectly idempotent |
-| `dev:state-diff` | Both agents leave the same filesystem state, including `exec` and `owner`/`group`, and — since `package` shipped — the same installed package set, compared with `rpm -qa` | Anything outside the paths the fixture names, and anything about the report: `rpm -qa` cannot see an event name, a `desired_value`, or which property a failure was attributed to |
-| `dev:derive-run-to-run` | `report-diff`'s allowlist still covers exactly what varies between two Ruby runs | Anything about voxagent. It measures Ruby against itself |
-| `dev:report-diff-container` | voxagent's report matches Ruby's from identical catalog bytes for the two types the host cannot measure at all — `package` and `exec` — with both agents inside `fleet-node-el`, against a catalog the image's own Puppet compiled. It also holds `File`'s `validate_cmd`, which forks: a passing and a failing validator, one with no `validate_replacement` token, one that cannot be executed, and `visudo` on a good and a bad `sudoers` file. It also holds the `Sensitive` cases (a marked `File` content, mode and `ensure`, a marked `Exec` command and `unless`, a marked `Notify`) and `Exec`'s `logoutput` (`true`, `false`, `on_failure`, a marked command's `[output redacted]`, a failing command's output, a refresh). The comparison reports `3677 leaves compared, 0 divergent` live and `1500` under `--noop` (the counts from the 2026-11-20 run, openvox 8.33.0); `1668` on 2026-11-17 (`WANT_PUPPET=8.33.0`), `815`, `314` before the five `exec` resources were added, `448` before `validate_cmd`, and `650` before the argv-array `exec` fixtures. The walk order agrees over `49` resources. Its augeas half compares 52 cases, 4 refusals agreeing too: live `7854` leaves, rerun `3214`, `--noop` `7934`, 0 divergent (measured 2026-11-21, openvox 8.33.0; the leaf totals are from the run just before `sysctl-prefetch-load-error` was fixed and that case re-run, which is why the figures are "as of" that run) | Anything about the disk, exactly as G1 does not. G5 compares `--noop` for the account and concat cases, so only `service`'s noop is unmeasured (D-10). Nothing about the *text inside* a failure detail, which the comparator masks. And nothing about the *host*: the oracle inside the image is openvox, so a leaf where openvox and the gem differ — `package`'s install command line is one — is settled in openvox's favour by this gate and would diverge against the gem by design |
-| `dev:report-diff-systemd` | voxagent's report for `service` matches Ruby's from identical catalog bytes, with each agent in its own container booted with systemd as PID 1, and both leave every fixture unit in the same `is-active`/`is-enabled` state. The comparison reports `315 leaves compared, 0 divergent`, and the walk order agrees over `8` resources | Anything under `--noop` (D-10). A failing start: its journal text varies between any two containers, so the fixture has none and `TestServiceStartFailureCarriesTheJournal` pins it. The built-in commands' locale, which no report shows. And any init system other than systemd, which voxagent refuses (D-22) |
-| `dev:report-diff-simp` | voxagent applies the public SIMP catalog (737 resources, 63 `Sysctl`, 16 `Binary` values, compiled in the container it is applied to) as Ruby does, each agent in its own systemd-booted container: the reports agree outside the allowlist (`12782 leaves compared, 0 divergent`), the walk order agrees over `340` resources (measured 2026-11-21 with the four augeasproviders types native), and both leave the same `tmp.mount` enablement, `/etc/audit` mode and reboot notifications | Anything about auditd's daemon or about polkit's start path: the image stubs the one and boots with the other running ("The SIMP gate"). `haveged`, which is in EPEL and fails to install on both sides, so only its failure attribution is compared. Any catalog but this one, and any SIMP release but the pinned one |
-| `dev:augeas-lib` | The libaugeas binding (`internal/lib/augeas/augeas_lib_linux.go`) against openvox's real library 1.15.0 in the augeas image: the probe accepts it and refuses a changed ruby-augeas file, `aug_set` on an empty variable fails as Ruby's does, an empty file loads as a node, `aug_match` frees zero and many results without a double free (no leak check), a borrowed value is copied, an embedded NUL is refused, `parsed_as?` is true for ciphers and false for compression, and a save keeps the file's mode and owner (the `Test(ProbeRealLibrary\|Real)` tests, built with `-tags augeaslib`). Not part of `task check` | The providers on the real library (G5's augeas half does that), and any other libaugeas: the tests carry the `augeaslib` build tag, so a host's `go test ./...` never builds them, and no host run counts as a pass. Exits 2, not 1, when it cannot run (no podman, no base image, a failed build) |
-| `dev:agent-gate` | `voxagent agent` enrols against a real OpenVox server (CA, autosign), refuses a wrong `--ca-fingerprint`, pluginsyncs, applies, and PUTs a report whose run-2 form matches `puppet agent -t`'s from the same server under `gatekit compare-reports` (the spine allowlist merged with `tests/agent/allowlist.json`); run 2 sends no certificate request; with the server stopped the agent exits could-not-run. Not part of `task check` | Anything about catalogs beyond the fixture's; the first-contact TOFU window (it is accepted by design); CA rotation, renewal, or a server that answers differently from the pinned OpenVox image. See `agent-transport.md` |
-| `gatekit compare-order`, inside every report gate (`dev:report-diff`, `-extension`, `-container`, `-systemd`, `-selinux`, `-simp`) | Each resource that logs is evaluated in the same order relative to the others as in Ruby's run: each report's resource statuses, ordered by their first log line (a log belongs to the status whose containment path is the longest prefix of its source), compared over the resources both logged for. A status only one report has diverges, and so does a status both report that only one logged for. A comparison that cannot attribute a log (the side without it has a log source no status owns that the other side does not also leave unowned, as both leave `Puppet`), or that compares nothing, cannot run (exit 2), so it never agrees vacuously. Counts are in each gate's row and in D-44 | The position of a resource that logs nothing: one that changes nothing has no place in either order, so most of an idempotent run is not compared. Whits, which have no status. Anything between two log lines of one resource |
-
-Each has been seen to go red on a deliberate break and back to green, except
-`dev:report-diff-simp`, which has gone red only on a real divergence, D-8's
-six `File[/etc/chrony.keys]` leaves before voxagent redacted them ("The SIMP
-gate"); no deliberate break has been run against it. A gate that has never
-failed is not known to be able to. G5's `package` break was
-dropping `-y` from the install argv: `18` divergent leaves naming the command
-line, `Execution of '/usr/bin/dnf install tree' returned 1: …` against Ruby's
-`-y install`. Its `exec` break was attributing a non-zero status to `command`
-instead of `returns` — one line in `internal/units/exec/exec.go` — and it went red
-naming three leaves:
-
-```
-resource_statuses.Exec[spine-exec-fail].events.0.property
-  ruby:     'returns'
-  voxagent: 'command'
-logs (only in ruby)
-  ('/Stage[main]/…/Exec[spine-exec-fail]/returns', "change from 'notrun' to ['0'] failed: <detail>", 'err')
-logs (only in voxagent)
-  ('/Stage[main]/…/Exec[spine-exec-fail]/command', "change from 'notrun' to ['0'] failed: <detail>", 'err')
-```
-
-The walk-order comparison, `gatekit compare-order`, went red the same way.
-Run against a `bin/voxagent` that still took
-ready resources in byte order of their refs, G1 exits 1 with `walk order
-diverges at 0: ruby Notify[spine], voxagent File[$T/a.txt]`; restricted to
-the `wo*` walk-order fixtures alone it is `walk order diverges at 0: ruby
-Notify[wo1_zeta], voxagent File[$T/wo1]`.
-
-`dev:report-diff`'s fixture now contains a **failing** resource — a file whose
-parent directory does not exist — so the differential reaches the failure
-attribution rather than only the success path. It reported `181 leaves compared,
-0 divergent` once that resource was added, against `149` before (it reports
-`3672` now, measured 2026-10-08). A gate that
-cannot reach the code it was written for is not a gate, and until that resource
-existed this one could not.
-
-**`exec`'s report surface is compared against Ruby by G5, and by G5 alone.** G1
-cannot do it: the host Ruby cannot fork under Puppet, so every `exec` there dies
-with `Errno::EBADF` before running anything, and G3 compares filesystem *state*
-rather than reports. G5 runs inside the image where `exec` works, so closing this
-was a fixture edit rather than a new instrument. Five resources carry it, and each
-one exists for a shape the others cannot reach:
-
-| Resource | Reaches |
-|---|---|
-| `spine-exec-ok` (`/bin/true`, `cwd => '/tmp'`) | the success event — `executed_command`, `previous_value` `notrun`, message `executed successfully` |
-| `spine-exec-fail` (`/bin/false`) | a non-zero status attributed to the **`returns` property**, not to the resource, and the `err` log at `…/Exec[spine-exec-fail]/returns` |
-| `spine-exec-returns` (`test -d` on a missing path, `returns => [0, 1]`) | `desired_value` as the **declared list** — `["0", "1"]` with status `success` while the command exited 1. A one-element list cannot tell the list apart from the status |
-| `spine-exec-refresh` (`refreshonly`, notified by `Notify[spine]`) | the refresh **callback** event: name `refresh`, no property, `Triggered 'refresh' from 1 event` |
-| `spine-exec-guarded` (`onlyif => '/bin/false'`) | a guard that skips, which must record **no event at all** |
-
-It went red on the first run, which is the whole reason the exercise was worth
-doing, and both findings were in the event shape rather than in `exec`:
-
-- **`property` was `""` where Ruby writes `null`.** `event.rb:58` is
-  `self.property = property if property`, so an event built without one leaves
-  the field nil. Go's `string` had no way to say that.
-- **`redacted` was `null` where Ruby writes `false`.** `event.rb:38` defaults the
-  `redacted:` keyword to `false`, and only a *property* event overrides it —
-  `property.rb:260` passes `attrs[:redacted] = @sensitive`, which is nil for
-  every property in the spine's bounded sets. So one Ruby report holds
-  `{"property":"returns","redacted":null}` and `{"property":null,"redacted":false}`
-  side by side, and voxagent had both backwards.
-
-Neither is confined to `exec`. The same two fields are wrong on every event with
-no property — the `resource_error` a prefetch failure writes, the one an apply
-error writes, and the one a *failed* refresh writes — and two existing unit tests
-asserted `property == ""` while their own comments said Ruby writes null.
-`internal/report/report.go` now types both fields `any`, and
-`internal/transaction/transaction_test.go`'s `TestRefreshReportingMatchesPuppet`,
-`TestFailedRefreshFailsTheResourceAndSkipsDependents` and
-`TestPrefetchFailureFailsEveryResourceOfTheTypeAndAppliesNone` pin all four
-combinations, so the gate is not the only thing holding it.
-
-One measurement worth keeping: the guarded `exec` is absent from *both* reports,
-not present with an empty event list. `Puppet[:exclude_unchanged_resources]`
-defaults true and `report.rb:326` drops every status that is none of `failed`,
-`failed_to_restart`, `out_of_sync` or `skipped`. Its absence is therefore the
-assertion — which is evidence only because the gate also checks the compiled
-catalog *declares* it, so a misspelled title cannot pass as a skipped guard.
-`restarted` is asserted the same indirect way, through the callback event:
-`resource/status.rb` lists it in `STATES` and the transaction sets it, but
-`to_data_hash` never writes it, and it reaches a report only as the
-`resources.restarted` metric.
-
-**What G5 still does not compare about `exec`:**
-
-- **Anything under `--noop` outside concat.** G5's concat `--noop` pass compares
-  one `exec` noop event (M13's required exec); the main fixture's execs run live
-  only.
-- **The text inside a failure detail.** `internal/gatekit/reportcmp`'s
-  `elideFailureDetail` masks everything after `change from 'notrun' to ['0']
-  failed: `, so the wording `'/bin/false' returned 1 instead of one of [0]` is not
-  a compared leaf — it was measured byte-identical on 2026-09-26, and it is
-  `internal/units/exec/exec_test.go:TestExecFailureRendersTheReturnsListBothWays` that
-  holds it. The masked prefix still carries the property and the transition,
-  which is the attribution the gate exists to check.
-- **`path`, and the `creates` and `unless` guard shapes.** The fixture exercises
-  `cwd` and `onlyif`; the rest of the bounded attribute set is unit tests only.
-- **A refresh that FAILS.** `spine-exec-refresh`'s command succeeds, so
-  `failed_to_restart` with its `resource_error` event is reached by
-  `TestFailedRefreshFailsTheResourceAndSkipsDependents` and by no gate.
-
-**`package` is the mirror image, and is invisible to `dev:report-diff` for a
-worse reason.** The host's Ruby cannot fork, so `dnf.rb:27-34`'s load-time
-confine fails, `dnf` is unsuitable, and Puppet falls back to the most specific
-provider that *is* suitable — `dnfmodule`, which manages dnf **modules**. A
-host-side differential would therefore run, produce a plausible report, exit 0,
-and answer a different question than the one asked. `exec` on the host fails
-loudly with `Errno::EBADF`; `package` succeeds against the wrong subsystem,
-which is why G5 exists rather than a package resource in G1's fixture. It is the
-lesson of *"The two oracles are not the same code"* below, one step further
-along: there the risk is reading the wrong tree, here it is *measuring* the
-wrong one.
-
-### How the gates capture Ruby's report
-
-Every gate that compares against Ruby (`dev:report-diff`, `dev:report-diff-extension`,
-`dev:derive-run-to-run`, `dev:report-diff-container`, `dev:report-diff-systemd`,
-`dev:report-diff-selinux`)
-captures Ruby's report through one committed report processor,
-`tests/spine/lib/puppet/reports/gatejson.rb`. Each runs `puppet apply ...
---libdir <lib> --reports gatejson --reportdir <dir>` and compares
-`<dir>/gate.json`; the container and VM gates copy `lib` in as they copy the
-catalog. `store` is no longer requested, because nothing read its YAML except
-the conversion this replaces.
-
-The JSON is the report's `to_data_hash`, as before, with one **normalisation**
-in front of it: every String the puppetdb terminus sends is first coerced to
-UTF-8 with the terminus's own `coerce_to_utf8`, copied verbatim
-(openvoxdb-termini 8.16.0, `puppet/util/puppetdb/char_encoding.rb:13,66-82`).
-The scope is what `reports/puppetdb.rb` puts in the payload (`:36-79` the
-report, `:109-123` logs, `:128-138` metrics, `:165-177` events, `:191-217`
-resource statuses), which `util/puppetdb/command.rb:20-57,76` runs through
-`coerce_payload`; strings it never sends, such as a status's `tags` or an
-event's `historical_value`, are untouched. A coerced String is UTF-8, so
-`Event#to_data_hash` no longer Base64-encodes an ASCII-8BIT event value.
-
-- **Why.** OpenVoxDB stores those values plain. That was measured
-  ("What OpenVoxDB stores for a binary-encoded value"), and the user made what
-  OpenVoxDB stores the report contract.
-- **Why a processor, not a conversion of the stored YAML.** The coercion
-  cannot be applied afterwards. `store` writes `to_yaml` (`reports/store.rb:38`),
-  and the report's classes serialise through `to_data_hash`
-  (`util/psych_support.rb:28-31`). The stored file therefore already holds a bare
-  Base64 string, which reads back as UTF-8 with no type marker. Decoding it, in
-  Ruby or in the comparator, could not tell an encoded value from one that
-  really is that text, and would hide a real divergence. The terminus is itself
-  a report processor, so `gatejson` sees the live report exactly where the
-  terminus does.
-- **Proven not to change anything else.** One G1 run applied with
-  `--reports store,gatejson`. `store` ran first, so its YAML was written before
-  the coercion. That YAML, converted the old way, was identical to `gate.json`
-  (`jq -S` then `diff`, empty, over 50 events with no ASCII-8BIT value).
-  `dev:derive-run-to-run` reports the same 14 patterns, 21 differing leaves,
-  through the processor. Removing `:@desired_value` from the coercion turns G1
-  red again on `pur/keep.txt`'s Base64 `desired_value`. Making voxagent emit a
-  wrong checksum turns it red on that leaf with the plain value on both sides.
-- **Limits.** A String that is not valid UTF-8 is changed by PuppetDB too: the
-  terminus re-tags it US-ASCII and replaces every non-ASCII byte with U+FFFD.
-  The gate then compares PuppetDB's form, not Ruby's bytes. An event value that
-  is not a String (an Array, a Hash, a Symbol) is left as `to_data_hash` writes
-  it. The terminus sends `value.to_s` instead, a different shape that the gates
-  do not reproduce. The terminus drops unchanged resource statuses unless
-  `include_unchanged_resources` is set, but `gatejson` coerces every status.
-  That makes no difference to a status whose strings are already UTF-8.
-
-### What the comparator got wrong, and the fix
-
-`internal/gatekit/reportcmp` is a port of the Python comparator it replaced. The
-port reproduced that comparator's verdicts exactly, including three that were
-wrong, because its proof of correctness was identical verdicts on identical
-inputs. Once Python was gone, all three were fixed:
-
-| Defect, as ported | Now | Golden case |
-|---|---|---|
-| Log entries compared by membership: a log one side emits twice and the other once was not a divergence | Compared by count; each surplus copy is one divergence | `edge/log-count-ignored` |
-| Python's `true == 1`: a `true` leaf matched `1` or `1.0` | A bool equals only a bool; numbers still compare by value, so `1` matches `1.0` | `edge/bool-equals-one` |
-| Absence spelled as the string `"<absent>"`: an absent leaf matched a present leaf holding that string | Absence is compared as absence, in `compare-reports` and `run-to-run` alike | `edge/absent-equals-absent-string` |
-
-Each golden case keeps Python's measured verdict as history beside a
-`corrected` field holding the verdict the comparator must now reach, so the
-departure is visible case by case. The `corrected` field is parsed strictly,
-so a malformed entry fails the test instead of falling back to Python's verdict.
-No corpus pair changed verdict. Ruby does emit duplicate log lines, so the count
-rule is reachable. Two different rpm debug lines are duplicated in the
-`unmeasured-W1-ruby` and `-W2-ruby` reports: the plain `Executing: '/usr/bin/rpm
--q nano ...'` query (twice; `-W3-ruby` carries it once) and a `--whatprovides`
-query (twice; `-W3-ruby` lacks it entirely). The count rule fires only on the
-plain query line, adding one divergent log line to each of the four ordered
-W1/W2-versus-W3 Ruby pairs; those pairs already exited 1 before the fix. The
-`--whatprovides` line is reported as before, because W3 lacks it. Voxagent emits
-neither line, so no natural Ruby/voxagent pair changes at all.
-
-G5's reference check, `internal/gatekit/g5ref`, carries a fourth inherited
-quirk of the same kind. Its "multi-entry accepted list" test is Python's
-`len()`, so a `desired_value` that is a two-character *string* passes as if it
-were a two-entry list (`exec-returns-two-char-string` in that package's
-golden). Ruby writes `returns` as a list, so no real run reaches it.
-
-### The allowlist is measured, not asserted
-
-Every entry in `run_to_run` is a field `report-diff` can **never** report, so the
-list's provenance is part of the gate's evidence. `dev:derive-run-to-run`
-re-measures it by applying one catalog twice and fails on two conditions:
-
-- **incomplete** — a leaf varies that no pattern covers, so the differential
-  will report noise above any real finding;
-- **over-broad** — a pattern also suppresses a leaf that does *not* vary, so the
-  gate goes green while comparing less than it appears to.
-
-The second is the dangerous one, and it caught a real defect immediately:
-`metrics.time.values.*.*` also hid the metric *names* and *labels*, because
-`fnmatch`'s `*` crosses dots and Puppet stores metrics as positional
-`[name, label, value]` triples. The comparator now re-keys every metric
-group by name before flattening, which makes the values addressable and stops a
-differing metric *set* from misaligning every index into a landslide of false
-pairs. `config_retrieval` is deliberately compared rather than allowlisted: on
-the `--catalog` path neither implementation retrieves a catalog, so both must
-report a literal `0`.
-
-One entry breaks that provenance rule and says so in the file:
-`metrics.time.values.package.value`. `dev:derive-run-to-run` reports it
-**UNUSED** rather than validating it, because the host fixture has no `package`
-resource and cannot have one — Puppet on the host resolves `dnfmodule`. Its
-provenance is the container instead: G5's own catalog applied twice by Ruby in
-two fresh containers measured `7.21` against `14.98` seconds for that leaf. The
-gate tolerates UNUSED and refuses OVER-BROAD, so what stands in for the
-derivation here is that recorded measurement, and the entry becomes derivable
-the day the host fixture can carry a package.
-
-`metrics.time.values.service.value` has the same standing. The host's PID 1 is
-not systemd, so Puppet there would not select the systemd provider and the host
-fixture cannot carry a `service`. Its provenance is `report-diff-systemd.sh`'s
-catalog applied twice by Ruby in two fresh systemd-booted containers:
-`1.044489995` against `1.144156349` seconds, with `gatekit run-to-run` naming it
-the only uncovered differing leaf apart from journal text inside a failure.
-
-The four Tier 3 timings — `anchor`, `file_line`, `vox_prefetch` and
-`vox_value` — are UNUSED on the host fixture for the plainer reason that it
-declares none of those types. Their provenance is `report-diff-extension.sh`'s
-catalog applied twice by Ruby from an identical starting state, with
-`gatekit run-to-run` reporting each `1 differing, 0 stable`.
-
-### Two reference implementations, and why it matters
-
-| Where | Ruby | Puppet | `exec` |
-|---|---|---|---|
-| host | 3.4.9 | puppet gem 8.10.0 | **fails** — `Errno::EBADF` |
-| `fleet-node-el` | 3.2.11 vendored | openvox, version asserted by `state-diff.sh` | works |
-
-The host's Ruby is newer than Puppet 8.10 supports. `util.rb` walks
-`/proc/self/fd` closing descriptors and closes the directory handle it is
-iterating, so **every** `exec` fails on the host with no side effect. That is
-why `report-diff.sh`'s fixture contains no `exec` and `state-diff.sh` does.
-
-`state-diff.sh` asserts the image's puppet version against a pin and exits 2 if
-it moved. Without that check, rebuilding the image would silently change the
-oracle and every later green run would mean something different from the one
-that was reviewed.
-
-That is not hypothetical. `fleet/images/Dockerfile.el` installs `openvox-agent`
-UNVERSIONED -- tracked debt its own comment names -- so a rebuild floats the
-oracle, and one did: the image moved from 8.28.1 to 8.29.0 and the gate exited
-**2**, refusing to compare, rather than measuring against a reference nobody had
-reviewed. The pin was then bumped deliberately, after re-measuring that parity
-still holds at the new version across all four compared paths. It happened again
-on 2026-11-17 (8.29.0 to 8.33.0): `dev:state-diff`, `dev:report-diff-container`,
-`dev:report-diff-systemd` and `dev:report-diff-simp` were run with
-`WANT_PUPPET=8.33.0` and all agreed (the same state across 4 paths and 204
-packages; 1668, 315 and 12782 leaves, 0 divergent) before the four pins moved
-together. And on 2026-11-23 (8.33.0 to 8.34.0), the same four with
-`WANT_PUPPET=8.34.0`: the same state across 4 paths and 204 packages; 3677 and
-1500 (live, noop), 315 and 12782 leaves, 0 divergent, every cron and augeas case
-agreeing. The first container run did not: 8.34.0 rebuilt ruby-augeas'
-`_augeas.so` from the same source, its new digest sent the augeas types to the
-extension host, and the probe now accepts both builds' digests (D-91). The
-SELinux gate's VM installs its own pinned RPM, not this image, and stays at
-8.29.0.
-
-So the pin is a **tripwire, not a guarantee**: it catches the float rather than
-preventing it, and the next rebuild will trip it again. Exit 2 and a demand to
-re-measure is the intended outcome. Pinning the Dockerfile would fix it at the
-source and belongs to the fleet harness rather than the spine.
-
-#### The two oracles are not the same code, and every citation here is the gem
-
-The table above reads as two versions of one implementation. They are two
-**codebases**: the host runs the `puppet` gem 8.10.0, the image runs openvox,
-which is a fork on a separate release line. Every `path:line` in this document
-and in the Go comments is against the gem at
-`/home/llm/.rvm/gems/ruby-3.4.9/gems/puppet-8.10.0/lib/puppet/`, because that is
-what is readable from the host — but the behaviour a container gate compares
-against is openvox's.
-
-Spot-checked 2026-09-22 by comparing the two trees directly:
-`provider/file/posix.rb` and `type/exec.rb` are byte-identical, and
-`type/file/owner.rb` differs only in a `rubocop:disable` directive
-(`Naming/PredicateName` against `Naming/PredicatePrefix` at `:44`) — no
-behaviour. That is a spot check of three files, not a proof about the rest.
-
-For `package` the difference is real, and it lands in the report rather than
-staying internal:
-
-| | builds the install command as |
-|---|---|
-| openvox 8.29.0 | `provider/package/yum.rb:305` — `[command(:cmd)] + ["-y", install_options, operation, wanted].compact` |
-| puppet gem 8.10.0 | `provider/package/yum.rb:250` — `[command(:cmd), '-d', '0', '-e', error_level, '-y', …]` |
-
-A failed install reports `Execution of '<the command line>' returned 1: …`, so
-the difference is a compared leaf, not a detail. voxagent matches **openvox**,
-because that is what the fleet runs and what the container differential
-compares. A differential against the host gem would diverge on that leaf by
-design.
-
-The transferable rule: a citation against the gem answers *which code path
-runs* and is reliable for that. Where the question is *what is in the output* —
-which is where this project has been wrong most often — read the openvox source
-inside the image (`/opt/puppetlabs/puppet/lib/ruby/vendor_ruby/puppet/`) or
-measure there. Do not assume the fork agrees.
-
-### The bind-mount blind spot, and why `/etc/hosts` is not in the fixture
-
-Podman bind-mounts `/etc/hosts`, `/etc/resolv.conf` and `/etc/hostname` into
-every container, so those three are not in the image layer and changes to them
-never appear in `podman diff`. A gate resting on the layer diff alone would
-report no divergence for a catalog managing them while asserting nothing. That
-is why `snapshot.sh` records named paths directly and is the primary
-instrument rather than a supplement.
-
-An earlier design managed `/etc/hosts` in the state-diff fixture to prove that
-point. **It cannot serve as a compared path, and the reason is measured:**
-
-- podman writes each container's *own* id and name into `/etc/hosts`, so two
-  containers differ there before either agent runs. There is no identical
-  starting state to compare from.
-- Puppet cannot manage it inside a container at all. `replace_file` renames its
-  temp file over the target, and rename cannot cross a bind mount, so Ruby fails
-  with `EBUSY` and leaves the file untouched.
-
-Proving the instrument and comparing the agents are two different jobs, and the
-fixture conflated them. `state-diff.sh` now does the proof as a **self-check on
-every run**: it changes a bind-mounted path, requires that the snapshot notices
-and that `podman diff` does not, and exits 2 if either stops being true. A claim
-about podman that nobody re-checks is one that quietly stops holding.
-
-Do not put a bind-mounted path back into the compared set. Extend the self-check
-instead.
-
-### The systemd gate
-
-`dev:report-diff-systemd` (`tests/spine/report-diff-systemd.sh`) is G5 for
-`service`. Neither the host nor `report-diff-container.sh` can be its oracle:
-Puppet selects the systemd provider only when systemd is PID 1, and voxagent
-refuses a catalog holding a `service` otherwise (D-22). So the gate builds
-`localhost/voxagent-systemd:latest` from `tests/spine/images/Containerfile.systemd`.
-That image is the G5 base with `/sbin/init` as its command and nothing added,
-because systemd 257 is already installed. The base is never rebuilt, so the
-openvox pin (`WANT_PUPPET`) is the same tripwire G5 has.
-
-It uses two containers, one per agent, for the reason G5 does: a service
-apply changes the machine, so a shared container would turn voxagent's run into
-a no-op. Each side is booted, the seven fixture units are installed, `voxb` and
-`voxd` are started, and every premise is asserted before anything is applied.
-That means `is-active` and `is-enabled` for each unit, and `LoadState=not-found`
-for `voxagent-no-such-unit`. A drifted premise exits 2, naming itself. The
-Ruby side compiles the catalog and both agents apply the same bytes.
-
-| Resource | Exercises |
-|---|---|
-| `voxa` | start with `enable` synced inside it: one `service_started` event, no `enable` event, unit left enabled |
-| `voxb` | stop |
-| `voxc` | `enable` alone: its own `service_enabled` event |
-| `voxd` | refresh of a running unit from a changed `file`: a restart |
-| `voxe` | refresh of a stopped unit with no `ensure`. Measured: Puppet still records `Triggered 'refresh' from 1 event` and counts it in `resources.restarted`, but restarts nothing, so the state comparison is what checks the skip |
-| `voxf` | start plus a pending refresh in one run: the start invalidates the refresh, so there is one event and no restart |
-| `voxg` | a custom `start`, run through `/bin/sh -c` |
-| `voxagent-no-such-unit` | `enable => false` on a unit that does not exist: in sync, so it has no resource status (Puppet 8 excludes unchanged resources from the report) |
-
-Before trusting the comparison, the gate checks that Ruby's report contains
-`"provider_used":"systemd"`, `service_started`, `service_stopped`,
-`service_enabled` and `refresh`. If any is missing, the gate exits 2: the fixture
-did not reach the provider, and two agents agreeing about nothing would pass.
-After `gatekit compare-reports` and `gatekit compare-order`, the gate compares
-`systemctl is-active` and `is-enabled` for every fixture unit between the two
-sides. A walk-order or state difference exits 1, as a report divergence does,
-and keeps the same evidence in `.test-output/spine/systemd-*`.
-
-**A failing start is deliberately not in the fixture.** The brief had one, as a
-`voxfail` unit with `ExecStart=/bin/false`, and the first live run diverged only
-in its journal text. Puppet logs the failure twice: once as
-`change from 'stopped' to 'running' failed: <detail>`, which the comparator's
-`failure_detail` mask reaches, and once bare under source `Puppet`, which it
-does not. The bare log differed only in the journal's timestamps:
-`Oct 05 19:25:33` on the Ruby side, `19:25:38` on voxagent's. Two Ruby runs in
-two containers differ in the same way (`19:26:26` against `19:26:32`), so the
-difference says nothing about either agent. `voxfail` was dropped rather than
-allowlisted. `TestServiceStartFailureCarriesTheJournal` pins the message instead.
-
-The gate has been seen to go red. With `InvalidateRefreshes` disabled in
-`internal/units/service/service.go` it reported `315 leaves compared, 17 divergent`, all
-naming `Service[voxf]`'s extra `refresh` event and the metrics it moved.
-
-#### Running the systemd gate
-
-Rootless systemd needs a cgroup subtree it can write. Inside a nested container
-(this project's development environment) it has none, and the boot fails with
-`Failed to create /init.scope control group: Permission denied`. The gate then
-exits 2 and points here. Delegate a subtree once per container boot, as root.
-Kernel threads in the root cgroup cannot move, so they are expected to refuse,
-and the scoped `|| true` exists for them.
-
-**Only run this inside a container whose PID 1 is not systemd.** It moves every
-process in the root cgroup into a new child and rewrites the root's
-`cgroup.subtree_control`. On a host, or in a container, where systemd is PID 1,
-that is systemd's tree to manage, and doing this behind its back breaks it. The
-snippet refuses when `/proc/1/comm` is `systemd`:
-
-```bash
-sudo sh -c '
-  set -e
-  if [ "$(cat /proc/1/comm)" = systemd ]; then
-    echo "PID 1 is systemd: it owns the cgroup tree; do not run this here" >&2
-    exit 1
-  fi
-  cd /sys/fs/cgroup
-  mkdir -p init
-  for p in $(cat cgroup.procs); do echo "$p" > init/cgroup.procs 2>/dev/null || true; done
-  echo "+cpu +memory +pids" > cgroup.subtree_control
-  mkdir -p llm && chown -R llm:llm llm
-  echo "+cpu +memory +pids" > llm/cgroup.subtree_control
-'
-```
-
-Replace `llm` with your user. Then run the gate from a shell placed in the
-delegated subtree. Every podman call inherits the cgroup of the shell that made
-it, so the move has to happen in the same shell that runs `task`:
-
-```bash
-mkdir -p /sys/fs/cgroup/llm/gate
-bash -c 'sudo sh -c "echo $$ > /sys/fs/cgroup/llm/gate/cgroup.procs" && task dev:report-diff-systemd'
-```
-
-The expected last line is `report-diff-systemd: reports agree outside the
-allowlist`, exit 0. On a host where systemd already delegates the user's
-cgroup subtree, as a normal systemd login session does, no setup should be
-needed. That has not been measured here.
-
-One more thing was measured while getting it to run. Asked straight after
-`podman run`, `systemctl is-system-running --wait` fails with `Failed to connect
-to system scope bus` and prints nothing, so the gate retries while it prints
-nothing. One wall-clock deadline, `BOOT_TIMEOUT` (180 seconds), bounds the
-whole wait for each container: every attempt is given only the time left, and
-an attempt that times out ends the wait with exit 2.
-
-### The SIMP gate
-
-`dev:report-diff-simp` (`tests/spine/report-diff-simp.sh`) is the extension
-host's acceptance gate: the public SIMP catalog, applied for real by both agents
-and compared by report, walk order and end state. The script header covers how
-it is built. That means the pinned forge releases in `tests/spine/simp/modules.pin`, the
-fixture beside them, the compile in a booted container of the same image, the
-three premises, and one fresh container per agent.
-It needs the delegated cgroup the systemd gate needs ("Running the systemd
-gate"), run the same way with `task dev:report-diff-simp`. It needs network
-only on a cold run. The gate builds `localhost/voxagent-simp:latest` only when
-it is absent, so after editing `tests/spine/images/Containerfile.simp`, remove
-the image (`podman rmi localhost/voxagent-simp:latest`) or the next run measures
-the old one.
-
-The expected last lines are `12782 leaves compared, 0 divergent`, `walk order
-agrees over 340 resources` and `report-diff-simp: reports agree outside the
-allowlist`, exit 0. The gate run that first gave those lines, on
-2026-10-08, gave Ruby 30.7 s and voxagent 27.7 s on its `applied:` line, each
-the wall time around one agent's command inside its container; the whole warm run
-takes about a minute. One run is not a benchmark: the five-run medians, 28.68 s
-and 25.10 s, are in `docs/maintainers/performance.md`, "Public SIMP catalog
-applied".
-
-For the augeasproviders types the gate checks, before anything runs, that the
-merged libdir carries the fifteen fingerprints (`augeasproviders_fingerprints`
-in `tests/spine/simp/lib.sh`, beside `concat_fingerprints`), and after the run
-that voxagent's `applied via extension host` lines name none of `sysctl`,
-`ssh_config`, `sshd_config`, `sshd_config_subsystem` and `augeas`, and that
-`/etc/sysctl.conf`, `/etc/ssh/ssh_config`, `/etc/ssh/sshd_config` and
-`/etc/modprobe.d/blacklist.conf` have equal
-content, mode and owner on both sides. The merged libdir holds SIMP's `ssh.aug`
-and `resolv.aug` in `augeas/lenses`, so the 49 `Ssh_config` resources take the
-loadpath branch. The `Sysctl` coverage is mostly the failure path: rootless, the
-real `sysctl -w` is refused for 62 of the 63 and the one `silent => true`
-resource ignores its refusal, so the success paths are gated only by G5's
-shim cases. The gate exits 2 under a rootful podman, where `sysctl -w` would
-change the host kernel and the second agent would read the first one's value.
-
-**Every exception is measured.**
-
-- **Run to run.** The eighteen `metrics.time.values.<type>.value` entries for
-  the SIMP types (augeas through user) come from `DERIVE=1 bash
-  tests/spine/report-diff-simp.sh`: two Ruby runs, every measured pair in
-  `tests/spine/allowlist.json`'s `_comment`. `tidy.value` was already there.
-- **Registered, not compared.** None for `Sensitive` any more. `File[/etc/chrony.keys]`'s
-  content is `Sensitive`; before D-8 was resolved Ruby wrote `[redacted]` and
-  `redacted: true` where voxagent wrote the digest and `null`, and the gate
-  reported `12782 leaves compared, 6 divergent`, exactly the four event leaves and
-  the ensure log (a `logs (source: …)` key) that were then registered. Those
-  entries are removed and the leaves are compared: `12782 leaves compared, 0
-  divergent`. That earlier red was the gate's evidence that it can go red. It
-  was a real divergence rather than a deliberate break.
-
-**`DERIVE=1` exits 1, and that is expected.** Since run-to-run derives over the
-same normalisations as compare-reports, no differing leaf is left uncovered.
-Before that change, `haveged`'s dnf mirror speeds inside its failure detail
-were three such leaves. But it reports the shared
-`resource_statuses.*.evaluation_time` pattern OVER-BROAD, with 8 stable leaves.
-Each is the `null` evaluation time of a resource both runs skipped:
-`Exec[dracut_rebuild]`, `Exec[remount /var/tmp]`,
-`Exec[systemd-haveged.service-systemctl-daemon-reload]`,
-`File[/etc/systemd/system/haveged.service.d]`,
-`File[/etc/systemd/system/haveged.service.d/haveged_settings.conf]`,
-`Reboot_notify[audit:all]`, `Reboot_notify[fips]` and `Service[haveged]`.
-Every other gate shares the pattern, so narrowing it is its own change: a
-skipped resource's `null` would have to be told apart from a timed one's float. Until then, on this catalog, a
-skipped resource's evaluation time is not compared.
-
-**auditd and polkit are prepared in the image, identically for both agents.**
-Unprepared, both fail to start in a rootless container, for each agent. Puppet's
-failure log then carries a `journalctl` tail whose timestamps, PIDs and line
-window differ between any two containers, Ruby against Ruby included, so no
-mask of the timestamps alone would make them agree. `Containerfile.simp` adds
-two drop-ins named `voxagent-gate.conf` and disables auditd. None of it changes
-what the catalog asks:
-
-| Unit | Why it fails | What the image changes | Starting state | What is compared |
-|---|---|---|---|---|
-| `auditd` | Kernel audit belongs to the initial user namespace: `4/NOPERMISSION` | `ExecStart=/usr/bin/true`, `Type=oneshot`, `RemainAfterExit=yes`, `PIDFile=` cleared; `systemctl disable auditd` | installed, disabled, stopped | The catalog's `ensure => running` start, `ensure changed 'stopped' to 'running'`, in both reports. No `enable` event: Puppet syncs only `ensure` when it is out of sync |
-| `polkit` | `User=` plus any seccomp-backed setting needs `CAP_SYS_ADMIN`, which rootless podman does not grant: step USER, "Failed to keep CAP_SYS_ADMIN" | Fourteen settings reset (`SystemCallFilter`, `SystemCallArchitectures`, `RestrictAddressFamilies`, `RestrictNamespaces`, `RestrictRealtime`, `RestrictSUIDSGID`, `LockPersonality`, `MemoryDenyWriteExecute`, `PrivateDevices`, `ProtectKernelTunables`, `ProtectKernelModules`, `ProtectKernelLogs`, `ProtectClock`, `ProtectHostname`); each one alone still fails | installed, static, running | That both agents find it in sync: with Puppet 8's `exclude_unchanged_resources` neither report has a status for it |
-
-polkit cannot start out stopped. It is a static unit, so `systemctl disable` does
-nothing, and tuned asks for `org.freedesktop.PolicyKit1` at boot, so D-Bus
-activation starts it before the agent runs. Measured: with polkit stopped,
-restarting tuned starts it again, and restarting `sshd` or `chronyd` does not.
-Stopping it would mean changing tuned, which is itself a resource of the catalog.
-The catalog also refreshes `Service[tuned]` during the run, which would
-re-activate a stopped polkit mid-run. So neither agent's start path for polkit
-is exercised here.
-
-### G5's augeas half and `task dev:augeas-lib`
-
-`dev:report-diff-container` has an augeas half (`tests/spine/augeas/g5.sh`,
-sourced by `report-diff-container.sh`) that runs on `localhost/augeas-measure-el`:
-the G5 base plus `procps-ng`, `openssh-clients`, `openssh-server`,
-`grub2-tools` and `strace` (`tests/spine/images/Containerfile.augeas`;
-`fleet-node-el` has none of the files or commands the five types edit or run).
-`tests/spine/augeas/image.sh` builds it when it is missing or when its openvox
-or libaugeas differs from the base's, and a cold build needs the network (the
-CentOS Stream mirrors). Remove the image (`podman rmi
-localhost/augeas-measure-el:latest`) after editing the Containerfile, as for
-the SIMP image.
-
-- **Cases.** 63 live native cases, 4 live cases the host must apply (`refuse-augeas-*`) and 4
-  refusals, one directory each under `tests/spine/augeas/cases/`. 51 of the
-  native ones are the measured ones (numbered), their `site.pp`, seed,
-  `files` and lenses committed verbatim from the measurements; 12 are the
-  gate's own (`sysctl-existing-w-fails`, `sysctl-save-fails`, `sysctl-prefetch-load-error`,
-  `sysctl-stale-invalid-key`, `sysctl-file-before`, `sshd-two-handles`,
-  `sshd-mode-preserved`, `lens-dir-known-hosts-only`, `sysctl-delegated`,
-  `augeas-runtime-errors`, `augeas-notified`, `augeas-apply-ignores-libdir-lens`). A case
-  with a `podman-args` file (06d and 06e need `--cap-add SYS_ADMIN` to unmount
-  `/etc/resolv.conf`) gets those arguments on both sides. Each
-  is compiled alone by the image's openvox and applied in fresh containers, one
-  per agent and mode (live with a rerun, then `--noop`); every pair goes
-  through `gatekit compare-reports` and `compare-order` against the unchanged
-  allowlist, and the state of every path the case lists (mode, owner, group,
-  size, content) is compared after the live run. A `refuse-*` case is one Ruby
-  refuses at catalog conversion; both agents must refuse it with the same
-  detail.
-- **Both loadpath branches.** Cases without a `lenses` file run libaugeas's
-  NULL-loadpath branch; the ones with it (M62-M64, M66-M69,
-  `lens-dir-known-hosts-only`) run the `<libdir>/augeas/lenses` branch, with the
-  libdir holding exactly the lenses the file lists.
-- **The sysctl shim, both sides.** Rootless, the real `sysctl -w` is refused,
-  so the success paths run through the measurement shim
-  (`tests/spine/augeas/sysctl-shim.sh`) on both agents, and the shim's log of
-  the commands run is compared, since no report shows it. The failure cases run
-  the real binary on both sides.
-- **Native, not delegated.** The libdir is checked against the fifteen
-  fingerprints, and voxagent's output must not name a native type among those
-  `applied via extension host`, so a delegated run, Ruby against Ruby, cannot
-  pass as native. `sysctl-delegated` is the inverse: its `comment` is outside the
-  native shapes, so voxagent must name `sysctl` there; each `refuse-augeas-*` case
-  likewise must name `augeas`.
-- **Rootful refuses.** Under a rootful podman the half returns 2 and runs no
-  case, because a rootful `sysctl -w` would change the host kernel.
-
-`task dev:augeas-lib` is the unit tests that need the real library, run in that
-image (the row above); it needs the same image and is not part of `task check`.
-
-### G5's cron half
-
-`dev:report-diff-container` ends with a cron half (`tests/spine/cron/g5.sh`, sourced by `report-diff-container.sh`) on
-`localhost/cron-measure-el`: the G5 base plus cronie (`tests/spine/images/Containerfile.cron`; `fleet-node-el` has no
-`crontab`, so there `cron` is not native, M4). `tests/spine/cron/image.sh` builds it when it is missing, lacks cronie, or
-carries a different openvox than the base; a cold build needs the network. Remove the image
-(`podman rmi localhost/cron-measure-el:latest`) after editing the Containerfile.
-
-- **Cases.** 21 native cases and one refusal, one directory each (`site.pp`, an optional `seed.sh`, an optional `files`
-  listing the paths whose end state is compared). The 19 under `cases/` run with no cron_core in `--libdir`, so both
-  agents use openvox's vendored 1.3.0; the 2 under `cases-2.1.0/` (`env-empty`, `minute-0x1f`) run with cron_core
-  2.1.0's `lib/` from the SIMP gate's pinned module cache, checked against its three digests, for the outcomes the
-  releases differ on. `cases-2.1.0/weekday-true` is the refusal: Ruby refuses it at catalog conversion, and both
-  agents must refuse it with the same detail. `cases/line-breaks` is I-38.
-- **Judging.** Each case is compiled alone by the image's openvox and applied in fresh containers, one per agent and
-  mode (live, a rerun in the same container, then `--noop`). Every pair goes through `gatekit compare-reports` and
-  `compare-order` against the unchanged allowlist. After the live run each side's state is read and compared: every
-  path `files` lists (mode, owner, group, size, `cat -A`), with only the header's first-line timestamp normalised,
-  since reports carry no crontab text. `modify` and `same-name-two-targets` also list cronie's backup of the replaced
-  crontab (`/root/.cache/crontab/`), which it saves only when the write's environment holds `HOME` (D-95).
-- **Native, not delegated.** voxagent's output must not name `cron` among the types `applied via extension host`, so a
-  delegated run, Ruby against Ruby, cannot pass as native.
-- **Errors.** A seed that fails, and a missing case, are gate errors (2). The half runs after the augeas half.
-
-### G5's host half
-
-`dev:report-diff-container` ends with a host half (`tests/spine/host/g5.sh`) on `localhost/parsedfile-measure-el`: the G5
-base plus openssh (`tests/spine/images/Containerfile.parsedfile-types`, the node the ParsedFile-types measurements ran
-on). `tests/spine/parsedfile/image.sh` builds it as `cron/image.sh` builds cron's: when it is missing, lacks openssh, or
-carries a different openvox than the base. Every container runs with `--no-hosts`, so `/etc/hosts` is the image's own
-file, the same for both agents, not podman's bind mount (M2).
-
-- **Cases.** 11 native cases and 7 refusals under `tests/spine/host/cases/`, all with no host_core in `--libdir`
-  (vendored 1.3.0 is SIMP's 2.1.0, so there is no second release to run). Native: `create`, `aliases-reordered`,
-  `comment-added-removed`, `aliases-empty`, `aliases-after-empty`, `remove`, `preserve`, `alias-string-one-word`,
-  `no-ip`, `noop`, `missing-target`. Refused at catalog conversion: `invalid-ip`, `invalid-name`,
-  `alias-string-whitespace` and the four I-39 cases `line-break-{ip,name,alias,comment}`. `g5_refusal`
-  (`tests/spine/g5-case.sh`) reads a detail that spans lines, as `line-break-name`'s raw newline in `Host[foo<LF>bar]`
-  does.
-- **Judging.** As the cron half: live, rerun and `--noop` in fresh containers, `compare-reports` and `compare-order`
-  against the unchanged allowlist. The state compared after the live run is every path `files` lists (mode, owner,
-  group, size, `cat -A`), with only `# HEADER: This file was autogenerated at <time>` normalised, then every
-  clientbucket entry, sorted: its directory (the old content's sha256) and its `paths` file.
-- **Native, not delegated.** voxagent's output must not name `host` among the types `applied via extension host`.
-- **Errors.** As the cron half. The half runs after it.
-
-### G5's sshkey half
-
-`dev:report-diff-container` ends with an sshkey half (`tests/spine/sshkey/g5.sh`) on the host half's image and with
-its `--no-hosts` containers; the image's openssh owns `/etc/ssh`, the default target's directory. It runs every case
-under one of two libdirs, as the cron half does: `cases/` with no sshkeys_core (openvox's vendored 2.5.0), and
-`cases-3.1.0/` with sshkeys_core 3.1.0's `lib/` from the SIMP gate's pinned module cache, for the `key` check that
-release adds.
-
-- **Cases.** 19 native cases and 7 refusals.
-  - Native under 2.5.0 (18): `create`, `refs` (title `name@type`, a type alias, ed25519), `existing` (0600
-    `nobody` file kept), `aliases-reordered`, `aliases-empty`, `aliases-empty-create`, `alias-string`,
-    `comment-key-in-sync`, `comment-key-dropped`, `modify-key` (tabs rewritten as spaces), `remove`,
-    `absent-no-type`, `leading-whitespace` (prefetch failure), `no-type` (flush error), `missing-target-dir`,
-    `target`, `key-whitespace` and `line-break-key` (I-39: written verbatim, re-applied on the rerun).
-  - Native under 3.1.0 (1): `create`.
-  - Refused at catalog conversion: `name-whitespace`, `name-comma`, `alias-whitespace`, `alias-comma` and `bad-type`
-    under 2.5.0, and `key-whitespace` and `line-break-key` under 3.1.0.
-- **Judging.** As the host half, end state and clientbucket included. `metrics.time.values.sshkey.value` is in the
-  allowlist's `run_to_run`, measured Ruby against Ruby like the other per-type time leaves.
-- **Native, not delegated.** voxagent's output must not name `sshkey` among the types `applied via extension host`.
-  Because voxagent routes natively only on §2.2's digests, a changed SIMP pin fails the half here.
-- **Errors.** As the cron half. The half runs after the host half.
-
-### G5's sak half
-
-`dev:report-diff-container` ends with an `ssh_authorized_key` half (`tests/spine/sak/g5.sh`) on the host half's image
-and with its `--no-hosts` containers. Seeds create the users and files each case needs; both agents run as root, so
-every `drop_privileges` true flush writes as the key's user, voxagent's through its `asuser` helper. `cases/` run with
-no sshkeys_core in `--libdir` (vendored 2.5.0); `cases-3.1.0/create` runs with SIMP's 3.1.0 `lib/`, whose
-`ssh_authorized_key` contract is 2.5.0's, to hold that voxagent routes that release natively.
-
-- **Cases.** 25 native cases and 6 refusals.
-  - Native under 2.5.0 (24): `create` (no `.ssh`, two keys, options), `existing` (comments, blanks, unnamed and
-    `key_v1` lines kept, mode 0640 to 0600), `options-change`, `remove` (one by its generated `unnamed-1` name),
-    `key-v1`, `key-v1-unnamed`, `user-in-run`, `user-after-key`, `nonexistent-user`, `no-home`, `no-user-target`,
-    `drop-false-file`, `drop-false-untrusted`, `drop-false-dir` (prefetch failure), `write-refused`, `write-symlink`,
-    `mkdir-refused`, `chmod-refused`, `move-target`, `move-not-target`, `sensitive`, `line-break-name` and
-    `line-break-options` (I-39: the rerun's prefetch fails), and `shared-target-across-types` (an `Sshkey` before and
-    after an `Ssh_authorized_key` on alice's file: each type prefetches at its own turn, so the bytes and record order
-    must equal Ruby's).
-  - Native under 3.1.0 (1): `create`.
-  - Refused at catalog conversion: `no-user`, `key-whitespace`, `drop-privileges-maybe`, `options-bad`, `type-bad`,
-    `title-vs-name` (the refusal names the title).
-- **Judging.** As the sshkey half, with two differences in the state read after the live run: a directory in `files`
-  gives its stat line alone, and a clientbucket entry is the sha256 of its `contents` with the header's timestamp
-  normalised, not its directory name, because a target backed up after an earlier flush of the run wrote it carries
-  that flush's timestamp. `metrics.time.values.ssh_authorized_key.value` is in the allowlist's `run_to_run`, measured
-  Ruby against Ruby.
-- **What it cannot hold.** The agents run without `--debug`, as in every half, so no debug line is compared (the count
-  of `The required user is not yet present on the system` varies, spec §6.3) and Ruby's `drop_privileges => false` is
-  never trusted (§8 item 9): every drop-false case fails `not trusted` or the prefetch, and the trusted write is
-  unit-tested only. D-102's leak and D-100's old-target backup are not reproduced, so no case shows them: in
-  `move-target` alice's own key changes first, so her file is backed up in both agents before the key moves out of it.
-- **Native, not delegated.** voxagent's output must name neither `ssh_authorized_key` nor `sshkey` among the types
-  `applied via extension host`.
-- **Errors.** As the cron half. The half runs after the sshkey half.
-
-### G5's mount half
-
-`dev:report-diff-container` ends with a `mount` half (`tests/spine/mount/g5.sh`) on the host half's image and with its
-`--no-hosts` containers, each also given `--cap-add SYS_ADMIN`: M10 measured it as the one flag that lets the container's
-root run `mount`, `mount -o remount` and `umount` on a tmpfs (no `--security-opt` needed), so every ensure transition
-and refresh runs live. The image has no `/etc/fstab`; `mount` lists the container's own mounts, the same for both
-agents. No case manages `Mount['/']`: the container's `/` is a ghost (`ensure changed 'ghost' to 'defined'`). `cases/`
-run with no mount_core in `--libdir` (vendored 1.3.0); `cases-2.1.0/create` runs with SIMP's 2.1.0 `lib/`, whose
-contract is 1.3.0's, to hold that voxagent routes that release natively.
-
-- **Cases.** 30 native cases and 1 refusal.
-  - Native under 1.3.0, fstab only (14): `defined-absent`, `name-040` (`\040` round trip; `dump`/`pass` reset to
-    `0`), `trailing-slash`, `missing-fstype` (every later flush fails with the first resource's text), `fields` (3-,
-    4-, 5- and 8-field lines), `dump-pass-reset`, `remove`, `leading-whitespace` (the next write fails `Field 'device'
-    is required`), `atboot` (no effect on Linux), `dash-defined` (a name `-o` written), and the I-39 cases
-    `line-break-{name,device,dump,pass}` (written verbatim, re-applied on the rerun).
-  - Native under 1.3.0, live tmpfs mounts (15): `mounted-from-absent` (mount, then the remount), `unmounted-from-mounted`,
-    `ghost-to-mounted`, `ghost-to-absent` (other lines and comments kept), `ghost-no-ensure` (five `defined` changes,
-    then the remount), `options-remount`, `options-unmounted-to-mounted` (only the ensure change; the flush precedes the
-    mount), `remounts-false` (`umount` then `mount`), `swap` (no remount), `notify-refresh` (an `Exec` refreshes a
-    mounted, an unmounted and a swap entry), `mount-fails` (missing mount point), `dash-mounted` (`mount -o` fails),
-    `umount-busy` (a `sleep` holds the mount: the two errs of a failed ensure sync), `refresh-fails` (an option tmpfs
-    refuses fails the remount: two errs, `failed_to_restart`, the dependent skipped) and `relations` (a parent mount
-    autorequired, a `File` on the tmpfs autobefore'd, declared in the reverse order).
-  - Native under 2.1.0 (1): `create` (`mounted-from-absent`).
-  - Refused at catalog conversion: `dump-bad` (`Invalid value "abc". Valid values match /(0|1)/.`).
-- **Judging.** As the host half, end state and clientbucket included, plus `findmnt -rn -o TARGET,FSTYPE,OPTIONS
-  --mountpoint` of each path a case's `mounts` file lists (`NOT MOUNTED` when none), with the host-dependent options
-  `seclabel`, `uid=<n>` and `gid=<n>` removed (M10: a rootless tmpfs gets the host user's ids).
-  `metrics.time.values.mount.value` is in the allowlist's `run_to_run`. No debug line is compared (the agents run
-  without `--debug`), so the `Executing:`, `Flushing` and `Adding auto…` lines show only through the end state and
-  `compare-order`'s walk order.
-- **Native, not delegated.** voxagent's output must not name `mount` among the types `applied via extension host`.
-- **Errors.** As the cron half. The half runs after the sak half.
-
-**Run the gates one at a time.** Concurrent gate runs on one machine
-coincided with flakes in the SIMP gate's polkit start and systemd boot. The
-cause was not isolated; the gates may contend for podman's storage, the
-delegated cgroup and the image tags, and none takes a lock.
-
-### Debug logging's memory cost
-
-Measured 2026-11-18, one run each, on the SIMP catalog `tests/spine/report-diff-simp.sh`
-compiles (737 resources), applied live by `voxagent apply --catalog <catalog>
---report-dir <dir>` in a freshly booted systemd container of
-`localhost/voxagent-simp` (one container per run, so neither run sees the
-other's changes), under GNU `/usr/bin/time -v`, peak RSS from
-`Maximum resident set size`. The catalog came from the gate's own compile step
-(the script's code, stopped before its apply step), so it is the catalog the
-gate measures. This is a record, not a gate: one sample each, on a shared host.
-
-| Run | Peak RSS | Wall clock | Stdout | Report |
-|---|---|---|---|---|
-| default | 108344 kB (105.8 MiB) | 23.31 s | 50096 bytes | 677891 bytes |
-| `--debug` | 113964 kB (111.3 MiB) | 21.50 s | 435239 bytes | 1461811 bytes |
-
-`--debug` cost about 5.5 MiB (5.2%) more peak RSS on this catalog, and its
-report is 2.2 times the default's. The debug text here is far below the 16 MiB
-report budget (D-81), so the budget did not engage. Both runs exited 0. The wall
-clocks differ the other way from what logging would cause, which shows the noise
-of one sample: do not read a speed claim from them.
-
-### The SELinux gate
-
-`dev:report-diff-selinux` (`tests/spine/report-diff-selinux.sh`) compares the
-two agents on `file`'s SELinux contexts with SELinux **enforcing**. No other gate
-can: the host and every container here see SELinux as disabled, and then both
-agents make every `sel*` property a no-op, so G1 compares nothing about labels.
-
-There is no `/dev/kvm` here and RHEL's `qemu-kvm` is built without TCG, so the
-gate emulates a VM with Fedora's QEMU (`-accel tcg`), from the image
-`tests/spine/selinux-vm/Containerfile` builds (Fedora 44, pinned by digest). The
-guest is the CentOS Stream 10 GenericCloud image
-`CentOS-Stream-GenericCloud-10-20260930.0.x86_64.qcow2`, pinned by the SHA256
-CentOS publishes and verified on every run. It is downloaded once to
-`${XDG_CACHE_HOME:-~/.cache}/voxagent/selinux-vm` (override with
-`SELINUX_VM_CACHE`), outside the tree because it is 1 GiB; each run writes only
-a copy-on-write overlay in its own `mktemp -d`. cloud-init
-(`selinux-vm/user-data`) installs openvox 8.29.0 (the release RPM pinned by
-SHA256, the agent by version), `libselinux-utils` and `dosfstools`, and
-authorizes an SSH key generated for that run alone. The gate reaches the guest
-by `podman exec … ssh` into QEMU's user-mode network, so nothing is published on
-the host. The image ships enforcing; the gate asserts `getenforce` is
-`Enforcing` and the agent is 8.29.0, and exits 2 otherwise.
-
-One VM serves both agents, as G1's one directory does. Before each side,
-`reset.sh` rebuilds every fixture path and sets every seeded label with
-`chcon`, and the labels it left are read and compared between the sides; a
-seed that differs exits 2. The catalog is compiled on the host by Puppet
-8.10.0, exactly as G1 compiles its own, and the same bytes go to `puppet apply
---catalog` (openvox) and `voxagent apply`. Ruby's report must carry
-`seltype_changed`, `seluser_changed`, `Failed to set SELinux context`,
-`owner_changed` and `mode_changed`, or the fixture did not reach the enabled
-path and the gate exits 2. After `gatekit compare-reports` and `gatekit
-compare-order`, the mode, owner, group and label every fixture path ends with
-(`find -printf '%p %y %m %u:%g %Z'`, never following a link) are compared
-between the sides; a walk-order or label difference exits 1. Every run that
-gets that far keeps the reports, the catalog and the label listings in
-`.test-output/spine/selinux-*`.
-
-What the fixture measured on 2026-10-06 (openvox 8.29.0, libselinux 3.11-3.el10,
-selinux-policy-targeted 42.1.27-2.el10), the same on both sides unless said:
-
-| Resource | Seeded | Result |
-|---|---|---|
-| `/etc/voxgate/mis`, `ensure => file` | `unconfined_u:object_r:tmp_t:s0` | two events, `seluser changed 'unconfined_u' to 'system_u'` and `seltype changed 'tmp_t' to 'etc_t'` |
-| `typed`, `seltype => httpd_sys_content_t` | `etc_t` | `seltype_changed` to the declared type |
-| `ign`, `selinux_ignore_defaults => true` | `tmp_t` | nothing |
-| `ign-typed`, the same with a declared `seltype` | `tmp_t` | only `seltype` |
-| `new`, created by `content` | absent | `etc_t`, silently: the only event is `ensure` |
-| `suid`, created with `owner => 'nobody'`, `mode => '4755'` | absent | the only event is `ensure`; the chown clears `S_ISUID` and `property_fix`'s mode puts it back, so it ends `4755 nobody:root` |
-| `rewrite`, mislabelled and rewritten by `content` | `tmp_t` | a `content` event **and** a `seltype_changed` event, and `etc_t` |
-| `dir`, `ensure => directory`; `newdir`, created | `tmp_t`; absent | one `seltype_changed`; `etc_t` silently |
-| `lnm`, `ensure => link` over a link to `lnreal` | both `tmp_t` | the link is relabelled `etc_t`; `lnreal` keeps `tmp_t` |
-| `lntyped`, `seltype` only, on a link (`links => manage`) | `etc_t`, target `tmp_t` | the link takes `httpd_sys_content_t`; the target is untouched |
-| `ln-new`, a created link | absent | `etc_t`, silently |
-| `badtype`, `seltype => voxagent_no_such_t` | `etc_t` | warning `Failed to set SELinux context system_u:object_r:voxagent_no_such_t:s0 on /etc/voxgate/badtype`, and the event's status is `success`; the label stays `etc_t` (I-4) |
-| `tree`, `recurse => true`, `owner` and `group` `nobody`, `mode => '0640'` | children `tmp_t`, all `root:root`, files 0600, directories 0700 | `owner`, `group` and `mode` events, in that order (`type/file.rb:1133-1135`), on `tree` and each file and directory child, and one `seltype_changed` to `etc_t` on each child, through the batched lookup |
-| `tree/ln`, a symlink child to `tree/a` | `tmp_t`, `root:root` | the link itself is relabelled `etc_t` and `lchown`ed to `nobody:nobody`, with no `mode` event (D-28, retired) |
-| `tree/lnout`, a symlink child to `lnreal`, outside the tree | `etc_t`, `root:root` | `owner` and `group` events only; `lnreal` stays `root:root` |
-| `/opt/voxgate/etc`, `content` only, absent | absent | `etc_t`: looked up with mode 0, which matches `/opt/(.*/)?etc -d` (I-11) |
-| `/opt/voxgate/file/etc`, the same with `ensure => file` | absent | `usr_t` |
-| `/mnt/voxlnk`, `ensure => file` over a symlink | link `mnt_t` | the new regular file is `mnt_t`, the link's default, where a file there is `default_t` (I-10) |
-| `/mnt/voxvfat/new` and `old`, `seltype => etc_t` on a vfat loop mount | `dosfs_t` | no `sel*` event; both stay `dosfs_t` |
-
-**The gate exits 0: 915 leaves compared, 0 divergent** (2026-10-06, after
-the capture change). Before it, the gate exited 1 on one difference, Base64.
-The first full run compared 647 leaves and found 21 divergent. With `tree/ln`
-relabelled (D-28, retired) and ownership declared on `tree`, the run compared
-915 leaves and found 23. Each was a value Ruby reported Base64-encoded where
-voxagent reports it plain (`previous_value` `dG1wX3Q=` against `tmp_t`); every
-`owner`, `group` and `mode` leaf already agreed, in Puppet's order. The encoded
-values were every `previous_value` (the context read from the file) and every
-`desired_value` that came from the default (`ZXRjX3Q=`); a declared value
-(`httpd_sys_content_t`) was plain on both sides. The cause is Puppet's:
-libselinux's Ruby binding returns ASCII-8BIT strings, and
-`Event#to_data_hash` runs `ToStringifiedConverter`, which turns any ASCII-8BIT
-string into Base64 (`transaction/event.rb:89-105`,
-`pops/serialization/to_stringified_converter.rb:97-103`). OpenVoxDB stores the
-plain string, so the gates now capture Ruby's report the way the terminus
-sends it ("How the gates capture Ruby's report"). The gate was not made green
-by an allowlist entry: the leaves are compared, and they agree.
-
-What it does not prove: one policy (targeted, enforcing) and one kernel; no
-MLS ranges beyond `s0`, so not `selrange` (I-7); no mcstrans (D-33). I-9 (an
-unreadable context) is not reachable on this host: a file with no
-`security.selinux` xattr reads back as `system_u:object_r:unlabeled_t:s0`
-(measured on an ext4 loop mount, a file written by `debugfs`), removing the
-xattr is refused with `Permission denied`, and an invalid context cannot be set
-(`Invalid argument`), so `lgetfilecon` did not fail in any case tried. The
-literal `unlabeled` of I-12 was not reached either.
-
-`task check` does not run it: a run takes about five minutes.
-
-#### Running the SELinux gate
-
-```bash
-task dev:report-diff-selinux
-```
-
-It needs `podman`, `puppet` 8.10.0 on `PATH` (to compile the catalog, as G1
-does), network access for the first run's download and for cloud-init's
-package installs, and about 2 GiB of memory for the guest. No cgroup
-delegation is needed: the container runs QEMU, not systemd. The first run
-builds `localhost/voxagent-selinux-vm:latest` (with the fuse-overlayfs fallback
-`tests/spine/build-image.sh` shares with the systemd gate) and downloads the
-image. Measured on an AMD Ryzen 9 5900X under TCG: SSH answered after 85-101 s,
-cloud-init finished after 238-283 s, and a whole run took 4 m 54 s. One
-deadline, 30 minutes, bounds the boot.
-
-The expected last line is `report-diff-selinux: reports agree outside the
-allowlist`, exit 0, after `915 leaves compared, 0 divergent` and `walk order
-agrees over 22 resources`.
+Moved to [what the gates do and do not prove](gate-evidence.md). Its sections:
+
+- [How the gates capture Ruby's report](gate-evidence.md#how-the-gates-capture-rubys-report)
+- [What the comparator got wrong, and the fix](gate-evidence.md#what-the-comparator-got-wrong-and-the-fix)
+- [The allowlist is measured, not asserted](gate-evidence.md#the-allowlist-is-measured-not-asserted)
+- [Two reference implementations, and why it matters](gate-evidence.md#two-reference-implementations-and-why-it-matters)
+  - [The two oracles are not the same code, and every citation here is the gem](gate-evidence.md#the-two-oracles-are-not-the-same-code-and-every-citation-here-is-the-gem)
+- [The bind-mount blind spot, and why `/etc/hosts` is not in the fixture](gate-evidence.md#the-bind-mount-blind-spot-and-why-etchosts-is-not-in-the-fixture)
+- [The systemd gate](gate-evidence.md#the-systemd-gate)
+  - [Running the systemd gate](gate-evidence.md#running-the-systemd-gate)
+- [The SIMP gate](gate-evidence.md#the-simp-gate)
+- [G5's augeas half and `task dev:augeas-lib`](gate-evidence.md#g5s-augeas-half-and-task-devaugeas-lib)
+- [G5's cron half](gate-evidence.md#g5s-cron-half)
+- [G5's host half](gate-evidence.md#g5s-host-half)
+- [G5's sshkey half](gate-evidence.md#g5s-sshkey-half)
+- [G5's sak half](gate-evidence.md#g5s-sak-half)
+- [G5's mount half](gate-evidence.md#g5s-mount-half)
+- [Debug logging's memory cost](gate-evidence.md#debug-loggings-memory-cost)
+- [The SELinux gate](gate-evidence.md#the-selinux-gate)
+  - [Running the SELinux gate](gate-evidence.md#running-the-selinux-gate)
 
 ## Traps this project keeps hitting
 
@@ -1865,9 +879,13 @@ edit by four minutes — and the gate was briefly and wrongly recorded as blind 
 exact leaf. `task check` was never affected, because `dev:report-diff` and
 `dev:idempotence` both declare `deps: [build]`; it bit a *direct* invocation,
 which is how these scripts get run while iterating on a failure — the moment a
-false green is most expensive. Both scripts now exit **2** if any `.go` file under
+false green is most expensive.
+
+Both scripts now exit **2** if any `.go` file under
 `cmd/` or `internal/` is newer than the binary: nothing was compared, so the
-result is not a statement about the two implementations. The fix is in, and the
+result says nothing about the two implementations.
+
+The fix is in, and the
 trap stays recorded anyway, because the lesson is the conclusion that was drawn,
 not the missing check: a green gate was taken as evidence about the *comparator*
 when it was evidence about a four-minute-old binary. Suspect the inputs before
@@ -1880,7 +898,9 @@ it. But
 `resource_harness.rb:170` appends `' (corrective)'` **after** that suffix. If it
 ever fired, the anchored match would miss, and the elision would widen to swallow
 the location — quietly comparing less than it appears to, which is the same
-failure mode `dev:derive-run-to-run` exists to catch in the allowlist. It cannot
+failure mode `dev:derive-run-to-run` exists to catch in the allowlist.
+
+It cannot
 fire today: the fixture's `vardir` is a fresh `mktemp -d`, so Ruby has no
 persisted system value and `corrective_change` is `false` on both sides (D-6). It
 would fire the moment the fixture kept its `vardir` between runs. A gate whose
@@ -1890,6 +910,7 @@ logic is one edit away from being wrong, and the edit will look unrelated.
 **`if err == nil { t.Error(…) }` does not test attribution.** A test that
 asserts only that *an* error came back cannot tell you which error, which layer
 raised it, or whether the code under test was reached at all.
+
 `TestFileMetadataChmodFailureIsAttributedToMode` states in its own comment that
 it documents the boundary between a resource-level error and a property
 attribution, and it passes unchanged when that boundary is inverted — because an
@@ -1924,6 +945,7 @@ not the default one, so the host resolves `dnfmodule` (specificity 8, suitable)
 over `dnf` (specificity 107, unsuitable) and manages dnf *modules*. Reading
 `defaultfor 'os.family' => :redhat` (`dnf.rb:40`) and concluding "so the
 provider is `dnf`" gives the wrong answer on the very machine doing the reading.
+
 The reusable error is trusting a *declaration* where the runtime asks a
 *question* — `defaultfor` declares a preference, `suitable?` answers whether it
 can be honoured, and only the second is a fact about this host. This is exactly
@@ -1938,12 +960,16 @@ they did not have, and each would have proved nothing: a file already owned by
 against an image where `zsh` was never installed; and `ensure => latest` on
 `which`, already the newest build available. The last two were written into a
 task brief and caught only by measuring the image before trusting them. All
-three are green, fast, and never enter the path they were written for. The same
-shape reaches further than fixtures: with no network in the containers **both**
+three are green, fast, and never enter the path they were written for.
+
+The same
+shape reaches further than fixtures: with the containers offline **both**
 agents fail `dnf install` identically, the two installed sets match to the byte,
 and a comparison-only state gate exits 0 — measured, with the assertion
 disabled. A differential cannot see a failure its two halves share, whether the
-shared cause is one binary (the trap above) or one broken environment. So both
+shared cause is one binary (the trap above) or one broken environment.
+
+So both
 package gates check their fixture against a pristine container before applying
 anything and exit **2** — could-not-run, not a pass — when it no longer fits:
 `$PKG_INSTALL` absent, `$PKG_REMOVE` installed, `$PKG_LATEST` installed with
@@ -1953,1028 +979,34 @@ the newest of everything, and a rebuild on 2026-10-02 left no package in it
 with an update available, so G5 downgrades `$PKG_LATEST` to `$PKG_LATEST_FROM`
 in every container before using it, and a downgrade the repositories can no
 longer serve is could-not-run.
+
 Each then asserts an absolute outcome on the **reference side alone**, not a
 comparison: `state-diff.sh` requires `$PKG_INSTALL` present and `$PKG_REMOVE`
 gone from Ruby's `rpm -qa`, and `report-diff-container.sh` requires Ruby's own
 report to show all three changed with events and the fourth failed. Asserting it
 on Ruby alone is deliberate — the reference getting it wrong means nothing ran
 (exit 2), where voxagent getting it wrong is a real divergence and belongs to
-the comparator (exit 1). A gate that only compares is asking "do they agree",
+the comparator (exit 1).
+
+A gate that only compares is asking "do they agree",
 and an environment where nothing happened answers yes.
 
 ## What the spine does not implement
 
-`file` is bounded to `ensure`, `content`, `mode`, `owner`, `group`, `source`
-(local paths and `file:` URIs), `recurse` and `purge` (both `true`/`false`),
-`path`, `replace`, `force`, `links` (`manage` or `follow`), `target` and
-`show_diff` (accepted, no effect), the SELinux attributes `seluser`, `selrole`,
-`seltype`, `selrange` and `selinux_ignore_defaults`, and `backup` (a suffix, or
-`puppet`, the default bucket under `--vardir`; any other bucket name fails as
-Puppet's missing bucket does, and a catalog that declares any `filebucket`
-resource is a pre-flight refusal, D-50), and `validate_cmd` with
-`validate_replacement` (strings only, and not with `recurse => true`;
-`internal/units/file/file_validate.go`, D-48).
-Of the metaparameters, `loglevel` is accepted on any type only as `notice`,
-Puppet's default, which `concat` copies onto every `File` it generates; any
-other level is refused like any unimplemented attribute (`internal/ral/check.go`).
-A `Concat_file` that `require`s or `subscribe`s `File[<path>]` when the
-catalog's `File` at that path is titled otherwise gets a dependency cycle, in
-Ruby and in voxagent alike: the generated `before` is skipped only for a
-relationship naming the `File` by its own ref, compared as written
-(`additional_resource_generator.rb:182-191`). Unmeasured.
-`exec` is bounded to `command`, `path`, `cwd`, `returns`, `refreshonly`, `creates`,
-`onlyif`, `unless`, `logoutput`. `notify` is bounded to `message`. `package` is bounded to
-`ensure`, `name` and `provider` — three of the twenty-three attributes the type
-declares, with `provider` recognised **only** so that a value other than `dnf`
-can be refused. `service` is bounded to `ensure`, `enable`, `hasstatus`,
-`hasrestart`, `start`, `stop`, `status`, `restart`, `name` and `provider`.
-Everything else — and every resource type other than `notify`, `file`, `exec`,
-`package` and `service`, and `user`, `group`, `concat_file`, `concat_fragment`, `sysctl`, `ssh_config`, `sshd_config`, `sshd_config_subsystem` and `augeas` where they are native (below, and D-91) —
-is a pre-flight refusal or a resource for the extension host, not a silent omission,
-and the refusal covers the **whole catalog**: a partially applied node produces
-state-diff divergences that are artifacts of coverage rather than defects.
-
-`file` and `package` bound an attribute's **values**: `file` bounds `source`,
-`recurse` and `purge`, `package` bounds `ensure` and `provider`.
-Pre-flight hands a non-string value to the bound as its string form, and splits
-a list into elements only for an attribute the provider declares list-valued
-(`ral.ListValued`) -- `file`'s `source` alone -- so a list anywhere else is
-still judged whole and refused.
-
-For `package`, `ensure` is `present`, its alias `installed`, `absent`, `latest`, or a concrete
-version string; `purged`, `disabled`, `held` and every version range are
-refusals (D-13). This is why `Gap` carries a `Value` and pre-flight grew a third
-message form, `Package[foo]: ensure => "purged" is not implemented`: `file`'s
-`ensure` has four values and catching a fifth at apply time is nearly harmless,
-where `package`'s carries an open-ended version string and an apply-time refusal
-would apply the rest of the catalog before noticing. `file`'s apply-time
-`default:` branch is deliberately unchanged — changing a shipped provider with
-no consumer asking for it is a behaviour change nobody requested.
-
-### `service`
-
-`service` is the systemd provider and nothing else. `provider` is recognised
-only so another value can be refused; `enable => mask` is refused at pre-flight,
-and `manual` and `delayed` fail Puppet's own feature check for systemd.
-`hasstatus` and `hasrestart` are accepted and have no effect, because the
-systemd provider always has a status and a restart command (`systemd.rb:188,201`).
-
-- **The enable change rides inside ensure's.** When `ensure` changes and `enable`
-  is out of sync, `enable` is synced inside the `ensure` change and gets no event
-  of its own (`type/service.rb:120-136`, `resource_harness.rb:84-99`); under noop
-  it is not reported at all. When `ensure` is in sync or unmanaged, `enable` is
-  its own change.
-- **`InvalidateRefreshes`.** A change that starts the service sets
-  `Change.InvalidateRefreshes`, which drops the resource's own pending refresh:
-  the start event carries `invalidate_refreshes` (`type/service.rb:109`), so a
-  service started this run is not then restarted by its notifiers
-  (`event_manager.rb:82`).
-- **The init check is `Validate`'s, not `Prefetch`'s.** A host whose PID 1 is not
-  systemd refuses the whole catalog (D-22), because a prefetch failure would let
-  every other type apply first.
-- **Custom commands.** A `start`, `stop`, `status` or `restart` given as a string,
-  a single-element array or a scalar runs through `/bin/sh -c`, as Puppet's does
-  (`util/execution.rb:360,391`): the catalog author's shell, as `exec`'s command
-  is. A multi-element array runs as direct argv. Every built-in command is argv
-  with `--` before the unit name, never a shell.
-- **Failures carry the journal.** A failed start, stop or restart appends
-  `journalctl`'s last lines, run as argv under `env LANG=C LC_ALL=C`. See D-18,
-  D-19 and D-21 for where this differs from Puppet.
-
-D-10, D-18, D-19, D-20, D-21 and D-22 are `service`'s; D-23, which it shared with `exec`, is retired. `task dev:report-diff-systemd`
-compares voxagent's report with Ruby's in a container with systemd as PID 1.
-
-Declaring an attribute is a promise to read it. `withpath` was removed from
-`notify` for exactly this reason rather than implemented: pre-flight accepted a
-catalog setting it, the run reported success, and the attribute had no effect.
-
-The refusal list doubles as the porting roadmap: run `voxagent apply` against a
-fleet's catalogs and the gaps it prints, ranked by frequency, are the measured
-answer to "what should Tier 1 cover next". With the extension host, the same
-ranking is the `N <type> resource(s) applied via extension host` lines. On the
-SIMP gate's catalog (737 resources), measured 2026-11-19 before `user` and
-`group` went native, 246 resources went to the host or would have been
-refused without it: 210 of module types, which voxagent can only delegate, and
-36 of core types applied through the host (`augeas` 18, `mount` 5, `cron` 4,
-`group` 4, `user` 3, `host` 1, `tidy` 1). By type, all 246: `sysctl` 63,
-`ssh_config` 49, `sshd_config` 36, `concat_fragment` 20, `ini_setting` 20,
-`augeas` 18, `concat_file` 6, `mount` 5, `anchor`, `cron`, `group` and
-`reboot_notify` 4 each, `user` 3, `kernel_parameter` 2, and one each of
-`host`, `init_ulimit`, `runlevel`, `selinux_state`, `simp_file_line`,
-`sshd_config_subsystem`, `svckill` and `tidy`. 169 of the 246 (69%) are
-Augeas-backed: `sysctl`, `ssh_config`, `sshd_config`, `augeas`,
-`kernel_parameter` and `sshd_config_subsystem`. With `user` and `group` native
-there, 239 remain. `concat` is now native there too (concat 9.1.0): the SIMP gate
-asserts the 9.1.0 fingerprint and fails if either type is named in
-`applied via extension host`, but prints no count. The 26 concat resources
-(20 `concat_fragment`, 6 `concat_file`) leaving the host list is derived from
-the by-type list above, so 213 remain (239 - 26). `sysctl`, `ssh_config`,
-`sshd_config` and `sshd_config_subsystem` are native there too (augeasproviders
-core 4.2.0, sysctl 4.1.0, ssh 7.0.0, openvox's libaugeas 1.15.0): the SIMP gate
-asserts the twelve fingerprints of these four types (fifteen once `augeas`'s three files are added, below) and fails if any of the four is named in
-`applied via extension host`, but prints no count. The 149 resources leaving
-the host list (63 `sysctl`, 49 `ssh_config`, 36 `sshd_config`, 1
-`sshd_config_subsystem`) are counted from the catalog the gate compiles, by
-`type`, and the 64 that remain (213 - 149) are derived, not measured: `ini_setting` 20,
-`augeas` 18, `mount` 5, `anchor`, `cron` and `reboot_notify` 4 each,
-`kernel_parameter` 2, and one each of `host`, `init_ulimit`, `runlevel`,
-`selinux_state`, `simp_file_line`, `svckill` and `tidy`. `augeas` is native there
-too (augeas_core 2.1.0): the gate adds it to the fingerprint and `applied via
-extension host` assertions and prints no count. Its 18 resources leaving the
-host list are counted from the same catalog by `type`, so 46 remain (64 - 18,
-derived): `ini_setting` 20, `mount` 5, `anchor`, `cron` and `reboot_notify` 4
-each, `kernel_parameter` 2, and one each of the seven singletons above. `cron` is
-native there too (cron_core 2.1.0): the SIMP gate checks the three fingerprints
-and fails if `cron` is named in `applied via extension host`, and prints no
-count. Its 4 resources leaving the host list are counted from the same catalog by
-`type`, so 42 remain (46 - 4, derived): `ini_setting` 20, `mount` 5, `anchor` and
-`reboot_notify` 4 each, `kernel_parameter` 2, and one each of the seven
-singletons. The Augeas family's remainder is `kernel_parameter` (2 of the 42), which stays
-with the extension host by decision (2026-11-22): it saves `/etc/default/grub`
-and then runs `grub2-mkconfig --update-bls-cmdline`, which rewrites the boot
-configuration, and real `grub2-mkconfig` cannot run in the rootless gate
-containers (`grub2-probe` fails on fuse-overlayfs), so Ruby's behaviour was
-measured only against a shim that prints a stub cfg
-(`2026-11-21-augeas-measurements` M36–M41). A native port could be gated only
-on the `/etc/default/grub` edit and the command line, never on the boot
-configuration it produces; for two resources that is not worth an ungated
-boot-config writer. Revisit with a VM gate that runs real grub.
-
-`host` and `mount` are native there too (host_core and mount_core 2.1.0; D-98):
-the SIMP gate checks their fingerprints, and `sshkey`'s with them, and fails if
-`host`, `mount`, `sshkey` or `ssh_authorized_key` is named in `applied via
-extension host`. Task 25's SIMP run re-measured the host list from the gate's
-`applied via extension host` lines: 36 resources remain (42 - 1 `host` - 5
-`mount`), not the derived 42. They are `ini_setting` 20, `anchor` and
-`reboot_notify` 4 each, `kernel_parameter` 2, and one each of `init_ulimit`,
-`runlevel`, `selinux_state`, `simp_file_line`, `svckill` and `tidy` (`tidy` is a
-core type, the other nine are module types). Against the first count of 246,
-that is 210 fewer: 63 `sysctl`, 49 `ssh_config`, 36 `sshd_config`, 26 concat, 18
-`augeas`, 7 `user` and `group`, 4 `cron`, 6 `host` and `mount`, 1
-`sshd_config_subsystem`.
-
-### `user` and `group`
-
-`user.User` (`internal/units/user/user.go`, `user_params.go`, `user_apply.go`) and
-`group.Group` (`internal/units/group/group.go`) reproduce openvox 8.33.0's `useradd` and
-`groupadd` providers, measured on CentOS Stream 10 (M1–M45, 2026-11-19,
-openvox 8.33.0).
-
-- **Routing.** The user and group units' `Route`s
-  (`internal/units/user/manifest.go`, `internal/units/group/manifest.go`) are
-  asked once per run by `unit.RouteAll`, which `nativeProviders`
-  (`cmd/voxagent/apply.go`), the one place natives are listed for `apply` and
-  `agent`, calls. Each type
-  needs the host to match its own manifest's `Platforms` (`ral.OnPlatform`;
-  today both list RHEL family: `ID` `rhel`, or `rhel` among `ID_LIKE`'s
-  words, not Fedora, with `VERSION_ID`'s major at least 10), and Puppet's
-  libuser feature off (`/usr/sbin/luseradd` and `/usr/sbin/lgroupadd` not both
-  executable). os-release is read from `/etc/os-release`, falling back to
-  `/usr/lib/os-release` only when the former is missing (`ENOENT`, including a
-  dangling symlink; `readOSRelease` in `internal/ral/platform.go`); any other
-  error, such as `EACCES`, is not masked. An unreadable or unparsable os-release delegates. Then each type
-  is decided on its own: it is delegated when any resource of it names a
-  `provider` other than `useradd`/`groupadd`, and `User` also when any `User`'s
-  `purge_ssh_keys` is not `false`, `"false"` or `[]`, because purging generates
-  `Ssh_authorized_key` resources only the host can apply. A type is also
-  delegated when any resource of it has a value shape the native parser does
-  not implement (`unimplementedValue`: a `gid` array, a non-string `comment`,
-  a number among `members`); a value Ruby itself refuses stays native and is
-  refused with Ruby's message. Ruby's attribute set
-  depends on the host's provider features, so elsewhere the host is the oracle
-  (D-87).
-- **Attributes.** Every attribute the Ruby types declare is accepted, so
-  pre-flight never refuses one as unknown. Those whose provider feature is
-  missing (`user`'s `roles`, `auths`, `profiles`, `keys`, `project`,
-  `attributes`, `salt`, `iterations`, `loginclass`, `ia_load_module` and
-  `forcelocal`; `group`'s `attributes`, `ia_load_module` and `forcelocal`) are
-  dropped as
-  `type.rb:788-791` drops them, each with Ruby's `Provider <p> does not support
-  features <f>; not managing attribute <a>` debug line, logged while the
-  catalog is converted (`ral.ConversionDebugging`). Values are validated before
-  anything is applied, with Ruby's texts, and numeric strings are read with
-  Ruby's `Integer()` (`'0010'` is uid 8).
-- **State.** Accounts are read through libc NSS with cgo
-  (`internal/lib/nameservice/nss_linux.go`, the only cgo of the user and group units): `getpwnam_r`,
-  `getgrnam_r`, `getgrgid_r`, `getspnam_r`, `getgrouplist`, and a group
-  enumeration under a process-wide mutex. Buffers grow on `ERANGE` up to 1 MiB,
-  then the property fails. As non-root `getspnam_r` is refused and the shadow
-  fields read as absent, as Ruby's nil.
-- **Commands.** shadow-utils, found on Ruby's default `PATH` order
-  (`shadowPath`), run as argv with `LANG=C LC_ALL=C` through the same path as
-  every other provider's commands. When any property is Sensitive (password
-  always is), every create command is logged and reported as `[redacted]`; on
-  modify only a Sensitive property's own command. The changed password is written to `chpasswd` on stdin; the create path
-  sets it with `usermod -p`, as Ruby does (I-34). A name beginning with `-`
-  reaches shadow-utils as an option, as under Ruby (I-33).
-- **Messages.** Every `user` change but `ensure`, and `group`'s `members`
-  change, sets `Change.DisplayVerbatim`, which governs the failure line only
-  (the provider boundary, above).
-
-Unit tests use a fake command runner and a fake NSS seam
-(`internal/units/user/user_apply_test.go`, `internal/units/group/group_test.go`); the root-only
-`nss_linux_test.go` reads real entries it creates. G5
-(`tests/spine/report-diff-container.sh`) compares the measured cases against
-Ruby, live and, from fresh containers, under `--noop`; the extension gate holds the mixed-routing case, and the SIMP gate
-applies SIMP's three users and four groups natively. D-87 and D-88 are theirs.
-
-### `cron` and the ParsedFile engine
-
-`croncore.Cron` (`internal/units/cron_core/`: `cron.go` the identity and attribute set, `cron_params.go` validation and
-munge, `cron_grammar.go` the crontab grammar, `cron_apply.go` the run) reproduces the `crontab` provider of
-puppetlabs-cron_core, releases 1.3.0 (the one openvox 8.33.0 vendors) and 2.1.0 (the one SIMP pins), measured with
-cronie 1.7.0-15.el10 on openvox 8.33.0 (M1–M14, 2026-11-22). Line references in the code are `type:<n>`
-(`puppet/type/cron.rb`), `prov:<n>` (`provider/cron/crontab.rb`), `cft:<n>` (`provider/cron/filetype.rb`'s crontab
-filetype), `uft:<n>` (`util/filetype.rb`'s flat filetype), `fp:<n>` (openvox's `util/fileparsing.rb`) and `pf:<n>`
-(`provider/parsedfile.rb`).
-
-- **Routing.** D-94. `Route` (`internal/units/cron_core/manifest.go`) delegates with the first failing condition's reason:
-  platform, `crontab` on Puppet's `PATH` (`command.RubyWhich`), `provider`, plugin tree (`pluginRelease`), purge
-  (`purgesCron`), value shapes (`parseCron`'s `rubyvalue.UnimplementedValue`). The manifest requires `group`, whose
-  `ForeignProvider` it calls. A tree with none of the three files is release 1.3.0, which Ruby loads from openvox
-  (M10); a tree with any must match a release in full. The release's `Version` goes to the provider and selects the
-  rows below.
-- **Releases.** Every other rule holds for both. `release130` in `cron_params.go` is the switch.
-
-  | Point | 1.3.0 | 2.1.0 |
-  |---|---|---|
-  | `numfix` (`cronParser.numfix`) | an Integer, or a String with a digits-only line | also any String `rubyvalue.Integer` accepts, an out-of-int64 literal included (`ErrRange`): `"0x1f"`, `"1_000"`, `" 1"` |
-  | `limitcheck`'s `to_i` | the decimal value | Ruby's `String#to_i` (`rubyvalue.ToI`): `"0x1f"` is 0, `" 1"` is 1 |
-  | non-String, non-Integer time field (`true`, `5.5`, `nil`) | delegated (D-94) | refused: `Munging failed for value true in class weekday: true is not a valid weekday`; a Hash or a whole Float ≥ 2^53 is delegated in both releases |
-  | `environment` validate | a non-String is delegated | a non-String is refused: `Invalid environment setting 5` |
-  | job with no environment lines (`collapseNames`) | `absent`, so `environment => []` is never in sync and every run logs `defined 'environment' as ` | `[]`, in sync |
-
-  Refusal texts quote a value as Ruby's `inspect` does under the agent's `default_external`
-  (`rubyvalue.ExternalEncoding`, `rubyvalue.InspectIn`): `"é"` under US-ASCII, raw under UTF-8. The tail of a
-  time-field message shows the value bare (`rawTail`), as Ruby does (M12). A Sensitive attribute shows `[redacted]`.
-- **The engine.** `internal/lib/parsedfile` is a library with no knowledge of catalogs or units; cron is its first
-  consumer. Its FileParsing layer (`grammar.go`, `split.go`) ports `fileparsing.rb`: a `Grammar` of `LineType`s turns
-  text into `Record`s and back, and is pinned by `testdata/vectors.json`, whose expected values come from running the
-  real Ruby (`testdata/fileparsing_vectors.rb`) and which `vectors_test.go` and a Ruby parity test both read. Its
-  ParsedFile layer (`parsedfile.go`) ports `parsedfile.rb`: a `Class` holds what a provider overrides (grammar,
-  default target, filetype factory, `PrefetchHook`, `ResourceForRecord`, `Adopt`, `Targets`, `ToFile`, header) and a
-  `Run` holds one run's records, modified targets and backup marks (D-96): `Prefetch` reads every target and binds
-  records to resources, `MarkModified` and `Flush` write the modified targets in sorted order, backing each up once.
-  Its filetypes (`filetype.go`) are `NewCrontab` (`crontab -l` and `crontab -`) and `NewFlat` (a file written through a
-  temporary file; built and tested for the next consumer, which cron does not use). Patterns are RE2: never write
-  `\s` or `\S` in one, as Ruby's `\s` includes `\v` and RE2's does not, but `parsedfile.Space` and `NotSpace`; and a
-  grammar pattern sees one line, so its anchors are Ruby's line anchors, while a type-level pattern run on a whole
-  value is compiled `(?m)` (`TestNoRubyWhitespaceEscapes` scans cron_core's sources for the first mistake).
-- **Reading.** Targets are the default target (`$USER` when set, even empty, else `root`: `unit.Env.LookupEnv` tells
-  the two apart, where `Environ` does not), every `target` a resource gives, and every file in `/var/spool/cron` the
-  effective uid can write (`withSpoolTargets`). Each target's user is resolved by `nameservice.PosixUID`, which is
-  `Puppet::Util.uid` (`get_posix_value`) over `User`, `UserByID` and `AllUsers`, so a user an earlier resource created
-  has a uid (M11). A resource with neither `user` nor `target` gets the invoker's passwd name, looked up once through
-  `UserByID` (`typeTargetDefault`). Prefetch happens at the first `Cron` the walk reaches (`PrefetchAtTurn`, M11). A
-  parse error, a spool directory that cannot be listed and a failed hook fail the prefetch, and with it every `Cron`. A
-  target whose read fails (`parsedfile.ReadError`: `crontab -l` failing, or output past the D-80 cap) is remembered, and
-  each flush of it fails with `Failed to read <t>'s records when prefetching them` (M1).
-- **Running.** `Apply` is `resource_harness.rb`'s order: `ensure` first, and when it changes nothing else is synced;
-  otherwise each out-of-sync property in type order, with Ruby's `defined`, `undefined` and `changed` messages
-  (`DisplayVerbatim`). A resource with a change is then flushed inside `Apply`, and a flush failure is a
-  `ral.FlushError` after the changes (I-35). Under `--noop` nothing is stored or written. A create without `command`
-  logs `no command specified, cannot create`, reports `created` and writes nothing for the job.
-- **Log order (no new row).** The flush runs inside `Apply`, so a changed resource's `Flushing cron provider target <t>`
-  debug line, and a filetype's pre-logged `err` (D-97), come before its change notices, where Ruby logs the notice
-  first (M7). That falls under the standing policy that log order relative to a resource's own lines is not
-  reproduced (`internal/transaction/transaction.go`; the gates compare a multiset, `tests/spine/allowlist.json`);
-  the content is Ruby's.
-- **Kept from Ruby.** Parity is the contract, so these stay; each was run on the oracle with real cronie (M9, M12, M13).
-  `crontab -` validates what it is given, so several values Ruby sends never reach a crontab.
-  1. The exit status and output of `crontab -` are not checked: a refused install reports success (`created` or the
-     change) on every run, and the refused record stays in the run, so every later flush of that target is refused too.
-  2. A create without `command` logs its `err`, reports `created`, and rewrites the target without the job.
-  3. `# Puppet Name: j2   ` names the record `j2   `, which never matches `Cron[j2]`, so a second `j2` is added.
-  4. Environment lines migrate: after a named job with no environment lines they attach to the next job or vanish;
-     a `# Puppet Name:` with no job is dropped; unnamed comments and blanks between a name and its job move above the
-     name line.
-  5. Adoption is silent and the record stays unnamed.
-  6. Under 1.3.0, `environment => []` on a job with none is never in sync.
-  7. `user` ≠ `target`: the job is removed from the old target and written nowhere.
-  8. Each changed resource rewrites its whole target.
-  9. `# HEADER` is stripped mid-line on read, splicing lines.
-  10. `environment => 'absent'` sends a literal `absent` line, which cronie refuses (`bad minute`), so every run reports
-      `created`; a crontab edited by hand to hold it fails every `Cron` on the next prefetch.
-  11. A time field `[]` sends an empty field and `command => '  '` an empty command; cronie refuses both.
-  12. `'05'` and `'5'` differ; month `'___'` munges to `0`, and ranges and steps are not range-checked: cronie refuses
-      `0`, `5-70` and `*/0`.
-  13. The `TZ=` line is hoisted above the header, removed at its first literal occurrence.
-  14. With duplicate names the later record wins.
-  15. One unparsable line in any read crontab, an unrelated spool file included, fails every `Cron`, and its line
-      number is one high (cronie refuses such a line at install, so it comes from a direct file write).
-  16. `$USER` picks the default target.
-  17. Under 2.1.0 a time value `Integer()` accepts but cron does not mean is kept verbatim: `minute => '0x1f'` is
-      refused by cronie, and `' 1'` is written as ` 1`, reads back as `['1']` and is never in sync (M12).
-  18. A line break in the name, `command`, an `environment` entry, `special` or a time-field element is written
-      verbatim and adds crontab lines (I-38: the type's patterns are `(?m)`, so one matching line passes the value).
-- **Tests and gates.** `internal/units/cron_core/*_test.go` (the Ruby vectors in `cron_params_test.go`, Ruby's
-  messages in `cron_apply_test.go`, a fake `crontab` throughout), `internal/lib/parsedfile/*_test.go`, and the
-  fixture copies of the real Ruby under `internal/units/cron_core/testdata`, whose digests `TestFixturesMatchManifest`
-  holds to the manifest. G5's cron half and the SIMP gate are below and in "The SIMP gate".
-
-### `host`
-
-`hostcore.Host` (`internal/units/host_core/`: `host.go` the identity and attribute set, `host_params.go` validation and
-munge, `host_grammar.go` the `/etc/hosts` grammar, `host_apply.go` the run) reproduces the `parsed` provider of
-puppetlabs-host_core, measured on openvox 8.34.0 (M4–M6, M16, 2026-11-23). It is the ParsedFile engine's second
-consumer and the first of the flat filetype (`parsedfile.NewFlat`). Line references in the code are `type:<n>` and
-`ht:<n>` (`puppet/type/host.rb`), `hp:<n>` (`provider/host/parsed.rb`), `pf:<n>` (`provider/parsedfile.rb`), `list:`
-and `olist:` (`property/list.rb`, `property/ordered_list.rb`).
-
-- **Routing.** `Route` (`internal/units/host_core/manifest.go`) delegates with the first failing condition's reason:
-  platform (the unit's `Platforms`, `ral.OnPlatform`), `/etc/hosts` existing, following symlinks (`ral.Platform.FileExists`, the
-  provider's `confine exists:`), `provider` (`group.ForeignProvider`), plugin tree (`checkTree`), purge
-  (`unit.ResourcesPurge`), value shapes (`parseHost`'s `rubyvalue.UnimplementedValue`). Without `/etc/hosts` Ruby never
-  reaches the provider: `target`'s default calls `ancestors` on a nil default provider and the whole run fails with no
-  report (M16), so delegating hands the host that outcome unchanged.
-- **The one release.** openvox 8.34.0 vendors host_core 1.3.0, and SIMP pins 2.1.0, whose `puppet/type/host.rb` and
-  `puppet/provider/host/parsed.rb` are the same bytes, so `Manifest` lists one release, `1.3.0`, with both digests. A
-  tree with neither file is the vendored release; a tree with either must match both; and `puppet/provider/host/` may
-  hold no `.rb` but `parsed.rb` (`another host provider in libdir`).
-- **Validation.** Ruby's texts, each a whole-run refusal at catalog conversion (`host_params.go`, M6): `Invalid IP
-  address <inspect>` (`validV4`, or type:22's IPv6 pattern, `v6Pattern`; a line break fails either), `Invalid host name` (`splitDots` is `String#split('.')`),
-  `Hostname cannot include newline` (the ref holds the raw newline), `Host aliases cannot include whitespace`, `Host
-  aliases cannot be an empty string. Use an empty array to delete all host_aliases ` (trailing space kept), `Comment
-  cannot include newline`. A `host_aliases` given as one string is one element: `'a  b'` is refused, `'single'` is one
-  alias (M6). A line break in `ip`, the name, an alias or the comment is refused, so no host value writes one: I-39's
-  host cases are these refusals (M13).
-- **Reading and writing.** The target is `/etc/hosts` unless `target` says otherwise, read and written through
-  `parsedfile.NewFlat` with `file.BucketBackup` and `file.RelabelHook` (`host_apply.go:Prefetch`). Comment, blank and
-  `incomplete` lines are kept byte for byte; `incomplete` matches every line that is no host record (`incompleteMatcher`:
-  Ruby's lookahead can never match). An existing target keeps its mode, owner and inode; a missing one is created 0600
-  with no backup (M4). Each write backs the target up once per run (M5). A create without `ip` logs `created`, then the
-  flush fails `ip is a required attribute for hosts` (`hostToLine`) and the target is not written (M6).
-- **Running.** As cron's: `ensure` first, then each out-of-sync property, with Ruby's messages (`ip changed`,
-  `host_aliases changed <is> to '<should>'`, `defined 'host_aliases' as`, `comment changed '' to`); a changed resource
-  is flushed inside `Apply`. The run is `ral.ParsedFileRun` (`internal/ral/parsedfile_provider.go`, shared with
-  sshkey); `host_apply.go` supplies host's properties, retrieve, change text and setter as `hostEnsurable`.
-- **Kept from Ruby.** Parity is the contract, so these stay (spec §8 items 1–4):
-  1. Every flush rewrites the whole target with a fresh header, so one changed host rewrites `/etc/hosts` even when its
-     line is the only change. Parsed lines are re-serialised (fields tab-separated, aliases space-joined), and a
-     hand-written `# HEADER…` line is dropped (M4).
-  2. `host_aliases => []` on a host with aliases writes `ip\tname\t` (and `\t\t# c` with a comment): `""` is not
-     absent to `to_line` (`hostToLine`). The rerun is in sync; the reread aliases are absent, so a later non-empty
-     list reports `defined 'host_aliases' as '…'` (M6).
-  3. A comment of `''` and no comment are the same: `normalizeHost` turns an absent comment into `""`, and `# ` alone
-     at a line's end parses to `""`.
-  4. Names split on `.` with trailing empty parts dropped, so `a.` is valid and written `192.0.2.1\ta.` (M6).
-- **Root writes through a symlinked target.** The flat filetype copies the new text over the target with
-  `O_WRONLY|O_CREATE|O_TRUNC`, following a symlink there, as Ruby's `FileUtils.cp` does (`parsedfile/filetype.go`,
-  `flat.Write`; spec §11). With the default target only root controls the path. A `target` in a directory another
-  user can write lets that user point root's write at any file, as in Ruby; nothing refuses it.
-- **Tests and gates.** `internal/units/host_core/*_test.go` (Ruby's texts in `host_params_test.go`, the shared grammar
-  vectors in `host_grammar_test.go`, the run in `host_apply_test.go`, routing in `route_test.go`) and "G5's host half"
-  above.
-
-### `sshkey`
-
-`sshkeyscore.Sshkey` (`internal/units/sshkeys_core/`: `sshkey.go` the identity and attribute set, `sshkey_params.go`
-validation and munge, `sshkey_grammar.go` the known_hosts grammar, `sshkey_apply.go` the run) reproduces the `parsed`
-provider of puppetlabs-sshkeys_core, measured on openvox 8.34.0 (M3, M4, M7, M13, M17, 2026-11-23). Like `host` it
-reads and writes through the flat filetype and runs on `ral.ParsedFileRun` (`internal/ral/parsedfile_provider.go`),
-supplying its properties, retrieve, change text and setter as `sshkeyEnsurable`. Line references in the code are
-`type:<n>` (`puppet/type/sshkey.rb`), `sp:<n>` (`provider/sshkey/parsed.rb`) and `pf:<n>` (`provider/parsedfile.rb`).
-
-- **Routing.** `Route` (`internal/units/sshkeys_core/manifest.go`) delegates with the first failing condition's reason:
-  platform (the unit's `Platforms`, `ral.OnPlatform`; the type has no confine), `provider` (`group.ForeignProvider`), plugin tree
-  (`typeRelease`), purge (`unit.ResourcesPurge`), value shapes (`parseSshkey`'s `rubyvalue.UnimplementedValue`,
-  under the release found).
-- **Two releases.** openvox 8.34.0 vendors sshkeys_core 2.5.0; SIMP pins 3.1.0. Their providers are the same bytes and
-  their `sshkey` types differ only in `key`'s validation, which 3.1.0 adds (`Key must not contain whitespace:
-  <inspect>`, a line break included). A tree with neither of `puppet/type/sshkey.rb` and
-  `puppet/provider/sshkey/parsed.rb` is the vendored release; a tree with either must match one release's two digests
-  (`unit.MatchFiles`), and `puppet/provider/sshkey/` may hold no `.rb` but `parsed.rb` (`another sshkey provider in
-  libdir`). The release found is passed to the provider and selects only that check.
-- **Identity.** The title is `<name>@<munged type>`, so `sshkey { 'foo': type => rsa }` reports as
-  `Sshkey[foo@ssh-rsa]`, and a title `bar@rsa` gives name `bar`, type `ssh-rsa` (M7). `type`'s aliases (`rsa`, `dsa`,
-  `ed25519`, `ecdsa-sk`, `ed25519-sk`) munge to the full names. `Sshkey` implements `ral.Retitling`
-  (`PuppetRef`, `Unresolvable`) and `ral.Aliasing` so reports and relationships name the resource as Ruby does.
-- **Validation.** Ruby's texts, each a whole-run refusal at catalog conversion naming the resource as Ruby has built
-  it so far (`Sshkey[@ssh-rsa]` for a name failure, `Sshkey[@]` for a type failure; `sshkey_params.go`, M7):
-  `Resourcename cannot include whitespaces`, `No comma in resourcename allowed. If you want to specify aliases use the
-  host_aliases property`, `Aliases cannot include whitespace`, `Aliases must be provided as an array, not a
-  comma-separated list`, `Invalid value "<v>". Valid values are ssh-dss, …` and, under 3.1.0 only, the `key` text
-  above. A `host_aliases` given as one string is one alias. A resource with no `type` is not refused: it is
-  `Sshkey[<name>@]`, logs `created`, then the flush fails `Field 'type' is required` and the target is not written; with
-  `ensure => absent` it finds no record, logs `Nothing to manage`, and the line stays (M7, M17).
-- **Reading and writing.** The target is `/etc/ssh/ssh_known_hosts` unless `target` says otherwise, read and written
-  through `parsedfile.NewFlat` with `file.BucketBackup` and `file.RelabelHook`. Comment and blank lines are kept. A
-  new target is `0644` less the umask (`newFileMode`; M4, M17); an existing one keeps its mode, owner and inode and
-  gains the header. A missing directory is not created: `Puppet::Util::FileType::FileTypeFlat could not write <t>: No
-  such file or directory @ rb_sysopen - <t>`, then `Could not evaluate: <same>` on the resource (M4).
-- **Running.** `ensure`, then `key`, `host_aliases`, `target` (`sshkeyProperties`), with Ruby's messages (`key changed
-  'A' to 'B'`, `host_aliases changed ['a1', 'a2'] to ['a2', 'a1']`). `host_aliases` is in sync only element by element
-  and in order, so a reorder is a change; `[]` writes the bare name and is in sync against a line with no aliases.
-- **Kept from Ruby.** Parity is the contract, so these stay (spec §8 items 1, 5, 6 and 16):
-  1. Every flush rewrites the whole target with a fresh header (as `host`).
-  2. A line with leading whitespace aborts every `Sshkey`'s prefetch: `Could not prefetch sshkey provider 'parsed':
-     undefined method `split' for :absent:Symbol` (ruby 3.2.11's text, `absentNameError`), and each `Sshkey` of the run
-     is `Skipping because provider prefetch failed`; other types still apply and the file is untouched (M7).
-  3. The key field runs to the end of the line, so it swallows a trailing comment: a manifest `key` that includes the
-     comment is in sync, and setting the bare key drops the comment from the file. Any write re-serialises every
-     record with single spaces, so tabs between fields become spaces on every line (M7).
-  4. Under 2.5.0 a `key` holding whitespace or a line break is written verbatim (`foo ssh-rsa a b`). A line break adds
-     lines to a root-read known_hosts: the next prefetch parses the injected text as records of their own with no
-     error, and the resource is re-applied, appending the lines again, on every run (M13, I-39 in
-     [improvements.md](improvements.md)). 3.1.0 refuses both.
-- **Root writes through a user's target.** The write follows a symlink at the target, as `host`'s does (`flat.Write`;
-  spec §11). With the default target only root controls the path. An `sshkey` `target` in a user's home, or any
-  directory another user can write, lets that user point root's write at any file by replacing the target with a
-  symlink, as in Ruby; nothing refuses it.
-- **Tests and gates.** `internal/units/sshkeys_core/*_test.go` (Ruby's texts in `sshkey_params_test.go`, the shared
-  grammar vectors and the leading-whitespace abort in `sshkey_grammar_test.go`, the run in `sshkey_apply_test.go`,
-  routing and both releases in `route_test.go`) and "G5's sshkey half" above.
-
-### `ssh_authorized_key`
-
-`sshkeyscore.Sak` (`internal/units/sshkeys_core/`: `sak.go` the identity and attribute set, `sak_params.go` validation
-and munge, `sak_grammar.go` the authorized_keys grammar, `sak_apply.go` the prefetch, apply and flush, `sak_file.go`
-the filetype that writes as the key's user) reproduces the `parsed` provider of puppetlabs-sshkeys_core, measured on
-openvox 8.34.0 (M4, M5, M8, M13, M17, 2026-11-23). It runs on `ral.ParsedFileRun`, as `sshkey` does, but flushes its
-own targets (below) and performs its file acts as the key's user through the `voxagent asuser` helper ("Privilege
-drop" below). Line references in the code are `kt:<n>` (`puppet/type/ssh_authorized_key.rb`), `kp:<n>`
-(`provider/ssh_authorized_key/parsed.rb`) and `pf:<n>` (`provider/parsedfile.rb`).
-
-- **Routing.** `routeSakType` (`internal/units/sshkeys_core/manifest.go`) delegates with the first failing condition's
-  reason, decided apart from `sshkey`'s: platform (the unit's `Platforms`, `ral.OnPlatform`), `provider` (`group.ForeignProvider`),
-  plugin tree (`typeRelease` on the type's own two files, `another ssh_authorized_key provider in libdir`), a
-  `Resources` purge of `ssh_authorized_key`, any `User` whose `purge_ssh_keys` generates keys
-  (`user.PurgeKeepsNative`: the generated resources would edit the same files from the extension host), then value
-  shapes (`parseSak`'s `rubyvalue.UnimplementedValue`).
-- **Two releases.** 2.5.0 (vendored) and 3.1.0 (SIMP) differ in digest only: the type's hunks are hash shorthand, a
-  comment and a dropped `.freeze`, and the providers are the same bytes, so the release found changes no behaviour.
-- **Identity and validation.** The name is the title unless `name` is set; a refusal names the resource by its title
-  either way (`Ssh_authorized_key[t]` for title `t`, name `n`; M17). Ruby's texts, each a whole-run refusal at
-  catalog conversion (`sak_params.go`, spec §4.3): `Invalid value "<v>". Valid values are true, false, yes, no.`
-  (`drop_privileges`), the `type` list of 14 values with its aliases, `Key must not contain whitespace: <value>`
-  (raw), `Option <v> is not valid. …`, and `Attribute 'user' or 'target' is mandatory` when neither is set.
-- **Target.** Unset or `absent`, the target is `~<user>/.ssh/authorized_keys` from the passwd entry, looked up when
-  asked, so a `User` created earlier in the run counts; with no such user it is nil and Ruby logs debug `The required
-  user is not yet present on the system` at every ask (spec §6.3; never count it). `User[<user>]` is autorequired
-  when managed.
-- **Reading.** Comment and blank lines are kept. A `parsed` line is `[options] type key [name]`; a `key_v1` line is
-  `[options] bits exponent modulus [name]`; anything else fails the prefetch `Could not parse line "<line>" (file:
-  <target>, line: <n>)` and every `Ssh_authorized_key` of the run is `Skipping because provider prefetch failed`.
-  A `parsed` line with no name is named `<target>:unnamed-<n>` per target in file order (debug `generating name for
-  on-disk ssh_authorized_key <key>: <name>`), and a resource of that title manages it. Reads and the backup run as
-  root in the parent, following symlinks, as Ruby's prefetch does (I-40 in [improvements.md](improvements.md)). A
-  record is bound by name across every target the run reads: the default and the catalog's `ssh_authorized_key`
-  targets.
-- **Running.** `ensure`, `type`, `key`, `user`, `target`, `options` (`sakProperties`), with Ruby's messages (`options
-  changed ['absent'] to ['no-pty', 'command="x y"']`, `type changed 'ssh-rsa' to 'ssh-ed25519'`, `key changed 'K1' to
-  'K2'`, `target changed '<old>' to '<new>'`); all changes of one resource are one flush. `user` is always in sync.
-  A `Sensitive` `key` is written in clear and shown `[redacted]` in messages and events (D-78).
-- **Flush** (`Sak.flush`, `kp:69-103`, spec §6.3), in this order: no `user` fails `Cannot write SSH authorized keys
-  without user`; a user with no uid fails `User '<user>' does not exist`; the target (after a move, the new one) is
-  backed up in the root parent, so a refused write still leaves a bucket entry. A move's old target is backed up in
-  the root parent too, once per prefetch, where Ruby backs it up as the new user (D-100). Then:
-  - `drop_privileges` true (the default): `mkdir(dirname(target), 0700)` when missing (debug `Creating <dir> as
-    <user>`), the write of the record's own targets, then `chmod 0600` on the target, each as the user: in the helper
-    when the agent is root and the user's uid is not its own, in-process otherwise. A refused write is logged twice,
-    as Ruby logs it (`Puppet::Util::FileType::FileTypeFlat could not write <path>: <errno> @ rb_sysopen - <path>`,
-    the symlink's path, then the resource's `Could not evaluate:`); a refused `mkdir` (`@ dir_s_mkdir`) or `chmod`
-    (`@ apply2files`) once.
-  - `drop_privileges` false: `trustedPath` (`sak_file.go`, `kp:53-67`) must pass for every own target, or the flush
-    fails `drop_privileges is false but the target path is not trusted` and nothing is written. Then the targets are
-    written as root and the target is chowned to the user's uid and the gid of the group named like the user (`-1`
-    when none) and set `0600`. A directory target fails the prefetch (`Is a directory @ io_fread`).
-- **Own targets (D-102).** A flush writes only the targets its own record touched: its target before a change (a
-  move's old target) and its should target (`parsedfile.Run.FlushTargets`). Ruby also writes a target another
-  resource's failed flush left modified, under the next resource's identity; voxagent does not (I-41).
-- **Kept from Ruby.** Parity is the contract, so these stay (spec §8 items 7-11 and 19):
-  1. Names are unique across the read targets: a key whose name another user's file holds is moved out of that file
-     (`target changed`) only when that file is some resource's target; otherwise it is created in the new file and
-     left in the old (M8).
-  2. A record with no name is written with a trailing space (`ssh-rsa K `).
-  3. `drop_privileges => false` writes only when the target's parent exists, its ancestors pass the walk (owned by
-     the agent's euid, not group- or world-writable, from the target's directory up to the one below `/`) **and**
-     debug logging is on: Ruby's trusted branch returns `Puppet.debug`'s value. With debug off every such target fails
-     `drop_privileges is false but the target path is not trusted`.
-  4. The drop-false chown uses the group named like the user, not the user's primary group; with no such group the
-     group is left as written.
-  5. A target change writes the old target as the new user too, so moving a key out of another user's `0600` file
-     fails `could not write <old target>: Permission denied @ rb_sysopen` and the new target is not written.
-  6. A `key_v1` record never converges: a resource of its name reports `defined 'type'`, `defined 'key'` and `defined
-     'options'` on every run and the line is written back unchanged. A `key_v1` line with no name fails every flush
-     of its target with `Field 'name' is required`.
-  7. A line break in `name` or `options` is written verbatim (I-39); the next run's prefetch fails `Could not parse
-     line` until the file is repaired by hand.
-- **Not kept.** Spec §8 item 18: the write of another resource's leftover target (D-102, I-41 above).
-- **Tests and gates.** `internal/units/sshkeys_core/sak_*_test.go` (Ruby's texts in `sak_params_test.go`, the grammar
-  and naming in `sak_grammar_test.go`, the run, flush, privilege drop, trusted walk and D-102 leak cases in
-  `sak_apply_test.go`), routing in `route_test.go`, the helper in `internal/lib/asuser` and
-  `cmd/voxagent/asuser*_test.go`, and "G5's sak half" above.
-
-### Privilege drop (`voxagent asuser`)
-
-`ssh_authorized_key` performs three file acts as the key's user, where Ruby
-wraps them in `Puppet::Util::SUIDManager.asuser` (`kp:80-88`): the single-level
-`mkdir(dir, 0700)`, the flat write, and `chmod 0600`. voxagent runs them in a
-child, the hidden `voxagent asuser <op>` (`cmd/voxagent/asuser.go`, ops in
-`internal/lib/asuser`), because Go cannot change one thread's credentials
-(D-99).
-
-| Op | Does, as the calling uid |
-|---|---|
-| `mkdir <dir>` | when `os.Stat(dir)` fails (any failure is absence, as `Puppet::FileSystem.exist?`), `mkdir(dir, 0700)` less the umask. The check runs in the child, as the user |
-| `write --encoding <enc> <path>` | the flat write (`parsedfile.NewFlat(path, 0, nop, relabel, enc).Write`) of stdin: temp file (in `asuser.TempDir`, Ruby's `Dir.tmpdir` for the user, D-101), copy over the target following a symlink, then the SELinux relabel (`file.Relabel`), as the user. The backup stays in the root parent, before the drop |
-| `chmod <path>` | `chmod(path, 0600)`, following a symlink |
-
-Contract (spec §3.4):
-
-- **Start.** `asuser.ProcStarter` runs `/proc/self/exe asuser <op> …`, the running
-  root-owned inode, so a binary replaced or deleted mid-run is never what runs as
-  the user; there is no `os.Executable()` fallback. The credential comes from
-  `suid.Resolve(user, nil, marked)` and is set before `execve`. Stdin is the
-  text (write) or empty; cwd and umask are inherited; the environment is `PATH`
-  and `TMPDIR` only (D-101). No `Executing:` line: Ruby runs no command here.
-- **Refusals.** The child refuses euid 0 (`asuser: refusing to run as root`,
-  exit 2). The parent never starts it for uid 0: when the agent is not root or
-  its euid is already the user's, it calls the same `asuser.Mkdir`, `Write`,
-  `Chmod` in-process (`suid:65`, `:121`). `ProcStarter.Start` also refuses a
-  missing or uid-0 credential itself, starting nothing (`refusing to start the
-  asuser helper as root`), and empty args. Any other invocation exits 2 with no
-  output. A cancelled run's error is the context's, not the invalid result.
-- **Result protocol.** The child's whole output is one line, `<step> <errno>`
-  (`asuser.Result`). Steps: `ok`, `mkdir-created` (errno 0, exit 0); `relabel`
-  (errno 1-4095, exit 0: the file was written, the relabel failed);
-  `mkdir`, `tempfile`, `open`, `copy`, `close`, `chmod` (errno 1-4095, exit 1);
-  `tmpdir` (errno 0, exit 1: no temporary directory, D-101).
-  `asuser.ParseResult` accepts only that: one line of at most 64 bytes, in
-  canonical form, with an agreeing exit status. Anything else, a signal, or an
-  exit of 2 or more is `asuser helper for <path> returned an invalid result`,
-  quoting nothing from the child. stdout is capped at 65 bytes and drained; stderr
-  goes to the null device; `exec.Cmd.WaitDelay` (1 s) stops a process the child
-  left holding stdout from hanging root.
-- **Rendering.** The parent renders every message from the result, with the
-  in-process texts: `parsedfile.FlatWriteError(path, WriteFailure{step, errno})`
-  for `tempfile`/`open`/`copy`/`close`/`tmpdir` (the same formatter `flat.Write` uses),
-  `parsedfile.RubyErrno` for `mkdir` (`@ dir_s_mkdir - <dir>`) and `chmod`
-  (`@ apply2files - <path>`), debug `Creating <dir> as <user>` for
-  `mkdir-created` and `mkdir <errno>`, and for `relabel` the warning `Failed to
-  set SELinux context <c> on <f>`, `<c>` looked up by the parent with
-  `file.DefaultContext`. The encoding failure has no step: the parent checks
-  `parsedfile.FlatEncodeError` before it starts the write (D-101); a child that
-  meets it anyway exits 2. A valid result whose step the op cannot report
-  (`chmod 1` for a mkdir) is the invalid result too. The sak flush
-  (`internal/units/sshkeys_core/sak_file.go`) renders these, with a marked
-  `user` shown `[redacted]` (D-78) and paths raw, as Ruby shows them (they are
-  on the helper's argv anyway); the credential is set for one flush and
-  cleared after. No relabel warning when the parent finds no default context:
-  Ruby makes no relabel attempt then.
-
-**Trust model (spec §11).** The helper gains no privilege: it is the target
-user from its first instruction, is not setuid, accepts only the three ops, and
-refuses root, so a user who runs it directly can do only what they already
-could. Every path component of the mkdir, the temp file, the copy and the chmod
-is checked by the kernel as that user, so a symlink the user plants towards a
-root file fails `open 13` where a root write would succeed
-(`TestAsuserRootSymlinkIntoForeignDir`). Unlike Ruby's in-process drop (real uid
-0), the helper can be ptraced by its user, who then controls its output. That is
-why the output is untrusted input: a forged result can only claim that a step
-succeeded or failed with some errno, which the user could cause anyway through
-their own file permissions. It cannot put text into root's log or report. The
-target path is on argv, visible in `/proc/<pid>/cmdline`; the content is only on
-stdin.
-
-**Running the root tests.** `go test -c -o .test-output/voxagent.test
-./cmd/voxagent && sudo -n .test-output/voxagent.test -test.run TestAsuserRoot`
-(never `sudo go test`). They drop to `nobody` in a 0755 temp tree; the test
-binary is its own helper (`TestMain` dispatches `asuser`), so `ProcStarter`
-starts exactly the code under test.
-
-### `mount`
-
-`mountcore.Mount` (`internal/units/mount_core/`: `mount.go` the identity and attribute set, `mount_params.go` validation
-and munge, `mount_grammar.go` the `/etc/fstab` grammar, `mount_apply.go` the prefetch, ensure state machine, commands,
-flush and refresh, `mount_relations.go` the autorequires and autobefores) reproduces the `parsed` provider of
-puppetlabs-mount_core, measured on openvox 8.34.0 (M4, M9–M13, M17, 2026-11-23). It reads and writes `/etc/fstab`
-through the flat filetype, as `host` does, but `ensure` is a plain property with its own state machine (`mt:26-124`),
-not ensurable, so it shares only the record binding (`ral.PrefetchParsedFile`) and not `ral.ParsedFileRun`. Line
-references in the code are `mt:<n>` (`puppet/type/mount.rb`), `mm:<n>` (`puppet/provider/mount.rb`), `mp:<n>`
-(`provider/mount/parsed.rb`) and `pf:<n>` (`provider/parsedfile.rb`).
-
-- **Routing.** `Route` (`internal/units/mount_core/manifest.go`) delegates with the first failing condition's reason:
-  platform (the unit's `Platforms`, `ral.OnPlatform`), `mount` and then `umount` resolving over `PATH` as `Puppet::Util.which` does
-  (`command.RubyWhich`; without either Ruby fails the whole run with `undefined method `ancestors' for nil:NilClass`
-  and no report, M11, so delegating hands the host that outcome), `provider` (`group.ForeignProvider`), plugin tree
-  (`pluginRelease`), purge (`unit.ResourcesPurge`), value shapes (`parseMount`'s `rubyvalue.UnimplementedValue`), and,
-  when the catalog holds a `File`, every valid Mount's munged name a pattern RE2 reads as Onigmo does
-  (`portablePattern`: none of `\`, `(?`, `{`, `[`). Ruby interpolates the name raw into each `File`'s autobefore
-  regexp, so a name it cannot compile fails its whole run once a `File` exists (`end pattern with unmatched
-  parenthesis`, M11); delegating such names is conservative. A Mount that fails validation is left out of that check,
-  because Ruby refuses it at catalog conversion, before any pattern is compiled.
-- **Two releases.** openvox 8.34.0 vendors mount_core 1.3.0; SIMP pins 2.1.0. They differ only in Ruby 3.1 hash
-  shorthand, so one behaviour covers both. A tree with none of `puppet/type/mount.rb`,
-  `puppet/provider/mount/parsed.rb` and `puppet/provider/mount.rb` is the vendored release; a tree with any must match
-  one release's three digests (`unit.MatchFiles`), and `puppet/provider/mount/` may hold no `.rb` but `parsed.rb`
-  (`another mount provider in libdir`).
-- **Validation.** Ruby's texts, each a whole-run refusal at catalog conversion (`mount_params.go`, spec §4.4):
-  `ensure`'s and `remounts`' `Invalid value …`, `fstype`/`options` `must not contain whitespace` or `must not be an
-  empty string`, `blockdevice must not contain whitespace`, `atboot`'s boolean munge failure, and `dump`'s `Invalid
-  value "<v>". Valid values match /(0|1)/.`. The name is munged by stripping trailing slashes (`/mnt/t/` is
-  `/mnt/t`; `/` stays `/`); the title stays in every message and report ref.
-- **Reading.** `/etc/fstab` unless `target` says otherwise, read and written through `parsedfile.NewFlat` with
-  `file.BucketBackup` and `file.RelabelHook`. A new fstab is 0600; an existing one keeps its mode, owner and inode
-  (M4). `\040` in the device and name fields is a space, and a space is written `\040`. Then `mount` (no arguments,
-  `command.ArgvOpts{FailOnTruncate: true}`, so a listing cut by the D-80 cap fails the prefetch rather than hiding
-  mounts) marks each listed name's record: `absent` becomes `ghost` (mounted, not in the fstab) and `unmounted`
-  becomes `mounted`. A failing or unparseable listing fails the prefetch type-wide (`Could not prefetch mount provider
-  'parsed': …`, then `Skipping because provider prefetch failed`).
-- **The listing is ambiguous.** The name is the greedy capture of ` on (.*) type ` (`mp:285`) on `mount`'s raw output,
-  where a space is a space (M9). A device or mount point holding ` on ` or ` type ` (a user can choose both for a FUSE
-  mount) is misparsed, as in Ruby. The parsed name only marks a resource `mounted` or `ghost`; every command acts on the
-  resource's own name, never on a listed one (spec §11).
-- **Running.** An out-of-sync `ensure` is synced alone through the state machine (spec §6.4's table: create, flush,
-  `mount`, `umount`, and *syncothers*, which sets every other out-of-sync property without a change or event and flushes
-  at once). Otherwise, unless the current ensure is `absent`, each out-of-sync property of `device, fstype, options,
-  pass, dump, target` is a normal change, in that order; a changed resource is flushed inside `Apply`, and a
-  `needs_mount` flag set by the state machine mounts after the write. `ghost` counts as present: with no `ensure`
-  every property is synced against the fresh record. `present` is munged to `defined`.
-- **Commands.** `mount <name>`, `umount <name>` and `mount -o remount <name>` run through `command.ShadowRunner`
-  (`command.RunArgvWith`: argv only, never a shell, `LANG=C`/`LC_ALL=C` with the other locale variables removed, the
-  D-80 cap), as the resolved paths (`Executing: '/usr/bin/mount -o remount /mnt/x'`, D-82). A non-zero exit is
-  `command.ExecFailure` with util-linux's text. In the ensure sync it is two errs, the bare text at source `Puppet` and
-  `change from '<is>' to '<should>' failed: <text>` on `<ref>/ensure`; in the flush's mount it is `Could not evaluate:
-  <text>` after the ensure change succeeded and the fstab was written.
-- **Refresh.** The type refreshes itself (`ral.SelfRefreshing`, `self_refresh: true`) after any change but
-  `ensure => absent`, and on another resource's notify. It remounts only when the record is mounted at refresh and the
-  should `fstype` is not `swap`: info `Remounting` at `Mount[<title>](provider=parsed)`, then `mount -o remount
-  <name>`, or with `remounts => false` `umount` then `mount`. A failing remount is two errs on the resource,
-  `Failed to call refresh: <text>` and `<text>`, status failed, `failed_to_restart` (`ral.RefreshLogging`).
-- **Relations.** `AutoRequires`: `Mount[<p>]` for each managed proper ancestor of the munged name, root first.
-  `AutoRelations` (`RelBefore`): `File[<path>]` for every catalog `File` whose path matches `(?m)^<name>/.`, in catalog
-  order, so a mount is before the files written on it.
-- **Kept from Ruby.** Parity is the contract, so these stay (spec §8 items 12–17, 20 and 21):
-  1. (§8 12) `ghost → absent` unmounts, then rewrites the fstab unchanged but for the header. A Mount without `fstype` appends
-     a record whose generation fails, so every later fstab flush in the run fails with the first resource's text
-     (`Could not evaluate: Mount[/mnt/f1]: Field 'fstype' is required`) and the file is not written; a *parsed* line
-     without `fstype` is re-emitted with empty fields (M12, M13).
-  2. (§8 13) A line with leading whitespace parses with `device` absent, so it is not found under its name, and the next
-     write of that fstab fails `Could not evaluate: Field 'device' is required`, file unchanged (M12).
-  3. (§8 14) `dump`'s check is unanchored: `10` and `x1y` pass and are written verbatim; `pass` has none (M12).
-  4. (§8 15) A refresh remounts whenever the record is mounted at refresh, whatever `ensure` says: `absent → mounted` mounts and
-     then remounts in the same run. `defined` and `unmounted` never remount; `absent` never refreshes; properties
-     *syncothers* sets leave no change (M11).
-  5. (§8 16) A line break in `name`, `device`, `dump` (any value holding `0` or `1`) or `pass` is written verbatim, adding
-     fstab lines, so a mount at boot. The next prefetch parses the injected text as records of their own with no
-     error, and the resource is re-applied, appending the lines again, on every run (M13, I-39 in
-     [improvements.md](improvements.md)).
-  6. (§8 17) A name starting with `-` is an option to the tool: Ruby adds no `--` and neither does voxagent. `Mount['-o']`
-     `mounted` runs `/usr/bin/mount -o` and fails `option requires an argument -- 'o'` with the fstab line already
-     written (M17 `17d-*`).
-  7. (§8 20) Parsed `dump`/`pass` are Strings and the resource's default is Integer `0`, so a managed line with other values
-     is rewritten `0 0` although the manifest sets neither (`pass changed '2' to 0`, M12).
-  8. (§8 21) A 6+-field line folds its tail into `pass` with TABs; a managed resource reports `pass changed
-     "0\textra\tmore" to 0` and rewrites it (M12).
-- **Root writes through a symlinked target.** As `host`'s (`flat.Write`, spec §11): with the default target only root
-  controls the path; a `target` in a directory another user can write lets that user redirect root's write.
-- **Tests and gates.** `internal/units/mount_core/*_test.go` (Ruby's texts in `mount_params_test.go`, the fstab grammar in
-  `mount_grammar_test.go`, the listing, state machine, commands, flush and refresh in `mount_apply_test.go`,
-  relations in `mount_relations_test.go`, routing and both releases in `route_test.go`) and "G5's mount half" above.
-
-### `concat_file` and `concat_fragment`
-
-`concat.ConcatFile` and `concat.ConcatFragment` (`internal/units/concat/concat*.go`)
-reproduce puppetlabs-concat 9.1.0 and 10.0.1's two types for the plain format,
-measured on CentOS Stream 10 (M1-M22 and the v10 series, 2026-11-20, openvox
-8.33.0). The module's `concat` and `concat::fragment` defines are manifest code
-and reach voxagent as these two types.
-
-- **Routing.** The concat unit's `Route` (`internal/units/concat/manifest.go`, `nativeConcat` in `concat_route.go`) is asked once
-  per run by `nativeProviders` (`cmd/voxagent/apply.go`) via `unit.RouteAll`, as `user` and `group`
-  are. It reads `puppet/type/concat_file.rb` and `puppet/type/concat_fragment.rb`
-  under `--libdir` through the `PluginTree` interface (tests use a fake),
-  fingerprints both with sha256, and returns the release (`ConcatVersion`) only
-  when both belong to the same one. Then it runs every `Concat_file` and
-  `Concat_fragment` through the native parser: a shape it does not implement
-  delegates **both** types (D-89). Both providers carry the version, because 9.1.0
-  and 10.0.1 differ (below). With `--no-ruby` a native concat catalog needs no
-  Ruby; a delegated one is refused as any host type is.
-- **Parameters.** `parseConcatFile` and `parseConcatFragment` return either a
-  Ruby refusal (a validation failure, printed with Ruby's text, `Parameter <p>
-  failed on Concat_file[<t>]: ...`), which keeps the resource native, or an
-  `unimplementedValue`, which routes it away. The parsers stop at a resource's
-  first error, in Ruby's validation order, so a refusal earlier in a resource
-  hides a later unimplemented value: the run is refused either way. A marked
-  value prints `[redacted]` in these texts (D-78).
-- **Generation, and `hostLoaded`.** `concat_file`'s `generate` runs at load
-  time: the `File` at the `Concat_file`'s path is created (or reused when the
-  catalog declares one, untouched) and the `Concat_file` is ordered before it
-  unless a relationship already links them. It is `ConcatFile.LoadGenerate`, a
-  `ral.LoadGenerator`, run by `loadGenerate` (`cmd/voxagent/loadgen.go`) after
-  pre-flight and validation, and its resources are judged as the catalog's own.
-  It runs only when `extensionIngest.hostLoaded` is false, because the host's
-  `load` already ran Puppet's own `generate` on every vertex, native-claimed
-  ones included, and merging twice would duplicate the `File`
-  (`TestLoadGenerateSkippedWhenHostLoaded`; `TestConcatGenerationHostAndNativeAgree`
-  compares the two paths). The new `File` carries no `path` (the title is the
-  path, and a catalog omits a namevar equal to its title).
-- **Content at the turn, and the unit.** `concat_file`'s `eval_generate` runs at
-  the `Concat_file`'s turn (`ConcatFile.EvalGenerate`): it collects the fragments
-  that belong to it (`concatBelongs`, from either side), sorts them as Ruby does
-  (`concatSort`: numeric or alpha, ties in catalog order, D-90), joins them
-  and returns an override of the `File`'s `content` (and `ensure => absent` for an
-  empty result with `create_empty_file => false`). The `File` is returned in
-  `EvalGeneration.Existing`, so `visitHostUnit` applies it as the unit's member and
-  the unit's completed whit carries the event on, notifies and subscribers
-  included (D-43 for what differs). A raise (incomparable order keys, no
-  `File`) is a failed generation, logged at the `Concat_file`.
-- **Marks.** `Override.ContentMark` sets the `File`'s `content` flag as 10.0.1's
-  parameter does (marked with a `Sensitive` fragment, explicitly not sensitive
-  for a file with no fragments, unset otherwise); 9.1.0 sends
-  `ContentMarkKeep`, leaving the content unmarked as Ruby does (M12). A new
-  `File` takes the `Concat_file`'s marks on `owner`, `group` and `mode`, a
-  declared one none (D-78). `Override.RedactOutput` redacts `validate_cmd`'s
-  output when any fragment is marked, under both releases (D-78).
-- **Orphan warnings.** `ConcatFragment` implements `ral.AutoRelationWarning`
-  (`GraphWarnings`): the graph build (`internal/transaction/build.go`) logs, at
-  `warning` and at the fragment's path, Ruby's `Target Concat_file with path or
-  title '<t>' not found in the catalog` for each fragment no `Concat_file`
-  collects, in catalog order and before the run applies anything. The second
-  form's missing closing quote is Ruby's.
-- **Events.** There are none of its own. A `Concat_file` and a `Concat_fragment`
-  have no status; the `File` carries every event, with native `File`'s text,
-  backups and `validate_cmd` (D-48).
-- **Version deltas.** 9.1.0 and 10.0.1 differ in the content mark above, in
-  whether a list `tag` on the `Concat_file` includes a fragment's string `tag`
-  (10.0.1 only, `concatBelongs`), and in 10.0.1's `redacted: false` for a file
-  with no fragments, which is kept.
-
-Behaviour kept from Ruby that looks wrong (the parity contract): alpha mode's `__`
-split, so `10___n` sorts as order `10`; Integer orders compared as strings in
-alpha mode (`1000` before `90`); the orphan warning's missing quote; a declared
-`File`'s `owner` and `mode` winning over the `Concat_file`'s (M14); a `File`
-ordered before its `Concat_file` never receiving its content and never refreshing the `Concat_file`'s targets (M21);
-`create_empty_file => false` deleting an existing file (M7); the default `backup`
-not bucketing (M5); a failed generation still creating an empty file (M3c); an
-empty fragment becoming a blank line under `ensure_newline` (M4); 9.1.0 not
-marking a `Sensitive` fragment's file content (M12).
-
-Unit tests use the real parsers with a fake `PluginTree`; the two release trees
-themselves are committed under `internal/units/concat/testdata` (the two type
-files of each, unmodified; `TestConcatTestdataMatchesManifest` ties them to
-concat's `Manifest`), so the tests that read them never skip. G5's concat half (`tests/spine/concat/g5.sh`) compares 33 measured
-cases (inputs committed under `tests/spine/concat/cases/`; live, rerun and `--noop`) against Ruby and the on-disk state of the
-backup case, and the 14 refusals; the extension gate holds the host path
-(every concat there is delegated); the SIMP gate applies its 26 concat resources
-natively. D-89, D-90, D-43, D-78 and D-84 are theirs.
-
-### `file` source, recurse and purge
-
-`source` is read locally: an absolute path or a `file:` URI, or a list of them,
-the first that exists winning. `puppet:`, `http:` and `https:` sources are
-pre-flight gaps, each list element judged on its own. Relative, opaque and
-unparseable sources, a `file:` URI naming a host, two of `content`, `source`
-and `target` (a target `ensure` supplies counts), `content` with
-`recurse => true`, `ensure => link` or a link target with `recurse => true`
-(Puppet's `recurse_link`), an `ensure` that is neither a string nor `false`, a
-`target` that is not a string and a static catalog's inlined `metadata` are
-validation refusals. A regular-file source is checksummed when it is resolved
-and streamed through sha256 when it is copied; a copy whose checksum differs --
-the source changed in between -- is discarded with Puppet's `File written to
-disk did not match desired checksum` message, and the destination keeps what it
-had. Neither side of a comparison is read whole, so a source may be larger than
-memory. A missing source fails its resource even under `ensure => absent` and
-`--noop`, as Puppet's does.
-
-Recursion is an engine capability, `ral.Generator`. A resource whose provider
-generates is applied as a **unit** at its turn in the walk: `Generate` reads the
-filesystem as the run has left it, the parent applies, then each child applies
-in bytewise path order through the same per-resource routine, each with its own
-status. Children are not graph vertices. Puppet inserts them into its graph and
-moves the parent's out-edges onto a "completed" whit; voxagent reproduces the
-whit's two effects from the unit's result. A failure anywhere in the unit
-blocks the parent's dependents, naming the member that failed, and otherwise the
-parent's subscribers get one refresh event when any member produced one.
-Generating up front was rejected because it reads the filesystem before earlier
-resources run; a mutable graph because it rewrites the walk's core contract for
-no observable gain. A child depends on its nearest generated ancestor; a failed
-or skipped parent still generates and its children are reported skipped. A
-generation failure is logged against the parent and fails the report but not
-the exit code (Puppet's `compute_status` against `exit_status`). Under `--noop`
-the whit's "Would have triggered" notice is logged at the parent's title with
-the unit's event count, as Puppet's whit does (D-25 retired).
-
-`File.Generate` walks the directory and a directory source breadth first, never
-descending a symlink, and drops every child at or below another catalog `File`.
-Children inherit the parent's parameters except `ensure`, `recurse` and
-`source`. A child that neither the source nor `purge` decides has no `ensure`
-and manages only the permissions of what is there -- the rule a catalog `file`
-with no `ensure`, `content` or `source` now follows too (`type/file.rb:561-567`).
-Numeric modes are dirmasked on directories, so `mode => '0644'` leaves the
-tree's directories 0755. More than 1,000 entries in one walk logs Puppet's
-soft-limit warning and keeps every entry. Memory is linear in the number of
-changed children, because each one's status and logs are held until the report
-is written: measured at about 8 KB per changed child, a first run over a
-100,000-entry tree peaked at about 822 MB and the converged rerun at 159 MB.
-
-Every operation on a child goes through an `os.Root` opened on the recursed
-directory (`rootFS`), after refusing a symlink at the directory itself, so a
-symlink swapped into the tree after the walk cannot carry a write, chmod, chown
-or unlink out of it. Residuals remain, all inside the tree: `os.Root` follows a
-link whose target stays in the tree, so such a swap can redirect an operation
-within it, including into a catalog-managed subtree `purge` exempts; there is no
-`Lchmod`, so `chmod` is preceded by an `Lstat` and a swap between the two is a
-race; an empty directory swapped in before a purge's remove is rmdir'd; and a
-hard-linked child shares its inode, so its chmod or chown reaches the other
-link, as Puppet's does. The `rootFS` doc comment lists them. The walk reads each
-directory with `O_NONBLOCK|O_DIRECTORY`, so a directory swapped for a fifo
-between its Lstat and its open fails the walk with ENOTDIR instead of hanging
-the agent (`internal/units/file/file_recurse_test.go:TestFileGenerateDirectorySwappedForAFifoFailsInsteadOfBlocking`).
-`openDirNoFollow` does the same for the recursed directory itself, opening it
-`O_NONBLOCK|O_DIRECTORY|O_NOFOLLOW` and making the `os.Root` from that handle
-through `/proc/self/fd`, because `os.OpenRoot` on a path blocks on a fifo
-(`TestFileGenerateRecursedDirectorySwappedForAFifoFailsInsteadOfBlocking`).
-That root is named by its `/proc` path, so `rootFS` re-opens every file it hands
-out under the real path (`withName`) and errors on the handle name the real
-file (`TestRootFSHandleErrorsNameTheRealPath`). A `/proc` that cannot be used
-fails the child with an error that is not `fs.ErrNotExist`, so `--noop` does not
-fall back to unconfined reads (`TestFileApplyNoopRefusesAChildWhenProcIsUnusable`). A
-walked symlink keeps its mode, is `lchown`ed and relabelled itself through
-`rootFS` (D-28, retired), and `purge` unlinks it. Purging a directory copies
-Puppet's notice and `removed` event and leaves the directory, every run (I-1;
-D-5 is retired),
-so a purge over an unmanaged directory is never idempotent: G1 compares that
-case and G2 leaves it out, as it leaves out the missing-source case, whose first
-run fails by design. A file↔directory conflict inside a recursion follows
-`force` like any other resource (D-27 is retired).
-
-### `file` links, force and replace
-
-The register rows hold each deviation; this section says where Puppet defines
-each piece and how they fit.
-
-**`path`.** A catalog carries `path` only when it differs from the title
-(`resource.rb:101-102`). `FilePath` is the one place that resolves it, cleaned
-as a title is (`type/file.rb:66-73`); report keys, event sources and refs stay
-the title. A `require` naming the path resolves through `fileAliases`
-(`resource/catalog.rb:176-178`), and `AutoRequires` offers `FilePath`.
-
-**`links`.** `manage`, the default, acts on the link; `follow` acts on what it
-points at (`type/file.rb:272-281, 895-903`): `Lstat` against `Stat` for the
-destination. Any other value is refused before the run in Puppet's wording. How
-a link at the path is replaced, written through or `lchown`ed is under
-"Writing files" (D-4, retired, and I-5). A symlink `source` becomes a link under
-`manage` and its target's content under `follow` (`source.rb:148, 170-176`;
-D-26 keeps the special file types). `follow` with `recurse => true` is refused
-by `Validate` (D-32); a recursion child that inherits `follow` still cannot
-chmod through its link (D-31), and a walked link is managed under `manage`
-(D-28, retired).
-
-**`force`.** It matters only for a directory in the way, in `removeExisting`
-(`type/file.rb:1022-1049`): without it the notice `Not removing directory; use
-'force' to override` is logged and the directory stays, with it the tree is
-removed. A file, link, fifo or socket is always unlinked (`:814-815`) and a
-block or character device fails (`:816-818`). Puppet's consequences without
-`force` are reproduced and registered: `ensure => absent` reports `removed`
-while the directory stays (I-1), and a link replacing a directory logs the
-notice twice before failing (I-3). Recursion children inherit `force`, so
-their type conflicts follow it (D-27, retired).
-
-**`replace`.** `replace => false` is consulted where Puppet consults it
-(`type/file/ensure.rb:162-165`, `target.rb:66`, `data_sync.rb:38`). Under it
-`ensure` is in sync for anything that exists, whatever its type, whatever
-`ensure` asks for and whatever `force` says: nothing at the path is removed,
-replaced or written (`keptByReplaceFalse`, checked in `Apply` after the source
-resolves). So `ensure => absent` keeps a file, `ensure => file` keeps a
-directory or a link, `ensure => directory` keeps a file, and a purge removes
-nothing, because every purged child inherits `replace`. `content`, `source`
-content and `target` are in sync too, while `mode`, `owner`, `group` and the
-SELinux properties still reconcile as ordinary properties. All of it was
-measured on Puppet 8.10.0. The path is read as `links` says, so under `follow`
-a dangling link counts as absent. A missing path is created as usual.
-
-**`show_diff`** is accepted and has no effect: Puppet prints a diff only when
-the global `show_diff` setting is on, and voxagent has no such setting. The
-`augeas` type's `show_diff` is the same (`provider/augeas/augeas.rb:466`).
-
-G2 (`tests/spine/idempotence.sh`) holds the cases that converge. The ones it
-leaves out cannot: `keepdir` (I-1), `ensure => file` with a `target` over an
-existing path (I-6), and `follow` over an existing link under
-`ensure => link`, which Puppet re-creates every run.
-
-### `file` SELinux contexts
-
-`seluser`, `selrole`, `seltype`, `selrange` and `selinux_ignore_defaults` are
-implemented in `internal/units/file/file_selinux.go`, which cites Puppet's and
-libselinux's source line by line. This section says how the pieces fit.
-Puppet's side was first read, not measured, because no host or container here
-makes Puppet see SELinux as enabled; the SELinux gate (above) has since
-measured it on an enforcing VM, where every resulting label agrees.
-
-**Is SELinux enabled?** As libselinux 3.11's `is_selinux_enabled` is
-(`enabled.c:11-21`, `init.c:31-152`): a **read-write** selinuxfs mount **and**
-`/etc/selinux/config` existing. A container that sees the host's selinuxfs
-read-only therefore reads as disabled. It is computed once per process, as
-libselinux does in its constructor. When SELinux is disabled every `sel*`
-property is a no-op: no lookup, no read, no write.
-
-**Which paths are managed.** Only a path on one of ext2/3/4, gfs, gfs2, xfs,
-jfs, btrfs, tmpfs or zfs, chosen by the deepest `/proc/mounts` entry that
-prefixes it (`util/selinux.rb:220-226`); on any other filesystem the properties
-are in sync. Mount points are not unescaped, as Puppet's are not (I-8).
-
-**Defaults and the `selabel_lookup` dependency.** Unless
-`selinux_ignore_defaults` is true, the default context comes from the host's
-`selabel_lookup -b file -k <path> -t <mode>` (package `libselinux-utils`), so
-matching is libselinux's own and there is no cgo. The mode is the path's
-`lstat` mode before the run, or one derived from the declared `ensure` for a
-path not there yet (I-10, I-11). A failed lookup is no default, as in Puppet.
-When SELinux is enabled and a `File` wants defaults and can sync its SELinux
-properties (not a removal, unless `replace => false` keeps the path;
-`syncsSELinux`), `Validate` refuses the **whole catalog** before anything is
-applied in two cases. The tool is not on `PATH`: the refusal names the
-package, because a lookup that cannot run would otherwise leave the node
-half-managed. Or the file-contexts handle does not open, on a filesystem that
-carries labels: `File[<path>]: Cannot get default context with nil handle`,
-because Puppet fails the whole run then too (D-35). The handle is probed once
-per run (`handleOpens`, a lookup of `/`); a lookup that still meets a nil
-handle during the apply fails that resource. A declared value replaces the
-default field by field.
-
-**Reading and writing a label.** Both go through a handle opened with
-`O_PATH|O_NOFOLLOW` by the file's own `fileSystem` (the `os.Root` for a
-recursion child), using `getxattr`/`setxattr` on `/proc/self/fd/N`, as
-`selinux_restorecon` does. That acts on the object opened, a link included, and
-never resolves the name again, so a directory swapped for a link out of a
-recursed tree cannot carry a relabel out of it.
-`lgetxattr`/`lsetxattr` by path would follow such a swap. A walked symlink
-child is relabelled itself through that handle, never its target (D-28,
-retired).
-
-**Order and silence.** SELinux is applied last in `applyMetadata`, after owner,
-group and mode. A path voxagent creates, and a file whose content it rewrites,
-is relabelled silently, with no event: that is Puppet's `property_fix` after
-`ensure` and after a content write. A path that already exists and is out of
-sync gets one `seltype_changed`-style event per property. A relabel that fails
-is only a warning, `Failed to set SELinux context <ctx> on <path>`, and the
-event still succeeds (I-4). A file whose label cannot be read fails with
-Puppet's internal Ruby error text (I-9), and `selrange` and a literal
-`unlabeled` are edited as Puppet edits them (I-7, I-12). Mcstrans translation
-is not done (D-33).
-
-**What a lookup costs.** One `selabel_lookup` process per managed `File` that
-wants defaults, except for recursion children, which are batched (below).
-Measured 2026-10-06 in `localhost/fleet-node-el` (`libselinux-utils` and
-`selinux-policy-targeted` installed) on an AMD Ryzen 9 5900X: a throwaway Go
-benchmark calling `hostSELinux.defaultFor` 5,000 times in sequence for
-`/etc/passwd`, three runs. The first run took 9.5 ms per call (cold file
-cache), the next two 4.2 and 4.1 ms; 5,000 lookups are therefore about
-**20 s** warm and about 47 s on the cold first run. Ruby's whole
-5,000-resource `file` apply in `performance.md` is 8.4 s steady and 28.0 s
-cold. Compared like for like, per-path lookups alone exceed Ruby's whole apply
-both warm (20 s against 8.4 s) and cold (47 s against 28.0 s).
-
-**Top-level `File`s are not batched.** On an SELinux-enabled host each
-top-level `File` that wants defaults runs its own `selabel_lookup`, about
-4 ms warm, and each also re-reads `/proc/mounts` in `labelSupported` to ask
-whether its filesystem carries labels, once in `Validate` (before the
-once-per-run handle probe, D-35) and once in `Apply`. Only recursion children share a batch
-(below). The SIMP catalog's 146 top-level `File`s cost about 0.6 s in lookups.
-
-The measurement has limits. It looked up one path (`/etc/passwd`)
-sequentially, so a policy search over many different paths may cost more or
-less per call. Ruby's figures are for a content+mode catalog on a host without
-SELinux, not a recursion and not SELinux-enabled, so they are not a like-for-like
-total. The lookup time against Ruby's whole apply is therefore a lower bound on
-voxagent's extra cost on an SELinux-enabled host, not the difference between
-the two agents.
-
-**Batched lookups for recursion children.** A recursed `File`'s `Generate`
-(on the provider `Prefetch` returned for the run) looks up its children's
-defaults through `matchpathcon -n -m <type> -- <paths...>`, one process per
-file type and per 64 KiB of arguments, and each child's `Apply` takes its
-answer instead of running `selabel_lookup` (`prefetchChildDefaults`,
-`hostSELinux.defaultsFor`). An answer is used only for the exact path and mode
-the child's `Apply` asks for, so a child whose type changed in between, or one
-the batch could not answer, is looked up per path as before. Not batched:
-
-- a child whose lookup mode has no file type (an absent path with no declared
-  `ensure`, I-11, so most children of a `source` copied into a new tree):
-  `matchpathcon` cannot force mode 0, and without `-m` it would `lstat` the
-  path itself;
-- output that does not map back line for line (a lookup error, a warning on
-  stderr) or a `matchpathcon` that cannot run: that chunk goes per path;
-- top-level `File`s.
-
-`matchpathcon` gives `selabel_lookup`'s answers: it opens the same handle (file
-backend, no path, no validation) and makes the same non-raw `selabel_lookup`
-call with the bare `S_IF*` bits, which are all the backend compares
-(libselinux 3.11 `utils/matchpathcon.c:27-44, 50-71, 134-152`,
-`src/label_file.c:2099-2122`). Checked 2026-10-06 in the same container:
-1,214 paths (the image's `/etc`, `/usr/bin`, `/var`, `/run`, `/home`, `/root`
-trees plus hand-picked ones including `/etc/shadow`, `/tmp`, `/usr/tmp`,
-`/home/u/.ssh/authorized_keys`, a missing path, a path with a space, a tab
-and a non-ASCII byte) by 10 modes (each file type, with and without permission
-bits) gave 12,140 identical answers, single and batched. A `selabel_open`
-failure is still `Cannot get default context with nil handle` for every child.
-
-Measured the same way, 5,000 distinct paths through the batch took 28-39 ms
-(three runs), against 21.0 s per path in the same container. Asking whether
-the parent's filesystem supports labels is done once per recursion; each
-child's `Apply` still asks for itself, which reads `/proc/mounts` each time,
-about 0.2 ms a call or 1.1 s per 5,000 children.
+Moved to [what the spine does not implement](not-implemented.md). Its sections:
+
+- [`service`](not-implemented.md#service)
+- [`user` and `group`](not-implemented.md#user-and-group)
+- [`cron` and the ParsedFile engine](not-implemented.md#cron-and-the-parsedfile-engine)
+- [`host`](not-implemented.md#host)
+- [`sshkey`](not-implemented.md#sshkey)
+- [`ssh_authorized_key`](not-implemented.md#ssh_authorized_key)
+- [Privilege drop (`voxagent asuser`)](not-implemented.md#privilege-drop-voxagent-asuser)
+- [`mount`](not-implemented.md#mount)
+- [`concat_file` and `concat_fragment`](not-implemented.md#concat_file-and-concat_fragment)
+- [`file` source, recurse and purge](not-implemented.md#file-source-recurse-and-purge)
+- [`file` links, force and replace](not-implemented.md#file-links-force-and-replace)
+- [`file` SELinux contexts](not-implemented.md#file-selinux-contexts)
 
 ## Refusing what Puppet refuses
 
@@ -2984,7 +1016,7 @@ is a separate pass because its findings are not porting gaps: counting a
 relative path as an unimplemented attribute would put invalid catalogs into the
 roadmap that pre-flight's gap list feeds. A provider opts in by implementing
 `ral.Validating`, and returns the first failure for a resource in Puppet's own
-order and words. Two do today:
+order and words. Many do (`grep -rn 'implements .*Validating' internal/units` lists them); two are described here:
 
 - `file` refuses a path that is not absolute (Puppet: `Parameter path failed on
   File[x]: File paths must be fully qualified, not 'x'`). This message was
@@ -2992,380 +1024,48 @@ order and words. Two do today:
   path against its working directory.
 - `exec` refuses a relative or array `cwd`, a relative `creates` (scalar or any
   array element), and a command whose executable does not start with `/` when
-  no `path` is set. These messages were **read from source, not measured**:
-  `cwd` and `creates` are `Parameter::Path` (`type/exec.rb:266`, `:420`), whose
-  `validate_path` (`parameter/path.rb`) failures `type.rb:692` wraps as
-  `Parameter cwd failed on Exec[x]: cwd must be a fully qualified path`; the
-  command goes through `provider/exec.rb` `validatecmd` from the type-level
-  `validate` (`type/exec.rb:589`), which `type.rb:2360` wraps as `Validation
-  of Exec[x] failed: 'touch' is not qualified and no path was specified.
-  Please qualify the command or specify a path.` The executable is
-  `extractexe`'s: a leading single- or double-quoted string if one opens any
-  line, else everything before the first space. The order is `cwd`, `creates`,
-  then the command, because Puppet sets parameters in declaration order and
-  validates the command after all of them. Before the check a relative `cwd`
-  ran the command via `/bin/sh` in voxagent's own working directory.
-  `onlyif` and `unless` also go through `validatecmd` in Puppet
-  (`type/exec.rb:497`, `:560`), once per command (a string, or an array of
-  strings and argv arrays). With no `path`, an unqualified one is refused as
-  `Parameter unless failed on Exec[x]: 'grep' is not qualified and no path was
-  specified. ...`, the parameter wrapper rather than the type-level one. The
-  order is `cwd`, `creates`, `unless`, `onlyif`, then the command. `creates`
-  sets `accept_arrays` (`:448`), so an array of absolute paths is accepted. A
-  `command` that is neither a String nor an Array is refused first, as the
-  namevar is set first: `Parameter command failed on Exec[x]: Command must be
-  a String or Array<String>, got value of class Integer` (`type/exec.rb:216-220`).
-  An argv command's executable is its first element, whole, so `['echo',
-  'rel']` with no `path` is refused naming `'echo'`; a flat `unless` array is a
-  list of string commands, so `['/usr/bin/test', '-d', '/tmp']` is refused
-  naming `'-d'`, and an argv check is a nested array. D-54 lists the argv
-  shapes voxagent refuses where Puppet does not.
+  no `path` is set.
+  - These messages were **read from source, not measured**:
+    `cwd` and `creates` are `Parameter::Path` (`type/exec.rb:266`, `:420`), whose
+    `validate_path` (`parameter/path.rb`) failures `type.rb:692` wraps as
+    `Parameter cwd failed on Exec[x]: cwd must be a fully qualified path`; the
+    command goes through `provider/exec.rb` `validatecmd` from the type-level
+    `validate` (`type/exec.rb:589`), which `type.rb:2360` wraps as `Validation
+    of Exec[x] failed: 'touch' is not qualified and no path was specified.
+    Please qualify the command or specify a path.`
+  - The executable is
+    `extractexe`'s: a leading single- or double-quoted string if one opens any
+    line, else everything before the first space.
+  - The order is `cwd`, `creates`,
+    then the command, because Puppet sets parameters in declaration order and
+    validates the command after all of them.
+  - Before the check a relative `cwd`
+    ran the command via `/bin/sh` in voxagent's own working directory.
+  - `onlyif` and `unless` also go through `validatecmd` in Puppet
+    (`type/exec.rb:497`, `:560`), once per command (a string, or an array of
+    strings and argv arrays). With no `path`, an unqualified one is refused as
+    `Parameter unless failed on Exec[x]: 'grep' is not qualified and no path was
+    specified. ...`, the parameter wrapper rather than the type-level one.
+  - The
+    order is `cwd`, `creates`, `unless`, `onlyif`, then the command.
+  - `creates`
+    sets `accept_arrays` (`:448`), so an array of absolute paths is accepted.
+  - A
+    `command` that is neither a String nor an Array is refused first, as the
+    namevar is set first: `Parameter command failed on Exec[x]: Command must be
+    a String or Array<String>, got value of class Integer` (`type/exec.rb:216-220`).
+  - An argv command's executable is its first element, whole, so `['echo',
+    'rel']` with no `path` is refused naming `'echo'`; a flat `unless` array is a
+    list of string commands, so `['/usr/bin/test', '-d', '/tmp']` is refused
+    naming `'-d'`, and an argv check is a nested array. D-54 lists the argv
+    shapes voxagent refuses where Puppet does not.
 
 ## What per-property attribution cost, and what it proved
 
-Closing the spine's first known defect — a failed resource reported one
-`resource_error` naming no property, where Puppet names the property that
-failed — was run as an experiment in two parts: whether it could be done, and
-whether it was worth doing. The implementation work answered the first. This section answers
-the second, and it is written as evidence rather than as a recommendation. Every
-number below carries the command that produced it; re-run them rather than
-trusting them.
+Moved to [what per-property attribution cost, and what it proved](attribution-cost.md). Its sections:
 
-### What it cost
-
-Measured with `git diff --numstat -- <pathspec>` over the attribution work
-alone — from the spine's last commit to the commit that finished this section —
-summed per row. Those commits have since been squashed into one, so the figures
-are a record of that measurement rather than a command that reproduces it; a
-diff to the present would fold later work into them.
-
-| | Added | Removed | Files |
-|---|---|---|---|
-| Production Go | 872 | 169 | 5 |
-| Test Go | 2041 | 181 | 5 |
-| Gate scripts and fixtures | 189 | 5 | 4 |
-| Docs (this file and the design notes) | 2904 | 12 | 3 |
-
-A caution that cost time while writing this: `git diff A..HEAD` compares two
-endpoints, it does not sum the intervening commits. Lines this section rewrote
-in the paragraphs above had themselves been *added* by an earlier commit inside
-the same window, so they never appear as deletions in the cumulative diff, and
-the Docs row is smaller than adding each commit's own `--numstat` would predict.
-Re-measure the range; do not do arithmetic over commit diffs.
-
-**552 of the 872 added production lines are comment** — 63% against numstat's
-872, or 65% against the 848 non-blank added lines. The two denominators differ by
-exactly the 24 added blank lines, which numstat counts and
-`git diff -U0 … | grep '^+[^+]'` does not: that pipeline prints 848, not 872,
-because a blank added line is a bare `+`. Comments are the lines of that output
-matching `^\s*(//|\*|/\*)`.
-
-Per file, over non-blank added lines: `ral.go` 90% (39 of 43), `exec.go` 73%,
-`transaction.go` 72%, `file.go` 58%. The contract file is almost entirely prose
-because the contract is almost entirely convention — which of three return values
-a provider reaches is not visible in any signature.
-
-The test diff is the more informative half, because **no new test file was
-created** (no `*_test.go` file was added in that range). All 2041 lines landed in five files that already existed. Within
-them:
-
-- **42 test functions added**, **6 deleted**, **73 surviving functions modified**.
-- Of those 73, **65 are mechanical**: every changed line in the body mentions
-  `Apply(`, because `Apply` gained a third return value and the compiler
-  demanded the edit. **8 changed an assertion** — six in `exec_test.go`, two in
-  `file_test.go`.
-
-So the honest cost of the contract change in existing tests is 8 rewritten
-assertions plus 6 deletions, not 73. The 65 are the compiler doing its job, and
-they are the argument *for* changing a return signature rather than smuggling
-the new channel through a context or an optional interface: the edit is
-unmissable and mechanical.
-
-**The six deleted tests are the sharpest single piece of evidence**, because
-each name is a belief this work falsified:
-
-| Deleted test | The belief it encoded |
-|---|---|
-| `TestExecNonZeroExitIsAnError` | an exec's non-zero exit is a resource failure, not a `returns` property failure |
-| `TestExecReturnsWritesActualExitCodeIntoChange` | superseded by the `Is`/`IsDisplay` split |
-| `TestFileDirectoryMissingParentIsAnError` | a missing parent is a resource failure, not an `ensure` property failure |
-| `TestFileOwnerChangeUnprivilegedFails` | unprivileged ownership fails rather than warns |
-| `TestFilePartialApplyReturnsChangesAlongsideError` | a provider may return changes *and* a bare error |
-| `TestFileUnwritableParentIsAnError` | unattributed |
-
-Five of the six were not merely imprecise; they asserted the defect. A test
-suite that is green against the wrong contract is the cost this kind of work
-actually pays.
-
-### Did the `Change.Err` contract hold, and would it survive `package` and `service`?
-
-Across `file`, `exec`, and `notify`, yes — no provider needed a shape it could
-not express. But the contract was widened **twice within the same body of
-work**, not once: `Change.Err` on 2026-09-18, then a third `Apply` return for
-run-level warnings on 2026-09-19, eleven commits later,
-because providers had no channel to the run log at all and the
-unprivileged-ownership warning had nowhere to go. A contract that needed a
-second widening before its first body of work was finished, for a requirement
-nobody anticipated, is weak evidence that it is now complete.
-
-D-11 is the surviving hole: on a created path the collapsed metadata failure is
-wrapped unconditionally, because voxagent's collapse runs after the raise and
-cannot tell which layer raised it, where Ruby distinguishes a `Puppet::Error`
-from every other `StandardError` (`property.rb:490` versus `:492`). `Change.Err`
-carries a Go `error`, and a Go error does not carry its originating layer the
-way an exception class does.
-
-Against `package` and `service` — the next two providers, read in Puppet 8.10.0
-source and not implemented — the interface **survives with additive changes**,
-with one clear vindication and five named gaps.
-
-The vindication is `type/package.rb:218-224` (comment at `:217`). `should_to_s`
-substitutes `@latest`
-— the concrete resolved version — into the *message*, while
-`resource_harness.rb:188` has already put `property.should` — the literal symbol
-`:latest` — into the event's `desired_value`. That is exactly the `Is` versus
-`IsDisplay` split, in a type nobody had implemented, reached independently of
-the `file` owner-uid measurement that motivated it. Had the contract shipped
-with one value per side, `package { ensure => latest }` would have had to be
-wrong in either the event or the message. This is the strongest argument that
-changing the contract now was better than waiting.
-
-The gaps, each of which is additive rather than a reshaping:
-
-| Gap | Puppet's behaviour | Why the contract cannot express it |
-|---|---|---|
-| **No suitable provider** | `transaction.rb:132-135` sets `resource_status(resource).failed = true` with **zero events**, then logs one `Puppet.err` per type at teardown (`:146`) | voxagent's bare `err` always synthesizes a `resource_error` event. There is no "failed, no events". Puppet also decides suitability *before* applying, so `Apply` is the wrong place to ask |
-| **`flush` failing after changes** | `resource_harness.rb:25-28` runs `flush` after all syncs, but only `if status.changed? && !resource.noop?`; a raise is caught by the rescue at `:29` and the status then carries both the recorded change events **and** a `resource_error` | the transaction drops `changes` entirely when the error return is non-nil, exactly as the contract promises |
-| **Warning dedupe key** | `maybe_log`'s dedupe is keyed on calling class *and* message (`util/warnings.rb:28-29`), and is shared by `warnonce`, `notice_once`, and `debug_once` (`:8`, `:14`, `:18`). Plain `Puppet.warning` — what package providers actually call, e.g. `provider/package/gem.rb:152` — does not dedupe at all | the transaction dedupes every warning on the message alone (`transaction.go`'s `warned` map), which is broader than Ruby on both counts |
-| **Warning source** | a warning raised on a provider instance is *not* sourced at the resource's path: `log_source` returns `path` only for a `Puppet::Type` or `Puppet::Parameter` (`util/logging.rb:298-302`), and a provider is neither, so it falls through to `to_s` — `"#{@resource}(provider=#{self.class.name})"` (`provider.rb:559`), e.g. `Package[foo](provider=gem)` | the transaction hardcodes source `Puppet` for every warning |
-| **No prefetch hook** | `prefetch_if_necessary` (`transaction.rb:243-260`) delegates at `:259` to `Transaction#prefetch` (`:374-389`), which calls `provider_class.prefetch(resources)` at `:381` — for packages, `provider/package.rb:7-14`, enumerating every installed package once per (type, provider class). A failure is recorded at `:387` and fails every resource of that type | `Provider` has no per-run bulk-read hook and no way to fail a whole type. Also a performance point: without it, N packages means N `rpm -q` invocations |
-
-None of those five is a divergence-register entry. The register records where
-voxagent's *implemented* behaviour differs from Puppet's; these are shapes that
-two unimplemented types would need and the contract cannot yet carry. They become
-divergences the moment `package` or `service` ships, and the rule at the top of
-this document applies to them then.
-
-`package` has since shipped, bounded to dnf, and settled four of the five that
-way. **No suitable provider** and **warning dedupe key** are now D-12 and D-16.
-**No prefetch hook** and **warning source** were closed rather than registered:
-`Provider` gained `Prefetch`, and `Warning` carries its own `Source`, so a
-provider-class warning is sourced `Puppet::Type::Package::ProviderDnf` as Ruby's
-is. **`flush` failing after changes** is untouched and stays a gap: dnf's
-`flush` is `@property_hash.clear` (`provider/package.rb:17-19`), which runs no
-command and cannot raise, so `package` does not reach the shape. `service` still
-will.
-
-One finding landed on this repository rather than on Puppet, and has been fixed.
-`internal/ral/ral.go` commented that `Change.Name` need only be set for `ensure`
-"because only ensure declares per-value events" — true of `file`, `exec`, and
-`notify`, and false of Puppet. `type/service.rb:68-92` carries five per-value
-event declarations on `enable`, under four distinct names: `:service_enabled`
-(`:68`), `:service_disabled` (`:72`, and again at `:82` for `mask`),
-`:service_manual_start` (`:76`), and `:service_delayed_start` (`:90`). Behaviour
-was never affected — `Name` is per-`Change` — so this was a comment that
-generalised the three implemented types into a rule about Puppet, which is the
-specific way a porting note goes wrong.
-
-`service` also breaks the per-property isolation this document states as the
-model. `resource_harness.rb:84-99` syncs `ensure` first and skips the properties
-loop entirely unless `ensure` was a no-op, so `Service#ensure.sync`
-(`type/service.rb:120-136`) syncs `logonaccount` and `enable` inline by calling
-`Property#sync` directly, bypassing `sync_if_needed`. Because `event = super()`
-is computed at `:127` *before* the `enable` sync at `:132`, a failure to enable
-is reported as **`ensure`'s** failure even though the service started. The
-contract can represent that — one `Change` for `ensure` carrying `enable`'s
-error — but only if the implementer knows to, and nothing in the interface hints
-at it.
-
-### How many of the must-measure predictions were wrong?
-
-The predictions recorded when the apply spine was designed (made by reading
-Ruby's source before running it) are the only tally with a denominator, because
-there were six and they were written down *before* measurement: **three wrong, one partially wrong, one
-correct and measured, one correct but never measured.** That last split matters
-and the record does not make it: prediction #2 is recorded `✅ (read, not run)`, so on a
-list of *must-measure* predictions it is a prediction that was re-read rather
-than checked. Counting it as a clean success would be the same move this section
-refuses two paragraphs below. None of the three outright failures was in the
-part of the design that felt uncertain.
-
-Four further source-derived claims were falsified after those predictions were recorded: the
-`ensure => absent` unwrapping reason (right answer, wrong mechanism), the
-`--noop` suppression not actually being noop-gated, the `" (noop)"` claim being
-overstated, and D-8's security claim that a `Sensitive()` value reached an
-all-readable file in clear — measured at **zero** occurrences, both content paths
-reporting a `{sha256}` digest, since corrected.
-
-**Those four are a count, not a rate.** Nobody enumerated the source-derived
-claims that turned out correct after the predictions were recorded, so "seven of ten
-wrong" would be a survivorship figure and is not claimed here. The defensible
-statement is the narrow one: of six pre-registered predictions, three were wrong,
-and four more source-derived claims were caught later by measurement.
-
-Two further errors are deliberately **excluded** from that tally, because
-including them would support the wrong remedy. One task brief cited
-`TestResourceLevelFailureIsStillResourceError`, which has never existed as a
-test:
-
-```bash
-git log -S'func TestResourceLevelFailureIsStillResourceError(' --all -- '*_test.go'   # empty
-```
-
-The pathspec is load-bearing. Without it the same command returns the commit
-that added a planning document, because that document embeds the proposed test's source — which is precisely the
-error being described, a name that exists in a document and not in the tree. The
-same brief cited `TestFilePartialApplyReturnsChangesAlongsideError`, which did
-exist — added during the spine and deleted by this very work — so that
-citation was stale rather than invented. Separately, `report-diff.sh` was
-diagnosed as blind to a sabotage when the actual cause was a four-minute-old
-binary; rebuilt, the same sabotage yielded `1 divergent` (fixed since: the
-gates now exit 2 if any `.go` file under `cmd/` or `internal/` is newer than the
-binary). Neither is a failure to read Ruby correctly. They are
-failures of unverified recall and of tooling assumptions, and the lesson —
-re-check a citation against the tree you are describing — is a different lesson
-from that of the design-time predictions.
-
-Their own conclusion survives the extra evidence unchanged: reading Ruby reliably
-answers *which code path runs* and unreliably answers *what is in the output*.
-Every one of the four post-prediction errors is of the second kind.
-
-### Did G1 catch anything the unit tests missed, or vice versa?
-
-This was measured rather than recalled. **Ten** single-behaviour regressions were
-introduced one at a time into a throwaway worktree; after each, `task build`,
-then `go test ./... -count=1` and `bash tests/spine/report-diff.sh`. Baseline
-before and after: unit green, G1 `exit=0, 181 leaves compared, 0 divergent`. The
-build step is not optional — G1 exits 2 against a stale binary, and a 2 is
-"could not run", not a pass.
-
-| Sabotage | Unit | G1 |
-|---|---|---|
-| Attribution removed (pre-work behaviour) | fail (3 tests) | `exit=1`, 4 divergent |
-| `Was`/`Is` vs `WasDisplay`/`IsDisplay` collapsed, owner | **green** | **`exit=0`** |
-| Same, group | fail (1) | `exit=0` |
-| Counter undercounts failures | fail (4) | `exit=1`, 3 divergent |
-| `applyMetadata` returns at first failure | fail (1) | `exit=0` |
-| `(file: F, line: N)` suffix dropped | fail (3) | `exit=1`, 5 divergent |
-| `Could not set 'V' on P: ` wrapper dropped | fail (3) | `exit=1`, 5 divergent |
-| exec failure attributed to `command`, not `returns` | fail (2) | `exit=0` |
-| notify's run-log line deleted | **green** | **`exit=1`**, 1 divergent |
-| mode pre-sync failure re-attributed to `mode` | **green** | **`exit=0`** |
-
-Four conclusions, in descending order of how much they should change behaviour.
-
-**Two sabotages were caught by neither instrument, and both are in the region
-this work was about.**
-
-The first is unconditional. Making `parseMode` and `currentMode` failures land
-on a `mode` `Change.Err` instead of returning a bare resource-level error
-inverts the rule `applyMetadata`'s own comment states — *"nothing was attempted, so
-nothing can be blamed"* (`internal/units/file/file.go:1236-1239`) — and produces a green
-`task check`. Reproduced directly: unit suite `exit=0`, G1 `181 leaves compared,
-0 divergent`. G1 is blind because its fixture declares no invalid mode; the unit
-suite is blind because those two error returns are never reached by a test that
-asserts on them.
-
-The second is conditional on the privilege the run has. Collapsing
-`WasDisplay`/`IsDisplay` into `Was`/`Is` in the **owner** branch — the exact
-mistake the `Is`/`IsDisplay` split was introduced to prevent, and the one
-`package { ensure => latest }` independently vindicates — is green on both
-instruments when run unprivileged. The assertion exists
-(`TestFileOwnershipRendersNamesButKeepsRawValues/owner`) but self-skips at
-`os.Getuid() != 0`, and G1's fixture declares no `owner` or `group`. Its
-**group** twin is caught, by an accident of which subtest skips. So this one is a
-sampling gap rather than an absent assertion — but it is a live hole in every
-unprivileged run, which is how `task check` runs by default, and whoever decides
-whether the fleet harness runs its gates as root is deciding whether it closes.
-
-Worse, for the first hole a test *appears* to cover it.
-`TestFileMetadataChmodFailureIsAttributedToMode` runs, is not skipped
-unprivileged, states in its comment that it documents exactly this boundary, and
-**passes under the sabotage** — its lone `err != nil` assertion is satisfied by
-an error raised earlier in `Apply`, so it never reaches `applyMetadata` at all.
-An assertion that only checks for a non-nil error cannot tell you *which* error.
-This is the first vacuous test found by a retrospective rather than by a gate or
-a review; it is recorded as a trap below.
-
-**The two instruments are complements, not substitutes, and the axis is
-breadth versus depth of branch.** G1 caught the deletion of the transaction's
-`rep.Log` call for a notify's run-log line — unit-green, G1 `exit=1`. No unit
-test asserts that the *transaction emits* that entry; `internal/units/notify/notify_test.go:171`
-asserts only that the provider populates `Change.Notice`, one layer below the
-deletion. That is G1's distinctive value: it compares the whole emitted document
-against Ruby, so it covers fields nobody thought to assert.
-
-G1 missed five sabotages, of which the unit suite caught **three** — the
-display/value collapse in its `group` form, the lost per-property independence
-in `applyMetadata`, and exec's misattribution to `command`. (The other two are
-the pair caught by neither, above.) All five are missed for one structural
-reason: **G1's fixture is five resources wide** and contains no `exec`, no
-`owner`/`group`, no multi-property failure, and no `--noop` pass. Its 181 leaves
-are deep, not broad. G1's reach is exactly its fixture's reach.
-
-**Where both fire, G1 is the more diagnostic.** For the attribution sabotage it
-named the four exact event fields that lost their value; for the counter
-regression it named both the per-resource counter and the run-level roll-up
-metric, which is how it was established that attribution propagates into
-`metrics`, not just into events. But it does not localize: dropping the location
-suffix and dropping the `Could not set` wrapper produce byte-identical G1
-output, because the comparator elides the innermost failure detail. It
-reports *that* the message differs, not *which half* is gone. The unit
-assertions distinguish them.
-
-**The cheapest improvement is the fixture, not more unit tests.** Four of the
-five G1 misses are one fixture edit away from being caught — `owner`/`group`
-closes both display/value rows, an invalid `mode` closes the pre-sync row, and a
-resource with two failing properties closes the independence row — at near-zero
-authoring cost, whereas each unit test costs a function. A `--noop` pass is
-worth adding on the same grounds, though no sabotage here needed it. The fifth,
-`exec`, is **not**: as recorded above, G1's fixture cannot
-contain one at all on this host, and closing that gap needs a second reference
-implementation in a container, not a wider catalog.
-
-**That gap is now closed, and the diagnosis above was right about where.** G5 —
-the container differential — carries five `exec` resources, and re-running this
-exercise's eighth sabotage against it moves the row's verdict: attributing a
-non-zero status to `command` instead of `returns` now yields `exit=1`, three
-divergent leaves, naming
-`resource_statuses.Exec[spine-exec-fail].events.0.property` and the two `err`
-logs whose source changed with it. The G1 column stands as measured — G1's
-fixture still has no `exec` and cannot — so the table records what each
-instrument saw, not what is reachable today. The first run of the extended
-fixture also found two defects neither the unit suite nor any gate had seen, both
-in the shape of an event that describes no property; see *What the gates do and
-do not prove*.
-
-What neither instrument reaches, and where both uncaught sabotages sit, is
-**error paths that precede a sync attempt** — a value that could not be parsed,
-a current state that could not be read, a rendering that no catalog exercises.
-Those need unit tests written deliberately, because no catalog produces them and
-no differential will ever see them.
-
-### The judgement
-
-The work is defensible on its own terms and the evidence does not fully settle
-it either way. Recorded so the next reader can weigh it rather than inherit a
-conclusion:
-
-**For.** The defect was real and user-visible; Puppet names the property and
-voxagent did not. The `Is`/`IsDisplay` split was independently required by
-`package`'s `ensure => latest`, so the contract change bought a second type's
-correctness before that type existed — the single best argument for doing it now
-rather than after `package` and `service` forced it. G1 could not see the defect
-class at all until a failing resource gave it one, so the differential's
-reach genuinely grew: `149` leaves to `181`.
-
-**Against.** The contract needed two widenings inside one body of work, which is weak
-evidence it is now stable, and the `package`/`service` reading found five more
-additive gaps plus one documented case (`service`'s inline `enable` sync) where
-the per-property model this document states is simply not what Puppet does. The
-docs-to-production ratio is roughly 3:1 by line. And the retrospective itself
-found a live, uncaught regression path and a vacuous test — meaning the
-instruments that certified this work green do not cover the region the work was
-about.
-
-The transferable finding, independent of the verdict, is the last one: **a green
-`task check` did not mean the attribution contract was enforced.** Both new
-sub-projects that depend on the spine should budget for pre-sync error-path tests
-explicitly, because nothing in the existing instrument set will ask for them.
+- [What it cost](attribution-cost.md#what-it-cost)
+- [Did the `Change.Err` contract hold, and would it survive `package` and `service`?](attribution-cost.md#did-the-changeerr-contract-hold-and-would-it-survive-package-and-service)
+- [How many of the must-measure predictions were wrong?](attribution-cost.md#how-many-of-the-must-measure-predictions-were-wrong)
+- [Did G1 catch anything the unit tests missed, or vice versa?](attribution-cost.md#did-g1-catch-anything-the-unit-tests-missed-or-vice-versa)
+- [The judgement](attribution-cost.md#the-judgement)

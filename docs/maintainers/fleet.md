@@ -1,11 +1,14 @@
 # Fleet harness internals
 
+For maintainers. Back to the [README](../../README.md).
+
 ## Why this exists
 
-P0's completion gate required running `voxdiff` against "the target fleet's real modules
+The harness's completion gate required running `voxdiff` against "the target fleet's real modules
 with real node facts". There is no target fleet. The gate was met against public Forge
 modules with no hiera, one node, one implementation, and no exported resources — which
-proved the harness works, not that the two-field allowlist holds against realistic data.
+proved the harness works, not that the [two-field allowlist](harness.md#why-the-allowlist-is-exactly-two-fields)
+holds against realistic data.
 
 This fleet closes those four gaps.
 
@@ -14,11 +17,12 @@ This fleet closes those four gaps.
 Each of these was found by standing the stack up, and each produces a broken or silently
 misleading fleet if changed.
 
-- **`ghcr.io/openvoxproject/openvoxdb`, not `puppet/puppetdb`.** Docker Hub's image stops
-  at 7.10.0; there is no PuppetDB 8 there. OpenVoxDB 8.15.0 also matches the OpenVox
+- **`ghcr.io/openvoxproject/openvoxdb`, not `puppet/puppetdb`.** Docker Hub's image has
+  no PuppetDB 8. OpenVoxDB also matches the OpenVox
   lineage the node images use.
 - **`USE_OPENVOXSERVER: "false"`.** Without it the OpenVoxDB entrypoint blocks for up to
-  360 seconds waiting for a puppetserver at `https://puppet:8140`. Stage 1 has no master.
+  360 seconds waiting for a puppetserver at `https://puppet:8140`. Stage 1, the masterless
+  layout `fleet/compose.yml` describes, has no master.
 - **`pg_trgm` must exist before OpenVoxDB starts.** Without it OpenVoxDB exits **0** after
   about six seconds. The clean exit code makes this look like success.
 - **`logging: driver: k8s-file` on every service.** Podman defaults to journald and this
@@ -31,14 +35,9 @@ misleading fleet if changed.
   runs `fleet/bin/wait-for-openvoxdb.sh` to poll the status endpoint for the real readiness
   signal. The one healthcheck that is declared, on `postgres`, is correct on a systemd host
   and inert here — nothing waits on it.
-- **Images are built by a script, not by a compose `build:` block.** Inside a nested
-  container the kernel refuses to mount an overlay whose lower layer is itself an overlay
-  with user xattrs, so `podman build` dies before creating any layer.
-  `fleet/bin/build-images.sh` tries the plain build first and retries under
-  `fuse-overlayfs` **only** when the failure output contains
-  `mounting an overlay over build context directory`. The fallback is detected, never
-  assumed: a normal host has working native overlay and may not have `fuse-overlayfs`
-  installed at all, and any other build failure is re-raised rather than retried.
+- **Images are built by a script, not by a compose `build:` block.** Inside a nested container the kernel refuses to mount an overlay whose lower layer is itself an overlay with user xattrs, so `podman build` dies before creating any layer.
+  - `fleet/bin/build-images.sh` tries the plain build first and retries under `fuse-overlayfs` **only** when the failure output contains `mounting an overlay over build context directory`.
+  - The fallback is detected, never assumed: a normal host has working native overlay and may not have `fuse-overlayfs` installed at all, and any other build failure is re-raised rather than retried.
 
 ## Why the node layer keys on hostname, not certname
 
@@ -49,8 +48,72 @@ revisit it.
 
 ## The gate's exit-code contract
 
+```mermaid
+%%{init: {'theme': 'base', 'themeVariables': {
+  'primaryColor': '#2f6dab',
+  'primaryTextColor': '#1e1e1e',
+  'primaryBorderColor': '#7c8ba1',
+  'lineColor': '#7c8ba1',
+  'edgeLabelBackground': '#eef2f8',
+  'tertiaryColor': 'transparent',
+  'tertiaryTextColor': '#7c8ba1',
+  'tertiaryBorderColor': '#7c8ba1',
+  'clusterBkg': 'transparent',
+  'clusterBorder': '#7c8ba1',
+  'titleColor': '#7c8ba1',
+  'noteBkgColor': '#eef2f8',
+  'noteTextColor': '#1e1e1e',
+  'fontFamily': 'system-ui, sans-serif'
+}, 'themeCSS': '.node .nodeLabel{color:#ffffff!important;fill:#ffffff!important;}'}}%%
+flowchart TD
+  start["Both runs of check 6 finished, exit codes printed"]
+  b0{"broken status in 0, 1, 2?"}
+  b2{"broken status is 2?"}
+  blog["Read BROKEN_LOG only: unenforced reported?"]
+  bv{"broken status is 1 and unenforced reported?"}
+  r0{"restored status in 0, 1, 2?"}
+  r2{"restored status is 2?"}
+  rlog["Read RESTORED_LOG only: success line present?"]
+  rv{"restored status is 0 and success line present?"}
+  x2a["exit 2: broken half outside contract or could not complete"]
+  x1a["exit 1: check 6 did NOT detect missing data"]
+  x2b["exit 2: restored half outside contract or could not complete"]
+  x1b["exit 1: check 6 did not return to green"]
+  ok[exit 0]
+  start --> b0
+  b0 -->|no| x2a
+  b0 -->|yes| b2
+  b2 -->|yes| x2a
+  b2 -->|no| blog
+  blog --> bv
+  bv -->|no final| x1a
+  bv -->|yes| r0
+  r0 -->|no| x2b
+  r0 -->|yes| r2
+  r2 -->|yes| x2b
+  r2 -->|no| rlog
+  rlog --> rv
+  rv -->|no| x1b
+  rv -->|yes| ok
+  class b0,b2,r0,r2,bv,rv sysA
+  class blog,rlog sysD
+  class x2a,x2b sysC
+  class x1a,x1b sysB
+  class ok sysF
+  classDef sysA fill:#2f6dab,color:#ffffff,stroke:#7c8ba1
+  classDef sysB fill:#1d7848,color:#ffffff,stroke:#7c8ba1
+  classDef sysC fill:#7457b8,color:#ffffff,stroke:#7c8ba1
+  classDef sysD fill:#2d747e,color:#ffffff,stroke:#7c8ba1
+  classDef sysE fill:#4d68c4,color:#ffffff,stroke:#7c8ba1
+  classDef sysF fill:#5c6a82,color:#ffffff,stroke:#7c8ba1
+```
+
 `fleet/tests/fleet.venom.yml` drives eight checks, each a `bash` invocation of one script in
-`fleet/bin/`. All eight use the same three codes:
+`fleet/bin/`. Checks are numbered 1 to 6 in the script headers: 1 is `gate:determinism`,
+2 `gate:implementations`, 3 `gate:scan`, 4 `gate:exports`, 5 `gate:axes` and 6
+`gate:compliance`; the two negative controls are not numbered. All eight give 2 the same
+meaning. `gate:implementations` and `gate:scan` never exit 1, and the other six use all
+three codes:
 
 - **0** — the check ran and got the outcome it asserts.
 - **1** — the check ran and the fleet did not behave as asserted. This is a *result*.
@@ -89,9 +152,12 @@ which puts the outage straight back where it started.
 **Writing is subject to it as well, and that one is easy to miss.** A failed `echo` exits 1
 under `set -e`, so an unwritable stdout turns a green run into a finding — measured on
 `gate-determinism.sh` with stdout on a full device: exit 1 before the guards, exit 2 after.
+
 The nastier half is on stderr, where the failing command is the outage announcement itself:
 `echo "... could not run" >&2` followed by `exit 2` exits **1** instead, so the line whose
-only job is to report an outage is what converts it into a finding. Every `echo`, `printf`,
+only job is to report an outage is what converts it into a finding.
+
+Every `echo`, `printf`,
 `sed` and `cat` that writes to stdout or stderr in the gates therefore carries `|| exit 2`,
 with two deliberate exceptions — writes inside an EXIT trap keep `|| :`, because an `exit` there
 overwrites the status the trap exists to preserve, and `fleet_compile_args`' `printf` is
@@ -122,7 +188,7 @@ the `gate:*` tasks in `.taskfiles/fleet.yml` is the authoritative table; in summ
 ### Why the Venom suite calls `bash`, not `task`
 
 `task` does not pass a command's exit status through. Both `exit 1` and `exit 2` surface as
-**201** (measured with Task 3.53.1), so every `result.code` assertion in the suite would
+**201** (measured; `task --version` reports the installed Task), so every `result.code` assertion in the suite would
 collapse to "non-zero" if the testcases ran `task fleet:gate:...`. The inverted
 `gate:exports` code and the 1-versus-2 distinction the whole contract rests on would be
 unobservable. The suite therefore invokes each script directly, which is what makes those
@@ -148,17 +214,10 @@ before anything is compiled or mutated.
 
 Three behaviours are easy to get wrong when changing these:
 
-- **Catalogs are read the way voxdiff reads them.** `fleet.LoadCatalog` calls
-  `compile.ExtractJSON`, voxdiff's own code, to skip the Notice line ahead of
-  the JSON. Invalid UTF-8 is *not* refused here, unlike in the report
-  comparator: a corrupt byte inside a string decodes as U+FFFD and reads as a
-  mismatch, a finding about the fleet; a corrupt byte in the structure is a
-  read failure, exit 2. One divergence from the Python reader: it split the
-  output with `str.splitlines()`, which also breaks on U+2028, U+2029 and
-  U+0085, so one of those raw inside any catalog string made it exit 2
-  ("Invalid control character"); `ExtractJSON` splits on `\n` only and reads
-  such a catalog. Real catalogs carry none (every gate matched its Python
-  baseline).
+- **Catalogs are read the way voxdiff reads them.** `fleet.LoadCatalog` calls `compile.ExtractJSON`, voxdiff's own code, to skip the Notice line ahead of the JSON.
+  - Invalid UTF-8 is accepted here, unlike in the report comparator, which refuses it: a corrupt byte inside a string decodes as U+FFFD and reads as a mismatch, a finding about the fleet; a corrupt byte in the structure is a read failure, exit 2.
+  - One divergence from the Python reader: it split the output with `str.splitlines()`, which also breaks on U+2028, U+2029 and U+0085, so one of those raw inside any catalog string made it exit 2 ("Invalid control character"); `ExtractJSON` splits on `\n` only and reads such a catalog.
+  - Real catalogs carry none (every gate matched its Python baseline).
 - **The fact capture is checked on the host.** Only the voxdiff binary is
   mounted into the nodes, so `gate-implementations.sh` copies each capture out
   to `implementations-NODE-facts.json` in the output directory and checks it
@@ -172,9 +231,9 @@ Three behaviours are easy to get wrong when changing these:
 
 `.taskfiles/integration.yml` runs `venom run "{{.ROOT_DIR}}/tests"` against the *directory*,
 so Venom collects every suite underneath it. A fleet suite placed in `tests/` would silently
-enrol itself into `task integration:venom` — P0's end-to-end suite, which needs no
-containers — and would then fail for anyone who had not run `task fleet:up`, looking like a
-P0 regression. `task fleet:gate` names `fleet/tests/fleet.venom.yml` explicitly, so the two
+enrol itself into `task integration:venom` — the end-to-end suite, which needs no
+containers — and would then fail for anyone who skipped `task fleet:up`, looking like a
+regression in that suite. `task fleet:gate` names `fleet/tests/fleet.venom.yml` explicitly, so the two
 suites cannot leak into each other.
 
 ## Why check 2 does not assert equality
@@ -187,19 +246,58 @@ into its own 0, and exits 2 — and only ever 2 — when a comparison could not 
 exits 1, because a gate that reported an outage with the code it uses for a finding would
 make the finding unbelievable.
 
-It compares **implementation and version together**: OpenVox 8.28.1 against puppet gem
-8.10.0. OpenVox forked and renumbered, so no matching gem version exists. A divergence
+It compares **implementation and version together**: OpenVox against the puppet gem
+(`puppet --version` in each image reports its own version). OpenVox forked and renumbered, so no matching gem version exists. A divergence
 reported by this check must not be described as purely an implementation difference.
 
 A third variable, the fact engine, is separated out rather than left in. Each RedHat node is
-compared twice — `native`, where each side runs its own fact engine (openfact 5.6.1 against
-facter 4.10.0, which disagree on real values such as `processors.isa`), and `normalised`,
-where both sides compile from one pre-captured fact set through Puppet's json facts
-terminus. The delta between the two difference counts is the fact engine's contribution.
+compared twice — `native`, where each side runs its own fact engine (openfact against
+facter, which disagree on real values such as `processors.isa`), and `normalised`,
+where both sides compile from one pre-captured fact set through the json terminus that
+Puppet uses for facts. The delta between the two difference counts is the fact engine's contribution.
 `node-deb` carries a single Puppet implementation by design and so is not compared here;
 check 1 covers all three, because determinism is a per-node property.
 
 ## Why the exported-resource test mutates a fixed value
+
+```mermaid
+%%{init: {'theme': 'base', 'themeVariables': {
+  'primaryColor': '#2f6dab',
+  'primaryTextColor': '#1e1e1e',
+  'primaryBorderColor': '#7c8ba1',
+  'lineColor': '#7c8ba1',
+  'edgeLabelBackground': '#eef2f8',
+  'tertiaryColor': 'transparent',
+  'tertiaryTextColor': '#7c8ba1',
+  'tertiaryBorderColor': '#7c8ba1',
+  'clusterBkg': 'transparent',
+  'clusterBorder': '#7c8ba1',
+  'titleColor': '#7c8ba1',
+  'noteBkgColor': '#eef2f8',
+  'noteTextColor': '#1e1e1e',
+  'fontFamily': 'system-ui, sans-serif'
+}, 'themeCSS': '.node .nodeLabel{color:#ffffff!important;fill:#ffffff!important;}'}}%%
+sequenceDiagram
+  participant W as Host wrapper (gate-exports.sh, voxdiff)
+  participant EL as node-el
+  participant DB as OpenVoxDB
+  participant D as node-deb
+  W->>EL: step 1: export base resource
+  EL->>DB: fleet-exported-node-el-base
+  W->>DB: wait until the export lands
+  W->>D: left wrapper: compile 1
+  Note over D: routes.yaml puppetdb_apply terminus, find returns nil, facts from facter
+  D->>DB: collect exports, store catalog
+  DB-->>D: sees only the base resource
+  W->>EL: right wrapper: re-export mutated fixed value
+  EL->>DB: fleet-exported-node-el-mutated
+  W->>DB: wait until the mutated export lands
+  W->>D: right wrapper: compile 2
+  Note over D: facts again from facter, not replayed from the cache
+  D->>DB: collect exports, store catalog
+  DB-->>D: sees the mutated resource
+  Note over W: only_in_left base and only_in_right mutated gives exit 0
+```
 
 Two ordinary compiles of the collector agree, because PuppetDB is unchanged between them.
 The negative test therefore drives the change itself. It uses a fixed variant string rather
@@ -212,8 +310,8 @@ the outside. `storeconfigs = true` does not only enable exported resources; it a
 OpenVoxDB a read-through cache for a node's *facts*, with no expiration. Left alone, that
 cache replays `node-el`'s first fact set on every later compile, so writing a new external
 fact changes nothing and the negative test quietly reports agreement — the one failure mode
-this check exists to rule out. `fleet/code/routes.yaml` selects the openvoxdb-termini
-`puppetdb_apply` cache terminus, whose `find` returns nil, so facts come from facter while
+this check exists to rule out. `fleet/code/routes.yaml` selects the
+`puppetdb_apply` terminus, a cache terminus from openvoxdb-termini, whose `find` returns nil, so facts come from facter while
 the catalog and its exports still reach OpenVoxDB.
 
 This is also the only check that runs `voxdiff` on the **host**. Every other check execs
@@ -246,14 +344,64 @@ someone performed once by hand.
 
 ## What the `compliance_markup` result does and does not prove
 
+```mermaid
+%%{init: {'theme': 'base', 'themeVariables': {
+  'primaryColor': '#2f6dab',
+  'primaryTextColor': '#1e1e1e',
+  'primaryBorderColor': '#7c8ba1',
+  'lineColor': '#7c8ba1',
+  'edgeLabelBackground': '#eef2f8',
+  'tertiaryColor': 'transparent',
+  'tertiaryTextColor': '#7c8ba1',
+  'tertiaryBorderColor': '#7c8ba1',
+  'clusterBkg': 'transparent',
+  'clusterBorder': '#7c8ba1',
+  'titleColor': '#7c8ba1',
+  'noteBkgColor': '#eef2f8',
+  'noteTextColor': '#1e1e1e',
+  'fontFamily': 'system-ui, sans-serif'
+}, 'themeCSS': '.node .nodeLabel{color:#ffffff!important;fill:#ffffff!important;}'}}%%
+flowchart TD
+  key["Any hiera key in the production environment"]
+  be["compliance_markup lookup_key backend: first hierarchy entry"]
+  rec["Recursive lookups: enforcement and enforcement_tolerance_level, each walking the hierarchy"]
+  gate{"profile_list == empty? compliance_mapper.rb line 55"}
+  skip["Profile compiler never runs, no compliance YAML read"]
+  glob["Split env.modulepath, glob each module for SIMP/compliance_profiles"]
+  checks["fleet_profile checks.yaml"]
+  marker["Enforced value for fleet_profile::compliance_marker"]
+  cat["Catalog carries the marker, asserted by gate:compliance"]
+  yum["Pinned checkout's only shipped check targets yum::config_options, no class looks it up"]
+  key --> be
+  be --> rec
+  rec --> gate
+  gate -->|yes until common.yaml sets the key| skip
+  gate -->|no| glob
+  glob --> checks
+  glob -.->|alone changes no catalog| yum
+  checks --> marker
+  marker --> cat
+  class key,be,rec sysA
+  class gate sysD
+  class skip,yum sysF
+  class glob,checks sysC
+  class marker,cat sysB
+  classDef sysA fill:#2f6dab,color:#ffffff,stroke:#7c8ba1
+  classDef sysB fill:#1d7848,color:#ffffff,stroke:#7c8ba1
+  classDef sysC fill:#7457b8,color:#ffffff,stroke:#7c8ba1
+  classDef sysD fill:#2d747e,color:#ffffff,stroke:#7c8ba1
+  classDef sysE fill:#4d68c4,color:#ffffff,stroke:#7c8ba1
+  classDef sysF fill:#5c6a82,color:#ffffff,stroke:#7c8ba1
+```
+
 `compliance_markup` is wired as the **first** hierarchy entry in
 `fleet/code/environments/production/hiera.yaml`, as a `lookup_key` backend rather than a
 data file, so every key in the environment passes through it.
 
 It is genuinely consulted. `puppet lookup --explain` shows the entry running on every key
-and issuing three recursive `lookup` calls of its own before answering — `lookup_options`,
-`compliance_markup::enforcement`, and `compliance_markup::enforcement_tolerance_level`, each
-walking the whole hierarchy again. On top of that,
+and issuing recursive `lookup` calls of its own before answering —
+`compliance_markup::enforcement` and `compliance_markup::enforcement_tolerance_level`, each
+walking the whole hierarchy again. (It rejects `lookup_options` itself with `throw :no_such_key`.) On top of that,
 `lib/puppet/functions/compliance_markup/enforcement.rb:51` re-reads the mapper's Ruby from
 disk and evaluates it (`instance_eval`) on **every** lookup, unconditionally. That is the
 hardest thing the two-field allowlist has to survive, and it survives it: check 1 still
@@ -294,11 +442,16 @@ control exercises discovery instead.
 
 **Read the result narrowly, still.** The compiled profile map holds two parameters —
 `fleet_profile::compliance_marker` and the module's own `yum::config_options` — of which
-one is ever looked up here. So what is proven is discovery and evaluation: the compiler
+one is ever looked up here.
+
+So what is proven is discovery and evaluation: the compiler
 walks the modulepath, reads YAML off disk, merges two modules' compliance data, and lands a
-value in a catalog the gate compares, deterministically, on every lookup. What is *not*
+value in a catalog the gate compares, deterministically, on every lookup.
+
+What is *not*
 covered is everything above a single scalar check on a single profile: configuration
-elements (`ce`), knockout prefixes, `enforcement_tolerance_level`, JSON compliance data,
+elements (`ce`), per-check `confine` keys (which match facts or module name and version),
+knockout prefixes, `enforcement_tolerance_level`, JSON compliance data,
 and any case where two modules' checks contend for the same parameter. A scalar value from
 one contributor cannot expose a merge-ordering difference — only a discovery failure. That
 is the new boundary.
@@ -337,27 +490,100 @@ expiry.
 Re-minting is deliberate rather than automatic, because it replaces the CA under
 a running stack. From the repository root:
 
-```
-task fleet:down
-rm -f fleet/.certs/ca.crt fleet/.certs/ca.crl
-task fleet:certs
-task fleet:up
-```
+1. `task fleet:down`
+2. `rm -f fleet/.certs/ca.crt fleet/.certs/ca.crl`
+3. `task fleet:certs`
+4. `task fleet:up`
 
-Removing `ca.crt` and `ca.crl` sends make-certs.sh down its full-mint path, which
-replaces the CA directory and every certificate.
+Step 2 sends make-certs.sh down its full-mint path, which replaces the CA directory and
+every certificate.
 
 ## Vendored module pins
 
+```mermaid
+%%{init: {'theme': 'base', 'themeVariables': {
+  'primaryColor': '#2f6dab',
+  'primaryTextColor': '#1e1e1e',
+  'primaryBorderColor': '#7c8ba1',
+  'lineColor': '#7c8ba1',
+  'edgeLabelBackground': '#eef2f8',
+  'tertiaryColor': 'transparent',
+  'tertiaryTextColor': '#7c8ba1',
+  'tertiaryBorderColor': '#7c8ba1',
+  'clusterBkg': 'transparent',
+  'clusterBorder': '#7c8ba1',
+  'titleColor': '#7c8ba1',
+  'noteBkgColor': '#eef2f8',
+  'noteTextColor': '#1e1e1e',
+  'fontFamily': 'system-ui, sans-serif'
+}, 'themeCSS': '.node .nodeLabel{color:#ffffff!important;fill:#ffffff!important;}'}}%%
+flowchart TD
+  row["Next row of the pin table: url, dest, ref"]
+  git{"dest/.git exists?"}
+  url{"origin url matches the table?"}
+  head{"HEAD equals the full 40-char pin?"}
+  dirty{"worktree clean? git status porcelain"}
+  skip["already present at pin: continue"]
+  ne{"dest exists without .git?"}
+  clone["clone to dest.partial"]
+  co{"checkout of ref succeeds?"}
+  fresh{"fresh HEAD equals ref?"}
+  mv["mv dest.partial to dest"]
+  done["vendor: done"]
+  r1["exit 1: names no origin or origin differs"]
+  r2["exit 1: at another commit, names both SHAs"]
+  r3["exit 1: worktree modified"]
+  r4["exit 1: exists but is not a git checkout"]
+  r5["exit 1: clone failed, partial removed"]
+  r6["exit 1: ref does not resolve, partial removed"]
+  r7["exit 1: ref resolved elsewhere, partial removed"]
+  row --> git
+  git -->|yes| url
+  url -->|no| r1
+  url -->|yes| head
+  head -->|no| r2
+  head -->|yes| dirty
+  dirty -->|no| r3
+  dirty -->|yes| skip
+  skip --> row
+  git -->|no| ne
+  ne -->|yes| r4
+  ne -->|no| clone
+  clone -->|fails| r5
+  clone --> co
+  co -->|no| r6
+  co -->|yes| fresh
+  fresh -->|no| r7
+  fresh -->|yes| mv
+  mv --> row
+  row -->|table exhausted| done
+  class git,url,head,dirty,ne,co,fresh sysA
+  class skip,clone,mv,row sysD
+  class r1,r2,r3,r4,r5,r6,r7 sysC
+  class done sysB
+  classDef sysA fill:#2f6dab,color:#ffffff,stroke:#7c8ba1
+  classDef sysB fill:#1d7848,color:#ffffff,stroke:#7c8ba1
+  classDef sysC fill:#7457b8,color:#ffffff,stroke:#7c8ba1
+  classDef sysD fill:#2d747e,color:#ffffff,stroke:#7c8ba1
+  classDef sysE fill:#4d68c4,color:#ffffff,stroke:#7c8ba1
+  classDef sysF fill:#5c6a82,color:#ffffff,stroke:#7c8ba1
+```
+
 `fleet/bin/vendor.sh` pins all six clones to full 40-character commit SHAs. None of these
 repositories publishes tags this fleet can rely on, so raw SHAs are the strongest pin
-available. The four module pins were branch names (`main` or `master`) until they were
+available. The six are `simp-webrick`, `openvox-ca`, and the four modules under `modules/` (`stdlib`,
+`concat`, `simplib`, `compliance_markup`). The four module pins were branch names (`main` or `master`) until they were
 replaced with the commits checked out when the eight-check gate was last green — read out of
 the working checkouts, so the pinned tree is the tested tree rather than merely a
 contemporaneous one.
 
-**Updating a pin is a deliberate act.** Re-vendor from scratch, run `task fleet:gate`, and
-record the new commit only once it is green. Six things stop a pin from quietly failing to
+**Updating a pin is a deliberate act.**
+
+1. Re-vendor from scratch.
+2. Run `task fleet:gate`.
+3. Record the new commit only once it is green.
+
+Six things stop a pin from quietly failing to
 bind. `fleet/tests/vendor-pins.sh` holds every one of them in place — offline, against local
 origins, so it is safe to run against a live fleet — via `task dev:vendor-pins`.
 
@@ -365,25 +591,17 @@ origins, so it is safe to run against a live fleet — via `task dev:vendor-pins
   checkout` exits 1 before the `mv`, and the destination is never created — so the fleet has
   no module tree at all rather than the wrong one. Guarded rather than left to `set -e`,
   which carried git's own 128 out of the script and named neither repository nor reason.
-- *A checkout that is already there* is compared against its pin on every run, and a mismatch
-  names both SHAs and exits 1. Without that, editing a ref would be a no-op against a
-  populated `fleet/.vendor/`: the script skips any destination that already has a `.git`, so
-  the gate would keep measuring the old trees while `vendor.sh` claimed otherwise. That is
-  the likeliest of the six, and the one that bites hardest when several pins change at
-  once. The comparison is exact, not a prefix, so a pin truncated below 40 characters fails
-  loudly rather than binding to whatever happens to be checked out.
+- *A checkout that is already there* is compared against its pin on every run, and a mismatch names both SHAs and exits 1.
+  - Without that, editing a ref would be a no-op against a populated `fleet/.vendor/`: the script skips any destination that already has a `.git`, so the gate would keep measuring the old trees while `vendor.sh` claimed otherwise.
+  - That is the likeliest of the six, and the one that bites hardest when several pins change at once.
+  - The comparison is an exact match on the full SHA, so a pin truncated below 40 characters fails loudly rather than binding to whatever happens to be checked out.
 - *A checkout from a different origin* is refused. Repointing an entry at a fork or a mirror
   is the same no-op as editing a ref, one column over: nothing read `remote.origin.url`
   until this check existed.
-- *A checkout that is at the pin but has been edited* is refused. A commit id names a tree; it
-  does not prove the tree on disk is still that one. This is the sharpest of the six, because
-  `fleet/.vendor/modules` is the modulepath every node compiles against — an added `.pp`
-  reaches every catalog the gate measures, and it is code that exists in no repository at all.
-  `--porcelain` covers untracked files too, which is the half that matters most here —
-  though **not ignored ones**, and Puppet's modulepath does not consult `.gitignore`, so
-  the guarantee is "tracked modifications and non-ignored untracked files", not "nothing
-  has changed". Measured; no live instance, since none of the six vendored trees ignores
-  a Puppet autoload path today.
+- *A checkout that is at the pin but has been edited* is refused. A commit id names a tree; it does not prove the tree on disk is still that one.
+  - This is the sharpest of the six, because `fleet/.vendor/modules` is the modulepath every node compiles against — an added `.pp` reaches every catalog the gate measures, and it is code that exists in no repository at all.
+  - `--porcelain` covers untracked files too, which is the half that matters most here — though **not ignored ones**, and Puppet's modulepath does not consult `.gitignore`, so the guarantee is "tracked modifications and non-ignored untracked files", not "nothing has changed".
+  - Measured; no live instance, since none of the six vendored trees ignores a Puppet autoload path today.
 - *A fresh clone whose ref resolves elsewhere* is refused. `git checkout` accepts an annotated
   tag's own object SHA and a branch name, landing on a commit that is not the pin; the
   creating run now compares HEAD before the `mv`. This is the path every clean checkout and
@@ -392,7 +610,7 @@ origins, so it is safe to run against a live fleet — via `task dev:vendor-pins
   past the `.git` test, and `mv` into an existing directory **nests** rather than failing —
   measured: exit 0, the clone parked one level down, `vendor: done` printed over a tree
   nothing had replaced. Checked explicitly rather than with `mv -T`, which is GNU-only and
-  would give `vendor.sh` a non-POSIX dependency it does not otherwise have.
+  would make `vendor.sh` depend on a non-POSIX feature it does not otherwise need.
 
 What pinning does and does not buy, stated plainly because a harness about trustworthiness
 should not overclaim: a full SHA fixes tree content **given an honest server and an
@@ -407,9 +625,10 @@ check and no pinned remote fingerprint. Pinning here is reproducibility, not aut
    install, which is the half of check 2's cross-implementation comparison that the pinned
    `puppet` and `facter` gems exist to protect. Largest remaining hole.
 2. Both node images install `openvox-agent` (and `openvoxdb-termini`) from a release
-   repository rather than at a version, so "OpenVox 8.28.1" is what a build *produced*, not
+   repository rather than at a version, so the OpenVox version is what a build *produced*, not
    what it *guarantees* — and that is the reference implementation check 2 measures against.
 3. `compose.yml` pulls `ghcr.io/openvoxproject/openvoxdb:latest`, which check 4 depends on.
+   It also pulls `docker.io/library/postgres:16`, a floating major-version tag.
 4. `Dockerfile.deb` builds `FROM docker.io/library/debian:12`; smaller blast radius, since
    that node carries only the agent.
 5. Transitive gems beneath `puppet -v 8.10.0` float. `facter` is pinned because it decides

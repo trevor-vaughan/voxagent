@@ -1,8 +1,10 @@
 # `voxagent agent`: transport and identity
 
+For maintainers. Back to the [README](../../README.md).
+
 Maintainer notes for the one-shot agent run against an OpenVox server. Operators
-read the README's "Running against an OpenVox server". The divergences from
-`puppet agent` are D-59 to D-77 in [`apply-spine.md`](apply-spine.md).
+read [Running against an OpenVox server](../usage/openvox-server.md). The divergences from
+`puppet agent` are D-59 to D-77, plus D-78 for redaction, in [`apply-spine.md`](apply-spine.md); search the file for the D-number.
 
 ## Package layout
 
@@ -32,8 +34,8 @@ nothing applied:
 5. `Facts`.
 6. Catalog POST (`static_catalog=false`). A catalog naming a different
    environment than pluginsync used is refused (D-66).
-7. `FetchSources` into a directory under vardir, removed by `Prepared.Close`
-   on every exit path.
+7. `FetchSources` into a directory under vardir, removed by `Close` on the
+   `Prepared` value that `Prepare` returns, on every exit path.
 
 `runAgent` then applies the catalog through `applyCatalog`, which fills the
 report's catalog fields (environment, code id, version) as for `apply`, and
@@ -58,8 +60,8 @@ rules are requirements. Summary, with the reason for each:
   itself and does not change when intermediates are added.
 - **Revocation fails closed.** A missing, badly signed or expired CRL for any
   CA in a chain fails the connection. Only a failed *refresh* keeps the old
-  valid file, as Puppet does. The CA refresh client does no revocation check,
-  matching Puppet's `revocation: false` for CA/CRL fetches.
+  valid file, as Puppet does. The CA refresh client does not check revocation,
+  matching Puppet's `revocation: false` for CA and CRL fetches.
 - **A refresh cannot change the root.** A new bundle is accepted only if it
   still holds the trusted root and every certificate in it is a CA (D-73).
 - **The issued certificate is checked before it is saved:** chains to the CA,
@@ -74,14 +76,9 @@ rules are requirements. Summary, with the reason for each:
   execution.
 - **Nothing sensitive is logged:** key, CSR, fact values, catalog body, file
   content.
-- **`Sensitive` values are redacted** in the report and the logs as Puppet
-  redacts them (apply-spine.md D-8), and in error text where Puppet leaks them
-  (D-78). A mark that cannot apply (a plain parameter such as `cwd`) is a
-  console warning, `Warning: /Exec[x]: Unable to mark 'cwd' as sensitive: …`,
-  printed on the agent's own log and never put in the report, as in Puppet.
-  The exception is a plain parameter's value Puppet itself does not redact: a
-  marked `environment` value that a command echoes reaches the report through
-  the command's `logoutput`.
+- **`Sensitive` values are redacted** in the report and the logs as Puppet redacts them, and in error text where Puppet leaks them (D-78).
+  - A `Sensitive` mark that cannot apply (to a plain parameter such as `cwd`, which has no value to redact) is a console warning, `Warning: /Exec[x]: Unable to mark 'cwd' as sensitive: …`, printed on the agent's own log and never put in the report, as in Puppet.
+  - A separate case is a plain parameter's value Puppet itself does not redact: a marked `environment` value that a command echoes reaches the report through the command's `logoutput`.
 
 Residual risk, accepted: trust on first use when `--ca-fingerprint` is not
 given, and a server the operator trusts can still send root-executed Ruby by
@@ -89,19 +86,21 @@ design (that is what a Puppet server does).
 
 ## Running the gate
 
+Needs podman.
+
 ```bash
-task fleet:images        # once: builds localhost/fleet-node-el:latest
+task fleet:images        # once: builds localhost/fleet-node-el:latest (FORCE=1 rebuilds an existing image)
 task dev:agent-gate
 ```
 
-Needs podman. It is outside `task check` because it starts an OpenVox server
+It is outside `task check` because it starts an OpenVox server
 and two nodes (about 30 s warm), and it builds first, because the binary is
 copied into the node. The server image is pinned by digest in
 `tests/agent/compose.yml`; the first run pulls it. The script is
 `tests/agent/run.sh`; its header lists the assertions. Exit 0 means every
 assertion held, 1 an assertion failed, 2 it could not run (never a pass).
 Artifacts, including both agents' reports, are in `.test-output/agent/`.
-Its place among the other gates is the table in `apply-spine.md`.
+Its place among the other gates is the table in [What the gates do and do not prove](gate-evidence.md).
 
 The reports are compared through `tests/spine/allowlist.json` merged with
 `tests/agent/allowlist.json` (run.sh writes the merged copy to
