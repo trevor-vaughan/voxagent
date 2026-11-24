@@ -1,0 +1,19 @@
+docs/usage/openvox-server.md
+  s_2d651dbe751c6b::t_ff42dc1dbdef9d 51,125
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "e100084ce9a31123191d3effb4fb64db573d63a0",
+  "prompts": {},
+  "sessions": {
+    "s_2d651dbe751c6b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c2866c88-46bb-441b-992a-40b6f75d66b1",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "LLM (riotbox) <llm@riotbox>"
+    }
+  }
+}
