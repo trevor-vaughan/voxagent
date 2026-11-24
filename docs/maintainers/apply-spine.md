@@ -188,6 +188,11 @@ and the number is retired rather than reused:
 | D-95 | The `crontab -` write runs through `command.RunArgvWith`, as `user` and `group`'s commands do: under `LANG=C` and `LC_ALL=C` with the other locale variables removed, and with its output captured (the D-80 cap) and copied to stderr after the command exits, instead of streamed through inherited descriptors. The exit status is ignored on both sides. Ruby's `IO.popen` inherits the agent's locale and descriptors, and the output it passes through is cronie's stdout `Backup of <t>'s previous crontab saved to …` on every replacing write and its stderr refusal lines (M5). The write keeps `HOME`, `USER` and `LOGNAME` (`ArgvOpts.KeepUserEnv`), which `RunArgvWith` otherwise removes: `IO.popen` inherits them, and cronie writes its backup of the replaced crontab under `$HOME/.cache/crontab/` only when `HOME` is set (found by G5; 63cb4b9). The read (`crontab -l`) sets `ArgvOpts.FailOnTruncate`, so output beyond the D-80 cap is a read error for that target, whose flushes then fail, rather than a cut copy that a later write would install | No existing row covers this: everywhere else the runner's `LANG=C` matches Ruby, whose `Execution.execute` applies the same override (`util/execution.rb:372-377`); `IO.popen` is the one path that bypasses it. Copying after exit is what lets the run scrub the output before it is shown (`unit.Env.Stderr`) | `internal/lib/parsedfile/filetype_test.go:TestCrontabUserEnv`, `TestCrontabWriteArgv`, `TestCrontabReadSetsFailOnTruncate`, `TestCrontabWriteIgnoresStderrFailure`; `internal/lib/command/command_test.go:TestRunArgvWithKeepUserEnv`, `TestRunArgvWithFailOnTruncate`; `internal/units/cron_core/cron_apply_test.go:TestCronWriteOutputScrubbed`. G5 compares cronie's backup under `/root/.cache/crontab/` after the `modify` and `same-name-two-targets` cases |
 | D-96 | The ParsedFile engine's state is per run (`parsedfile.Run`, held by the provider `Prefetch` returns), and so is the counter that names unmanaged jobs (`unmanaged:<command>-<n>`, in the `cronClass` closure). Ruby's class state lives for the process, so a daemonised agent re-reads every target an earlier run touched, continues the counter across runs, and can bind a resource to a stale record from the previous run | `Prefetch` builds a new `Run` for each run, so what a run sees is what Ruby's first run in a process sees. Unmeasured: it needs a daemonised Ruby agent, so it is read from `provider/parsedfile.rb` (`pf:388`, `pf:315-318`; the `@name_index` counter, `prov:187`) | `internal/lib/parsedfile/parsedfile_test.go:TestRunsAreIndependent`; `internal/units/cron_core/cron_grammar_test.go:TestCronPrefetchHookCounterIsPerClass` |
 | D-97 | A crontab write whose text fails to encode under a US-ASCII `default_external` (any non-ASCII character in the generated crontab) fails the flush with Ruby's text and leaves the crontab as it was: `crontab` is not run. Ruby's pipe raises before anything is written, closes empty, and cronie installs an empty crontab, losing every job in the target. Messages, events and statuses are Ruby's (`Puppet::Provider::Cron::FileType::FileTypeCrontab could not write root: U+00E9 from UTF-8 to US-ASCII`, logged once as `err`, then a `resource_error` after the `created` event) | Reproducing the loss would let one non-ASCII character in a catalog empty a crontab (M7: nothing reaches the pipe, cronie installs 0 bytes). Decided by the user on 2026-11-22 over reproducing the loss or delegating | `internal/lib/parsedfile/filetype_test.go:TestCrontabWriteEncoding`, `TestEncodeError`; `internal/units/cron_core/cron_apply_test.go:TestCronEncodingFailures` |
+| D-99 | Privilege drop by child process: Ruby changes the agent's own euid and egid and leaves the real uid 0 (`suid:63-78`); voxagent's `asuser` helper has real and effective ids of the user. File access checks are the same (the kernel uses fsuid = euid). Ruby's restore calls `initgroups(0)` (`suid:74-75`, `:134-136`), so after the first drop the Ruby agent's supplementary groups become root's from the group database for the rest of the run; voxagent's never change | Go cannot change one thread's credentials safely (`setgroups` is process-wide), so a child started with `SysProcAttr.Credential` is the only faithful way to make the kernel check every path component as the user. See "Privilege drop (`voxagent asuser`)" | `internal/lib/asuser/asuser_test.go`; `cmd/voxagent/asuser_test.go:TestAsuserRoot*` (root only) |
+| D-100 | A `ssh_authorized_key` flush that writes a second target (the old target after a `target` change) backs that target up in the root parent. Ruby's engine backs it up inside `asuser` (`kp:72-75`, `pf:91-99`), as the new user: skipped silently when that user cannot stat the file; when it can, `Info: Computing checksum on file <old>`, then err `Could not back up <old>: Permission denied @ dir_s_mkdir - /opt/puppetlabs/puppet/cache/clientbucket` (source `Puppet`; the cache and `clientbucket` are 0750 root) and the resource's `Could not evaluate: <same>`. voxagent's backup succeeds there, so its flush goes on to the write, which fails as the user (`could not write <old>: Permission denied @ rb_sysopen`) unless the user may write the old file; the bucket gains an entry Ruby lacks | Reproducing it would put the clientbucket code and writes into root's vardir in the user-run helper, and need the failing bucket path in a result the helper protocol keeps closed (spec §3.4). Measured (M8 `05k-move2`, `05k-move3`) | `internal/units/sshkeys_core/sak_apply_test.go:TestSakTargetMove` |
+| D-101 | The helper's environment is `PATH` and `TMPDIR` only (each when set); Ruby's write runs in the agent's full environment. No measured effect: the write reads no other variable (Go's temp dir is `$TMPDIR` else `/tmp`, the engine's existing behaviour). The same row records what the helper adds. Two voxagent-only failures, which Ruby's in-process `asuser` cannot hit: `Could not start the asuser helper via /proc/self/exe (is /proc mounted?): <err>` and `asuser helper for <path> returned an invalid result`. One ordering nuance: the parent checks the write's US-ASCII encoding (`parsedfile.FlatEncodeError`) before it starts the helper's write, because the closed result has no step for it, so when the temp file cannot be created either, voxagent reports the encoding failure where Ruby reports the temp file's. And a user can stall the run: in Ruby with a FIFO at `~/.ssh/authorized_keys` (root's prefetch read or the as-user write blocks forever); in voxagent with the FIFO too, and also by ptrace-stopping the helper, which runs as that user, or by making it a child that writes stdout forever without exiting (its output is drained, so it never blocks, and never ends). No timeout is added | The agent's environment may hold secrets (proxy credentials, tokens) and a process running with the user's real and effective uid exposes `/proc/<pid>/environ` to that user (spec §11). The stall needs no timeout: Ruby is stallable by the same user | `internal/lib/asuser/asuser_test.go:TestProcCmd`, `TestProcStarterStartFailure`, `TestProcStarterInvalidResult`; `internal/lib/parsedfile/filetype_test.go:TestFlatEncodeError` |
+| D-102 | A `ssh_authorized_key` flush writes only its own record's targets: the record's target before a change (a move's old target) and its should target (`parsedfile.Run.FlushTargets`). Ruby's flush (`pf:64-87`) writes every modified target, so a target left modified by an earlier sak flush that failed before `super` (unknown user, refused `mkdir`, untrusted path) is written by the next sak resource's flush under that resource's identity, another user's or root's (M8 `08a-modified-leak`: `r2` fails `could not write /srv/x/authorized_keys` for `r1`'s fault; `08a-drop-false-walk`: `w6`'s root flush creates the untrusted `/srv/o/file` root:root). voxagent never writes such a target for the rest of the run unless a later resource's own record touches it, which then writes it with every record of the run in it. Differs from Ruby only after an earlier failed sak flush in the same run: the later resource succeeds where Ruby fails it, or the leaked file is not created. With `drop_privileges => false`, every own target, so a move's old target too, must pass `trusted_path` before anything is written; Ruby walks only the new target, then writes the old one as root as well. When an old target is untrusted the flush fails `drop_privileges is false but the target path is not trusted` and writes nothing (Ruby writes both): that is the only other difference | The leaked write runs under another resource's identity, root included, bypassing `trusted_path` and the privilege drop: the CVE-2011-3870 class those checks exist for. User decision 2026-11-23; I-41 records the Ruby bug. Every other ParsedFile flush keeps `Run.Flush` | `internal/units/sshkeys_core/sak_apply_test.go:TestSakLeakedTargetUnknownUser`, `TestSakLeakedTargetRefusedMkdir`, `TestSakLeakedTargetUntrusted`, `TestSakSharedTargetWrittenWithEveryRecord`, `TestSakDropFalseMoveWalksEveryTarget`; `internal/lib/parsedfile/parsedfile_test.go:TestFlushTargetsWritesOnlyOwn`, `TestFlushTargetsNewRecordTarget`, `TestFlushTargetsFailureKeepsLaterMarked` |
+| D-103 | `ssh_authorized_key`'s `trusted_path` (`drop_privileges => false`) treats as untrusted, silently, what Ruby cannot finish: a relative target, whose walk Ruby never ends (the dirname of `.` is `.`, so `until path.dirname.root?` loops forever once `.` passes), and a `stat` or `realpath` that fails during the walk, where Ruby raises its `Errno` text (`… @ rb_file_s_stat - <path>`, `… @ realpath_rec - <path>`) as the flush error. voxagent fails the flush with `drop_privileges is false but the target path is not trusted` and no debug line | A hang cannot be reproduced usefully, and refusing is the safe answer for a root write. The raise needs a race (an ancestor removed between the existence check and the walk) or a path root cannot stat; unmeasured, read from `kp:53-67` and Ruby's `Pathname` | `internal/units/sshkeys_core/sak_apply_test.go:TestTrustedPath` (`relative`) |
 
 Two differences are not numbered divergences but `cross_implementation` entries
 in `tests/spine/allowlist.json`, because each is dropped from the **Ruby side
@@ -1636,6 +1641,40 @@ release adds.
   Because voxagent routes natively only on §2.2's digests, a changed SIMP pin fails the half here.
 - **Errors.** As the cron half. The half runs after the host half.
 
+### G5's sak half
+
+`dev:report-diff-container` ends with an `ssh_authorized_key` half (`tests/spine/sak/g5.sh`) on the host half's image
+and with its `--no-hosts` containers. Seeds create the users and files each case needs; both agents run as root, so
+every `drop_privileges` true flush writes as the key's user, voxagent's through its `asuser` helper. `cases/` run with
+no sshkeys_core in `--libdir` (vendored 2.5.0); `cases-3.1.0/create` runs with SIMP's 3.1.0 `lib/`, whose
+`ssh_authorized_key` contract is 2.5.0's, to hold that voxagent routes that release natively.
+
+- **Cases.** 25 native cases and 6 refusals.
+  - Native under 2.5.0 (24): `create` (no `.ssh`, two keys, options), `existing` (comments, blanks, unnamed and
+    `key_v1` lines kept, mode 0640 to 0600), `options-change`, `remove` (one by its generated `unnamed-1` name),
+    `key-v1`, `key-v1-unnamed`, `user-in-run`, `user-after-key`, `nonexistent-user`, `no-home`, `no-user-target`,
+    `drop-false-file`, `drop-false-untrusted`, `drop-false-dir` (prefetch failure), `write-refused`, `write-symlink`,
+    `mkdir-refused`, `chmod-refused`, `move-target`, `move-not-target`, `sensitive`, `line-break-name` and
+    `line-break-options` (I-39: the rerun's prefetch fails), and `shared-target-across-types` (an `Sshkey` before and
+    after an `Ssh_authorized_key` on alice's file: each type prefetches at its own turn, so the bytes and record order
+    must equal Ruby's).
+  - Native under 3.1.0 (1): `create`.
+  - Refused at catalog conversion: `no-user`, `key-whitespace`, `drop-privileges-maybe`, `options-bad`, `type-bad`,
+    `title-vs-name` (the refusal names the title).
+- **Judging.** As the sshkey half, with two differences in the state read after the live run: a directory in `files`
+  gives its stat line alone, and a clientbucket entry is the sha256 of its `contents` with the header's timestamp
+  normalised, not its directory name, because a target backed up after an earlier flush of the run wrote it carries
+  that flush's timestamp. `metrics.time.values.ssh_authorized_key.value` is in the allowlist's `run_to_run`, measured
+  Ruby against Ruby.
+- **What it cannot hold.** The agents run without `--debug`, as in every half, so no debug line is compared (the count
+  of `The required user is not yet present on the system` varies, spec §6.3) and Ruby's `drop_privileges => false` is
+  never trusted (§8 item 9): every drop-false case fails `not trusted` or the prefetch, and the trusted write is
+  unit-tested only. D-102's leak and D-100's old-target backup are not reproduced, so no case shows them: in
+  `move-target` alice's own key changes first, so her file is backed up in both agents before the key moves out of it.
+- **Native, not delegated.** voxagent's output must name neither `ssh_authorized_key` nor `sshkey` among the types
+  `applied via extension host`.
+- **Errors.** As the cron half. The half runs after the sshkey half.
+
 **Run the gates one at a time.** Concurrent gate runs on one machine
 coincided with flakes in the SIMP gate's polkit start and systemd boot. The
 cause was not isolated; the gates may contend for podman's storage, the
@@ -2245,7 +2284,7 @@ supplying its properties, retrieve, change text and setter as `sshkeyEnsurable`.
 
 - **Routing.** `Route` (`internal/units/sshkeys_core/manifest.go`) delegates with the first failing condition's reason:
   platform (`ral.MeasuredRelease`; the type has no confine), `provider` (`group.ForeignProvider`), plugin tree
-  (`sshkeyRelease`), purge (`unit.ResourcesPurge`), value shapes (`parseSshkey`'s `rubyvalue.UnimplementedValue`,
+  (`typeRelease`), purge (`unit.ResourcesPurge`), value shapes (`parseSshkey`'s `rubyvalue.UnimplementedValue`,
   under the release found).
 - **Two releases.** openvox 8.34.0 vendors sshkeys_core 2.5.0; SIMP pins 3.1.0. Their providers are the same bytes and
   their `sshkey` types differ only in `key`'s validation, which 3.1.0 adds (`Key must not contain whitespace:
@@ -2292,6 +2331,163 @@ supplying its properties, retrieve, change text and setter as `sshkeyEnsurable`.
 - **Tests and gates.** `internal/units/sshkeys_core/*_test.go` (Ruby's texts in `sshkey_params_test.go`, the shared
   grammar vectors and the leading-whitespace abort in `sshkey_grammar_test.go`, the run in `sshkey_apply_test.go`,
   routing and both releases in `route_test.go`) and "G5's sshkey half" above.
+
+### `ssh_authorized_key`
+
+`sshkeyscore.Sak` (`internal/units/sshkeys_core/`: `sak.go` the identity and attribute set, `sak_params.go` validation
+and munge, `sak_grammar.go` the authorized_keys grammar, `sak_apply.go` the prefetch, apply and flush, `sak_file.go`
+the filetype that writes as the key's user) reproduces the `parsed` provider of puppetlabs-sshkeys_core, measured on
+openvox 8.34.0 (M4, M5, M8, M13, M17, 2026-11-23). It runs on `ral.ParsedFileRun`, as `sshkey` does, but flushes its
+own targets (below) and performs its file acts as the key's user through the `voxagent asuser` helper ("Privilege
+drop" below). Line references in the code are `kt:<n>` (`puppet/type/ssh_authorized_key.rb`), `kp:<n>`
+(`provider/ssh_authorized_key/parsed.rb`) and `pf:<n>` (`provider/parsedfile.rb`).
+
+- **Routing.** `routeSakType` (`internal/units/sshkeys_core/manifest.go`) delegates with the first failing condition's
+  reason, decided apart from `sshkey`'s: platform (`ral.MeasuredRelease`), `provider` (`group.ForeignProvider`),
+  plugin tree (`typeRelease` on the type's own two files, `another ssh_authorized_key provider in libdir`), a
+  `Resources` purge of `ssh_authorized_key`, any `User` whose `purge_ssh_keys` generates keys
+  (`user.PurgeKeepsNative`: the generated resources would edit the same files from the extension host), then value
+  shapes (`parseSak`'s `rubyvalue.UnimplementedValue`).
+- **Two releases.** 2.5.0 (vendored) and 3.1.0 (SIMP) differ in digest only: the type's hunks are hash shorthand, a
+  comment and a dropped `.freeze`, and the providers are the same bytes, so the release found changes no behaviour.
+- **Identity and validation.** The name is the title unless `name` is set; a refusal names the resource by its title
+  either way (`Ssh_authorized_key[t]` for title `t`, name `n`; M17). Ruby's texts, each a whole-run refusal at
+  catalog conversion (`sak_params.go`, spec §4.3): `Invalid value "<v>". Valid values are true, false, yes, no.`
+  (`drop_privileges`), the `type` list of 14 values with its aliases, `Key must not contain whitespace: <value>`
+  (raw), `Option <v> is not valid. …`, and `Attribute 'user' or 'target' is mandatory` when neither is set.
+- **Target.** Unset or `absent`, the target is `~<user>/.ssh/authorized_keys` from the passwd entry, looked up when
+  asked, so a `User` created earlier in the run counts; with no such user it is nil and Ruby logs debug `The required
+  user is not yet present on the system` at every ask (spec §6.3; never count it). `User[<user>]` is autorequired
+  when managed.
+- **Reading.** Comment and blank lines are kept. A `parsed` line is `[options] type key [name]`; a `key_v1` line is
+  `[options] bits exponent modulus [name]`; anything else fails the prefetch `Could not parse line "<line>" (file:
+  <target>, line: <n>)` and every `Ssh_authorized_key` of the run is `Skipping because provider prefetch failed`.
+  A `parsed` line with no name is named `<target>:unnamed-<n>` per target in file order (debug `generating name for
+  on-disk ssh_authorized_key <key>: <name>`), and a resource of that title manages it. Reads and the backup run as
+  root in the parent, following symlinks, as Ruby's prefetch does (I-40 in [improvements.md](improvements.md)). A
+  record is bound by name across every target the run reads: the default and the catalog's `ssh_authorized_key`
+  targets.
+- **Running.** `ensure`, `type`, `key`, `user`, `target`, `options` (`sakProperties`), with Ruby's messages (`options
+  changed ['absent'] to ['no-pty', 'command="x y"']`, `type changed 'ssh-rsa' to 'ssh-ed25519'`, `key changed 'K1' to
+  'K2'`, `target changed '<old>' to '<new>'`); all changes of one resource are one flush. `user` is always in sync.
+  A `Sensitive` `key` is written in clear and shown `[redacted]` in messages and events (D-78).
+- **Flush** (`Sak.flush`, `kp:69-103`, spec §6.3), in this order: no `user` fails `Cannot write SSH authorized keys
+  without user`; a user with no uid fails `User '<user>' does not exist`; the target (after a move, the new one) is
+  backed up in the root parent, so a refused write still leaves a bucket entry. A move's old target is backed up in
+  the root parent too, once per prefetch, where Ruby backs it up as the new user (D-100). Then:
+  - `drop_privileges` true (the default): `mkdir(dirname(target), 0700)` when missing (debug `Creating <dir> as
+    <user>`), the write of the record's own targets, then `chmod 0600` on the target, each as the user: in the helper
+    when the agent is root and the user's uid is not its own, in-process otherwise. A refused write is logged twice,
+    as Ruby logs it (`Puppet::Util::FileType::FileTypeFlat could not write <path>: <errno> @ rb_sysopen - <path>`,
+    the symlink's path, then the resource's `Could not evaluate:`); a refused `mkdir` (`@ dir_s_mkdir`) or `chmod`
+    (`@ apply2files`) once.
+  - `drop_privileges` false: `trustedPath` (`sak_file.go`, `kp:53-67`) must pass for every own target, or the flush
+    fails `drop_privileges is false but the target path is not trusted` and nothing is written. Then the targets are
+    written as root and the target is chowned to the user's uid and the gid of the group named like the user (`-1`
+    when none) and set `0600`. A directory target fails the prefetch (`Is a directory @ io_fread`).
+- **Own targets (D-102).** A flush writes only the targets its own record touched: its target before a change (a
+  move's old target) and its should target (`parsedfile.Run.FlushTargets`). Ruby also writes a target another
+  resource's failed flush left modified, under the next resource's identity; voxagent does not (I-41).
+- **Kept from Ruby.** Parity is the contract, so these stay (spec §8 items 7-11 and 19):
+  1. Names are unique across the read targets: a key whose name another user's file holds is moved out of that file
+     (`target changed`) only when that file is some resource's target; otherwise it is created in the new file and
+     left in the old (M8).
+  2. A record with no name is written with a trailing space (`ssh-rsa K `).
+  3. `drop_privileges => false` writes only when the target's parent exists, its ancestors pass the walk (owned by
+     the agent's euid, not group- or world-writable, from the target's directory up to the one below `/`) **and**
+     debug logging is on: Ruby's trusted branch returns `Puppet.debug`'s value. With debug off every such target fails
+     `drop_privileges is false but the target path is not trusted`.
+  4. The drop-false chown uses the group named like the user, not the user's primary group; with no such group the
+     group is left as written.
+  5. A target change writes the old target as the new user too, so moving a key out of another user's `0600` file
+     fails `could not write <old target>: Permission denied @ rb_sysopen` and the new target is not written.
+  6. A `key_v1` record never converges: a resource of its name reports `defined 'type'`, `defined 'key'` and `defined
+     'options'` on every run and the line is written back unchanged. A `key_v1` line with no name fails every flush
+     of its target with `Field 'name' is required`.
+  7. A line break in `name` or `options` is written verbatim (I-39); the next run's prefetch fails `Could not parse
+     line` until the file is repaired by hand.
+- **Not kept.** Spec §8 item 18: the write of another resource's leftover target (D-102, I-41 above).
+- **Tests and gates.** `internal/units/sshkeys_core/sak_*_test.go` (Ruby's texts in `sak_params_test.go`, the grammar
+  and naming in `sak_grammar_test.go`, the run, flush, privilege drop, trusted walk and D-102 leak cases in
+  `sak_apply_test.go`), routing in `route_test.go`, the helper in `internal/lib/asuser` and
+  `cmd/voxagent/asuser*_test.go`, and "G5's sak half" above.
+
+### Privilege drop (`voxagent asuser`)
+
+`ssh_authorized_key` performs three file acts as the key's user, where Ruby
+wraps them in `Puppet::Util::SUIDManager.asuser` (`kp:80-88`): the single-level
+`mkdir(dir, 0700)`, the flat write, and `chmod 0600`. voxagent runs them in a
+child, the hidden `voxagent asuser <op>` (`cmd/voxagent/asuser.go`, ops in
+`internal/lib/asuser`), because Go cannot change one thread's credentials
+(D-99).
+
+| Op | Does, as the calling uid |
+|---|---|
+| `mkdir <dir>` | when `os.Stat(dir)` fails (any failure is absence, as `Puppet::FileSystem.exist?`), `mkdir(dir, 0700)` less the umask. The check runs in the child, as the user |
+| `write --encoding <enc> <path>` | the flat write (`parsedfile.NewFlat(path, 0, nop, relabel, enc).Write`) of stdin: temp file, copy over the target following a symlink, then the SELinux relabel (`file.Relabel`), as the user. The backup stays in the root parent, before the drop |
+| `chmod <path>` | `chmod(path, 0600)`, following a symlink |
+
+Contract (spec §3.4):
+
+- **Start.** `asuser.ProcStarter` runs `/proc/self/exe asuser <op> …`, the running
+  root-owned inode, so a binary replaced or deleted mid-run is never what runs as
+  the user; there is no `os.Executable()` fallback. The credential comes from
+  `suid.Resolve(user, nil, marked)` and is set before `execve`. Stdin is the
+  text (write) or empty; cwd and umask are inherited; the environment is `PATH`
+  and `TMPDIR` only (D-101). No `Executing:` line: Ruby runs no command here.
+- **Refusals.** The child refuses euid 0 (`asuser: refusing to run as root`,
+  exit 2). The parent never starts it for uid 0: when the agent is not root or
+  its euid is already the user's, it calls the same `asuser.Mkdir`, `Write`,
+  `Chmod` in-process (`suid:65`, `:121`). `ProcStarter.Start` also refuses a
+  missing or uid-0 credential itself, starting nothing (`refusing to start the
+  asuser helper as root`), and empty args. Any other invocation exits 2 with no
+  output. A cancelled run's error is the context's, not the invalid result.
+- **Result protocol.** The child's whole output is one line, `<step> <errno>`
+  (`asuser.Result`). Steps: `ok`, `mkdir-created` (errno 0, exit 0); `relabel`
+  (errno 1-4095, exit 0: the file was written, the relabel failed);
+  `mkdir`, `tempfile`, `open`, `copy`, `close`, `chmod` (errno 1-4095, exit 1).
+  `asuser.ParseResult` accepts only that: one line of at most 64 bytes, in
+  canonical form, with an agreeing exit status. Anything else, a signal, or an
+  exit of 2 or more is `asuser helper for <path> returned an invalid result`,
+  quoting nothing from the child. stdout is capped at 65 bytes and drained; stderr
+  goes to the null device; `exec.Cmd.WaitDelay` (1 s) stops a process the child
+  left holding stdout from hanging root.
+- **Rendering.** The parent renders every message from the result, with the
+  in-process texts: `parsedfile.FlatWriteError(path, WriteFailure{step, errno})`
+  for `tempfile`/`open`/`copy`/`close` (the same formatter `flat.Write` uses),
+  `parsedfile.RubyErrno` for `mkdir` (`@ dir_s_mkdir - <dir>`) and `chmod`
+  (`@ apply2files - <path>`), debug `Creating <dir> as <user>` for
+  `mkdir-created` and `mkdir <errno>`, and for `relabel` the warning `Failed to
+  set SELinux context <c> on <f>`, `<c>` looked up by the parent with
+  `file.DefaultContext`. The encoding failure has no step: the parent checks
+  `parsedfile.FlatEncodeError` before it starts the write (D-101); a child that
+  meets it anyway exits 2. A valid result whose step the op cannot report
+  (`chmod 1` for a mkdir) is the invalid result too. The sak flush
+  (`internal/units/sshkeys_core/sak_file.go`) renders these, with a marked
+  `user` shown `[redacted]` (D-78) and paths raw, as Ruby shows them (they are
+  on the helper's argv anyway); the credential is set for one flush and
+  cleared after. No relabel warning when the parent finds no default context:
+  Ruby makes no relabel attempt then.
+
+**Trust model (spec §11).** The helper gains no privilege: it is the target
+user from its first instruction, is not setuid, accepts only the three ops, and
+refuses root, so a user who runs it directly can do only what they already
+could. Every path component of the mkdir, the temp file, the copy and the chmod
+is checked by the kernel as that user, so a symlink the user plants towards a
+root file fails `open 13` where a root write would succeed
+(`TestAsuserRootSymlinkIntoForeignDir`). Unlike Ruby's in-process drop (real uid
+0), the helper can be ptraced by its user, who then controls its output. That is
+why the output is untrusted input: a forged result can only claim that a step
+succeeded or failed with some errno, which the user could cause anyway through
+their own file permissions. It cannot put text into root's log or report. The
+target path is on argv, visible in `/proc/<pid>/cmdline`; the content is only on
+stdin.
+
+**Running the root tests.** `go test -c -o .test-output/voxagent.test
+./cmd/voxagent && sudo -n .test-output/voxagent.test -test.run TestAsuserRoot`
+(never `sudo go test`). They drop to `nobody` in a 0755 temp tree; the test
+binary is its own helper (`TestMain` dispatches `asuser`), so `ProcStarter`
+starts exactly the code under test.
 
 ### `concat_file` and `concat_fragment`
 

@@ -254,6 +254,76 @@ func (f *flat) Read(ctx context.Context) (string, error) {
 	return text, nil
 }
 
+// WriteFailure is the step of the flat write that failed and its errno, for a
+// failure FlatWriteError can render: "tempfile" (creating, writing or
+// chmodding the temp file), "open" (opening the target), "copy" (copying onto
+// it) or "close" (closing it). Write's errors for these steps carry one,
+// reachable by errors.As, so the asuser helper can report a failure as
+// <step> <errno> and its parent can render Write's text without any text from
+// the helper (spec §3.4).
+type WriteFailure struct {
+	Step  string
+	Errno syscall.Errno
+}
+
+func (f *WriteFailure) Error() string { return f.Step + ": " + f.Errno.Error() }
+
+// writeError is a failed write step: Ruby's text, and the step for errors.As.
+type writeError struct {
+	msg     string
+	failure *WriteFailure
+}
+
+func (e *writeError) Error() string { return e.msg }
+func (e *writeError) Unwrap() error { return e.failure }
+
+// FlatWriteError is the error Write returns, unlogged, for f on path. It is
+// the text Write produces for that step and errno: Write uses the same
+// formatter. A target that is a directory, where Write names the copy it
+// opens rather than path, never reaches the asuser helper (spec §6.3 item 5).
+func FlatWriteError(path string, f WriteFailure) error {
+	return flatWriteFailure(path, path, f.Step, f.Errno)
+}
+
+// flatWriteFailure renders a failed step of the flat write on path, which
+// opened dest: the errno as RubyErrno has it, alone for "tempfile" (and any
+// other step), with rb_sysopen and dest for the open, and the syscall for the copy and the close ("No space left on device
+// - write", measured with ruby 3.4.9 on /dev/full). The error carries the
+// step's WriteFailure, with Errno 0 for an errno-less error, which none of the
+// os calls Write makes returns.
+func flatWriteFailure(path, dest, step string, err error) error {
+	var detail string
+	switch step {
+	case "open":
+		detail = RubyErrno(err, "rb_sysopen", dest)
+	case "copy":
+		detail = RubyErrno(err, "", "") + " - write"
+	case "close":
+		detail = RubyErrno(err, "", "") + " - close"
+	default:
+		detail = RubyErrno(err, "", "")
+	}
+	var errno syscall.Errno
+	errors.As(err, &errno)
+	return &writeError{
+		msg:     fmt.Sprintf("%s could not write %s: %s", flatClass, path, detail),
+		failure: &WriteFailure{Step: step, Errno: errno},
+	}
+}
+
+// FlatEncodeError is the error Write returns, unlogged, when text cannot be
+// written in encoding (encodeError), or nil. Write makes this check itself,
+// after creating its temp file; the asuser helper's parent makes it before it
+// starts the helper's write, since the helper's closed result has no step for
+// it. When the temp file cannot be created either, Ruby reports that failure
+// and the parent reports this one (D-101).
+func FlatEncodeError(path, encoding, text string) error {
+	if detail := encodeError(encoding, text); detail != "" {
+		return fmt.Errorf("%s could not write %s: %s", flatClass, path, detail)
+	}
+	return nil
+}
+
 // Write is uft:123-132. The text goes into a new temp file first (mode
 // defaultMode when non-zero, else 0600; under US-ASCII the transcoding error
 // of encodeError fails here, before the target is touched), which is then
@@ -262,51 +332,50 @@ func (f *flat) Read(ctx context.Context) (string, error) {
 // only when the file is created), following a symlink, so an existing file
 // keeps its inode, mode and owner. A target that is a directory receives the
 // copy as a new file named after the temp file (puppet<random>; measured with
-// ruby 3.4.9). Not atomic. Errors are logged as described on FileType.
+// ruby 3.4.9). Not atomic. Errors are logged as described on FileType; a
+// failed step's error carries a *WriteFailure (FlatWriteError).
 func (f *flat) Write(ctx context.Context, text string) error {
-	fail := func(detail any) error {
-		return logged(ctx, fmt.Errorf("%s could not write %s: %v", flatClass, f.path, detail))
+	dest := f.path
+	fail := func(step string, err error) error {
+		return logged(ctx, flatWriteFailure(f.path, dest, step, err))
 	}
 	tmp, err := os.CreateTemp("", "puppet")
 	if err != nil {
-		return fail(RubyErrno(err, "", ""))
+		return fail("tempfile", err)
 	}
 	defer os.Remove(tmp.Name())
 	defer tmp.Close()
-	if detail := encodeError(f.encoding, text); detail != "" {
-		return fail(detail)
+	if err := FlatEncodeError(f.path, f.encoding, text); err != nil {
+		return logged(ctx, err)
 	}
 	if _, err := io.WriteString(tmp, text); err != nil {
-		return fail(RubyErrno(err, "", ""))
+		return fail("tempfile", err)
 	}
 	mode := f.defaultMode
 	if mode == 0 {
 		mode = 0o600
 	}
 	if err := tmp.Chmod(mode); err != nil {
-		return fail(RubyErrno(err, "", ""))
+		return fail("tempfile", err)
 	}
 
-	dest := f.path
 	if st, err := os.Stat(dest); err == nil && st.IsDir() {
 		dest = filepath.Join(dest, filepath.Base(tmp.Name()))
 	}
 	out, err := os.OpenFile(dest, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, mode)
 	if err != nil {
-		return fail(RubyErrno(err, "rb_sysopen", dest))
+		return fail("open", err)
 	}
-	// Ruby's copy raises the errno with the syscall that failed: "No space
-	// left on device - write" (measured with ruby 3.4.9 on /dev/full).
 	_, err = tmp.Seek(0, io.SeekStart)
 	if err == nil {
 		_, err = io.Copy(out, tmp)
 	}
 	if err != nil {
 		_ = out.Close()
-		return fail(RubyErrno(err, "", "") + " - write")
+		return fail("copy", err)
 	}
 	if err := out.Close(); err != nil {
-		return fail(RubyErrno(err, "", "") + " - close")
+		return fail("close", err)
 	}
 	if err := f.relabel(ctx, f.path); err != nil {
 		return logged(ctx, fmt.Errorf("%s could not write %s: %w", flatClass, f.path, err))

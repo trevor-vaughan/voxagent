@@ -62,7 +62,7 @@ func (unitImpl) Route(env *unit.Env) unit.Decision {
 		if why := group.ForeignProvider(r, "useradd"); why != "" {
 			return delegate(why)
 		}
-		if !purgeKeepsNative(r) {
+		if !PurgeKeepsNative(r) {
 			return delegate("purge_ssh_keys generates Ssh_authorized_key resources")
 		}
 		if errors.As(err, &uv) {
@@ -72,9 +72,9 @@ func (unitImpl) Route(env *unit.Env) unit.Decision {
 	return unit.Decision{Providers: []ral.Provider{User{CatalogGroups: GroupGIDs(env.Catalog)}}}
 }
 
-// purgeKeepsNative reports whether r's purge_ssh_keys is absent, false, "false"
+// PurgeKeepsNative reports whether r's purge_ssh_keys is absent, false, "false"
 // or an empty list: the values that generate no Ssh_authorized_key resources.
-func purgeKeepsNative(r catalog.Resource) bool {
+func PurgeKeepsNative(r catalog.Resource) bool {
 	v, set := r.Parameters["purge_ssh_keys"]
 	if !set {
 		return true

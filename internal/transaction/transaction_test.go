@@ -1914,6 +1914,33 @@ func TestPrefetchFailedTypeHasNoTimeMetric(t *testing.T) {
 	}
 }
 
+// A type whose every resource was skipped for failed dependencies has no
+// metrics.time entry either: transaction.rb skips it before evaluation, so its
+// evaluation_time is null. Measured by G5's sak user-after-key, where Ruby's
+// report has no "user" time and voxagent's had "User" 0.
+func TestDependencySkippedTypeHasNoTimeMetric(t *testing.T) {
+	var applied, refreshed []string
+	tx := newTx(&applied, &refreshed, map[string]bool{"File[a]": true}, nil, 1)
+	rep := runCatalog(t, tx, &catalog.Catalog{Resources: []catalog.Resource{
+		res("File", "a", nil),
+		res("Notify", "n", map[string]any{"require": []any{"File[a]"}}),
+	}})
+	rep.Finalize()
+	if rs := rep.ResourceStatuses["Notify[n]"]; !rs.Skipped {
+		t.Fatalf("Notify[n] skipped = false; the test needs it skipped for File[a]")
+	}
+	var names []any
+	for _, v := range rep.Metrics["time"].Values {
+		names = append(names, v[0])
+	}
+	if slices.Contains(names, any("notify")) {
+		t.Errorf("metrics.time names %v; a dependency-skipped type was never evaluated", names)
+	}
+	if !slices.Contains(names, any("file")) {
+		t.Errorf("metrics.time names %v; the evaluated, failed file must stay", names)
+	}
+}
+
 // The CAUSE is logged once for the run, at source "Puppet"; the SKIP is logged
 // once per resource, at that resource's own path.
 //

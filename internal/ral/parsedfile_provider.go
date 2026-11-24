@@ -8,11 +8,12 @@ import (
 	"github.com/voxagent/voxagent/internal/runlog"
 )
 
-// The run of an ensurable ParsedFile provider (host, sshkey), shared by their
-// units: an engine piece because no unit may import another that does not
-// require it, and a library may not import ral. pf: is Puppet's
-// provider/parsedfile.rb; resource_harness.rb and property.rb are Puppet's
-// transaction/resource_harness.rb and property.rb (openvox 8.34.0).
+// The run of an ensurable ParsedFile provider (host, sshkey,
+// ssh_authorized_key), shared by their units: an engine piece because no unit
+// may import another that does not require it, and a library may not import
+// ral. pf: is Puppet's provider/parsedfile.rb; resource_harness.rb and
+// property.rb are Puppet's transaction/resource_harness.rb and property.rb
+// (openvox 8.34.0).
 
 // ParsedFileRun is one run's state, held by the primed provider and mutated
 // only by the walk goroutine (D-96). Records binds each resource's
@@ -69,6 +70,11 @@ type ParsedFileShould struct {
 	// Keys are the key attributes' resource values the flush fills into a
 	// record that lacks them (pf:448-462); an unset parameter is left out.
 	Keys map[string]parsedfile.Value
+	// Flush, when set, is the provider's flush (ssh_authorized_key's,
+	// kp:69-103), called instead of Run.Flush with the run and the record,
+	// its key attributes filled in. Nil means Run.Flush with the resource's
+	// target should.
+	Flush func(ctx context.Context, run *parsedfile.Run, rec *parsedfile.Record) error
 }
 
 // Apply implements Provider.Apply for t (resource_harness.rb:84-99
@@ -121,8 +127,14 @@ func (st *ParsedFileRun) Apply(ctx context.Context, t *ParsedFileEnsurable, s Pa
 			rec.Fields[attr] = v
 		}
 	}
-	target, hasTarget := s.Resource.ShouldTarget()
-	if err := st.Run.Flush(ctx, rec, target, hasTarget); err != nil {
+	var err error
+	if s.Flush != nil {
+		err = s.Flush(ctx, st.Run, rec)
+	} else {
+		target, hasTarget := s.Resource.ShouldTarget()
+		err = st.Run.Flush(ctx, rec, target, hasTarget)
+	}
+	if err != nil {
 		return changes, nil, &FlushError{Err: err}
 	}
 	return changes, nil, nil

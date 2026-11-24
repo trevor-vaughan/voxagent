@@ -14,7 +14,9 @@
 # (record definitions copied from cron_core 1.3.0
 # lib/puppet/provider/cron/crontab.rb:9-98) and host's (host_core
 # lib/puppet/provider/host/parsed.rb:21-48) and sshkey's (sshkeys_core
-# lib/puppet/provider/sshkey/parsed.rb:10-24). internal/lib/parsedfile's
+# lib/puppet/provider/sshkey/parsed.rb:10-24) and ssh_authorized_key's
+# (sshkeys_core lib/puppet/provider/ssh_authorized_key/parsed.rb:11-35,105-124
+# and lib/puppet/type/ssh_authorized_key.rb:168-177). internal/lib/parsedfile's
 # vectors_test.go defines the generic ones again in Go and
 # TestRubyMatchesSharedVectors re-runs this script and compares.
 # String#inspect escapes non-ASCII unless the external encoding is UTF-8;
@@ -24,8 +26,33 @@ Encoding.default_external = Encoding::UTF_8
 require 'json'
 require 'puppet'
 require 'puppet/util/fileparsing'
+require 'strscan'
 
 TIME_FIELDS = %i[minute hour monthday month weekday].freeze
+
+# ssh_authorized_key's parsed provider's parse_options (parsed.rb:105-124).
+def sak_parse_options(options)
+  result = []
+  scanner = StringScanner.new(options)
+  until scanner.eos?
+    scanner.skip(%r{[ \t]*})
+    out = scanner.scan(%r{[-a-z0-9A-Z_]+=\".*?[^\\]\"}) || scanner.scan(%r{[-a-z0-9A-Z_]+})
+    break unless out
+
+    result << out
+    scanner.skip(%r{[ \t]*,[ \t]*})
+  end
+  result
+end
+
+# Type ssh_authorized_key's REGEX (type:169-174), with the x flag's layout
+# whitespace; the space in [^ ] is kept.
+SAK_KEYLINE = %r{^(?:(.+)\s+)?(ssh-dss|ssh-ed25519|ssh-rsa|ecdsa-sha2-nistp256|
+            ecdsa-sha2-nistp384|ecdsa-sha2-nistp521|ecdsa-sk|ed25519-sk|
+            sk-ecdsa-sha2-nistp256@openssh.com|sk-ssh-ed25519@openssh.com|
+            ssh-rsa-cert-v01@openssh.com|ssh-ed25519-cert-v01@openssh.com|
+            ssh-dss-cert-v01@openssh.com|ecdsa-sha2-nistp256-cert-v01@openssh.com|
+            ecdsa-sha2-nistp384-cert-v01@openssh.com|ecdsa-sha2-nistp521-cert-v01@openssh.com)\s+([^ ]+)\s*(.*)$}x
 
 GRAMMARS = {
   # Whitespace split, rollup, optional fields, rts true (/\s+$/).
@@ -123,6 +150,32 @@ GRAMMARS = {
                                         hash.delete(:host_aliases)
                                       end
                                     }
+  },
+  # sshkeys_core lib/puppet/provider/ssh_authorized_key/parsed.rb:11-35. The
+  # prefetch_hook (:126-137) is not a grammar matter: the unit tests it.
+  'sak' => lambda { |g|
+    g.text_line :comment, match: %r{^\s*#}
+    g.text_line :blank, match: %r{^\s*$}
+    g.record_line :parsed,
+                  fields: ['options', 'type', 'key', 'name'],
+                  optional: ['options'],
+                  rts: %r{^\s+},
+                  match: SAK_KEYLINE,
+                  post_parse: proc { |h|
+                    h[:name] = '' if h[:name] == :absent
+                    h[:options] ||= [:absent]
+                    h[:options] = sak_parse_options(h[:options]) if h[:options].is_a? String
+                  },
+                  pre_gen: proc { |h|
+                    h[:name] = '' if h[:unnamed]
+                    h[:options] = [] if h[:options].include?(:absent)
+                    h[:options] = h[:options].join(',')
+                  }
+    g.record_line :key_v1,
+                  fields: ['options', 'bits', 'exponent', 'modulus', 'name'],
+                  optional: ['options'],
+                  rts: %r{^\s+},
+                  match: %r{^(?:(.+) )?(\d+) (\d+) (\d+)(?: (.+))?$}
   },
   # cron_core 1.3.0 crontab.rb:9-98.
   'cron' => lambda { |g|

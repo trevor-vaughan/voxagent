@@ -490,7 +490,8 @@
       "version": "8.34.0"
     },
     "types": [
-      "sshkey"
+      "sshkey",
+      "ssh_authorized_key"
     ],
     "requires": [
       "group",
@@ -519,6 +520,10 @@
           }
         ],
         "types": {
+          "ssh_authorized_key": [
+            "puppet/type/ssh_authorized_key.rb",
+            "puppet/provider/ssh_authorized_key/parsed.rb"
+          ],
           "sshkey": [
             "puppet/type/sshkey.rb",
             "puppet/provider/sshkey/parsed.rb"
@@ -546,6 +551,10 @@
           }
         ],
         "types": {
+          "ssh_authorized_key": [
+            "puppet/type/ssh_authorized_key.rb",
+            "puppet/provider/ssh_authorized_key/parsed.rb"
+          ],
           "sshkey": [
             "puppet/type/sshkey.rb",
             "puppet/provider/sshkey/parsed.rb"

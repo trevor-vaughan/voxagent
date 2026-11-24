@@ -68,6 +68,17 @@ runlog.Debugf -> Logger.Log (level filter, debug budget)
   caps every command at 64 MiB and logs the truncation warning through the same
   logger.
 
+## Lines a privilege-dropped helper causes
+
+The `voxagent asuser` helper (apply-spine.md, "Privilege drop") runs as a user
+who can ptrace it, so it never logs: an op logs nothing (`asuser.Write` runs
+the flat write under a discarding logger), and the child prints only its
+closed `<step> <errno>` result. The parent renders every line the in-process
+path would log from that result (`Creating <dir> as <user>`, the flat write's
+`err`, the relabel warning) with the same strings and the same `Logger`. A
+child-supplied string never reaches the logger, so it can neither forge a line
+nor slip a value past the scrub.
+
 ## Console format
 
 `puppetConsole.print` writes `<Level>: <message>` for source `Puppet` and

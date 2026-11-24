@@ -215,15 +215,15 @@ func genericGrammars(t *testing.T) map[string]*Grammar {
 
 // TestGrammarMatchesSharedVectors runs every generic-grammar case of
 // testdata/vectors.json (wants produced by the real fileparsing.rb). Cases of
-// the "cron", "host" and "sshkey" grammars are read by cron_core's, host_core's
-// and sshkeys_core's tests, which own those grammars.
+// the "cron", "host", "sshkey" and "sak" grammars are read by cron_core's,
+// host_core's and sshkeys_core's tests, which own those grammars.
 func TestGrammarMatchesSharedVectors(t *testing.T) {
 	grammars := genericGrammars(t)
 	ran := 0
 	for _, c := range readVectors(t) {
 		g, ok := grammars[c.Grammar]
 		if !ok {
-			if c.Grammar != "cron" && c.Grammar != "host" && c.Grammar != "sshkey" {
+			if c.Grammar != "cron" && c.Grammar != "host" && c.Grammar != "sshkey" && c.Grammar != "sak" {
 				t.Errorf("%s: unknown grammar %q", c.Name, c.Grammar)
 			}
 			continue

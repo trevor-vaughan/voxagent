@@ -213,23 +213,32 @@ func (s sshkeyParser) name(p *sshkeyParams) error {
 }
 
 // ensure sets p.Ensure from the ensure property (ensurable: present, absent);
-// set reports whether the catalog gave one, which stops the default. A value
-// that is not a String is delegated, as the text Ruby shows for it is not
-// reproduced here.
+// set reports whether the catalog gave one, which stops the default.
 func (s sshkeyParser) ensure(p *sshkeyParams) (set bool, err error) {
+	built := s.r
+	built.Title = p.Name + "@" + p.Type
+	p.Ensure, set, err = s.ensureValue(built)
+	return set, err
+}
+
+// ensureValue is ensurable's value check, shared with ssh_authorized_key:
+// the first element of the property, set when the catalog gave one. built
+// names the resource in a refusal. A value that is not a String is delegated,
+// as the text Ruby shows for it is not reproduced here.
+func (s sshkeyParser) ensureValue(built catalog.Resource) (first string, set bool, err error) {
 	values, set, err := s.strings("ensure")
 	if err != nil {
-		return set, err
+		return "", set, err
 	}
 	for i, v := range values {
 		if v != "present" && v != "absent" {
-			return set, s.failure(p, "ensure", fmt.Sprintf("Invalid value %s. Valid values are present, absent.", s.inspect("ensure", v)))
+			return "", set, rubyvalue.ParamFailure(built, "ensure", fmt.Sprintf("Invalid value %s. Valid values are present, absent.", s.inspect("ensure", v)))
 		}
 		if i == 0 {
-			p.Ensure = v
+			first = v
 		}
 	}
-	return set, nil
+	return first, set, nil
 }
 
 // key is the key property (type:54-64): any String, and from release 3.1.0 one

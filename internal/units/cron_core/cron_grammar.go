@@ -105,7 +105,7 @@ func cronClass(release string, providerTarget, spoolDir string, newFileType func
 		FileType:      newFileType,
 		Header:        cronHeader,
 		NativeHeader:  nativeHeader,
-		PrefetchHook: func(_ string, rs []*parsedfile.Record) ([]*parsedfile.Record, error) {
+		PrefetchHook: func(_ context.Context, _ string, rs []*parsedfile.Record) ([]*parsedfile.Record, error) {
 			return collapseNames(release, &nameIndex, rs)
 		},
 		ResourceForRecord: resourceForRecord,

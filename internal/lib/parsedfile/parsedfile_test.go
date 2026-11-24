@@ -390,7 +390,7 @@ func TestAdoptNotUsedWhenNameMatches(t *testing.T) {
 func TestPrefetchHook(t *testing.T) {
 	e := newEnv(t, map[string]string{"/def": "a 1\nb 2\n"})
 	var seen string
-	e.class.PrefetchHook = func(target string, rs []*Record) ([]*Record, error) {
+	e.class.PrefetchHook = func(_ context.Context, target string, rs []*Record) ([]*Record, error) {
 		seen = target
 		for _, r := range rs {
 			if !r.OnDisk || r.Ensure != "present" || r.Target != target {
@@ -948,7 +948,7 @@ func TestRunsAreIndependent(t *testing.T) {
 
 func TestPrefetchHookErrorAbortsUndecorated(t *testing.T) {
 	e := newEnv(t, map[string]string{"/def": "a 1\n"})
-	e.class.PrefetchHook = func(string, []*Record) ([]*Record, error) { return nil, errors.New("hook failed") }
+	e.class.PrefetchHook = func(context.Context, string, []*Record) ([]*Record, error) { return nil, errors.New("hook failed") }
 	run := e.run()
 	if got, err := run.Prefetch(e.ctx, nil); err == nil || err.Error() != "hook failed" || got != nil {
 		t.Errorf("Prefetch = %v, %v", got, err)

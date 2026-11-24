@@ -7449,6 +7449,2223 @@
       "want": {
         "error": "Field 'key' is required"
       }
+    },
+    {
+      "name": "sak-parse-plain",
+      "grammar": "sak",
+      "op": "parse",
+      "text": "ssh-rsa AAAAB3NzaC1yc2EAAAABIwAAAQEA nick@magpie",
+      "want": {
+        "records": [
+          {
+            "type": "parsed",
+            "line": "",
+            "fields": {
+              "options": {
+                "list": [
+                  {
+                    "absent": true
+                  }
+                ]
+              },
+              "type": {
+                "s": "ssh-rsa"
+              },
+              "key": {
+                "s": "AAAAB3NzaC1yc2EAAAABIwAAAQEA"
+              },
+              "name": {
+                "s": "nick@magpie"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "sak-parse-options",
+      "grammar": "sak",
+      "op": "parse",
+      "text": "no-pty,command=\"x y\" ssh-rsa AAAAB3NzaC1yc2EAAAABIwAAAQEA alice@laptop",
+      "want": {
+        "records": [
+          {
+            "type": "parsed",
+            "line": "",
+            "fields": {
+              "options": {
+                "list": [
+                  "no-pty",
+                  "command=\"x y\""
+                ]
+              },
+              "type": {
+                "s": "ssh-rsa"
+              },
+              "key": {
+                "s": "AAAAB3NzaC1yc2EAAAABIwAAAQEA"
+              },
+              "name": {
+                "s": "alice@laptop"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "sak-parse-options-quoted-comma",
+      "grammar": "sak",
+      "op": "parse",
+      "text": "from=\"a.example,b.example\",no-pty ssh-ed25519 AAAAB3NzaC1yc2EAAAABIwAAAQEA n",
+      "want": {
+        "records": [
+          {
+            "type": "parsed",
+            "line": "",
+            "fields": {
+              "options": {
+                "list": [
+                  "from=\"a.example,b.example\"",
+                  "no-pty"
+                ]
+              },
+              "type": {
+                "s": "ssh-ed25519"
+              },
+              "key": {
+                "s": "AAAAB3NzaC1yc2EAAAABIwAAAQEA"
+              },
+              "name": {
+                "s": "n"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "sak-parse-options-escaped-quote",
+      "grammar": "sak",
+      "op": "parse",
+      "text": "command=\"a\\\"b\",no-pty ssh-rsa K n",
+      "want": {
+        "records": [
+          {
+            "type": "parsed",
+            "line": "",
+            "fields": {
+              "options": {
+                "list": [
+                  "command=\"a\\\"b\"",
+                  "no-pty"
+                ]
+              },
+              "type": {
+                "s": "ssh-rsa"
+              },
+              "key": {
+                "s": "K"
+              },
+              "name": {
+                "s": "n"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "sak-parse-options-empty-quotes",
+      "grammar": "sak",
+      "op": "parse",
+      "text": "command=\"\",no-pty ssh-rsa K n",
+      "want": {
+        "records": [
+          {
+            "type": "parsed",
+            "line": "",
+            "fields": {
+              "options": {
+                "list": [
+                  "command"
+                ]
+              },
+              "type": {
+                "s": "ssh-rsa"
+              },
+              "key": {
+                "s": "K"
+              },
+              "name": {
+                "s": "n"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "sak-parse-options-unscannable",
+      "grammar": "sak",
+      "op": "parse",
+      "text": "no-pty,%%bad ssh-rsa K n",
+      "want": {
+        "records": [
+          {
+            "type": "parsed",
+            "line": "",
+            "fields": {
+              "options": {
+                "list": [
+                  "no-pty"
+                ]
+              },
+              "type": {
+                "s": "ssh-rsa"
+              },
+              "key": {
+                "s": "K"
+              },
+              "name": {
+                "s": "n"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "sak-parse-options-spaced-commas",
+      "grammar": "sak",
+      "op": "parse",
+      "text": "a , b ,c ssh-rsa K n",
+      "want": {
+        "records": [
+          {
+            "type": "parsed",
+            "line": "",
+            "fields": {
+              "options": {
+                "list": [
+                  "a",
+                  "b",
+                  "c"
+                ]
+              },
+              "type": {
+                "s": "ssh-rsa"
+              },
+              "key": {
+                "s": "K"
+              },
+              "name": {
+                "s": "n"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "sak-parse-options-with-type-text",
+      "grammar": "sak",
+      "op": "parse",
+      "text": "command=\"ssh-rsa x\" ssh-rsa K n",
+      "want": {
+        "records": [
+          {
+            "type": "parsed",
+            "line": "",
+            "fields": {
+              "options": {
+                "list": [
+                  "command=\"ssh-rsa x\""
+                ]
+              },
+              "type": {
+                "s": "ssh-rsa"
+              },
+              "key": {
+                "s": "K"
+              },
+              "name": {
+                "s": "n"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "sak-parse-options-only-unscannable",
+      "grammar": "sak",
+      "op": "parse",
+      "text": "%% ssh-rsa K n",
+      "want": {
+        "records": [
+          {
+            "type": "parsed",
+            "line": "",
+            "fields": {
+              "options": {
+                "list": [
+
+                ]
+              },
+              "type": {
+                "s": "ssh-rsa"
+              },
+              "key": {
+                "s": "K"
+              },
+              "name": {
+                "s": "n"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "sak-parse-no-name",
+      "grammar": "sak",
+      "op": "parse",
+      "text": "ssh-rsa AAAAB3NzaC1yc2EAAAABIwAAAQEA",
+      "want": {
+        "records": [
+          {
+            "type": "parsed",
+            "line": "",
+            "fields": {
+              "options": {
+                "list": [
+                  {
+                    "absent": true
+                  }
+                ]
+              },
+              "type": {
+                "s": "ssh-rsa"
+              },
+              "key": {
+                "s": "AAAAB3NzaC1yc2EAAAABIwAAAQEA"
+              },
+              "name": {
+                "s": ""
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "sak-parse-no-name-trailing-space",
+      "grammar": "sak",
+      "op": "parse",
+      "text": "ssh-rsa AAAAB3NzaC1yc2EAAAABIwAAAQEA ",
+      "want": {
+        "records": [
+          {
+            "type": "parsed",
+            "line": "",
+            "fields": {
+              "options": {
+                "list": [
+                  {
+                    "absent": true
+                  }
+                ]
+              },
+              "type": {
+                "s": "ssh-rsa"
+              },
+              "key": {
+                "s": "AAAAB3NzaC1yc2EAAAABIwAAAQEA"
+              },
+              "name": {
+                "s": ""
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "sak-parse-no-name-options",
+      "grammar": "sak",
+      "op": "parse",
+      "text": "no-pty ssh-rsa K",
+      "want": {
+        "records": [
+          {
+            "type": "parsed",
+            "line": "",
+            "fields": {
+              "options": {
+                "list": [
+                  "no-pty"
+                ]
+              },
+              "type": {
+                "s": "ssh-rsa"
+              },
+              "key": {
+                "s": "K"
+              },
+              "name": {
+                "s": ""
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "sak-parse-name-with-spaces",
+      "grammar": "sak",
+      "op": "parse",
+      "text": "ssh-rsa K my name here",
+      "want": {
+        "records": [
+          {
+            "type": "parsed",
+            "line": "",
+            "fields": {
+              "options": {
+                "list": [
+                  {
+                    "absent": true
+                  }
+                ]
+              },
+              "type": {
+                "s": "ssh-rsa"
+              },
+              "key": {
+                "s": "K"
+              },
+              "name": {
+                "s": "my name here"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "sak-parse-leading-spaces",
+      "grammar": "sak",
+      "op": "parse",
+      "text": "  ssh-rsa K  c  d",
+      "want": {
+        "records": [
+          {
+            "type": "parsed",
+            "line": "",
+            "fields": {
+              "options": {
+                "list": [
+
+                ]
+              },
+              "type": {
+                "s": "ssh-rsa"
+              },
+              "key": {
+                "s": "K"
+              },
+              "name": {
+                "s": "c  d"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "sak-parse-leading-tab-is-an-error",
+      "grammar": "sak",
+      "op": "parse",
+      "text": "\tssh-rsa K t",
+      "want": {
+        "error": "Could not parse line \"\\tssh-rsa K t\" (line: 2)"
+      }
+    },
+    {
+      "name": "sak-parse-garbage",
+      "grammar": "sak",
+      "op": "parse",
+      "text": "garbage",
+      "want": {
+        "error": "Could not parse line \"garbage\" (line: 2)"
+      }
+    },
+    {
+      "name": "sak-parse-garbage-after-record",
+      "grammar": "sak",
+      "op": "parse",
+      "text": "ssh-rsa K a\ngarbage",
+      "want": {
+        "error": "Could not parse line \"garbage\" (line: 3)"
+      }
+    },
+    {
+      "name": "sak-parse-key-with-tab-after",
+      "grammar": "sak",
+      "op": "parse",
+      "text": "ssh-rsa K\tc",
+      "want": {
+        "records": [
+          {
+            "type": "parsed",
+            "line": "",
+            "fields": {
+              "options": {
+                "list": [
+                  {
+                    "absent": true
+                  }
+                ]
+              },
+              "type": {
+                "s": "ssh-rsa"
+              },
+              "key": {
+                "s": "K\tc"
+              },
+              "name": {
+                "s": ""
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "sak-parse-key-then-tab-name",
+      "grammar": "sak",
+      "op": "parse",
+      "text": "ssh-rsa K\t c d",
+      "want": {
+        "records": [
+          {
+            "type": "parsed",
+            "line": "",
+            "fields": {
+              "options": {
+                "list": [
+                  {
+                    "absent": true
+                  }
+                ]
+              },
+              "type": {
+                "s": "ssh-rsa"
+              },
+              "key": {
+                "s": "K\t"
+              },
+              "name": {
+                "s": "c d"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "sak-parse-empty-text",
+      "grammar": "sak",
+      "op": "parse",
+      "text": "",
+      "want": {
+        "records": [
+
+        ]
+      }
+    },
+    {
+      "name": "sak-parse-type-ssh-dss",
+      "grammar": "sak",
+      "op": "parse",
+      "text": "ssh-dss K n",
+      "want": {
+        "records": [
+          {
+            "type": "parsed",
+            "line": "",
+            "fields": {
+              "options": {
+                "list": [
+                  {
+                    "absent": true
+                  }
+                ]
+              },
+              "type": {
+                "s": "ssh-dss"
+              },
+              "key": {
+                "s": "K"
+              },
+              "name": {
+                "s": "n"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "sak-parse-type-ssh-ed25519",
+      "grammar": "sak",
+      "op": "parse",
+      "text": "ssh-ed25519 K n",
+      "want": {
+        "records": [
+          {
+            "type": "parsed",
+            "line": "",
+            "fields": {
+              "options": {
+                "list": [
+                  {
+                    "absent": true
+                  }
+                ]
+              },
+              "type": {
+                "s": "ssh-ed25519"
+              },
+              "key": {
+                "s": "K"
+              },
+              "name": {
+                "s": "n"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "sak-parse-type-ssh-rsa",
+      "grammar": "sak",
+      "op": "parse",
+      "text": "ssh-rsa K n",
+      "want": {
+        "records": [
+          {
+            "type": "parsed",
+            "line": "",
+            "fields": {
+              "options": {
+                "list": [
+                  {
+                    "absent": true
+                  }
+                ]
+              },
+              "type": {
+                "s": "ssh-rsa"
+              },
+              "key": {
+                "s": "K"
+              },
+              "name": {
+                "s": "n"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "sak-parse-type-ecdsa-sha2-nistp256",
+      "grammar": "sak",
+      "op": "parse",
+      "text": "ecdsa-sha2-nistp256 K n",
+      "want": {
+        "records": [
+          {
+            "type": "parsed",
+            "line": "",
+            "fields": {
+              "options": {
+                "list": [
+                  {
+                    "absent": true
+                  }
+                ]
+              },
+              "type": {
+                "s": "ecdsa-sha2-nistp256"
+              },
+              "key": {
+                "s": "K"
+              },
+              "name": {
+                "s": "n"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "sak-parse-type-ecdsa-sha2-nistp384",
+      "grammar": "sak",
+      "op": "parse",
+      "text": "ecdsa-sha2-nistp384 K n",
+      "want": {
+        "records": [
+          {
+            "type": "parsed",
+            "line": "",
+            "fields": {
+              "options": {
+                "list": [
+                  {
+                    "absent": true
+                  }
+                ]
+              },
+              "type": {
+                "s": "ecdsa-sha2-nistp384"
+              },
+              "key": {
+                "s": "K"
+              },
+              "name": {
+                "s": "n"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "sak-parse-type-ecdsa-sha2-nistp521",
+      "grammar": "sak",
+      "op": "parse",
+      "text": "ecdsa-sha2-nistp521 K n",
+      "want": {
+        "records": [
+          {
+            "type": "parsed",
+            "line": "",
+            "fields": {
+              "options": {
+                "list": [
+                  {
+                    "absent": true
+                  }
+                ]
+              },
+              "type": {
+                "s": "ecdsa-sha2-nistp521"
+              },
+              "key": {
+                "s": "K"
+              },
+              "name": {
+                "s": "n"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "sak-parse-type-ecdsa-sk",
+      "grammar": "sak",
+      "op": "parse",
+      "text": "ecdsa-sk K n",
+      "want": {
+        "records": [
+          {
+            "type": "parsed",
+            "line": "",
+            "fields": {
+              "options": {
+                "list": [
+                  {
+                    "absent": true
+                  }
+                ]
+              },
+              "type": {
+                "s": "ecdsa-sk"
+              },
+              "key": {
+                "s": "K"
+              },
+              "name": {
+                "s": "n"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "sak-parse-type-ed25519-sk",
+      "grammar": "sak",
+      "op": "parse",
+      "text": "ed25519-sk K n",
+      "want": {
+        "records": [
+          {
+            "type": "parsed",
+            "line": "",
+            "fields": {
+              "options": {
+                "list": [
+                  {
+                    "absent": true
+                  }
+                ]
+              },
+              "type": {
+                "s": "ed25519-sk"
+              },
+              "key": {
+                "s": "K"
+              },
+              "name": {
+                "s": "n"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "sak-parse-type-sk-ecdsa-sha2-nistp256@openssh.com",
+      "grammar": "sak",
+      "op": "parse",
+      "text": "sk-ecdsa-sha2-nistp256@openssh.com K n",
+      "want": {
+        "records": [
+          {
+            "type": "parsed",
+            "line": "",
+            "fields": {
+              "options": {
+                "list": [
+                  {
+                    "absent": true
+                  }
+                ]
+              },
+              "type": {
+                "s": "sk-ecdsa-sha2-nistp256@openssh.com"
+              },
+              "key": {
+                "s": "K"
+              },
+              "name": {
+                "s": "n"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "sak-parse-type-sk-ssh-ed25519@openssh.com",
+      "grammar": "sak",
+      "op": "parse",
+      "text": "sk-ssh-ed25519@openssh.com K n",
+      "want": {
+        "records": [
+          {
+            "type": "parsed",
+            "line": "",
+            "fields": {
+              "options": {
+                "list": [
+                  {
+                    "absent": true
+                  }
+                ]
+              },
+              "type": {
+                "s": "sk-ssh-ed25519@openssh.com"
+              },
+              "key": {
+                "s": "K"
+              },
+              "name": {
+                "s": "n"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "sak-parse-type-ssh-rsa-cert-v01@openssh.com",
+      "grammar": "sak",
+      "op": "parse",
+      "text": "ssh-rsa-cert-v01@openssh.com K n",
+      "want": {
+        "records": [
+          {
+            "type": "parsed",
+            "line": "",
+            "fields": {
+              "options": {
+                "list": [
+                  {
+                    "absent": true
+                  }
+                ]
+              },
+              "type": {
+                "s": "ssh-rsa-cert-v01@openssh.com"
+              },
+              "key": {
+                "s": "K"
+              },
+              "name": {
+                "s": "n"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "sak-parse-type-ssh-ed25519-cert-v01@openssh.com",
+      "grammar": "sak",
+      "op": "parse",
+      "text": "ssh-ed25519-cert-v01@openssh.com K n",
+      "want": {
+        "records": [
+          {
+            "type": "parsed",
+            "line": "",
+            "fields": {
+              "options": {
+                "list": [
+                  {
+                    "absent": true
+                  }
+                ]
+              },
+              "type": {
+                "s": "ssh-ed25519-cert-v01@openssh.com"
+              },
+              "key": {
+                "s": "K"
+              },
+              "name": {
+                "s": "n"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "sak-parse-type-ssh-dss-cert-v01@openssh.com",
+      "grammar": "sak",
+      "op": "parse",
+      "text": "ssh-dss-cert-v01@openssh.com K n",
+      "want": {
+        "records": [
+          {
+            "type": "parsed",
+            "line": "",
+            "fields": {
+              "options": {
+                "list": [
+                  {
+                    "absent": true
+                  }
+                ]
+              },
+              "type": {
+                "s": "ssh-dss-cert-v01@openssh.com"
+              },
+              "key": {
+                "s": "K"
+              },
+              "name": {
+                "s": "n"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "sak-parse-type-ecdsa-sha2-nistp256-cert-v01@openssh.com",
+      "grammar": "sak",
+      "op": "parse",
+      "text": "ecdsa-sha2-nistp256-cert-v01@openssh.com K n",
+      "want": {
+        "records": [
+          {
+            "type": "parsed",
+            "line": "",
+            "fields": {
+              "options": {
+                "list": [
+                  {
+                    "absent": true
+                  }
+                ]
+              },
+              "type": {
+                "s": "ecdsa-sha2-nistp256-cert-v01@openssh.com"
+              },
+              "key": {
+                "s": "K"
+              },
+              "name": {
+                "s": "n"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "sak-parse-type-ecdsa-sha2-nistp384-cert-v01@openssh.com",
+      "grammar": "sak",
+      "op": "parse",
+      "text": "ecdsa-sha2-nistp384-cert-v01@openssh.com K n",
+      "want": {
+        "records": [
+          {
+            "type": "parsed",
+            "line": "",
+            "fields": {
+              "options": {
+                "list": [
+                  {
+                    "absent": true
+                  }
+                ]
+              },
+              "type": {
+                "s": "ecdsa-sha2-nistp384-cert-v01@openssh.com"
+              },
+              "key": {
+                "s": "K"
+              },
+              "name": {
+                "s": "n"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "sak-parse-type-ecdsa-sha2-nistp521-cert-v01@openssh.com",
+      "grammar": "sak",
+      "op": "parse",
+      "text": "ecdsa-sha2-nistp521-cert-v01@openssh.com K n",
+      "want": {
+        "records": [
+          {
+            "type": "parsed",
+            "line": "",
+            "fields": {
+              "options": {
+                "list": [
+                  {
+                    "absent": true
+                  }
+                ]
+              },
+              "type": {
+                "s": "ecdsa-sha2-nistp521-cert-v01@openssh.com"
+              },
+              "key": {
+                "s": "K"
+              },
+              "name": {
+                "s": "n"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "sak-parse-type-not-listed",
+      "grammar": "sak",
+      "op": "parse",
+      "text": "ssh-bogus K n",
+      "want": {
+        "error": "Could not parse line \"ssh-bogus K n\" (line: 2)"
+      }
+    },
+    {
+      "name": "sak-parse-type-prefix-of-listed",
+      "grammar": "sak",
+      "op": "parse",
+      "text": "ssh-rsa-cert K n",
+      "want": {
+        "error": "Could not parse line \"ssh-rsa-cert K n\" (line: 2)"
+      }
+    },
+    {
+      "name": "sak-parse-type-glued-to-options",
+      "grammar": "sak",
+      "op": "parse",
+      "text": "optssh-rsa K n",
+      "want": {
+        "error": "Could not parse line \"optssh-rsa K n\" (line: 2)"
+      }
+    },
+    {
+      "name": "sak-parse-dot-in-type-is-any-char",
+      "grammar": "sak",
+      "op": "parse",
+      "text": "sk-ssh-ed25519Xopenssh.com K n",
+      "want": {
+        "error": "Could not parse line \"sk-ssh-ed25519Xopenssh.com K n\" (line: 2)"
+      }
+    },
+    {
+      "name": "sak-parse-comment",
+      "grammar": "sak",
+      "op": "parse",
+      "text": "# a comment",
+      "want": {
+        "records": [
+          {
+            "type": "comment",
+            "line": "# a comment",
+            "fields": {
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "sak-parse-comment-indented",
+      "grammar": "sak",
+      "op": "parse",
+      "text": "   # indented comment",
+      "want": {
+        "records": [
+          {
+            "type": "comment",
+            "line": "   # indented comment",
+            "fields": {
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "sak-parse-blank",
+      "grammar": "sak",
+      "op": "parse",
+      "text": "",
+      "want": {
+        "records": [
+
+        ]
+      }
+    },
+    {
+      "name": "sak-parse-blank-spaces",
+      "grammar": "sak",
+      "op": "parse",
+      "text": "   ",
+      "want": {
+        "records": [
+          {
+            "type": "blank",
+            "line": "   ",
+            "fields": {
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "sak-parse-file",
+      "grammar": "sak",
+      "op": "parse",
+      "text": "# HEADER: x\n\nssh-rsa K1 a\n  \nno-pty ssh-ed25519 K2\n1024 35 123 legacy\n",
+      "want": {
+        "records": [
+          {
+            "type": "comment",
+            "line": "# HEADER: x",
+            "fields": {
+            }
+          },
+          {
+            "type": "blank",
+            "line": "",
+            "fields": {
+            }
+          },
+          {
+            "type": "parsed",
+            "line": "",
+            "fields": {
+              "options": {
+                "list": [
+                  {
+                    "absent": true
+                  }
+                ]
+              },
+              "type": {
+                "s": "ssh-rsa"
+              },
+              "key": {
+                "s": "K1"
+              },
+              "name": {
+                "s": "a"
+              }
+            }
+          },
+          {
+            "type": "blank",
+            "line": "  ",
+            "fields": {
+            }
+          },
+          {
+            "type": "parsed",
+            "line": "",
+            "fields": {
+              "options": {
+                "list": [
+                  "no-pty"
+                ]
+              },
+              "type": {
+                "s": "ssh-ed25519"
+              },
+              "key": {
+                "s": "K2"
+              },
+              "name": {
+                "s": ""
+              }
+            }
+          },
+          {
+            "type": "key_v1",
+            "line": "",
+            "fields": {
+              "options": null,
+              "bits": {
+                "s": "1024"
+              },
+              "exponent": {
+                "s": "35"
+              },
+              "modulus": {
+                "s": "123"
+              },
+              "name": {
+                "s": "legacy"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "sak-parse-file-with-broken-name-line",
+      "grammar": "sak",
+      "op": "parse",
+      "text": "ssh-rsa AAAA a\nb\n",
+      "want": {
+        "error": "Could not parse line \"b\" (line: 3)"
+      }
+    },
+    {
+      "name": "sak-parse-file-with-broken-options-line",
+      "grammar": "sak",
+      "op": "parse",
+      "text": "no-pty\nfoo=\"bar\" ssh-rsa AAAA k1\n",
+      "want": {
+        "error": "Could not parse line \"no-pty\" (line: 2)"
+      }
+    },
+    {
+      "name": "sak-parse-keyv1",
+      "grammar": "sak",
+      "op": "parse",
+      "text": "1024 35 12345 legacy@host",
+      "want": {
+        "records": [
+          {
+            "type": "key_v1",
+            "line": "",
+            "fields": {
+              "options": null,
+              "bits": {
+                "s": "1024"
+              },
+              "exponent": {
+                "s": "35"
+              },
+              "modulus": {
+                "s": "12345"
+              },
+              "name": {
+                "s": "legacy@host"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "sak-parse-keyv1-options",
+      "grammar": "sak",
+      "op": "parse",
+      "text": "from=\"x\" 1024 35 12345 legacy@host",
+      "want": {
+        "records": [
+          {
+            "type": "key_v1",
+            "line": "",
+            "fields": {
+              "options": {
+                "s": "from=\"x\""
+              },
+              "bits": {
+                "s": "1024"
+              },
+              "exponent": {
+                "s": "35"
+              },
+              "modulus": {
+                "s": "12345"
+              },
+              "name": {
+                "s": "legacy@host"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "sak-parse-keyv1-no-name",
+      "grammar": "sak",
+      "op": "parse",
+      "text": "1024 35 777",
+      "want": {
+        "records": [
+          {
+            "type": "key_v1",
+            "line": "",
+            "fields": {
+              "options": null,
+              "bits": {
+                "s": "1024"
+              },
+              "exponent": {
+                "s": "35"
+              },
+              "modulus": {
+                "s": "777"
+              },
+              "name": null
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "sak-parse-keyv1-leading-space",
+      "grammar": "sak",
+      "op": "parse",
+      "text": " 1024 35 777 n",
+      "want": {
+        "error": "Could not parse line \" 1024 35 777 n\" (line: 2)"
+      }
+    },
+    {
+      "name": "sak-parse-keyv1-name-with-spaces",
+      "grammar": "sak",
+      "op": "parse",
+      "text": "1024 35 777 a b c",
+      "want": {
+        "records": [
+          {
+            "type": "key_v1",
+            "line": "",
+            "fields": {
+              "options": null,
+              "bits": {
+                "s": "1024"
+              },
+              "exponent": {
+                "s": "35"
+              },
+              "modulus": {
+                "s": "777"
+              },
+              "name": {
+                "s": "a b c"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "sak-parse-keyv1-vs-parsed",
+      "grammar": "sak",
+      "op": "parse",
+      "text": "1024 35 777 ssh-rsa K n",
+      "want": {
+        "records": [
+          {
+            "type": "parsed",
+            "line": "",
+            "fields": {
+              "options": {
+                "list": [
+                  "1024",
+                  "35",
+                  "777"
+                ]
+              },
+              "type": {
+                "s": "ssh-rsa"
+              },
+              "key": {
+                "s": "K"
+              },
+              "name": {
+                "s": "n"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "sak-parse-parsed-wins-over-keyv1",
+      "grammar": "sak",
+      "op": "parse",
+      "text": "1 2 3 ssh-rsa 4 5",
+      "want": {
+        "records": [
+          {
+            "type": "parsed",
+            "line": "",
+            "fields": {
+              "options": {
+                "list": [
+                  "1",
+                  "2",
+                  "3"
+                ]
+              },
+              "type": {
+                "s": "ssh-rsa"
+              },
+              "key": {
+                "s": "4"
+              },
+              "name": {
+                "s": "5"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "sak-to_line-plain",
+      "grammar": "sak",
+      "op": "to_line",
+      "record": {
+        "type": "parsed",
+        "fields": {
+          "options": {
+            "list": [
+              {
+                "absent": true
+              }
+            ]
+          },
+          "type": {
+            "s": "ssh-rsa"
+          },
+          "key": {
+            "s": "K"
+          },
+          "name": {
+            "s": "n"
+          }
+        }
+      },
+      "want": {
+        "line": "ssh-rsa K n"
+      }
+    },
+    {
+      "name": "sak-to_line-options-list",
+      "grammar": "sak",
+      "op": "to_line",
+      "record": {
+        "type": "parsed",
+        "fields": {
+          "options": {
+            "list": [
+              "no-pty",
+              "command=\"x y\""
+            ]
+          },
+          "type": {
+            "s": "ssh-rsa"
+          },
+          "key": {
+            "s": "K"
+          },
+          "name": {
+            "s": "alice@laptop"
+          }
+        }
+      },
+      "want": {
+        "line": "no-pty,command=\"x y\" ssh-rsa K alice@laptop"
+      }
+    },
+    {
+      "name": "sak-to_line-options-empty-list",
+      "grammar": "sak",
+      "op": "to_line",
+      "record": {
+        "type": "parsed",
+        "fields": {
+          "options": {
+            "list": [
+
+            ]
+          },
+          "type": {
+            "s": "ssh-rsa"
+          },
+          "key": {
+            "s": "K"
+          },
+          "name": {
+            "s": "n"
+          }
+        }
+      },
+      "want": {
+        "line": "ssh-rsa K n"
+      }
+    },
+    {
+      "name": "sak-to_line-options-lone-absent-list",
+      "grammar": "sak",
+      "op": "to_line",
+      "record": {
+        "type": "parsed",
+        "fields": {
+          "options": {
+            "list": [
+              {
+                "absent": true
+              }
+            ]
+          },
+          "type": {
+            "s": "ssh-rsa"
+          },
+          "key": {
+            "s": "K"
+          },
+          "name": {
+            "s": "n"
+          }
+        }
+      },
+      "want": {
+        "line": "ssh-rsa K n"
+      }
+    },
+    {
+      "name": "sak-to_line-options-one",
+      "grammar": "sak",
+      "op": "to_line",
+      "record": {
+        "type": "parsed",
+        "fields": {
+          "options": {
+            "list": [
+              "cert-authority"
+            ]
+          },
+          "type": {
+            "s": "ssh-rsa"
+          },
+          "key": {
+            "s": "K"
+          },
+          "name": {
+            "s": "n"
+          }
+        }
+      },
+      "want": {
+        "line": "cert-authority ssh-rsa K n"
+      }
+    },
+    {
+      "name": "sak-to_line-options-leading-space",
+      "grammar": "sak",
+      "op": "to_line",
+      "record": {
+        "type": "parsed",
+        "fields": {
+          "options": {
+            "list": [
+              "  x"
+            ]
+          },
+          "type": {
+            "s": "ssh-rsa"
+          },
+          "key": {
+            "s": "K"
+          },
+          "name": {
+            "s": "n"
+          }
+        }
+      },
+      "want": {
+        "line": "x ssh-rsa K n"
+      }
+    },
+    {
+      "name": "sak-to_line-options-line-break",
+      "grammar": "sak",
+      "op": "to_line",
+      "record": {
+        "type": "parsed",
+        "fields": {
+          "options": {
+            "list": [
+              "no-pty\nfoo=\"bar\""
+            ]
+          },
+          "type": {
+            "s": "ssh-rsa"
+          },
+          "key": {
+            "s": "K"
+          },
+          "name": {
+            "s": "k1"
+          }
+        }
+      },
+      "want": {
+        "line": "no-pty\nfoo=\"bar\" ssh-rsa K k1"
+      }
+    },
+    {
+      "name": "sak-to_line-empty-name-trailing-space",
+      "grammar": "sak",
+      "op": "to_line",
+      "record": {
+        "type": "parsed",
+        "fields": {
+          "options": {
+            "list": [
+              {
+                "absent": true
+              }
+            ]
+          },
+          "type": {
+            "s": "ssh-rsa"
+          },
+          "key": {
+            "s": "K"
+          },
+          "name": {
+            "s": ""
+          }
+        }
+      },
+      "want": {
+        "line": "ssh-rsa K "
+      }
+    },
+    {
+      "name": "sak-to_line-empty-name-with-options",
+      "grammar": "sak",
+      "op": "to_line",
+      "record": {
+        "type": "parsed",
+        "fields": {
+          "options": {
+            "list": [
+              "no-pty"
+            ]
+          },
+          "type": {
+            "s": "ssh-rsa"
+          },
+          "key": {
+            "s": "K"
+          },
+          "name": {
+            "s": ""
+          }
+        }
+      },
+      "want": {
+        "line": "no-pty ssh-rsa K "
+      }
+    },
+    {
+      "name": "sak-to_line-name-line-break",
+      "grammar": "sak",
+      "op": "to_line",
+      "record": {
+        "type": "parsed",
+        "fields": {
+          "options": {
+            "list": [
+              {
+                "absent": true
+              }
+            ]
+          },
+          "type": {
+            "s": "ssh-rsa"
+          },
+          "key": {
+            "s": "K"
+          },
+          "name": {
+            "s": "a\nb"
+          }
+        }
+      },
+      "want": {
+        "line": "ssh-rsa K a\nb"
+      }
+    },
+    {
+      "name": "sak-to_line-name-line-break-indent",
+      "grammar": "sak",
+      "op": "to_line",
+      "record": {
+        "type": "parsed",
+        "fields": {
+          "options": {
+            "list": [
+              {
+                "absent": true
+              }
+            ]
+          },
+          "type": {
+            "s": "ssh-rsa"
+          },
+          "key": {
+            "s": "K"
+          },
+          "name": {
+            "s": "a\n  b"
+          }
+        }
+      },
+      "want": {
+        "line": "ssh-rsa K a\n  b"
+      }
+    },
+    {
+      "name": "sak-to_line-name-leading-space",
+      "grammar": "sak",
+      "op": "to_line",
+      "record": {
+        "type": "parsed",
+        "fields": {
+          "options": {
+            "list": [
+              {
+                "absent": true
+              }
+            ]
+          },
+          "type": {
+            "s": "ssh-rsa"
+          },
+          "key": {
+            "s": "K"
+          },
+          "name": {
+            "s": " n"
+          }
+        }
+      },
+      "want": {
+        "line": "ssh-rsa K  n"
+      }
+    },
+    {
+      "name": "sak-to_line-type-absent",
+      "grammar": "sak",
+      "op": "to_line",
+      "record": {
+        "type": "parsed",
+        "fields": {
+          "options": {
+            "list": [
+              {
+                "absent": true
+              }
+            ]
+          },
+          "type": {
+            "absent": true
+          },
+          "key": {
+            "s": "K"
+          },
+          "name": {
+            "s": "n"
+          }
+        }
+      },
+      "want": {
+        "error": "Field 'type' is required"
+      }
+    },
+    {
+      "name": "sak-to_line-key-nil",
+      "grammar": "sak",
+      "op": "to_line",
+      "record": {
+        "type": "parsed",
+        "fields": {
+          "options": {
+            "list": [
+              {
+                "absent": true
+              }
+            ]
+          },
+          "type": {
+            "s": "ssh-rsa"
+          },
+          "key": null,
+          "name": {
+            "s": "n"
+          }
+        }
+      },
+      "want": {
+        "error": "Field 'key' is required"
+      }
+    },
+    {
+      "name": "sak-to_line-keyv1",
+      "grammar": "sak",
+      "op": "to_line",
+      "record": {
+        "type": "key_v1",
+        "fields": {
+          "options": {
+            "absent": true
+          },
+          "bits": {
+            "s": "1024"
+          },
+          "exponent": {
+            "s": "35"
+          },
+          "modulus": {
+            "s": "12345"
+          },
+          "name": {
+            "s": "legacy@host"
+          }
+        }
+      },
+      "want": {
+        "line": "1024 35 12345 legacy@host"
+      }
+    },
+    {
+      "name": "sak-to_line-keyv1-options",
+      "grammar": "sak",
+      "op": "to_line",
+      "record": {
+        "type": "key_v1",
+        "fields": {
+          "options": {
+            "s": "from=\"x\""
+          },
+          "bits": {
+            "s": "1024"
+          },
+          "exponent": {
+            "s": "35"
+          },
+          "modulus": {
+            "s": "12345"
+          },
+          "name": {
+            "s": "legacy"
+          }
+        }
+      },
+      "want": {
+        "line": "from=\"x\" 1024 35 12345 legacy"
+      }
+    },
+    {
+      "name": "sak-to_line-keyv1-no-name",
+      "grammar": "sak",
+      "op": "to_line",
+      "record": {
+        "type": "key_v1",
+        "fields": {
+          "options": {
+            "absent": true
+          },
+          "bits": {
+            "s": "1024"
+          },
+          "exponent": {
+            "s": "35"
+          },
+          "modulus": {
+            "s": "777"
+          }
+        }
+      },
+      "want": {
+        "error": "Field 'name' is required"
+      }
+    },
+    {
+      "name": "sak-to_line-keyv1-leading-space-options",
+      "grammar": "sak",
+      "op": "to_line",
+      "record": {
+        "type": "key_v1",
+        "fields": {
+          "options": {
+            "s": "  x"
+          },
+          "bits": {
+            "s": "1"
+          },
+          "exponent": {
+            "s": "2"
+          },
+          "modulus": {
+            "s": "3"
+          },
+          "name": {
+            "s": "n"
+          }
+        }
+      },
+      "want": {
+        "line": "x 1 2 3 n"
+      }
+    },
+    {
+      "name": "sak-to_line-comment",
+      "grammar": "sak",
+      "op": "to_line",
+      "record": {
+        "type": "comment",
+        "line": "# c",
+        "fields": {
+        }
+      },
+      "want": {
+        "line": "# c"
+      }
+    },
+    {
+      "name": "sak-to_line-unknown-type",
+      "grammar": "sak",
+      "op": "to_line",
+      "record": {
+        "type": "nope",
+        "fields": {
+        }
+      },
+      "want": {
+        "error": "Invalid record type :nope"
+      }
+    },
+    {
+      "name": "sak-to_file-mixed",
+      "grammar": "sak",
+      "op": "to_file",
+      "records": [
+        {
+          "type": "comment",
+          "line": "# c",
+          "fields": {
+          }
+        },
+        {
+          "type": "blank",
+          "line": "",
+          "fields": {
+          }
+        },
+        {
+          "type": "parsed",
+          "fields": {
+            "options": {
+              "list": [
+                "no-pty"
+              ]
+            },
+            "type": {
+              "s": "ssh-rsa"
+            },
+            "key": {
+              "s": "K1"
+            },
+            "name": {
+              "s": "a"
+            }
+          }
+        },
+        {
+          "type": "parsed",
+          "fields": {
+            "options": {
+              "list": [
+                {
+                  "absent": true
+                }
+              ]
+            },
+            "type": {
+              "s": "ssh-ed25519"
+            },
+            "key": {
+              "s": "K2"
+            },
+            "name": {
+              "s": ""
+            }
+          }
+        },
+        {
+          "type": "key_v1",
+          "fields": {
+            "options": {
+              "absent": true
+            },
+            "bits": {
+              "s": "1024"
+            },
+            "exponent": {
+              "s": "35"
+            },
+            "modulus": {
+              "s": "7"
+            },
+            "name": {
+              "s": "legacy"
+            }
+          }
+        }
+      ],
+      "want": {
+        "text": "# c\n\nno-pty ssh-rsa K1 a\nssh-ed25519 K2 \n1024 35 7 legacy\n"
+      }
+    },
+    {
+      "name": "sak-to_file-none",
+      "grammar": "sak",
+      "op": "to_file",
+      "records": [
+
+      ],
+      "want": {
+        "text": "\n"
+      }
+    },
+    {
+      "name": "sak-to_file-keyv1-no-name-fails",
+      "grammar": "sak",
+      "op": "to_file",
+      "records": [
+        {
+          "type": "parsed",
+          "fields": {
+            "options": {
+              "list": [
+                {
+                  "absent": true
+                }
+              ]
+            },
+            "type": {
+              "s": "ssh-rsa"
+            },
+            "key": {
+              "s": "K"
+            },
+            "name": {
+              "s": "a"
+            }
+          }
+        },
+        {
+          "type": "key_v1",
+          "fields": {
+            "options": {
+              "absent": true
+            },
+            "bits": {
+              "s": "1024"
+            },
+            "exponent": {
+              "s": "35"
+            },
+            "modulus": {
+              "s": "777"
+            }
+          }
+        }
+      ],
+      "want": {
+        "error": "Field 'name' is required"
+      }
+    },
+    {
+      "name": "sak-to_line-rts-name-indent-with-options",
+      "grammar": "sak",
+      "op": "to_line",
+      "record": {
+        "type": "parsed",
+        "fields": {
+          "options": {
+            "list": [
+              "no-pty"
+            ]
+          },
+          "type": {
+            "s": "ssh-rsa"
+          },
+          "key": {
+            "s": "K"
+          },
+          "name": {
+            "s": "a\n  b"
+          }
+        }
+      },
+      "want": {
+        "line": "no-pty ssh-rsa K a\nb"
+      }
+    },
+    {
+      "name": "sak-to_line-rts-options-indent",
+      "grammar": "sak",
+      "op": "to_line",
+      "record": {
+        "type": "parsed",
+        "fields": {
+          "options": {
+            "list": [
+              "no-pty\n  x"
+            ]
+          },
+          "type": {
+            "s": "ssh-rsa"
+          },
+          "key": {
+            "s": "K"
+          },
+          "name": {
+            "s": "n"
+          }
+        }
+      },
+      "want": {
+        "line": "no-pty\nx ssh-rsa K n"
+      }
+    },
+    {
+      "name": "sak-to_line-rts-name-tab-after-break",
+      "grammar": "sak",
+      "op": "to_line",
+      "record": {
+        "type": "parsed",
+        "fields": {
+          "options": {
+            "list": [
+              "no-pty"
+            ]
+          },
+          "type": {
+            "s": "ssh-rsa"
+          },
+          "key": {
+            "s": "K"
+          },
+          "name": {
+            "s": "a\n\t\nb"
+          }
+        }
+      },
+      "want": {
+        "line": "no-pty ssh-rsa K a\nb"
+      }
+    },
+    {
+      "name": "sak-to_line-rts-keyv1-options-indent",
+      "grammar": "sak",
+      "op": "to_line",
+      "record": {
+        "type": "key_v1",
+        "fields": {
+          "options": {
+            "s": "x\n  y"
+          },
+          "bits": {
+            "s": "1"
+          },
+          "exponent": {
+            "s": "2"
+          },
+          "modulus": {
+            "s": "3"
+          },
+          "name": {
+            "s": "n"
+          }
+        }
+      },
+      "want": {
+        "line": "x\ny 1 2 3 n"
+      }
     }
   ]
 }

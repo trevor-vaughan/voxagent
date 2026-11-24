@@ -632,3 +632,82 @@ func TestCrontabWriteIgnoresStderrFailure(t *testing.T) {
 		t.Errorf("Write = %v; want nil", err)
 	}
 }
+
+// Every failure of the write's four steps carries a *WriteFailure, and
+// FlatWriteError renders the same text from it, so a parent can render a
+// failure the asuser helper reports exactly as the in-process write does.
+func TestFlatWriteFailureCarriesStep(t *testing.T) {
+	dir := t.TempDir()
+	missing := filepath.Join(dir, "no", "such", "f")
+	tests := []struct {
+		name, path, tmpdir string
+		want               WriteFailure
+	}{
+		{"open", missing, "", WriteFailure{"open", syscall.ENOENT}},
+		{"copy", "/dev/full", "", WriteFailure{"copy", syscall.ENOSPC}},
+		{"tempfile", filepath.Join(dir, "f"), filepath.Join(dir, "absent"), WriteFailure{"tempfile", syscall.ENOENT}},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			if tc.tmpdir != "" {
+				t.Setenv("TMPDIR", tc.tmpdir)
+			}
+			err := newFlat(t, tc.path, 0, "UTF-8").Write(context.Background(), "x\n")
+			var wf *WriteFailure
+			if !errors.As(err, &wf) || *wf != tc.want {
+				t.Fatalf("err = %v, WriteFailure %+v; want %+v", err, wf, tc.want)
+			}
+			if got := FlatWriteError(tc.path, *wf); got.Error() != err.Error() {
+				t.Errorf("FlatWriteError = %q; Write = %q", got, err)
+			}
+		})
+	}
+}
+
+func TestFlatWriteErrorTexts(t *testing.T) {
+	const p = "/h/.ssh/authorized_keys"
+	const pre = "Puppet::Util::FileType::FileTypeFlat could not write " + p + ": "
+	tests := []struct {
+		f    WriteFailure
+		want string
+	}{
+		{WriteFailure{"tempfile", syscall.EACCES}, pre + "Permission denied"},
+		{WriteFailure{"open", syscall.EACCES}, pre + "Permission denied @ rb_sysopen - " + p},
+		{WriteFailure{"copy", syscall.EDQUOT}, pre + "Disk quota exceeded - write"},
+		{WriteFailure{"close", syscall.EIO}, pre + "Input/output error - close"},
+	}
+	for _, tc := range tests {
+		err := FlatWriteError(p, tc.f)
+		if err.Error() != tc.want {
+			t.Errorf("%+v: %q; want %q", tc.f, err, tc.want)
+		}
+		var wf *WriteFailure
+		if !errors.As(err, &wf) || *wf != tc.f {
+			t.Errorf("%+v: errors.As gives %+v", tc.f, wf)
+		}
+	}
+}
+
+// FlatEncodeError is the check Write makes, with Write's text, unlogged.
+func TestFlatEncodeError(t *testing.T) {
+	p := filepath.Join(t.TempDir(), "f")
+	err := FlatEncodeError(p, "US-ASCII", "café")
+	want := "Puppet::Util::FileType::FileTypeFlat could not write " + p + ": U+00E9 from UTF-8 to US-ASCII"
+	if err == nil || err.Error() != want {
+		t.Fatalf("err = %v; want %q", err, want)
+	}
+	var wf *WriteFailure
+	if errors.As(err, &wf) {
+		t.Errorf("an encoding failure carries WriteFailure %+v", wf)
+	}
+	werr := newFlat(t, p, 0, "US-ASCII").Write(context.Background(), "café")
+	if werr == nil || werr.Error() != err.Error() || errors.As(werr, &wf) {
+		t.Errorf("Write = %v; want %q without a WriteFailure", werr, err)
+	}
+	if err := FlatEncodeError(p, "US-ASCII", "ascii\n"); err != nil {
+		t.Errorf("ASCII text: %v", err)
+	}
+	if err := FlatEncodeError(p, "UTF-8", "café"); err != nil {
+		t.Errorf("UTF-8: %v", err)
+	}
+}

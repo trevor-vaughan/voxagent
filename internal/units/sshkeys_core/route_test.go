@@ -75,7 +75,7 @@ func TestManifestShape(t *testing.T) {
 	if m.Oracle != (unit.Origin{Implementation: "openvox", Version: "8.34.0"}) || m.Source.Version != "" {
 		t.Errorf("oracle %+v source %+v", m.Oracle, m.Source)
 	}
-	if strings.Join(m.Requires, ",") != "group,file,user" || strings.Join(m.Types, ",") != "sshkey" {
+	if strings.Join(m.Requires, ",") != "group,file,user" || strings.Join(m.Types, ",") != "sshkey,ssh_authorized_key" {
 		t.Errorf("requires %v, types %v", m.Requires, m.Types)
 	}
 	if len(m.Releases) != 2 || m.Releases[0].Version != "2.5.0" || m.Releases[1].Version != "3.1.0" {
@@ -296,5 +296,170 @@ func TestRoutePurge(t *testing.T) {
 	other := catalog.Resource{Type: "Resources", Title: "cron", Parameters: map[string]any{"purge": true}}
 	if d := Unit.Route(routeEnv(t.TempDir(), routeSshkey(nil), other)); len(d.Providers) != 1 {
 		t.Fatalf("another type's purge delegated sshkey: %+v", d)
+	}
+}
+
+func routeSak(params map[string]any) catalog.Resource {
+	return catalog.Resource{Type: "Ssh_authorized_key", Title: "alice@host", Parameters: params}
+}
+
+func delegatedSak(t *testing.T, d unit.Decision) string {
+	t.Helper()
+	if len(d.Providers) != 0 {
+		t.Fatalf("routed natively, want delegated: %+v", d)
+	}
+	return d.Delegated["ssh_authorized_key"]
+}
+
+func TestRouteSakNative(t *testing.T) {
+	for name, c := range map[string]struct{ libdir, release string }{
+		"empty libdir is the vendored release": {t.TempDir(), "2.5.0"},
+		"2.5.0 fixtures":                       {libdirOf(t, "2.5.0"), "2.5.0"},
+		"3.1.0 fixtures":                       {libdirOf(t, "3.1.0"), "3.1.0"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			d := Unit.Route(routeEnv(c.libdir, routeSak(nil), routeSak(map[string]any{"provider": "parsed"})))
+			if len(d.Providers) != 1 || len(d.Delegated) != 0 {
+				t.Fatalf("got %+v", d)
+			}
+			s, ok := d.Providers[0].(Sak)
+			if !ok {
+				t.Fatalf("provider %T", d.Providers[0])
+			}
+			if s.release != c.release || s.start == nil || s.euid == nil || s.backup == nil || s.relabel == nil {
+				t.Errorf("release %q, start nil %t, euid nil %t", s.release, s.start == nil, s.euid == nil)
+			}
+		})
+	}
+}
+
+func TestRouteSakConditionsInOrder(t *testing.T) {
+	purge := catalog.Resource{Type: "Resources", Title: "ssh_authorized_key", Parameters: map[string]any{"purge": true}}
+	userPurge := catalog.Resource{Type: "User", Title: "alice", Parameters: map[string]any{"purge_ssh_keys": true}}
+	badShape := routeSak(map[string]any{"key": 1})
+	foreign := routeSak(map[string]any{"provider": "other"})
+
+	allBroken := func(t *testing.T) *unit.Env {
+		libdir := libdirOf(t, "2.5.0")
+		if err := os.WriteFile(filepath.Join(libdir, "puppet/provider/ssh_authorized_key/other.rb"), nil, 0o644); err != nil {
+			t.Fatal(err)
+		}
+		env := routeEnv(libdir, foreign, badShape, purge, userPurge)
+		env.Platform = raltest.FakePlatform{Release: "ID=debian\nVERSION_ID=12\n"}
+		return env
+	}
+	steps := []func(*testing.T, *unit.Env){
+		func(t *testing.T, env *unit.Env) { env.Platform = raltest.FakePlatform{Release: raltest.CentOS10} },
+		func(t *testing.T, env *unit.Env) { delete(env.Catalog.Resources[0].Parameters, "provider") },
+		func(t *testing.T, env *unit.Env) {
+			if err := os.Remove(filepath.Join(env.Libdir, "puppet/provider/ssh_authorized_key/other.rb")); err != nil {
+				t.Fatal(err)
+			}
+		},
+		func(t *testing.T, env *unit.Env) { delete(env.Catalog.Resources[2].Parameters, "purge") },
+		func(t *testing.T, env *unit.Env) { delete(env.Catalog.Resources[3].Parameters, "purge_ssh_keys") },
+	}
+	cases := []struct {
+		name  string
+		fixed int
+		want  string
+	}{
+		{"platform", 0, "not the measured platform"},
+		{"provider", 1, "provider other"},
+		{"tree", 2, "another ssh_authorized_key provider in libdir"},
+		{"resources purge", 3, "resources purge of ssh_authorized_key"},
+		{"user purge", 4, "purge_ssh_keys generates Ssh_authorized_key resources"},
+		{"shape", 5, "Ssh_authorized_key[alice@host]: key => 1 is not implemented"},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			env := allBroken(t)
+			for _, f := range steps[:c.fixed] {
+				f(t, env)
+			}
+			if got := delegatedSak(t, Unit.Route(env)); got != c.want {
+				t.Fatalf("reason %q, want %q", got, c.want)
+			}
+		})
+	}
+}
+
+func TestRouteSakUserPurge(t *testing.T) {
+	user := func(v any, set bool) catalog.Resource {
+		r := catalog.Resource{Type: "User", Title: "alice", Parameters: map[string]any{}}
+		if set {
+			r.Parameters["purge_ssh_keys"] = v
+		}
+		return r
+	}
+	const why = "purge_ssh_keys generates Ssh_authorized_key resources"
+	for name, c := range map[string]struct {
+		u      catalog.Resource
+		native bool
+	}{
+		"absent":       {user(nil, false), true},
+		"false":        {user(false, true), true},
+		"string false": {user("false", true), true},
+		"empty list":   {user([]any{}, true), true},
+		"true":         {user(true, true), false},
+		"a path":       {user("/home/alice/.ssh/authorized_keys", true), false},
+		"a list":       {user([]any{"/a"}, true), false},
+	} {
+		t.Run(name, func(t *testing.T) {
+			d := Unit.Route(routeEnv(t.TempDir(), routeSak(nil), c.u))
+			if c.native {
+				if len(d.Providers) != 1 {
+					t.Fatalf("got %+v", d)
+				}
+				return
+			}
+			if got := delegatedSak(t, d); got != why {
+				t.Fatalf("reason %q", got)
+			}
+		})
+	}
+	t.Run("sshkey ignores a purging User", func(t *testing.T) {
+		d := Unit.Route(routeEnv(t.TempDir(), routeSshkey(nil), user(true, true)))
+		if len(d.Providers) != 1 || len(d.Delegated) != 0 {
+			t.Fatalf("got %+v", d)
+		}
+	})
+}
+
+func TestRouteSakValueShapes(t *testing.T) {
+	for name, params := range map[string]map[string]any{
+		"key":     {"key": 1},
+		"options": {"options": []any{1}},
+		"target":  {"target": 1},
+	} {
+		for _, release := range []string{"2.5.0", "3.1.0"} {
+			t.Run(name+" "+release, func(t *testing.T) {
+				got := delegatedSak(t, Unit.Route(routeEnv(libdirOf(t, release), routeSak(params))))
+				if !strings.Contains(got, "is not implemented") {
+					t.Fatalf("reason %q", got)
+				}
+			})
+		}
+	}
+	t.Run("options absent element is native", func(t *testing.T) {
+		d := Unit.Route(routeEnv(t.TempDir(), routeSak(map[string]any{"options": []any{"absent"}})))
+		if len(d.Providers) != 1 {
+			t.Fatalf("got %+v", d)
+		}
+	})
+}
+
+func TestRouteTypesAreIndependent(t *testing.T) {
+	libdir := libdirOf(t, "2.5.0")
+	if err := os.WriteFile(filepath.Join(libdir, "puppet/provider/sshkey/other.rb"), nil, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	d := Unit.Route(routeEnv(libdir, routeSshkey(nil), routeSak(nil)))
+	if _, ok := d.Providers[0].(Sak); !ok || len(d.Providers) != 1 || d.Delegated["sshkey"] == "" {
+		t.Fatalf("sshkey's tree condition leaked into sak: %+v", d)
+	}
+	d = Unit.Route(routeEnv(t.TempDir(), routeSshkey(nil), routeSak(nil)))
+	if len(d.Providers) != 2 || len(d.Delegated) != 0 {
+		t.Fatalf("both types native: %+v", d)
 	}
 }

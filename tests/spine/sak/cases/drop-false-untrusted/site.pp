@@ -1,0 +1,2 @@
+ssh_authorized_key { 'w1': user => 'alice', target => '/nonexistent/dir/file', drop_privileges => false, type => 'ssh-rsa', key => 'AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl' }
+ssh_authorized_key { 'w2': user => 'alice', target => '/srv/g/sub/file', drop_privileges => false, type => 'ssh-rsa', key => 'AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl' }

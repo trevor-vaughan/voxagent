@@ -66,15 +66,20 @@
 # sshkeys_core and once with the SIMP release's; tests/spine/sshkey/g5.sh
 # holds it and says how.
 #
+# ssh_authorized_key (sak) follows for the same reason: its cases create users
+# and write their authorized_keys, voxagent's through its asuser helper. That
+# half runs after the sshkey half, on the same image; tests/spine/sak/g5.sh
+# holds it and says how.
+#
 # The comparator and the allowlist are `gatekit compare-reports` and
 # tests/spine/allowlist.json, used unchanged. A second comparator would be a
 # second thing to keep in step with Ruby.
 #
 #   0  the reports agree outside the allowlist and the walk order agrees, for
 #      the live run, for the account cases' noop run, and for every concat,
-#      augeas, cron, host and sshkey case's live, rerun and noop runs (or
-#      both agents refuse its catalog alike), and every compared end state
-#      agrees
+#      augeas, cron, host, sshkey and sak case's live, rerun and noop runs
+#      (or both agents refuse its catalog alike), and every compared end
+#      state agrees
 #   1  they diverge -- a result about voxagent
 #   2  the comparison could not run
 set -uo pipefail
@@ -246,6 +251,8 @@ require_fresh report-diff-container "$ROOT" "$VOXAGENT" "$GATEKIT"
 . "$HERE/host/g5.sh" || exit 2
 # shellcheck source=sshkey/g5.sh
 . "$HERE/sshkey/g5.sh" || exit 2
+# shellcheck source=sak/g5.sh
+. "$HERE/sak/g5.sh" || exit 2
 
 got_puppet="$(podman run --rm "$IMAGE" /opt/puppetlabs/bin/puppet --version 2>/dev/null)" || {
   echo "report-diff-container: cannot read the image's puppet version" >&2
@@ -281,7 +288,8 @@ trap 'rm -rf "$WORK"; podman rm -f -t 0 "$RUBY_SIDE" "$GO_SIDE" "$COMPILER" "$RU
   augeas-compile-$$ augeas-{ruby,voxagent}-{live,noop}-$$ \
   cron-compile-$$ cron-{ruby,voxagent}-{live,noop}-$$ \
   host-compile-$$ host-{ruby,voxagent}-{live,noop}-$$ \
-  sshkey-compile-$$ sshkey-{ruby,voxagent}-{live,noop}-$$ >/dev/null 2>&1' EXIT
+  sshkey-compile-$$ sshkey-{ruby,voxagent}-{live,noop}-$$ \
+  sak-compile-$$ sak-{ruby,voxagent}-{live,noop}-$$ >/dev/null 2>&1' EXIT
 
 if ! podman run --rm "$IMAGE" sh -c "
   if ! $SEED_LATEST; then
@@ -1028,4 +1036,8 @@ host_rc=$?
 sshkey_gate
 sshkey_rc=$?
 [ "$sshkey_rc" -gt "$rc" ] && rc=$sshkey_rc
+
+sak_gate
+sak_rc=$?
+[ "$sak_rc" -gt "$rc" ] && rc=$sak_rc
 exit "$rc"

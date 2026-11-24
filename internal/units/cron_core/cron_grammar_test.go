@@ -265,7 +265,7 @@ func TestCronTZHoist(t *testing.T) {
 // hooked parses text and runs the class's hook on it.
 func hooked(t *testing.T, cls *parsedfile.Class, text string) []*parsedfile.Record {
 	t.Helper()
-	recs, err := cls.PrefetchHook("root", parsed(t, cls, "root", text))
+	recs, err := cls.PrefetchHook(context.Background(), "root", parsed(t, cls, "root", text))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -394,7 +394,7 @@ func TestCronPrefetchHookStarCommand(t *testing.T) {
 	const want = "undefined method `gsub' for :absent:Symbol"
 	for _, release := range releases {
 		cls := testClass(release, "/x", map[string]*fakeFile{})
-		recs, err := cls.PrefetchHook("root", parsed(t, cls, "root", "1 * * * * *"))
+		recs, err := cls.PrefetchHook(context.Background(), "root", parsed(t, cls, "root", "1 * * * * *"))
 		if err == nil || err.Error() != want || recs != nil {
 			t.Errorf("%s: = %v, %v; want error %q", release, recs, err, want)
 		}

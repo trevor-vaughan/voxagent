@@ -451,6 +451,9 @@ func (w *walk) skip(s subject, deps map[string]struct{}) result {
 		File: s.r.File, Line: s.r.Line, Skipped: true,
 		ContainmentPath: s.path, Tags: s.r.Tags,
 		Generated: s.r.GeneratedFrom != nil,
+		// Never evaluated, so Ruby writes a null evaluation_time and
+		// calculate_time_metrics leaves it out of metrics.time.
+		Untimed: true,
 	}
 	// resource/status.rb:176 names the provider on every status, so a skipped
 	// File reports "posix" in Ruby.

@@ -60,11 +60,12 @@ Consequences worth knowing before you move code:
 |---|---|
 | `rubyvalue` | Ruby/Puppet value rendering and coercion (`Inspect`, `Integer()` parsing), parameter access, `UnimplementedValue` |
 | `puppetpath` | Puppet's clean-absolute-path and file-mode rules, used by `file`, `concat`, `exec`, `augeasproviders_core` and `ral` (`augeas_checks.go`) |
-| `suid` | Ruby SUIDManager identity resolution: a user and group to a `syscall.Credential`, with Sensitive redaction; used by `exec` |
+| `suid` | Ruby SUIDManager identity resolution: a user and group to a `syscall.Credential`, with Sensitive redaction; used by `exec` and `sshkeys_core` |
+| `asuser` | the `voxagent asuser` helper's three file ops (`Mkdir`, `Write`, `Chmod`), its closed `<step> <errno>` result protocol (`ParseResult`) and `ProcStarter`, which runs it as a user and never as uid 0; used by `sshkeys_core` and `cmd/voxagent` (`docs/maintainers/apply-spine.md`, "Privilege drop") |
 | `sources` | the per-resource `Sources` context value |
 | `command` | running external commands, output capping, shadow and argv runners, `ExecFailure`, executable checks, `RubyWhich` (`Puppet::Util.which`, shared by sysctl and cron) |
 | `nameservice` | libc NSS access through cgo (`nss_linux.go`) for `user`, `group` and `cron` (`PosixUID`, `UserByID`, `AllUsers`) |
-| `parsedfile` | Puppet's ParsedFile engine: a line grammar, per-run records, targets, and the crontab and flat filetypes. It knows no catalog or unit; `cron_core` (crontab filetype), `host_core` and `sshkeys_core` (flat filetype) are its consumers (`docs/maintainers/apply-spine.md`, "`cron` and the ParsedFile engine", "`host`", "`sshkey`") |
+| `parsedfile` | Puppet's ParsedFile engine: a line grammar, per-run records, targets, and the crontab and flat filetypes. It knows no catalog or unit; `cron_core` (crontab filetype), `host_core` and `sshkeys_core` (flat filetype) are its consumers (`docs/maintainers/apply-spine.md`, "`cron` and the ParsedFile engine", "`host`", "`sshkey`", "`ssh_authorized_key`"). `LineType.PostParse` is `func(*Record) error`: `ErrNoRecord` makes the line a parse error, any other error aborts the parse (sshkey's leading-whitespace abort); `Run.FlushTargets` writes only the targets a record touched (D-102) |
 | `plugintree` | `LibdirTree`, reading the plugin tree under `--libdir` |
 | `augeas` | the libaugeas `dlopen` probe and `Session` (the probe is made at most once per run) |
 | `raltest` | test support: fakes, catalog builders, the libaugeas trace replay (`trace.go`). Never imports `ral` or a unit |
@@ -159,14 +160,15 @@ Each unit's remaining checks are its own, and every failure is a `Delegated` rea
   `parsed.rb`: `checkTree`), a `Resources` purge of `host`, then value shapes (`rubyvalue.UnimplementedValue`). One
   release covers both openvox's vendored 1.3.0 and SIMP's 2.1.0, whose two files are the same bytes
   (`host_core/manifest.go:Route`).
-- `sshkeys_core` (`sshkey` only so far): the measured platform (`ral.MeasuredRelease`; the type has no confine), a
-  `provider` other than `parsed` (`group.ForeignProvider`; the unit requires `group`, `file` for `file.BucketBackup`
-  and `file.RelabelHook`, and `user` for `ssh_authorized_key`'s purge condition), the plugin tree (neither of sshkey's
-  two files is the vendored 2.5.0, else `MatchFiles` for 2.5.0 or 3.1.0, and no provider file under
-  `puppet/provider/sshkey/` but `parsed.rb`: `sshkeyRelease`), a `Resources` purge of `sshkey`, then value shapes
-  (`rubyvalue.UnimplementedValue`) under the release found. Each type of the module is fingerprinted by its own two
-  files; the release found selects 3.1.0's `key` check and is passed to the provider
-  (`sshkeys_core/manifest.go:Route`).
+- `sshkeys_core`, each type decided on its own: the measured platform (`ral.MeasuredRelease`; neither type has a
+  confine), a `provider` other than `parsed` (`group.ForeignProvider`; the unit requires `group`, `file` for
+  `file.BucketBackup` and `file.RelabelHook`, and `user` for `user.PurgeKeepsNative`), the plugin tree (neither of the
+  type's two files is the vendored 2.5.0, else `MatchFiles` for 2.5.0 or 3.1.0, and no provider file under
+  `puppet/provider/<type>/` but `parsed.rb`: `typeRelease`), a `Resources` purge of the type, for
+  `ssh_authorized_key` any `User` whose `purge_ssh_keys` generates keys, then value shapes
+  (`rubyvalue.UnimplementedValue`) under the release found. Each type is fingerprinted by its own two files; the
+  release found selects 3.1.0's `sshkey` `key` check and is passed to the provider
+  (`sshkeys_core/manifest.go:Route`, `routeSshkeyType`, `routeSakType`).
 - `exec`, `file`, `notify`, `package`, `service`: native on every run.
 
 D-87, D-89, D-91 and D-94 in [apply-spine.md](apply-spine.md) say what is measured and why each condition delegates.

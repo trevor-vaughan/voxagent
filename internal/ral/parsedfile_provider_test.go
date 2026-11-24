@@ -318,3 +318,37 @@ func TestParsedFileApplyWrapsFlushError(t *testing.T) {
 		t.Errorf("changes %+v, want the create before the flush error", changes)
 	}
 }
+
+// A should's Flush hook replaces Run.Flush: it gets the run and the record,
+// key attributes filled in, and its error is the FlushError; the default
+// flush does not run.
+func TestParsedFileApplyFlushHook(t *testing.T) {
+	e := newPFEnv(t, "")
+	st := e.prefetch(t, "b")
+	boom := errors.New("boom")
+	var gotRun *parsedfile.Run
+	var gotRec *parsedfile.Record
+	s := should("present", map[string]parsedfile.Value{"val": str("2")})
+	s.Flush = func(ctx context.Context, run *parsedfile.Run, rec *parsedfile.Record) error {
+		gotRun, gotRec = run, rec
+		return boom
+	}
+	changes, _, err := st.Apply(e.ctx, e.ensurable(), s, false)
+	var fe *FlushError
+	if !errors.As(err, &fe) || !errors.Is(err, boom) || len(changes) != 1 {
+		t.Errorf("changes %+v, err %v; want created then the hook's FlushError", changes, err)
+	}
+	if gotRun != st.Run || gotRec != st.Records["b"] || !reflect.DeepEqual(gotRec.Fields["name"], str("b")) {
+		t.Errorf("hook got run %p rec %+v; want %p and b's record with its name", gotRun, gotRec, st.Run)
+	}
+	if len(e.file.writes) != 0 {
+		t.Errorf("the default flush wrote %q", e.file.writes)
+	}
+
+	// Under noop, or with nothing to change, the hook is not called.
+	gotRec = nil
+	st = e.prefetch(t, "b")
+	if _, _, err := st.Apply(e.ctx, e.ensurable(), s, true); err != nil || gotRec != nil {
+		t.Errorf("noop: err %v, hook called %v", err, gotRec != nil)
+	}
+}

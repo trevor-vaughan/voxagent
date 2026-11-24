@@ -30,6 +30,9 @@ func main() {
 			os.Exit(agentCommand(os.Args[2:]))
 		case "units":
 			os.Exit(unitsCommand(os.Args[2:], os.Stdout, os.Stderr))
+		case "asuser":
+			// Hidden: started by ssh_authorized_key's flush, never by hand.
+			os.Exit(asuserCommand(os.Args[2:], os.Stdin, os.Stdout, os.Stderr))
 		}
 	}
 	fmt.Fprintln(os.Stderr, usage)

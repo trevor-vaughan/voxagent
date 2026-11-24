@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"os"
 	"os/exec"
+	"os/user"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -308,6 +309,22 @@ func leakCases() []leakCase {
 			return []map[string]any{
 				markedResource("Sshkey", "voxagent-leak-sshkey@ssh-rsa", map[string]any{"key": "D8SECRET-Sshkey-key", "target": target}, "key"),
 				markedResource("Sshkey", "voxagent-leak-sshkey2@ssh-rsa", map[string]any{"key": "D8SECRET-Sshkey-key-create", "target": target}, "key"),
+			}
+		}},
+		// A Sensitive ssh_authorized_key key on a change of an existing line (the
+		// old key, unmarked, must not show either) and on a create. The key's
+		// user is the agent's own, so the write is in-process (spec §3.4).
+		{name: "sak-key", seed: func(t *testing.T, dir string) {
+			writeSeed(t, filepath.Join(dir, "authorized_keys"), "ssh-rsa voxagent-plain-old-sak-key voxagent-leak-sak\n", 0o600)
+		}, plain: []string{"voxagent-plain-old-sak-key"}, resources: func(dir string) []map[string]any {
+			target := filepath.Join(dir, "authorized_keys")
+			me := "root"
+			if u, err := user.Current(); err == nil {
+				me = u.Username
+			}
+			return []map[string]any{
+				markedResource("Ssh_authorized_key", "voxagent-leak-sak", map[string]any{"user": me, "type": "ssh-rsa", "key": "D8SECRET-Ssh_authorized_key-key", "target": target}, "key"),
+				markedResource("Ssh_authorized_key", "voxagent-leak-sak2", map[string]any{"user": me, "type": "ssh-rsa", "key": "D8SECRET-Ssh_authorized_key-key-create", "target": target}, "key"),
 			}
 		}},
 		// A Sensitive fragment under each measured concat version, in a file

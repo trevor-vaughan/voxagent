@@ -44,9 +44,10 @@ type Class struct {
 	// generated text (pf:412-424 with drop_native_header true).
 	NativeHeader *regexp.Regexp
 	// PrefetchHook is pf:307's prefetch_hook, run per target on its records
-	// after the engine has set OnDisk, Target and Ensure. An error aborts the
+	// after the engine has set OnDisk, Target and Ensure (ctx is for its debug
+	// lines, as Targets'). An error aborts the
 	// whole prefetch and is returned as it is.
-	PrefetchHook func(target string, rs []*Record) ([]*Record, error)
+	PrefetchHook func(ctx context.Context, target string, rs []*Record) ([]*Record, error)
 	// ResourceForRecord replaces pf:265-270's lookup of the resource named like
 	// the record; byName is keyed by Resource.Name. Nil means that lookup.
 	ResourceForRecord func(rec *Record, byName map[string]Resource) (Resource, bool)
@@ -139,7 +140,7 @@ func (r *Run) readTarget(ctx context.Context, target string) ([]*Record, error) 
 		rec.OnDisk, rec.Target, rec.Ensure = true, target, "present"
 	}
 	if r.c.PrefetchHook != nil {
-		return r.c.PrefetchHook(target, recs)
+		return r.c.PrefetchHook(ctx, target, recs)
 	}
 	return recs, nil
 }
