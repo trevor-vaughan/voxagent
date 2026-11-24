@@ -95,6 +95,15 @@ Every attribute either type declares is accepted, and those its provider
 does not support (`forcelocal`, and the Solaris, AIX, BSD and macOS ones) are ignored, as
 Puppet ignores them. Everywhere else `user` and `group` need the extension
 host, and `--no-ruby` refuses a catalog that has them.
+`concat_file` and `concat_fragment` (puppetlabs-concat) are applied natively
+when the synced module under `--libdir` is release 9.1.0 or 10.0.1 (voxagent
+identifies it by the digests of its two type files) and every one of them in the
+catalog uses a supported shape: `format` `plain` (the default), no fragment
+`source`, `backup` not `true`, and clean, distinct absolute paths. Otherwise
+both types stay with the Ruby extension host, and `--no-ruby` refuses a catalog
+that has them. A fragment `order => 2.0` is accepted natively as `2`, but
+refused as Ruby does when the host is loaded for another type in the same
+run.
 Of the metaparameters, `loglevel` is accepted on any resource only as `notice`,
 Puppet's default, which `concat` copies onto every file it generates.
 Any other type is applied by the Ruby extension host if it is a legacy
@@ -265,8 +274,8 @@ A catalog may hold types voxagent does not implement: `User` and `Group`, types
 that modules ship, `file_line` from stdlib. If they are legacy
 `Puppet::Type.newtype` types, voxagent starts one Ruby process, the extension
 host, which loads them and evaluates each with Puppet's own code. voxagent keeps
-the ordering, refresh propagation and the report. A catalog with only the five
-native types never starts Ruby.
+the ordering, refresh propagation and the report. A catalog with only native
+types never starts Ruby.
 
 ```bash
 ./bin/voxagent apply --catalog catalog.json \
@@ -308,9 +317,9 @@ What to expect:
   run (`eval_generate`, which `concat` uses) happens at the generating
   resource's turn. Either way Puppet's own code generates them, and voxagent
   applies each new resource through its own type, natively when it is one of
-  the five. A resource `eval_generate` makes that voxagent cannot apply fails,
-  and the generating resource's dependents are skipped, rather than being
-  half-applied; one generated at load refuses the run (below).
+  the native ones. A resource `eval_generate` makes that voxagent cannot apply
+  fails, and the generating resource's dependents are skipped, rather than
+  being half-applied; one generated at load refuses the run (below).
 - A Tier 3 resource can be referred to by its name as well as its title, as in
   Puppet.
 - Refused before anything is applied, with could-not-run: `--no-ruby` on a

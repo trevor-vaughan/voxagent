@@ -12,6 +12,12 @@ import (
 // that are Puppet properties of its type.
 type PropertyDeclaring interface{ Properties() Attrs }
 
+// SilentlyMarking is implemented by a provider whose type marks some
+// parameters Sensitive itself, as concat_fragment's set_sensitive_parameters
+// does for content. MarkSensitive marks one that is given and says nothing,
+// where the generic rule would warn that a parameter cannot be redacted.
+type SilentlyMarking interface{ SilentlyMarked() Attrs }
+
 // MarkSensitive reproduces Puppet's set_sensitive_parameters
 // (type.rb:2389-2402) for r: it returns the attributes the catalog's
 // sensitive_parameters mark, and the console logs Puppet writes for a name it
@@ -32,6 +38,11 @@ func MarkSensitive(p Provider, r catalog.Resource) (Attrs, []report.LogEntry) {
 	var logs []report.LogEntry
 	warn := func(level, msg string) {
 		logs = append(logs, report.LogEntry{Level: level, Message: msg, Source: "/" + r.Ref()})
+	}
+
+	var silent Attrs
+	if sm, ok := p.(SilentlyMarking); ok {
+		silent = sm.SilentlyMarked()
 	}
 
 	names := slices.Clone(r.SensitiveParameters)
@@ -90,8 +101,9 @@ func MarkSensitive(p Provider, r catalog.Resource) (Attrs, []report.LogEntry) {
 		}
 		_, isProp := props[name]
 		_, isAttr := attrs[name]
+		_, isSilent := silent[name]
 		switch {
-		case isProp && given(name):
+		case (isProp || isSilent) && given(name):
 			marked[name] = struct{}{}
 		case !isAttr && !IsEngineAttr(name):
 			warn("err", fmt.Sprintf("Unable to mark '%s' as sensitive: the property itself is not defined on %s.", name, r.Type))

@@ -489,25 +489,22 @@ func (e Exec) run(ctx context.Context, r catalog.Resource, noop bool) ([]Change,
 	// change state, and running a read-only check is not a change. Pinned by
 	// TestExecNoopEvaluatesGuardsBeforeReporting.
 	if noop {
-		// Is is left empty rather than "0": the command has not run, so there
-		// is no exit status to report, and "0" would assert a result that
-		// never happened -- the exact class of defect this codebase treats as
-		// a real bug. The message says "would execute" for the same reason.
-		//
-		// KNOWN DIVERGENCE, measured under --noop: Ruby's noop event is
-		// {"previous_value"=>"notrun", "desired_value"=>["0"],
-		// "message"=>"executed successfully (noop)", "name"=>"executed_command",
-		// "status"=>"noop"} -- desired_value is the accepted list, exactly as on
-		// a real run, because it is the property's should value and owes nothing
-		// to whether the command ran. So Ruby's noop event says more than this
-		// one does, and its message is the success wording with a "(noop)"
-		// suffix. Left as it is on purpose: closing it is a report-shape
-		// decision (voxagent has no "(noop)" suffix anywhere), not a bug in this
-		// branch. G5 now compares exec's real-run events against Ruby, but it
-		// applies no --noop run, so this branch is still reached by no gate.
+		// resource_harness.rb's noop event (measured, and compared by G5's
+		// concat M13 --noop pass): {"previous_value"=>"notrun",
+		// "desired_value"=>["0"], "message"=>"executed successfully (noop)",
+		// "name"=>"executed_command", "status"=>"noop"}. desired_value is the
+		// should value, the accepted list, whether or not the command ran, so
+		// no exit status is claimed; the message names no command.
+		accepted, err := acceptableList(r.Parameters["returns"], isMarked(e, r, "returns"))
+		if err != nil {
+			return nil, fmt.Errorf("exec returns: %w", err)
+		}
+		desired := make([]string, len(accepted))
+		for i, want := range accepted {
+			desired[i] = strconv.Itoa(want)
+		}
 		return []Change{{Property: "returns", Name: "executed_command",
-			Was: "notrun", Is: "",
-			Message: "would execute " + quoteOrRedact(commandDisplay(command), redact)}}, nil
+			Was: "notrun", Is: desired, Message: "executed successfully (noop)"}}, nil
 	}
 
 	// An argv's executable is checked before it runs (posix.rb:30-54, run by

@@ -1,5 +1,6 @@
 # shellcheck shell=bash
-# Sourced by report-diff-simp.sh: the steps of the SIMP acceptance gate that
+# Sourced by report-diff-simp.sh (and report-diff-container.sh, for
+# simp_modules and concat_fingerprints): the steps of the SIMP acceptance gate that
 # touch podman, one function per step. Every function returns 2 on any failure,
 # with a message naming the cause, because each failure means the comparison
 # could not run, never that the agents disagree.
@@ -224,4 +225,36 @@ simp_apply() {
     tail -10 "$outdir/apply.out" >&2
     return 2
   }
+}
+
+# concat_fingerprints GATE LIBDIR VERSION
+#
+# Returns 0 when LIBDIR's puppet/type/concat_file.rb and concat_fragment.rb
+# carry the sha256 of puppetlabs-concat VERSION (9.1.0 or 10.0.1), the
+# fingerprints voxagent routes concat on (internal/ral/concat_route.go; concat
+# design §0). Otherwise it names the file and returns 2: a wrong module cache
+# would send both types to the extension host, and the gate would compare Ruby
+# with Ruby while looking green. GATE prefixes the messages.
+concat_fingerprints() {
+  local gate="$1" libdir="$2" version="$3" file want got
+  local -A sums
+  case "$version" in
+    9.1.0) sums=([concat_file.rb]=7872760598bf35c8e3b285d89daecc4fa29c727a456e47118626a2c58f9c0d6f
+      [concat_fragment.rb]=ee003b5d10550f6104fde62ad46f5296ce9361a6a4c1e5ef6d973333f30585ef) ;;
+    10.0.1) sums=([concat_file.rb]=e38f130ed5ccb6bc0bb3c7a047ead0ace40ebcbb8d2f408acf46f10b8b9c59c6
+      [concat_fragment.rb]=1a53e85c6a873be95eb4b410153e3632658d01c0c65b5f2e0f2886a6f0cb067d) ;;
+    *)
+      echo "$gate: no concat fingerprints for version '$version'" >&2
+      return 2
+      ;;
+  esac
+  for file in concat_file.rb concat_fragment.rb; do
+    want="${sums[$file]}"
+    got="$(sha256sum "$libdir/puppet/type/$file" 2>/dev/null)"
+    got="${got%% *}"
+    if [ "$got" != "$want" ]; then
+      echo "$gate: $libdir/puppet/type/$file is not puppetlabs-concat $version's (sha256 ${got:-unreadable}, want $want)" >&2
+      return 2
+    fi
+  done
 }

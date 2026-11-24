@@ -19,6 +19,8 @@ type evalGenStub struct {
 	evaluatorStub
 	gens    map[string]ral.EvalGeneration
 	genErrs map[string]error
+	// sources, when set, records the Sources each EvalGenerate call carried.
+	sources *[]ral.Sources
 }
 
 func (e evalGenStub) EvalGenerates(r catalog.Resource) bool {
@@ -27,8 +29,11 @@ func (e evalGenStub) EvalGenerates(r catalog.Resource) bool {
 	return ok || failing
 }
 
-func (e evalGenStub) EvalGenerate(_ context.Context, r catalog.Resource) (ral.EvalGeneration, error) {
+func (e evalGenStub) EvalGenerate(ctx context.Context, r catalog.Resource) (ral.EvalGeneration, error) {
 	*e.calls = append(*e.calls, "eval_generate "+r.Ref())
+	if e.sources != nil {
+		*e.sources = append(*e.sources, ral.SourcesFrom(ctx))
+	}
 	if err := e.genErrs[r.Ref()]; err != nil {
 		return ral.EvalGeneration{}, err
 	}
@@ -170,6 +175,24 @@ func TestEvalGenerateHostErrorIsLogged(t *testing.T) {
 	}
 	if !slices.Contains(f.calls, "evaluate Vox_evalgen[p]") {
 		t.Errorf("the parent was not applied: %v", f.calls)
+	}
+}
+
+// A native eval_generate logs its own failure at the resource's path, so the
+// call carries the resource's Sources as Apply's does.
+func TestEvalGenerateCarriesTheResourcesSources(t *testing.T) {
+	var f evalGenFixture
+	var seen []ral.Sources
+	stub := evalGenStub{gens: map[string]ral.EvalGeneration{"Vox_evalgen[p]": {}}, sources: &seen}
+	c := &catalog.Catalog{
+		Resources: []catalog.Resource{res("Stage", "main", nil), res("Class", "main", nil), res("Vox_evalgen", "p", nil)},
+		Edges: []catalog.Edge{{Source: "Stage[main]", Target: "Class[main]"},
+			{Source: "Class[main]", Target: "Vox_evalgen[p]"}},
+	}
+	runCatalog(t, f.tx(stub, nil), c)
+	want := ral.Sources{Resource: "/Stage[main]/Main/Vox_evalgen[p]", Provider: "Vox_evalgen[p](provider=prov-p)", Ref: "Vox_evalgen[p]"}
+	if !slices.Equal(seen, []ral.Sources{want}) {
+		t.Errorf("sources = %+v, want %+v", seen, want)
 	}
 }
 

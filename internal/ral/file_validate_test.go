@@ -726,6 +726,8 @@ func TestValidateCmdOutputRedactedWhenContentMarked(t *testing.T) {
 	marks := map[string]func(*catalog.Resource){
 		"SensitiveParameters": func(r *catalog.Resource) { r.SensitiveParameters = []string{"content"} },
 		"SetSensitivity":      func(r *catalog.Resource) { r.SetSensitivity = map[string]bool{"content": true} },
+		// Unmarked content an eval_generate built from marked input.
+		"OutputRedacted": func(r *catalog.Resource) { r.OutputRedacted = true },
 	}
 	for name, mark := range marks {
 		t.Run(name+" failure", func(t *testing.T) {

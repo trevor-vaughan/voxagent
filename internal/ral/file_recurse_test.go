@@ -331,7 +331,7 @@ func TestFileWalkedSymlinkUnderNoopChangesNothing(t *testing.T) {
 		changes, _, err := File{se: se}.Apply(context.Background(),
 			childOf(parent, link, map[string]any{"group": "0"}), true)
 		if err != nil || len(changes) != 2 || changes[0].Property != "group" || changes[0].Err != nil ||
-			changes[1].Message != "seltype changed 'tmp_t' to 'etc_t'" || changes[1].Err != nil {
+			changes[1].Message != "seltype changed 'tmp_t' to 'etc_t' (noop)" || changes[1].Err != nil {
 			t.Errorf("%s: Apply = %+v, %v; want a group and a seltype change, neither made", link, changes, err)
 		}
 		if len(se.sets) != 0 {
@@ -396,16 +396,16 @@ func TestFilePurgedDirectoryReportsRemovedAndStays(t *testing.T) {
 	child := childOf(parent, unm, map[string]any{"ensure": "absent"})
 	for _, noop := range []bool{false, true} {
 		changes, _, err := File{}.Apply(context.Background(), child, noop)
-		wantNotices := []string{"Not removing directory; use 'force' to override"}
+		wantNotices, wantMessage := []string{"Not removing directory; use 'force' to override"}, "removed"
 		if noop {
-			wantNotices = nil
+			wantNotices, wantMessage = nil, "removed (noop)"
 		}
 		if err != nil || len(changes) != 1 {
 			t.Fatalf("noop %t: Apply = %+v, %v", noop, changes, err)
 		}
 		ch := changes[0]
 		if ch.Property != "ensure" || ch.Was != "directory" || ch.Is != "absent" || ch.Name != "file_removed" ||
-			ch.Message != "removed" || !slices.Equal(ch.PathNotices, wantNotices) || ch.Err != nil {
+			ch.Message != wantMessage || !slices.Equal(ch.PathNotices, wantNotices) || ch.Err != nil {
 			t.Errorf("noop %t: change = %+v", noop, ch)
 		}
 		if fi, err := os.Stat(unm); err != nil || !fi.IsDir() {

@@ -194,6 +194,45 @@ func TestFileNoopChangesNothing(t *testing.T) {
 	}
 }
 
+// resource_harness.rb's noop gives each event change_to_s + " (noop)":
+// measured on openvox 8.33.0 (concat M1, M5, M7, M9 noop.txt) for ensure
+// created, content and mode changes and a removal. A failure keeps its text.
+func TestFileNoopMessagesEndInNoop(t *testing.T) {
+	dir := t.TempDir()
+	existing := filepath.Join(dir, "old.txt")
+	if err := os.WriteFile(existing, []byte("old\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	gone := filepath.Join(dir, "gone.txt")
+	if err := os.WriteFile(gone, []byte("x"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		r    catalog.Resource
+		want []string
+	}{
+		{fileRes(filepath.Join(dir, "new.txt"), map[string]any{"ensure": "file", "content": "alpha\n"}),
+			[]string{"defined content as '{sha256}" + sha256Hex([]byte("alpha\n")) + "' (noop)"}},
+		{fileRes(existing, map[string]any{"ensure": "file", "content": "new\n", "mode": "0600"}),
+			[]string{"content changed '{sha256}" + sha256Hex([]byte("old\n")) + "' to '{sha256}" + sha256Hex([]byte("new\n")) + "' (noop)",
+				"mode changed '0644' to '0600' (noop)"}},
+		{fileRes(gone, map[string]any{"ensure": "absent"}), []string{"removed (noop)"}},
+		{fileRes(filepath.Join(dir, "missing", "x.txt"), map[string]any{"ensure": "file"}), []string{"created (noop)"}},
+	} {
+		changes, _, err := File{}.Apply(context.Background(), tc.r, true)
+		if err != nil {
+			t.Fatalf("%s: Apply returned error: %v", tc.r.Title, err)
+		}
+		var got []string
+		for _, c := range changes {
+			got = append(got, c.Message)
+		}
+		if !slices.Equal(got, tc.want) {
+			t.Errorf("%s: messages = %q, want %q", tc.r.Title, got, tc.want)
+		}
+	}
+}
+
 // Noop against an EXISTING file that is out of date must also change nothing on
 // disk while still reporting. The test above only covers creation, where
 // "changed nothing" is easy to get right by accident.
@@ -912,7 +951,7 @@ func TestDirectoryOverAFileUnderNoopTouchesNothing(t *testing.T) {
 	mustWrite(t, f, "keep")
 	changes, _, err := (File{}).Apply(context.Background(), fileRes(f, map[string]any{"ensure": "directory"}), true)
 	if err != nil || len(changes) != 1 || changes[0].Was != "file" || changes[0].Err != nil ||
-		changes[0].Message != "ensure changed 'file' to 'directory'" {
+		changes[0].Message != "ensure changed 'file' to 'directory' (noop)" {
 		t.Fatalf("Apply = %+v, %v", changes, err)
 	}
 	if b, err := os.ReadFile(f); err != nil || string(b) != "keep" {
@@ -2293,7 +2332,7 @@ func assertRenderedOwnership(t *testing.T, changes []Change, property string, wa
 	if got.IsDisplay != isName {
 		t.Errorf("IsDisplay = %q, want %q", got.IsDisplay, isName)
 	}
-	wantMsg := property + " changed '" + wasName + "' to '" + isName + "'"
+	wantMsg := property + " changed '" + wasName + "' to '" + isName + "' (noop)" // both halves run under noop
 	if got.Message != wantMsg {
 		t.Errorf("Message = %q, want %q", got.Message, wantMsg)
 	}

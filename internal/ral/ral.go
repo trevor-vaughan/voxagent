@@ -163,6 +163,14 @@ type Warning struct {
 	DedupeClass string
 }
 
+// FlushError is Apply's error when the changes were made and the provider's
+// flush then failed (resource_harness.rb:23-31): the transaction records the
+// changes, then the resource_error. Err's text follows "Could not evaluate: ".
+type FlushError struct{ Err error }
+
+func (e *FlushError) Error() string { return e.Err.Error() }
+func (e *FlushError) Unwrap() error { return e.Err }
+
 // Provider applies one resource type.
 type Provider interface {
 	// Type is the catalog type name in lowercase, e.g. "file".
@@ -221,7 +229,9 @@ type Provider interface {
 	// Change.Err instead. It is a result about the resource, not about the
 	// run: the transaction records it, skips the resource's dependents, and
 	// carries on. Returning a non-nil error DISCARDS the accompanying change
-	// list, so a provider must not rely on reporting both.
+	// list, so a provider must not rely on reporting both -- except by
+	// returning a *FlushError, which keeps the changes and then reports the
+	// error.
 	//
 	// warnings are run-level conditions that belong in the run log rather than
 	// on any resource. The transaction logs each at level "warning" with the
@@ -242,6 +252,10 @@ type Provider interface {
 	// signature fixed and providers immutable during the walk: the transaction
 	// swaps the returned value in for the run and every Apply then reads from a
 	// value that cannot change under it.
+	//
+	// The one exception is per-run state: a primed provider may hold a pointer
+	// to mutable state that the unprimed value created (an augeas handle). Only
+	// the walk goroutine mutates it, and only EndRun releases it (RunEnding).
 	//
 	// Puppet calls this once per (type, provider class) --
 	// transaction.rb:243-260 delegates at :259 to Transaction#prefetch
@@ -266,6 +280,19 @@ type Provider interface {
 	// uniquely reachable -- an earlier comment here claimed it was.
 	Refresh(ctx context.Context, r catalog.Resource, noop bool) (bool, error)
 }
+
+// TurnPrefetching marks a provider Puppet prefetches in pre_process
+// (transaction.rb:110-115): at the first resource of its type the walk
+// traverses, whether it is then evaluated or skipped, with every resource
+// of the type in catalog order. Any other provider is prefetched before the
+// walk. Run calls such a provider's Prefetch only from within the walk.
+type TurnPrefetching interface{ PrefetchAtTurn() }
+
+// RunEnding is implemented by a provider that holds per-run resources
+// (augeas handles). Run calls EndRun once per registered provider after the
+// walk, whether it finished, was cancelled or a prefetch failed. EndRun must
+// be idempotent: primed copies share the state.
+type RunEnding interface{ EndRun() }
 
 // Registry maps a catalog type name to its provider.
 type Registry struct {

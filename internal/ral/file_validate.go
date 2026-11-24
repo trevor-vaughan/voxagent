@@ -29,14 +29,15 @@ import (
 type validation struct {
 	cmd         string
 	replacement string
-	// outputRedacted is set when the File's content is marked Sensitive: a
-	// validator can echo the content it checks, so its output is never
-	// printed (D-78).
+	// outputRedacted is set when the File's content is marked Sensitive, or
+	// built from marked input (catalog.Resource.OutputRedacted): a validator
+	// can echo the content it checks, so its output is never printed (D-78).
 	outputRedacted bool
 }
 
 // validationOf returns r's validation, or nil when it declares no
-// validate_cmd. outputRedacted says whether r's content is marked. validate_replacement defaults to % (type/file.rb:379-384).
+// validate_cmd. outputRedacted says whether r's content is marked or built
+// from marked input. validate_replacement defaults to % (type/file.rb:379-384).
 // Validate refuses a parameter that is not a string; the error here keeps a
 // resource that reached Apply without Validate from writing unvalidated.
 func validationOf(r catalog.Resource, outputRedacted bool) (*validation, error) {

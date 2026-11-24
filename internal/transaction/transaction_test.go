@@ -17,6 +17,7 @@ import (
 	"github.com/voxagent/voxagent/internal/catalog"
 	"github.com/voxagent/voxagent/internal/ral"
 	"github.com/voxagent/voxagent/internal/report"
+	"github.com/voxagent/voxagent/internal/runlog"
 )
 
 // recorder is a provider that records the order it was called in and can be
@@ -3748,5 +3749,385 @@ func TestFileRecursionUnitNoopNotice(t *testing.T) {
 	rep := runCatalog(t, tx, &catalog.Catalog{Resources: []catalog.Resource{parent}})
 	if !logged(rep, "notice", "/tmp/rx/tgt", "Would have triggered 'refresh' from 3 events") {
 		t.Errorf("logs:\n%s", fmtLogs(rep))
+	}
+}
+
+// The parent's own event counts too: a parent that changes plus three
+// children that each change is four events (parentResult.sent).
+func TestFileRecursionUnitNoopNoticeCountsParentEvent(t *testing.T) {
+	var applied, refreshed []string
+	parent := res("File", "/tmp/rx/tgt", nil)
+	gen := genRecorder{
+		recorder: recorder{typ: "file", applied: &applied, refreshed: &refreshed, changes: 1},
+		children: map[string][]catalog.Resource{"File[/tmp/rx/tgt]": generatedChildren(parent,
+			"/tmp/rx/tgt/a", "/tmp/rx/tgt/b", "/tmp/rx/tgt/c")},
+	}
+	tx := txWithGenerator(gen)
+	tx.Noop = true
+	rep := runCatalog(t, tx, &catalog.Catalog{Resources: []catalog.Resource{parent}})
+	if !logged(rep, "notice", "/tmp/rx/tgt", "Would have triggered 'refresh' from 4 events") {
+		t.Errorf("logs:\n%s", fmtLogs(rep))
+	}
+}
+
+// endProbe is a provider holding per-run state: it counts EndRun calls through
+// a pointer shared with every copy, as a primed provider shares its handle with
+// the unprimed value that created it.
+type endProbe struct {
+	recorder
+	ended       *int
+	prefetchErr error
+	// cancel, when set, is called by Apply to cancel the run mid-walk.
+	cancel context.CancelFunc
+}
+
+func (p *endProbe) EndRun() { *p.ended++ }
+
+func (p *endProbe) Prefetch(context.Context, []catalog.Resource) (ral.Provider, error) {
+	if p.prefetchErr != nil {
+		return nil, p.prefetchErr
+	}
+	primed := *p
+	return &primed, nil
+}
+
+func (p *endProbe) Apply(ctx context.Context, r catalog.Resource, noop bool) ([]ral.Change, []ral.Warning, error) {
+	if p.cancel != nil {
+		p.cancel()
+	}
+	return p.recorder.Apply(ctx, r, noop)
+}
+
+func newEndProbe(ended *int) *endProbe {
+	var applied, refreshed []string
+	return &endProbe{
+		recorder: recorder{typ: "file", applied: &applied, refreshed: &refreshed, changes: 1},
+		ended:    ended,
+	}
+}
+
+func TestEndRunCalledOnceAfterWalk(t *testing.T) {
+	var ended int
+	tx := &Transaction{Registry: ral.NewRegistry(newEndProbe(&ended))}
+	runCatalog(t, tx, &catalog.Catalog{Resources: []catalog.Resource{
+		res("File", "/one", nil), res("File", "/two", nil),
+	}})
+	if ended != 1 {
+		t.Errorf("EndRun called %d times, want 1", ended)
+	}
+}
+
+func TestEndRunAfterPrefetchFailureAndCancel(t *testing.T) {
+	cat := &catalog.Catalog{Resources: []catalog.Resource{
+		res("File", "/one", nil), res("File", "/two", nil),
+	}}
+
+	var failedEnded int
+	failing := newEndProbe(&failedEnded)
+	failing.prefetchErr = errors.New("prefetch refused")
+	runCatalog(t, &Transaction{Registry: ral.NewRegistry(failing)}, cat)
+	if failedEnded != 1 {
+		t.Errorf("after a failed prefetch EndRun called %d times, want 1", failedEnded)
+	}
+
+	var cancelledEnded int
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	cancelling := newEndProbe(&cancelledEnded)
+	cancelling.cancel = cancel
+	runCatalogCtx(t, ctx, &Transaction{Registry: ral.NewRegistry(cancelling)}, cat)
+	if cancelledEnded != 1 {
+		t.Errorf("after a mid-walk cancel EndRun called %d times, want 1", cancelledEnded)
+	}
+}
+
+func TestEndRunNotRequiredOfOtherProviders(t *testing.T) {
+	var applied, refreshed []string
+	tx := newTx(&applied, &refreshed, nil, nil, 1)
+	runCatalog(t, tx, &catalog.Catalog{Resources: []catalog.Resource{res("File", "/one", nil)}})
+	if len(applied) != 1 {
+		t.Errorf("applied = %v, want the one resource applied", applied)
+	}
+}
+
+// flushFailing is a Sysctl-typed provider whose Apply made its change and then
+// failed the flush, the shape augeasproviders produces when `sysctl -w` fails
+// after the file edit (01e-sysctl-silent-real-sysctl). It stands in for a real
+// provider because none returns ral.FlushError yet.
+type flushFailing struct {
+	applied   *[]string
+	refreshed *[]string
+}
+
+func (p flushFailing) Type() string                                              { return "sysctl" }
+func (p flushFailing) ProviderUsed() *string                                     { return nil }
+func (p flushFailing) AutoRequires(catalog.Resource, func(string) bool) []string { return nil }
+func (p flushFailing) Attrs() ral.Attrs                                          { return ral.NewAttrs("value") }
+
+func (p flushFailing) Apply(_ context.Context, r catalog.Resource, _ bool) ([]ral.Change, []ral.Warning, error) {
+	*p.applied = append(*p.applied, r.Ref())
+	changes := []ral.Change{{
+		Property: "value", Was: nil, Is: "1",
+		Message: "changed configuration value from '' to '1' and live value from '0' to '1'",
+	}}
+	return changes, nil, &ral.FlushError{Err: errors.New(
+		"Execution of '/usr/sbin/sysctl -w net.ipv4.ip_forward=1' returned 1: " +
+			"sysctl: permission denied on key \"net.ipv4.ip_forward\"")}
+}
+
+func (p flushFailing) Prefetch(context.Context, []catalog.Resource) (ral.Provider, error) {
+	return p, nil
+}
+
+func (p flushFailing) Refresh(_ context.Context, r catalog.Resource, _ bool) (bool, error) {
+	*p.refreshed = append(*p.refreshed, r.Ref())
+	return true, nil
+}
+
+// flushCatalog is the 01e shape: a Sysctl whose flush fails, with a Notify that
+// subscribes to it and a Notify that requires it.
+func flushCatalog() (*Transaction, *[]string, *[]string, *catalog.Catalog) {
+	var applied, refreshed []string
+	tx := &Transaction{Registry: ral.NewRegistry(
+		flushFailing{applied: &applied, refreshed: &refreshed},
+		recorder{typ: "notify", applied: &applied, refreshed: &refreshed, changes: 1})}
+	const sysctl = "Sysctl[net.ipv4.ip_forward]"
+	c := &catalog.Catalog{
+		Resources: []catalog.Resource{
+			res("Stage", "main", nil), res("Class", "main", nil),
+			res("Sysctl", "net.ipv4.ip_forward", nil),
+			res("Notify", "subscriber", map[string]any{"subscribe": sysctl}),
+			res("Notify", "dependent", map[string]any{"require": sysctl}),
+		},
+		Edges: []catalog.Edge{
+			{Source: "Stage[main]", Target: "Class[main]"},
+			{Source: "Class[main]", Target: sysctl},
+			{Source: "Class[main]", Target: "Notify[subscriber]"},
+			{Source: "Class[main]", Target: "Notify[dependent]"},
+		},
+	}
+	return tx, &applied, &refreshed, c
+}
+
+// resource_harness.rb:23-31: the change is recorded and logged as a success,
+// then the flush's error becomes a resource_error. Measured in
+// 01e-sysctl-silent-real-sysctl: changed and failed, change_count 1,
+// out_of_sync_count 2.
+func TestFlushErrorKeepsChangesThenFails(t *testing.T) {
+	tx, _, _, c := flushCatalog()
+	rep := runCatalog(t, tx, c)
+
+	const path = "/Stage[main]/Main/Sysctl[net.ipv4.ip_forward]"
+	const flushMsg = "Execution of '/usr/sbin/sysctl -w net.ipv4.ip_forward=1' returned 1: " +
+		"sysctl: permission denied on key \"net.ipv4.ip_forward\""
+	var got [][3]string
+	for _, l := range rep.Logs {
+		if strings.HasPrefix(l.Source, path) {
+			got = append(got, [3]string{l.Level, l.Source, l.Message})
+		}
+	}
+	want := [][3]string{
+		{"notice", path + "/value", "changed configuration value from '' to '1' and live value from '0' to '1'"},
+		{"err", path, "Could not evaluate: " + flushMsg},
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("logs =\n%q\nwant\n%q", got, want)
+	}
+
+	st := rep.ResourceStatuses["Sysctl[net.ipv4.ip_forward]"]
+	if !st.Failed || st.ChangeCount != 1 || st.OutOfSyncCount != 2 {
+		t.Errorf("failed=%t change_count=%d out_of_sync_count=%d, want true 1 2",
+			st.Failed, st.ChangeCount, st.OutOfSyncCount)
+	}
+	if len(st.Events) != 2 {
+		t.Fatalf("want 2 events, got %+v", st.Events)
+	}
+	ok, fail := st.Events[0], st.Events[1]
+	if ok.Property != "value" || *ok.Name != "value_changed" || ok.Status != "success" ||
+		ok.PreviousValue != nil || ok.DesiredValue != "1" {
+		t.Errorf("first event = %+v, want value/value_changed/success nil->\"1\"", ok)
+	}
+	if fail.Property != nil || *fail.Name != "resource_error" || fail.Status != "failure" ||
+		fail.Message != flushMsg {
+		t.Errorf("second event = %+v, want property-less resource_error failure %q", fail, flushMsg)
+	}
+}
+
+// A failed resource sends no events (transaction.rb:269), so its subscriber is
+// not refreshed even though the change was recorded.
+func TestFlushErrorQueuesNoRefresh(t *testing.T) {
+	tx, _, refreshed, c := flushCatalog()
+	rep := runCatalog(t, tx, c)
+
+	if slices.Contains(*refreshed, "Notify[subscriber]") {
+		t.Errorf("Notify[subscriber] was refreshed by a failed resource; refreshed = %v", *refreshed)
+	}
+	for _, l := range rep.Logs {
+		if strings.Contains(l.Message, "Scheduling refresh") || strings.Contains(l.Message, "Triggered 'refresh'") {
+			t.Errorf("a refresh was logged: %+v", l)
+		}
+	}
+}
+
+func TestFlushErrorBlocksDependents(t *testing.T) {
+	tx, applied, _, c := flushCatalog()
+	rep := runCatalog(t, tx, c)
+
+	if slices.Contains(*applied, "Notify[dependent]") {
+		t.Errorf("Notify[dependent] was applied after a failed flush; applied = %v", *applied)
+	}
+	if st := rep.ResourceStatuses["Notify[dependent]"]; !st.Skipped {
+		t.Errorf("Notify[dependent] not skipped: %+v", st)
+	}
+}
+
+// turnProbe is a ral.TurnPrefetching provider of type vox_turn. Its Prefetch
+// reads path and records what it saw, so a test can tell WHEN it ran from what
+// the file held and how many applies had happened.
+type turnProbe struct {
+	path       string
+	applied    *[]string
+	rec        *turnRecord
+	prefetchOK error
+}
+
+type turnRecord struct {
+	calls         int
+	content       string
+	titles        []string
+	appliedBefore int
+}
+
+func (p turnProbe) Type() string                                              { return "vox_turn" }
+func (p turnProbe) ProviderUsed() *string                                     { s := "turn"; return &s }
+func (p turnProbe) AutoRequires(catalog.Resource, func(string) bool) []string { return nil }
+func (p turnProbe) Attrs() ral.Attrs                                          { return ral.NewAttrs("message") }
+func (p turnProbe) PrefetchAtTurn()                                           {}
+func (p turnProbe) Apply(_ context.Context, r catalog.Resource, _ bool) ([]ral.Change, []ral.Warning, error) {
+	*p.applied = append(*p.applied, r.Ref())
+	return nil, nil, nil
+}
+func (p turnProbe) Refresh(context.Context, catalog.Resource, bool) (bool, error) { return false, nil }
+func (p turnProbe) Prefetch(_ context.Context, rs []catalog.Resource) (ral.Provider, error) {
+	p.rec.calls++
+	p.rec.appliedBefore = len(*p.applied)
+	for _, r := range rs {
+		p.rec.titles = append(p.rec.titles, r.Title)
+	}
+	b, _ := os.ReadFile(p.path)
+	p.rec.content = string(b)
+	if p.prefetchOK != nil {
+		return nil, p.prefetchOK
+	}
+	return p, nil
+}
+
+// turnFile is a file provider whose Apply writes its content parameter to its
+// title, so a later Prefetch can observe the write.
+type turnFile struct {
+	recorder
+}
+
+func (p turnFile) Apply(ctx context.Context, r catalog.Resource, noop bool) ([]ral.Change, []ral.Warning, error) {
+	if err := os.WriteFile(r.Title, []byte(r.Parameters["content"].(string)), 0o600); err != nil {
+		return nil, nil, err
+	}
+	return p.recorder.Apply(ctx, r, noop)
+}
+
+func (p turnFile) Prefetch(ctx context.Context, rs []catalog.Resource) (ral.Provider, error) {
+	inner, err := p.recorder.Prefetch(ctx, rs)
+	if err != nil {
+		return nil, err
+	}
+	p.recorder = inner.(recorder)
+	return p, nil
+}
+
+func turnTx(t *testing.T, probeErr error) (*Transaction, *turnRecord, *[]string, string) {
+	t.Helper()
+	path := filepath.Join(t.TempDir(), "sysctl.conf")
+	var applied, refreshed []string
+	rec := &turnRecord{}
+	mk := func(typ, name string) recorder {
+		return recorder{typ: typ, applied: &applied, refreshed: &refreshed, providerName: name, changes: 1,
+			failOn: map[string]bool{"Exec[bad]": true}}
+	}
+	return &Transaction{Registry: ral.NewRegistry(
+		turnProbe{path: path, applied: &applied, rec: rec, prefetchOK: probeErr},
+		turnFile{mk("file", "posix")}, mk("exec", "posix"))}, rec, &applied, path
+}
+
+// Puppet prefetches at the first traversed resource of the type
+// (transaction.rb:110-115), so an earlier File's content is on disk by then.
+func TestTurnPrefetchSeesEarlierResourcesChanges(t *testing.T) {
+	tx, rec, _, path := turnTx(t, nil)
+	runCatalog(t, tx, inMain(
+		res("File", path, map[string]any{"content": "a = 1\n", "before": "Vox_turn[one]"}),
+		res("Vox_turn", "one", nil), res("Vox_turn", "two", nil)))
+	if rec.calls != 1 {
+		t.Fatalf("Prefetch called %d times, want 1", rec.calls)
+	}
+	if rec.content != "a = 1\n" {
+		t.Errorf("Prefetch saw %q, want the File's content", rec.content)
+	}
+	if !slices.Equal(rec.titles, []string{"one", "two"}) {
+		t.Errorf("titles = %v, want catalog order", rec.titles)
+	}
+}
+
+// pre_process prefetches for a resource it then skips (transaction.rb:111-121).
+func TestTurnPrefetchRunsForSkippedResource(t *testing.T) {
+	tx, rec, _, _ := turnTx(t, nil)
+	var events []string
+	l := runlog.New("debug", func(e report.LogEntry) { events = append(events, e.Source+": "+e.Message) }, nil)
+	ctx := runlog.WithLogger(context.Background(), l)
+	runCatalogCtx(t, ctx, tx, inMain(
+		res("Exec", "bad", nil),
+		res("Vox_turn", "a", map[string]any{"require": "Exec[bad]"}), res("Vox_turn", "b", nil)))
+	if rec.calls != 1 {
+		t.Fatalf("Prefetch called %d times, want 1", rec.calls)
+	}
+	skip := slices.Index(events, "/Stage[main]/Main/Vox_turn[a]: Resource is being skipped, unscheduling all events")
+	fetch := slices.IndexFunc(events, func(e string) bool { return strings.HasPrefix(e, "voxagent: prefetch vox_turn") })
+	if skip < 0 || fetch < 0 || fetch > skip {
+		t.Errorf("prefetch line at %d, skip line at %d, want prefetch first; events = %q", fetch, skip, events)
+	}
+}
+
+func TestTurnPrefetchFailureFailsEveryResource(t *testing.T) {
+	tx, _, applied, _ := turnTx(t, errors.New("boom"))
+	rep := runCatalog(t, tx, inMain(res("Vox_turn", "a", nil), res("Vox_turn", "b", nil)))
+	var errs int
+	for _, l := range rep.Logs {
+		if l.Level == "err" && l.Source == "Puppet" && l.Message == "Could not prefetch vox_turn provider 'turn': boom" {
+			errs++
+		}
+	}
+	if errs != 1 {
+		t.Errorf("cause logged %d times, want once; logs = %+v", errs, rep.Logs)
+	}
+	var failed int
+	for _, s := range rep.ResourceStatuses {
+		if s.ResourceType != "Vox_turn" {
+			continue
+		}
+		failed++
+		if len(s.Events) != 1 || s.Events[0].Message != "Prefetch failed for vox_turn provider 'turn'" {
+			t.Errorf("%s events = %+v", s.Resource, s.Events)
+		}
+	}
+	if failed != 2 || len(*applied) != 0 {
+		t.Errorf("failed statuses = %d, applied = %v, want 2 and none", failed, *applied)
+	}
+}
+
+// Nothing prefetches a turn type before the walk reaches its first resource.
+func TestTurnPrefetchNotEager(t *testing.T) {
+	tx, rec, _, _ := turnTx(t, nil)
+	runCatalog(t, tx, inMain(
+		res("Exec", "first", map[string]any{"before": "Vox_turn[a]"}), res("Vox_turn", "a", nil)))
+	if rec.calls != 1 || rec.appliedBefore != 1 {
+		t.Errorf("calls = %d, applies before prefetch = %d, want 1 and 1", rec.calls, rec.appliedBefore)
 	}
 }

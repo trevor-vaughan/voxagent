@@ -214,8 +214,8 @@ func TestFileWithATargetUnderNoopReportsTargetAndMode(t *testing.T) {
 	if err != nil || len(changes) != 2 {
 		t.Fatalf("Apply = %+v, %v; want target and mode", changes, err)
 	}
-	wantChange(t, changes[0], "target", "", "notlink", "x", "target changed 'notlink' to 'x'")
-	wantChange(t, changes[1], "mode", "", "0644", "0600", "mode changed '0644' to '0600'")
+	wantChange(t, changes[0], "target", "", "notlink", "x", "target changed 'notlink' to 'x' (noop)")
+	wantChange(t, changes[1], "mode", "", "0644", "0600", "mode changed '0644' to '0600' (noop)")
 	if fi, err := os.Lstat(f); err != nil || !fi.Mode().IsRegular() {
 		t.Errorf("noop changed the file: %v", err)
 	}
@@ -329,20 +329,20 @@ func TestLinkNoopTouchesNothing(t *testing.T) {
 	dir := t.TempDir()
 	l := filepath.Join(dir, "l")
 	ch := applyOne(t, map[string]any{"ensure": "link", "target": "new"}, l, true)
-	wantChange(t, ch, "ensure", "link_created", "absent", "link", "created")
+	wantChange(t, ch, "ensure", "link_created", "absent", "link", "created (noop)")
 	if _, err := os.Lstat(l); !os.IsNotExist(err) {
 		t.Errorf("noop created the link: %v", err)
 	}
 
 	mustSymlink(t, "old", l)
 	ch = applyOne(t, map[string]any{"ensure": "link", "target": "new"}, l, true)
-	wantChange(t, ch, "target", "", "old", "new", "target changed 'old' to 'new'")
+	wantChange(t, ch, "target", "", "old", "new", "target changed 'old' to 'new' (noop)")
 	wantReadlink(t, l, "old")
 
 	f := filepath.Join(dir, "f")
 	mustWrite(t, f, "x\n")
 	ch = applyOne(t, map[string]any{"ensure": "link", "target": "new"}, f, true)
-	wantChange(t, ch, "ensure", "link_created", "file", "link", "ensure changed 'file' to 'link'")
+	wantChange(t, ch, "ensure", "link_created", "file", "link", "ensure changed 'file' to 'link' (noop)")
 	if fi, err := os.Lstat(f); err != nil || !fi.Mode().IsRegular() {
 		t.Errorf("noop replaced the file: %v", err)
 	}

@@ -360,6 +360,18 @@ func (f File) Validate(r catalog.Resource) error {
 
 // Apply implements Provider.
 func (f File) Apply(ctx context.Context, r catalog.Resource, noop bool) (changes []Change, warnings []Warning, err error) {
+	if noop {
+		// resource_harness.rb's noop: change_to_s + " (noop)". A failure is
+		// raised before it and keeps its text; a marked property's message
+		// is the transaction's own.
+		defer func() {
+			for i := range changes {
+				if changes[i].Err == nil {
+					changes[i].Message += " (noop)"
+				}
+			}
+		}()
+	}
 	if raw, ok := r.Parameters["mode"]; ok {
 		// Validate refuses an invalid mode; a caller that skipped it still
 		// gets a bare error, and nothing is touched.
@@ -722,7 +734,7 @@ func applyFile(ctx context.Context, fsys fileSystem, path string, r catalog.Reso
 	}
 	hasContent := want != nil
 	if hasContent {
-		val, err := validationOf(r, isMarked(File{}, r, "content"))
+		val, err := validationOf(r, r.OutputRedacted || isMarked(File{}, r, "content"))
 		if err != nil {
 			return changes, nil, err
 		}

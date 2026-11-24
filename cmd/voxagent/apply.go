@@ -40,7 +40,8 @@ type applyOptions struct {
 
 // nativeProviders lists the providers voxagent applies itself for cat. User
 // and Group join them where p is the platform their contract was measured on
-// (spec §2), each decided on its own.
+// (spec §2), each decided on its own; concat_file and concat_fragment where
+// o.libdir holds a measured concat release (ral.NativeConcat).
 func nativeProviders(cat *catalog.Catalog, o applyOptions, p ral.Platform) []ral.Provider {
 	// File names the catalog's environment in a missing source's message
 	// (type/file/source.rb:208).
@@ -51,6 +52,11 @@ func nativeProviders(cat *catalog.Catalog, o applyOptions, p ral.Platform) []ral
 	}
 	if group {
 		natives = append(natives, ral.Group{})
+	}
+	// ConcatFile reads cat when it generates its content, after load-time
+	// generation has merged File[path] into this same catalog.
+	if v, ok := ral.NativeConcat(ral.LibdirTree(o.libdir), cat); ok {
+		natives = append(natives, ral.ConcatFile{Version: v, Catalog: cat}, ral.ConcatFragment{Version: v})
 	}
 	return append(natives, o.providers...)
 }

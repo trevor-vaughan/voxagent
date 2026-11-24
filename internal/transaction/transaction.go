@@ -60,6 +60,9 @@ type walk struct {
 	// that could not be read at all.
 	primed         map[string]ral.Provider
 	prefetchFailed map[string]prefetchFailure
+	// turnRefs holds, per lowercase type, the refs (in catalog order) of a
+	// ral.TurnPrefetching type not yet prefetched; prefetchAtTurn drains it.
+	turnRefs map[string][]string
 	// failedDeps is Puppet's per-resource failed_dependencies
 	// (transaction.rb:333-350): for each resource, the failed resources
 	// that block it. propagate_failure builds it hop by hop from direct
@@ -170,6 +173,10 @@ func (tx *Transaction) Run(ctx context.Context, c *catalog.Catalog, g *graph.Gra
 	walkStarted := time.Now()
 	defer func() { rep.EvaluationSpan = time.Since(walkStarted) }()
 	ctx = ral.WithUniqueWarnings(ctx)
+	// The registered, unprimed value owns the per-run state its primed copies
+	// point to, so it is the one ended -- on every exit, prefetch failure and
+	// cancellation included (Ruby closes every class in post_evalable_providers).
+	defer tx.endRun()
 
 	byRef := make(map[string]catalog.Resource, len(c.Resources))
 	filePaths := make(map[string]struct{})
@@ -180,11 +187,12 @@ func (tx *Transaction) Run(ctx context.Context, c *catalog.Catalog, g *graph.Gra
 		}
 	}
 	primed, prefetchFailed := tx.prefetch(ctx, c, rep)
+	turnRefs := tx.turnRefs(c)
 	display, titles, _ := puppetNames(c, tx.Registry)
 	w := &walk{
 		tx: tx, ctx: ctx, g: g, rep: rep,
 		byRef: byRef, filePaths: filePaths, paths: containmentPaths(c, display),
-		primed: primed, prefetchFailed: prefetchFailed,
+		primed: primed, prefetchFailed: prefetchFailed, turnRefs: turnRefs,
 		display: display, titles: titles,
 		failedDeps:     make(map[string]map[string]struct{}),
 		notified:       make(map[string]struct{}),
@@ -221,6 +229,16 @@ func (tx *Transaction) Run(ctx context.Context, c *catalog.Catalog, g *graph.Gra
 			continue
 		}
 		walker.Done(ref)
+	}
+}
+
+// endRun calls EndRun on every registered provider that holds per-run state.
+func (tx *Transaction) endRun() {
+	for _, typ := range tx.Registry.Types() {
+		p, _ := tx.Registry.Provider(typ)
+		if e, ok := p.(ral.RunEnding); ok {
+			e.EndRun()
+		}
 	}
 }
 
@@ -310,6 +328,7 @@ func (w *walk) subject(ref string, r catalog.Resource) subject {
 func (w *walk) take(s subject) (result, error) {
 	ref, r := s.ref, s.r
 	w.visited[ref] = struct{}{}
+	w.prefetchAtTurn(strings.ToLower(r.Type))
 
 	// A type whose prefetch failed is refused WHOLE: nothing of that type is
 	// applied, and every resource of it reports the same failure. This is
@@ -533,6 +552,14 @@ func (w *walk) apply(provider ral.Provider, s subject, propagate bool) result {
 	if errors.Is(applyErr, ral.ErrStagingBroken) {
 		w.broken = fmt.Errorf("%s: %w", ref, applyErr)
 		return result{}
+	}
+
+	// A failed flush (ral.FlushError) made its changes first: they take the
+	// success path below, and the failure follows them as the resource_error
+	// at the end of that path. Only a native Apply can return one.
+	var flushErr *ral.FlushError
+	if !evaluated && errors.As(applyErr, &flushErr) {
+		applyErr = nil
 	}
 
 	// Logged here -- immediately after the apply, before the resource's own
@@ -767,6 +794,21 @@ func (w *walk) apply(provider ral.Provider, s subject, propagate bool) result {
 			if ch.Notice != "" {
 				w.rep.Log("notice", "Puppet", ch.Notice)
 			}
+		}
+		if flushErr != nil {
+			// resource_harness.rb:23-31: the flush runs after the properties
+			// synced, and its failure is status.failed_because -- the same
+			// property-less resource_error and "Could not evaluate" line as a
+			// bare Apply error, but after the changes' events and logs rather
+			// than instead of them. Failed gates the outgoing refresh below
+			// and blocks the dependents at the end.
+			status.Failed = true
+			resourceError := "resource_error"
+			status.Events = append(status.Events, report.Event{
+				Message: flushErr.Err.Error(), Name: &resourceError,
+				Status: "failure", Redacted: false, Time: now,
+			})
+			w.rep.Log("err", source, "Could not evaluate: "+flushErr.Err.Error())
 		}
 		sent = len(changes)
 		for _, ch := range changes {
@@ -1182,7 +1224,7 @@ func (w *walk) managed(ref string) bool {
 // keep their own turn (concat design §5.5). A failed eval_generate made
 // nothing.
 func (w *walk) visitHostUnit(eg ral.EvalGenerator, provider ral.Provider, parent subject) result {
-	gen := w.evalGenerate(eg, parent)
+	gen := w.evalGenerate(eg, provider, parent)
 	existing := gen.Existing
 	if gen.Failed {
 		existing = nil
@@ -1284,9 +1326,10 @@ func ancestorsFirst(children []catalog.Resource, stop string) []catalog.Resource
 // and applies its overrides. A Go-side error, the host dead or unable to
 // serve the call, is logged as Puppet logs an eval_generate that raises
 // (additional_resource_generator.rb:66-70) and yields nothing; the resource
-// is still applied.
-func (w *walk) evalGenerate(eg ral.EvalGenerator, s subject) ral.EvalGeneration {
-	gen, err := eg.EvalGenerate(w.ctx, s.r)
+// is still applied. The call carries s's Sources, as Apply's does, for a
+// native eval_generate that logs its own failure.
+func (w *walk) evalGenerate(eg ral.EvalGenerator, provider ral.Provider, s subject) ral.EvalGeneration {
+	gen, err := eg.EvalGenerate(w.withSources(s, provider), s.r)
 	if err != nil {
 		w.rep.Log("err", s.source,
 			"Failed to generate additional resources using 'eval_generate': "+err.Error())
@@ -1304,6 +1347,44 @@ func (w *walk) evalGenerate(eg ral.EvalGenerator, s subject) ral.EvalGeneration 
 	return gen
 }
 
+// prefetchAtTurn prefetches typ, a ral.TurnPrefetching type, the first time the
+// walk traverses one of its resources, with every resource of the type in
+// catalog order (transaction.rb:110-115). It does nothing for any other type
+// and after the first call.
+func (w *walk) prefetchAtTurn(typ string) {
+	refs, pending := w.turnRefs[typ]
+	if !pending {
+		return
+	}
+	delete(w.turnRefs, typ)
+	resources := make([]catalog.Resource, len(refs))
+	for i, ref := range refs {
+		resources[i] = w.byRef[ref]
+	}
+	provider, _ := w.tx.Registry.Provider(typ)
+	ready, err := prefetch(w.ctx, typ, provider, resources)
+	if err != nil {
+		w.prefetchFailed[typ] = recordPrefetchFailure(w.rep, typ, provider, err)
+		return
+	}
+	w.primed[typ] = ready
+}
+
+// turnRefs lists, per lowercase type, the refs of c's resources of every
+// registered ral.TurnPrefetching type, in catalog order.
+func (tx *Transaction) turnRefs(c *catalog.Catalog) map[string][]string {
+	out := make(map[string][]string)
+	for _, r := range c.Resources {
+		typ := strings.ToLower(r.Type)
+		if p, known := tx.Registry.Provider(typ); known {
+			if _, turn := p.(ral.TurnPrefetching); turn {
+				out[typ] = append(out[typ], r.Ref())
+			}
+		}
+	}
+	return out
+}
+
 // generatedProvider returns the provider c, a resource eval_generate made, is
 // applied through. A type the catalog never named is prefetched here, at its
 // first generated resource, with every resource of the type in unit, as
@@ -1312,6 +1393,7 @@ func (w *walk) evalGenerate(eg ral.EvalGenerator, s subject) ral.EvalGeneration 
 // failed returns its prefetchFailure.
 func (w *walk) generatedProvider(c catalog.Resource, unit []catalog.Resource) (ral.Provider, error) {
 	typ := strings.ToLower(c.Type)
+	w.prefetchAtTurn(typ)
 	if p, ok := w.primed[typ]; ok {
 		return p, nil
 	}
@@ -1347,7 +1429,7 @@ func (w *walk) generatesFurther(p ral.Provider, s subject) bool {
 		return len(w.generate(gen, s)) > 0
 	}
 	if eg, ok := p.(ral.EvalGenerator); ok && eg.EvalGenerates(s.r) {
-		return len(w.evalGenerate(eg, s).Children) > 0
+		return len(w.evalGenerate(eg, p, s).Children) > 0
 	}
 	return false
 }
@@ -1375,12 +1457,20 @@ func (w *walk) override(o ral.Override) {
 	r.Parameters = params
 	r.MarkSensitive(o.Sensitive)
 	applyContentMark(&r, o.ContentMark)
+	r.OutputRedacted = r.OutputRedacted || o.RedactOutput
 	w.byRef[o.Ref] = r
 	if _, done := w.visited[o.Ref]; done {
 		return
 	}
 	delete(w.refused, o.Ref)
-	if err := judge(w.primed[strings.ToLower(r.Type)], r); err != nil {
+	typ := strings.ToLower(r.Type)
+	p := w.primed[typ]
+	if _, pending := w.turnRefs[typ]; pending {
+		// A turn-prefetching type is not primed before its first resource's
+		// turn; judging needs only what the registered provider declares.
+		p, _ = w.tx.Registry.Provider(typ)
+	}
+	if err := judge(p, r); err != nil {
 		w.refused[o.Ref] = err.Error()
 	}
 }
@@ -1739,6 +1829,10 @@ func (tx *Transaction) prefetch(ctx context.Context, c *catalog.Catalog, rep *re
 	for _, typ := range types {
 		provider, known := tx.Registry.Provider(typ)
 		if !known {
+			continue
+		}
+		if _, turn := provider.(ral.TurnPrefetching); turn {
+			// Prefetched at the type's first traversed resource (prefetchAtTurn).
 			continue
 		}
 		ready, err := prefetch(ctx, typ, provider, byType[typ])

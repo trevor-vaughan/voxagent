@@ -46,6 +46,10 @@ type leakCase struct {
 	// plain, when set, lists values of marked properties that carry no
 	// D8SECRET marker (a mode, an owner), which must not appear either.
 	plain []string
+	// concat, when set, runs with a libdir holding that puppetlabs-concat
+	// version, so Concat_file and Concat_fragment are native. Not in agent
+	// mode: pluginsync purges the libdir to the fake server's empty plugins.
+	concat ral.ConcatVersion
 }
 
 func writeSeed(t *testing.T, path, content string, mode os.FileMode) {
@@ -245,12 +249,33 @@ func leakCases() []leakCase {
 				markedResource("User", "nobody", map[string]any{"comment": "D8SECRET-User-comment-change"}, "comment"),
 			}
 		}},
+		// A Sensitive fragment under each measured concat version, in a file
+		// that applies and in one whose validate_cmd fails after printing the
+		// file it validated, so the content reaches the validator's output.
+		{name: "concat-9.1.0", concat: ral.Concat910, seed: seedCatFail, resources: concatLeakResources},
+		{name: "concat-10.0.1", concat: ral.Concat1001, seed: seedCatFail, resources: concatLeakResources},
 		// The refusal text of an unimplemented marked value must carry no marker.
 		{name: "service-unimplemented-values", refused: true, resources: func(dir string) []map[string]any {
 			return []map[string]any{
 				markedResource("Service", "voxagent-no-such-service2", map[string]any{"ensure": "D8SECRET-Service-ensure", "enable": "D8SECRET-Service-enable"}, "ensure", "enable"),
 			}
 		}},
+	}
+}
+
+// seedCatFail writes cat-fail.sh, a validator that prints the file it is given
+// and refuses it.
+func seedCatFail(t *testing.T, dir string) {
+	writeSeed(t, filepath.Join(dir, "cat-fail.sh"), "#!/bin/sh\ncat \"$1\"\nexit 1\n", 0o755)
+}
+
+func concatLeakResources(dir string) []map[string]any {
+	ok, fail := filepath.Join(dir, "cs.conf"), filepath.Join(dir, "cs-fail.conf")
+	return []map[string]any{
+		markedResource("Concat_file", ok, map[string]any{}),
+		markedResource("Concat_file", fail, map[string]any{"validate_cmd": filepath.Join(dir, "cat-fail.sh") + " %"}),
+		markedResource("Concat_fragment", "cs-secret", map[string]any{"target": ok, "content": "D8SECRET-Concat_fragment-content\n"}, "content"),
+		markedResource("Concat_fragment", "cs-fail-secret", map[string]any{"target": fail, "content": "D8SECRET-Concat_fragment-content-fail\n"}, "content"),
 	}
 }
 
@@ -332,6 +357,9 @@ func TestNoSensitiveMarkerLeaks(t *testing.T) {
 				if tc.agentOnly && kind != "agent" {
 					t.Skip("fetches a puppet: source, which only the agent does")
 				}
+				if tc.concat != 0 && kind == "agent" {
+					t.Skip("pluginsync purges the libdir the concat types are read from")
+				}
 				if tc.rootOnly && os.Geteuid() != 0 {
 					t.Skip("changing ownership needs root; verified only when run as root")
 				}
@@ -378,6 +406,13 @@ func TestNoSensitiveMarkerLeaks(t *testing.T) {
 					cat := writeCatalog(t, dir, tc.resources(dir))
 					reports := filepath.Join(dir, "reports")
 					args := []string{"apply", "--catalog", cat, "--report-dir", reports}
+					if tc.concat != 0 {
+						libdir := t.TempDir()
+						if err := os.CopyFS(libdir, os.DirFS(concatModuleLib(t, tc.concat))); err != nil {
+							t.Fatal(err)
+						}
+						args = append(args, "--libdir", libdir, "--no-ruby")
+					}
 					if kind == "noop" {
 						args = append(args, "--noop")
 					}
@@ -449,6 +484,10 @@ func TestNoSensitiveMarkerLeaks(t *testing.T) {
 							t.Errorf("%q missing; stdout:\n%s\nstderr:\n%s", w, stdout, stderr)
 						}
 					}
+				}
+				// The validator ran and failed, so the redaction was exercised.
+				if tc.concat != 0 && kind != "noop" && !strings.Contains(string(reportBytes), "returned 1: [output redacted]") {
+					t.Errorf("no failed validate_cmd with its output redacted in the report; stderr:\n%s", stderr)
 				}
 				if tc.name == "exec" {
 					if strings.Contains(stderr, "Unable to mark 'cwd' as sensitive") {

@@ -54,6 +54,11 @@ type Resource struct {
 	// sensitive, so the attribute's events report redacted false. Absent means
 	// no record. Never decoded: a catalog carries marks in SensitiveParameters.
 	SetSensitivity map[string]bool `json:"-"`
+	// OutputRedacted says a command the resource runs prints none of its
+	// output (D-78) although no attribute is marked: a generator fed the
+	// resource marked input it did not mark (a 9.1.0 Concat_file's Sensitive
+	// fragment, whose content a File's validate_cmd can echo). Never decoded.
+	OutputRedacted bool `json:"-"`
 	// GeneratedFrom is the resource that generated this one, and nil for
 	// every resource the catalog declares: a native provider's children at
 	// apply time (ral.Generator), the extension host's eval_generate output at

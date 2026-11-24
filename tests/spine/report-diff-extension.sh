@@ -14,10 +14,12 @@
 # it is held to Ruby's second apply rather than to "changed nothing", and the
 # resources that do converge are then asserted to have changed nothing.
 #
-# Last, the clientbucket each side's `backup => 'puppet'` wrote is compared
-# byte for byte.
+# Then the clientbucket each side's `backup => 'puppet'` wrote is compared
+# byte for byte. Last, each side applies a one-File recursion catalog under
+# --noop from the reset state, compared the same way, for the recursion unit's
+# `Would have triggered` notice and its children's noop events.
 #
-#   0  both pairs of reports agree outside the allowlist and in walk order,
+#   0  every pair of reports agrees outside the allowlist and in walk order,
 #      the converging resources changed nothing, and the clientbuckets agree
 #   1  a pair diverges in report or walk order, a resource did not converge,
 #      or the clientbuckets differ or voxagent's is missing -- a result about
@@ -64,7 +66,7 @@ fi
 WORK="$(mktemp -d)" || exit 2
 trap 'rm -rf "$WORK"' EXIT
 
-mkdir -p "$WORK"/{code/environments/production/manifests,code/environments/production/modules,conf,var,target,ruby,go,go2} || exit 2
+mkdir -p "$WORK"/{code/environments/production/manifests,code/environments/production/modules,conf,var,target,ruby,go,go2,ruby-noop,go-noop} || exit 2
 ln -s "$STDLIB" "$WORK/code/environments/production/modules/stdlib" \
   && ln -s "$CONCAT" "$WORK/code/environments/production/modules/concat" || exit 2
 
@@ -89,7 +91,10 @@ T="$WORK/target"
 # every run too. So does vox_evalgen 'gb', whose eval_generate raises.
 #
 # concat keeps its default backup => 'puppet' and no validate_cmd: validate_cmd
-# forks, and its G1 is the G5 gate's.
+# forks, and its G1 is the G5 gate's. Every concat here goes to the extension
+# host: a format => json concat_file and a fragment with source are shapes
+# voxagent delegates, and both types move together (concat design §0), so this
+# gate keeps the host path while G5 compares the native one.
 #
 # LINE NUMBERS BELOW ARE COMPARED, as in report-diff.sh: both sides read them
 # from the same compiled catalog, so moving a line moves it on both sides.
@@ -135,9 +140,32 @@ node default {
   # No fragments and create_empty_file => false: eval_generate turns the
   # generated File's ensure to absent, and the seeded file is removed.
   concat { '$T/empty.conf': create_empty_file => false }
+  # M11's shape: a JSON concat merging two fragments' hashes.
+  concat_file { '$T/j.json': format => 'json' }
+  concat_fragment { 'j-a': target => '$T/j.json', content => '{"a":1,"list":[1,2,3]}' }
+  concat_fragment { 'j-b': target => '$T/j.json', content => '{"b":"two"}' }
+  # M19's shape: a fragment's source is missing, so eval_generate fails on
+  # every run while the seeded target keeps its content and gets its mode.
+  concat_file { '$T/c19.conf': mode => '0600' }
+  concat_fragment { 'miss': target => '$T/c19.conf', source => '$T/missing.txt' }
+  # M13's shape: a raw concat_file's notify is sent by its completion whit once
+  # the host returns File[raw.conf] as an existing resource.
+  concat_file { '$T/raw.conf': notify => Notify['after-raw'] }
+  concat_fragment { 'raw-1': target => '$T/raw.conf', content => "raw\n" }
+  notify { 'after-raw': }
   # eval_generate making two resources, and one that raises.
   vox_evalgen { 'g': make => '2' }
   vox_evalgen { 'gb': make => 'raise' }
+  # eval_generate returning a catalog resource: File[eg-existing] is applied
+  # at the generator's turn, and its change refreshes the generator's
+  # subscriber. The before is concat_file's generated edge (M13). Without an
+  # edge Ruby's whit miscounts: "appears to have a negative number of
+  # dependencies", the File's status missing from the report, and the
+  # subscriber triggered from 2 events (measured 2026-11-19, puppet 8.10.0);
+  # voxagent does not reproduce that.
+  vox_evalgen { 'ge': make => '0', existing => "File[$T/eg-existing]", before => File['$T/eg-existing'] }
+  file { '$T/eg-existing': ensure => file, content => "e\n" }
+  vox_value { 'after-ge': path => '$T/age', value => 'e', subscribe => Vox_evalgen['ge'] }
   # generate making a resource.
   vox_gen { 'loud': make => true }
   # A reference through an alias: vt's namevar is vn.
@@ -179,22 +207,45 @@ C=(--confdir "$WORK/conf" --vardir "$WORK/var" --codedir "$WORK/code")
   exit 2
 }
 
+# The --noop pass's catalog: one File recursion, whose unit's whit logs
+# Puppet's `Would have triggered 'refresh' from 3 events` at the parent's
+# title (D-25), over the three seeded children whose mode it changes.
+cat > "$WORK/code/environments/production/manifests/site.pp" <<EOF || exit 2
+node default {
+  file { '$T/rx': recurse => true, mode => '0640' }
+}
+EOF
+"$PUPPET" catalog find spine.example --terminus compiler --render-as json \
+  --node_name_value spine.example \
+  --environmentpath "$WORK/code/environments" --environment production \
+  --libdir "$WORK/libdir" "${C[@]}" 2>"$WORK/compile.err" | sed -n '/^{/,$p' > "$WORK/catalog-rx.json"
+[ -s "$WORK/catalog-rx.json" ] || {
+  echo "report-diff-extension: compiling the --noop catalog failed" >&2
+  sed -n '1,10p' "$WORK/compile.err" >&2
+  exit 2
+}
+
 # Each side starts from the same state. lines is seeded so file_line has an
 # existing file to edit, c.conf so concat replaces (and buckets) other
 # content, empty.conf so concat's ensure => absent removes something, td so
 # tidy has files to remove and one to keep, and d so the recursing file has
-# children; every other path is created by the run.
+# children, c19.conf so the failing concat keeps content it does not replace,
+# and rx so the --noop recursion has a directory already in sync and three
+# children out of sync; every other path is created by the run.
 reset_target() {
   rm -rf "${WORK:?}/target" && mkdir -m 0755 "$T" || return 1
   printf 'seed\n' > "$T/lines" && chmod 0644 "$T/lines" \
     && printf 'old concat\n' > "$T/c.conf" && chmod 0640 "$T/c.conf" \
     && printf 'stale\n' > "$T/empty.conf" && chmod 0644 "$T/empty.conf" \
-    && mkdir -p "$T/td" "$T/d/sub" && touch "$T"/td/{a,b,c}.old "$T/td/keep" "$T/d/z" "$T/d/sub/y"
+    && printf 'keepme\n' > "$T/c19.conf" && chmod 0644 "$T/c19.conf" \
+    && mkdir -p "$T/td" "$T/d/sub" && touch "$T"/td/{a,b,c}.old "$T/td/keep" "$T/d/z" "$T/d/sub/y" \
+    && mkdir -m 0750 "$T/rx" && touch "$T"/rx/{a,b,c} && chmod 0644 "$T"/rx/{a,b,c}
 }
 
-# ruby_apply DIR: one Ruby apply, its report captured in DIR/gate.json.
+# ruby_apply DIR [CATALOG [FLAG...]]: one Ruby apply of CATALOG (default
+# catalog.json), its report captured in DIR/gate.json.
 ruby_apply() {
-  "$PUPPET" apply --catalog "$WORK/catalog.json" "${C[@]}" \
+  "$PUPPET" apply --catalog "$WORK/${2:-catalog.json}" "${C[@]}" "${@:3}" \
     --report --reports gatejson --libdir "$WORK/libdir" --reportdir "$WORK/$1" >"$WORK/$1.out" 2>&1
   [ -s "$WORK/$1/gate.json" ] || {
     echo "report-diff-extension: Ruby wrote no report; there is nothing to compare against" >&2
@@ -203,11 +254,12 @@ ruby_apply() {
   }
 }
 
-# voxagent_apply DIR: one voxagent apply, its report written under DIR.
+# voxagent_apply DIR [CATALOG [FLAG...]]: one voxagent apply of CATALOG
+# (default catalog.json), its report written under DIR.
 # --detailed-exitcodes only so that could-not-run is exit 1 on its own: the
 # verdict is the report, as for Ruby.
 voxagent_apply() {
-  "$VOXAGENT" apply --catalog "$WORK/catalog.json" --report-dir "$WORK/$1" \
+  "$VOXAGENT" apply --catalog "$WORK/${2:-catalog.json}" --report-dir "$WORK/$1" "${@:3}" \
     --ruby "$RUBY" --libdir "$WORK/libdir" --vardir "$WORK/vox-var" \
     --detailed-exitcodes >"$WORK/$1.out" 2>&1
   local rc=$?
@@ -225,7 +277,7 @@ keep_evidence() {
   local label="$1" ruby="$WORK/$2/gate.json" go="$4"
   mkdir -p "$EVIDENCE" && cp "$ruby" "$EVIDENCE/ruby.json" \
     && cp "$go" "$EVIDENCE/voxagent.json" \
-    && cp "$WORK/catalog.json" "$EVIDENCE/catalog.json" \
+    && cp "$WORK"/catalog*.json "$EVIDENCE/" \
     && cp "$WORK/$2.out" "$EVIDENCE/ruby.out" \
     && cp "$WORK/$3.out" "$EVIDENCE/voxagent.out" \
     && echo "report-diff-extension: the $label reports, their output and the catalog are in $EVIDENCE" >&2
@@ -344,8 +396,11 @@ converged() {
 if converged "File_line[add]" "File[$T/after-anchor]" "File[$T/conf]" \
   "Vox_value[refreshed]" "Vox_value[notifier]" "File[$T/notified]" "File[$T/refuser-conf]" \
   "Vox_value[refuser]" "File[$T/c.conf]" "File[$T/empty.conf]" "Vox_value[vt]" "Vox_value[after-group]" \
+  "File[$T/j.json]" "File[$T/c19.conf]" "File[$T/raw.conf]" "File[$T/eg-existing]" "Vox_value[after-ge]" \
   -- "Anchor[mid]" "File[$T]" "File[$T/lines]" "Concat_file[$T/c.conf]" "Concat_file[$T/empty.conf]" \
   "Concat_fragment[c-first]" "Concat_fragment[c-second]" "Vox_evalgen[g]" "Vox_gen[loud]" \
+  "Concat_file[$T/j.json]" "Concat_fragment[j-a]" "Concat_fragment[j-b]" "Concat_file[$T/c19.conf]" \
+  "Concat_fragment[miss]" "Concat_file[$T/raw.conf]" "Concat_fragment[raw-1]" "Vox_evalgen[ge]" \
   "Group[nobody]" "User[nobody]"; then
   echo "report-diff-extension: second apply: every converging resource changed nothing"
 else
@@ -377,3 +432,16 @@ case $? in
     exit 2
     ;;
 esac
+
+# The --noop pass, compared in full: the recursion unit's whit notice (D-25)
+# and every child's noop event, each side from the reset starting state.
+reset_target || exit 2
+ruby_apply ruby-noop catalog-rx.json --noop
+if ! grep -q "Would have triggered 'refresh' from 3 events" "$WORK/ruby-noop.out"; then
+  echo "report-diff-extension: Ruby's --noop run did not log the recursion unit's notice; nothing to compare against" >&2
+  sed -n '1,20p' "$WORK/ruby-noop.out" >&2
+  exit 2
+fi
+reset_target || exit 2
+voxagent_apply go-noop catalog-rx.json --noop
+compare "noop" ruby-noop go-noop

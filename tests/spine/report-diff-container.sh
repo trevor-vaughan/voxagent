@@ -38,12 +38,19 @@
 # nothing. Named with this script's PID because the fleet stack may be up: a
 # fixed name would let the cleanup trap here destroy someone else's container.
 #
+# puppetlabs-concat's concat_file and concat_fragment are here because
+# voxagent applies them natively: their validate_cmd forks, and their cases
+# change /etc. That half runs last, case by case in fresh containers of its own;
+# tests/spine/concat/g5.sh holds it and says how.
+#
 # The comparator and the allowlist are `gatekit compare-reports` and
 # tests/spine/allowlist.json, used unchanged. A second comparator would be a
 # second thing to keep in step with Ruby.
 #
 #   0  the reports agree outside the allowlist and the walk order agrees, for
-#      the live run and for the account cases' noop run
+#      the live run, for the account cases' noop run, and for every concat
+#      case's live, rerun and noop runs (or both agents refuse its catalog
+#      alike)
 #   1  they diverge -- a result about voxagent
 #   2  the comparison could not run
 set -uo pipefail
@@ -192,6 +199,10 @@ podman image exists "$IMAGE" || {
 # shellcheck source=fresh.sh
 . "$HERE/fresh.sh" || exit 2
 require_fresh report-diff-container "$ROOT" "$VOXAGENT" "$GATEKIT"
+# shellcheck source=simp/lib.sh
+. "$HERE/simp/lib.sh" || exit 2
+# shellcheck source=concat/g5.sh
+. "$HERE/concat/g5.sh" || exit 2
 
 got_puppet="$(podman run --rm "$IMAGE" /opt/puppetlabs/bin/puppet --version 2>/dev/null)" || {
   echo "report-diff-container: cannot read the image's puppet version" >&2
@@ -222,7 +233,8 @@ fi
 # path came into existence -- would leave that resource indistinguishable from
 # the plain successful one.
 WORK="$(mktemp -d)" || exit 2
-trap 'rm -rf "$WORK"; podman rm -f "$RUBY_SIDE" "$GO_SIDE" "$COMPILER" "$RUBY_NOOP" "$GO_NOOP" >/dev/null 2>&1' EXIT
+trap 'rm -rf "$WORK"; podman rm -f -t 0 "$RUBY_SIDE" "$GO_SIDE" "$COMPILER" "$RUBY_NOOP" "$GO_NOOP" \
+  concat-compile-$$ concat-{ruby,voxagent}-{live,noop}-$$ >/dev/null 2>&1' EXIT
 
 if ! podman run --rm "$IMAGE" sh -c "
   if ! $SEED_LATEST; then
@@ -945,4 +957,8 @@ case $? in
     ;;
 esac
 [ "$noop_rc" -gt "$rc" ] && rc=$noop_rc
+
+concat_gate
+concat_rc=$?
+[ "$concat_rc" -gt "$rc" ] && rc=$concat_rc
 exit "$rc"

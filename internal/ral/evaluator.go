@@ -187,6 +187,9 @@ type Override struct {
 	// ContentMark sets the content mark the way Ruby's parameter flag does.
 	// Unlike Sensitive it does not cascade to a File's ensure.
 	ContentMark ContentMark
+	// RedactOutput sets the resource's OutputRedacted, whatever ContentMark
+	// does: the Parameters carry marked input the mark may not show.
+	RedactOutput bool
 }
 
 // EvalGeneration is what a Tier 3 eval_generate produced at the parent's
@@ -212,8 +215,8 @@ type EvalGeneration struct {
 	Failed bool
 }
 
-// EvalGenerator is implemented by a provider whose type defines eval_generate
-// and is evaluated elsewhere (the extension host).
+// EvalGenerator is implemented by a provider whose type defines eval_generate:
+// one evaluated elsewhere (the extension host), or native concat_file.
 //
 // The transaction calls EvalGenerate at the resource's turn in the walk, as
 // Puppet's pre_process does (transaction.rb:111-121): before the resource is

@@ -287,3 +287,23 @@ func TestContentMarkRemovalKeepsEnsureMarkWithoutAnEnsureParameter(t *testing.T)
 		})
 	}
 }
+
+// D-78 for a 9.1.0 concat: an override that redacts output without marking
+// content leaves the event's hash and redacted null as Ruby reports them, and
+// the failing validator's echo of the content out of its message.
+func TestOverrideRedactOutputKeepsContentUnmarked(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "f")
+	ref := "File[" + path + "]"
+	var calls []string
+	stub := evalGenStub{evaluatorStub: evaluatorStub{typ: "vox_evalgen", calls: &calls},
+		gens: map[string]ral.EvalGeneration{"Vox_evalgen[p]": {Overrides: []ral.Override{{
+			Ref: ref, Parameters: map[string]any{"content": "s3cret-token\n"}, RedactOutput: true}}}}}
+	tx := &Transaction{Registry: ral.NewRegistry(stub, ral.File{})}
+	rep := runCatalog(t, tx, &catalog.Catalog{Resources: []catalog.Resource{
+		res("Vox_evalgen", "p", map[string]any{"before": ref}),
+		res("File", path, map[string]any{"ensure": "file", "validate_cmd": `/bin/sh -c 'cat "$0"; exit 3' %`})}})
+	e := eventFor(t, rep.ResourceStatuses[ref].Events, "ensure")
+	if e.Redacted != nil || !strings.HasSuffix(e.Message, "returned 3: [output redacted]") {
+		t.Errorf("ensure event = %q redacted %v, want the output redacted and redacted nil", e.Message, e.Redacted)
+	}
+}

@@ -865,7 +865,7 @@ func TestSELinuxNoopSetsNothing(t *testing.T) {
 	mustWrite(t, p, "x")
 	se := enabledSE(p, tmpT)
 	changes, _, err := File{se: se}.Apply(context.Background(), fileRes(p, map[string]any{"ensure": "file"}), true)
-	if err != nil || len(changes) != 1 || changes[0].Message != "seltype changed 'tmp_t' to 'etc_t'" {
+	if err != nil || len(changes) != 1 || changes[0].Message != "seltype changed 'tmp_t' to 'etc_t' (noop)" {
 		t.Fatalf("Apply = %+v, %v", changes, err)
 	}
 	q := filepath.Join(t.TempDir(), "absent")

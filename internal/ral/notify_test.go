@@ -54,7 +54,16 @@ func TestNotifyNoopStillReportsTheChange(t *testing.T) {
 		t.Fatalf("Apply returned error: %v", err)
 	}
 	if len(changes) != 1 {
-		t.Errorf("noop Apply returned %d changes, want 1", len(changes))
+		t.Fatalf("noop Apply returned %d changes, want 1", len(changes))
+	}
+	// resource_harness.rb's noop: change_to_s + " (noop)", and message's sync,
+	// which logs the bare notice, never runs (measured, concat M13 and M14
+	// --noop on openvox 8.33.0).
+	if got, want := changes[0].Message, "defined 'message' as 'x' (noop)"; got != want {
+		t.Errorf("Message = %q, want %q", got, want)
+	}
+	if changes[0].Notice != "" {
+		t.Errorf("Notice = %q, want none under noop", changes[0].Notice)
 	}
 }
 

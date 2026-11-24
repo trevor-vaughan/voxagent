@@ -12,7 +12,10 @@
 # is the node it is compiled for; a host compile leaks the host into it. Three
 # premises guard against an environment that compiles to almost nothing: at
 # least 700 resources, at least 60 Sysctl, and at least one rich Binary value,
-# which proves the rich-data path is exercised.
+# which proves the rich-data path is exercised. The merged libdir's concat type
+# files must carry puppetlabs-concat 9.1.0's fingerprints, and voxagent must
+# not name concat_file or concat_fragment among the types it applies via the
+# extension host: both are native on this catalog (concat design §1).
 #
 # TWO FRESH CONTAINERS, ONE PER AGENT, booted and applied in parallel, for the
 # reason report-diff-systemd.sh gives: an apply mutates the machine. Each gets
@@ -178,6 +181,10 @@ cp -R "$HERE/lib/." "$WORK/libdir/" || {
   echo "report-diff-simp: could not add $HERE/lib to the libdir" >&2
   exit 2
 }
+# The pin holds puppetlabs-concat 9.1.0, whose two type files route
+# concat_file and concat_fragment natively (concat design §1 item 5). A cache
+# holding anything else would send both to the extension host, unnoticed.
+concat_fingerprints report-diff-simp "$WORK/libdir" 9.1.0 || exit 2
 
 mkdir -p "$WORK/compile" || exit 2
 simp_boot "$COMPILER" "$IMAGE" || exit 2
@@ -311,6 +318,14 @@ case $? in
     exit 2
     ;;
 esac
+
+# Native concat: voxagent names every type it delegates, and concat must not
+# be one of them.
+if grep -E '^voxagent: [0-9]+ concat_(file|fragment) resource\(s\) applied via extension host' \
+  "$WORK/$LABEL_B/apply.out" >&2; then
+  echo "report-diff-simp: voxagent applied concat through the extension host, not natively" >&2
+  rc=1
+fi
 
 case "$rc" in
   0) echo "report-diff-simp: reports agree outside the allowlist" ;;

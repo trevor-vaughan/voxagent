@@ -50,7 +50,7 @@ func (Notify) Properties() Attrs { return NewAttrs("message") }
 //
 // It returns no warnings. type/notify.rb has no condition it warns about, and
 // inventing one would put a line in the run log Ruby does not write.
-func (n Notify) Apply(_ context.Context, r catalog.Resource, _ bool) ([]Change, []Warning, error) {
+func (n Notify) Apply(_ context.Context, r catalog.Resource, noop bool) ([]Change, []Warning, error) {
 	message := r.Title
 	if v, ok := r.Parameters["message"]; ok {
 		message = fmt.Sprintf("%v", v)
@@ -61,6 +61,12 @@ func (n Notify) Apply(_ context.Context, r catalog.Resource, _ bool) ([]Change, 
 	if isMarked(n, r, "message") {
 		notice = "Sensitive [value redacted]"
 	}
+	suffix := ""
+	if noop {
+		// resource_harness.rb's noop: change_to_s + " (noop)", and message's
+		// sync, which logs the bare notice, never runs.
+		notice, suffix = "", " (noop)"
+	}
 	return []Change{{
 		Property: "message",
 		// "absent", not nil. property.rb change_to_s branches on
@@ -70,7 +76,7 @@ func (n Notify) Apply(_ context.Context, r catalog.Resource, _ bool) ([]Change, 
 		// every notify event of every report.
 		Was:     "absent",
 		Is:      message,
-		Message: fmt.Sprintf("defined 'message' as '%s'", message),
+		Message: fmt.Sprintf("defined 'message' as '%s'", message) + suffix,
 		Notice:  notice,
 	}}, nil, nil
 }

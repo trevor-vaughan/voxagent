@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/user"
 	"path/filepath"
+	"reflect"
 	"slices"
 	"strconv"
 	"strings"
@@ -799,20 +800,26 @@ func TestExecNoopChangeDoesNotFabricateExitCode(t *testing.T) {
 	if len(changes) != 1 {
 		t.Fatalf("Apply reported %d changes, want 1", len(changes))
 	}
-	if changes[0].Is == "0" {
-		t.Error(`noop Change.Is == "0" claims an exit status that has not happened; the command never ran`)
+	if _, err := os.Stat(marker); !os.IsNotExist(err) {
+		t.Error("noop ran the command")
 	}
-	// The event name is the property's :event option, so it does not depend on
-	// whether the command ran. Measured under --noop:
+	// Measured under --noop (and again by G5's concat M13 noop pass):
 	//
 	//	{"previous_value"=>"notrun", "desired_value"=>["0"],
 	//	 "message"=>"executed successfully (noop)", "name"=>"executed_command",
 	//	 "status"=>"noop"}
 	//
-	// Only the name is reproduced. exec.go's noop branch records why
-	// desired_value and the message deliberately still differ.
-	if changes[0].Name != "executed_command" {
-		t.Errorf("noop Change.Name = %q, want \"executed_command\"", changes[0].Name)
+	// desired_value is the should value, the accepted list, whether or not the
+	// command ran; no exit status is claimed.
+	want := Change{Property: "returns", Name: "executed_command", Was: "notrun",
+		Is: []string{"0"}, Message: "executed successfully (noop)"}
+	if !reflect.DeepEqual(changes[0], want) {
+		t.Errorf("noop change = %+v, want %+v", changes[0], want)
+	}
+	changes, _, err = Exec{}.Apply(context.Background(),
+		execRes("c", map[string]any{"command": "/usr/bin/touch " + marker, "returns": []any{0.0, 3.0}}), true)
+	if err != nil || len(changes) != 1 || !reflect.DeepEqual(changes[0].Is, []string{"0", "3"}) {
+		t.Errorf("noop with returns [0, 3] = %+v, %v; want desired [0 3]", changes, err)
 	}
 }
 
@@ -1182,7 +1189,7 @@ func TestExecArgvRefreshFailure(t *testing.T) {
 
 func TestExecArgvNoopMessage(t *testing.T) {
 	changes, _, err := Exec{}.Apply(context.Background(), execRes("n", map[string]any{"command": []any{"/bin/echo", "n"}}), true)
-	if err != nil || len(changes) != 1 || changes[0].Message != `would execute '["/bin/echo", "n"]'` {
+	if err != nil || len(changes) != 1 || changes[0].Message != "executed successfully (noop)" {
 		t.Errorf("noop = %+v, %v", changes, err)
 	}
 }
@@ -1370,23 +1377,34 @@ func TestExecMarkedBadReturn(t *testing.T) {
 }
 
 // Marking any of command, unless and onlyif marks the others given (Ruby's
-// override), so a marked unless redacts the command in the noop message.
+// override), so a marked unless redacts the command in the failure detail.
 func TestExecOnlyUnlessMarkedRedactsCommand(t *testing.T) {
-	params := map[string]any{"command": "/bin/echo secret-cmd", "unless": "/bin/false"}
+	params := map[string]any{"command": "/bin/false secret-cmd", "unless": "/bin/false"}
 	for _, tc := range []struct {
 		name   string
 		marked []string
 		want   string
 	}{
-		{"marked", []string{"unless"}, "would execute [command redacted]"},
-		{"unmarked", nil, "would execute '/bin/echo secret-cmd'"},
+		{"marked", []string{"unless"}, "[command redacted] returned 1 instead of one of [0]"},
+		{"unmarked", nil, "'/bin/false secret-cmd' returned 1 instead of one of [0]"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			changes, _, err := Exec{}.Apply(context.Background(), markedExec(params, tc.marked...), true)
-			if err != nil || len(changes) != 1 || changes[0].Message != tc.want {
-				t.Errorf("noop = %+v, %v; want message %q", changes, err, tc.want)
+			changes, _, err := Exec{}.Apply(context.Background(), markedExec(params, tc.marked...), false)
+			if err != nil || len(changes) != 1 || changes[0].Err == nil || changes[0].Err.Error() != tc.want {
+				t.Errorf("run = %+v, %v; want the failure %q", changes, err, tc.want)
 			}
 		})
+	}
+}
+
+// The noop message names no command, marked or not.
+func TestExecNoopMessageNamesNoCommand(t *testing.T) {
+	params := map[string]any{"command": "/bin/echo secret-cmd", "unless": "/bin/false"}
+	for _, marked := range [][]string{{"unless"}, nil} {
+		changes, _, err := Exec{}.Apply(context.Background(), markedExec(params, marked...), true)
+		if err != nil || len(changes) != 1 || changes[0].Message != "executed successfully (noop)" {
+			t.Errorf("marked %v: noop = %+v, %v", marked, changes, err)
+		}
 	}
 }
 
