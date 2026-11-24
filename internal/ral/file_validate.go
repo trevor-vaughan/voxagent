@@ -137,9 +137,9 @@ func (e *executionFailure) Error() string {
 // USER_ENV_VARS (:386), the userEnvVars. Exec and the argv runners drop only
 // the userEnvVars; validate_cmd drops both.
 var rubyEnvDropped = func() map[string]struct{} {
-	dropped := map[string]struct{}{
-		"LANG": {}, "LC_ALL": {}, "LC_MESSAGES": {}, "LANGUAGE": {}, "LC_COLLATE": {},
-		"LC_CTYPE": {}, "LC_MONETARY": {}, "LC_NUMERIC": {}, "LC_TIME": {},
+	dropped := map[string]struct{}{}
+	for _, name := range rubyLocaleVars {
+		dropped[name] = struct{}{}
 	}
 	for _, name := range userEnvVars {
 		dropped[name] = struct{}{}

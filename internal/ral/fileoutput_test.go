@@ -369,3 +369,113 @@ func TestArgvRunnersRedactACommandNamingAMarkedValue(t *testing.T) {
 		}
 	}
 }
+
+// util/execution.rb:372-377: the child runs with the locale variables removed
+// and LANG=C, LC_ALL=C, so a tool's messages are in the C locale.
+func TestRunArgvWithLocale(t *testing.T) {
+	for _, name := range []string{"LC_MESSAGES", "LANGUAGE", "LC_CTYPE"} {
+		t.Setenv(name, "de_DE.UTF-8")
+	}
+	t.Setenv("LANG", "de_DE.UTF-8")
+	t.Setenv("LC_ALL", "de_DE.UTF-8")
+	code, out, err := runArgvWith(context.Background(), argvOpts{}, "/usr/bin/env")
+	if err != nil || code != 0 {
+		t.Fatalf("got (%d, %v), want (0, nil)", code, err)
+	}
+	lines := strings.Split(out, "\n")
+	for _, want := range []string{"LANG=C", "LC_ALL=C"} {
+		if n := countOf(lines, want); n != 1 {
+			t.Errorf("%s appears %d times in the child env, want 1", want, n)
+		}
+	}
+	for _, l := range lines {
+		for _, banned := range []string{"LC_MESSAGES=", "LANGUAGE=", "LC_CTYPE=", "de_DE"} {
+			if strings.Contains(l, banned) {
+				t.Errorf("child env has %q", l)
+			}
+		}
+	}
+}
+
+func countOf(lines []string, s string) int {
+	n := 0
+	for _, l := range lines {
+		if l == s {
+			n++
+		}
+	}
+	return n
+}
+
+func TestRunArgvWithStdin(t *testing.T) {
+	code, out, err := runArgvWith(context.Background(), argvOpts{Stdin: []byte("foo:$6$hash\n")}, "/bin/cat")
+	if err != nil || code != 0 || out != "foo:$6$hash\n" {
+		t.Errorf("got (%d, %q, %v), want (0, the stdin bytes, nil)", code, out, err)
+	}
+	code, out, err = runArgvWith(context.Background(), argvOpts{}, "/bin/cat")
+	if err != nil || code != 0 || out != "" {
+		t.Errorf("no stdin: got (%d, %q, %v), want (0, \"\", nil)", code, out, err)
+	}
+}
+
+func TestRunArgvWithRedactedDebug(t *testing.T) {
+	for _, redact := range []bool{false, true} {
+		ctx, got := debugContext("debug")
+		if _, _, err := runArgvWith(ctx, argvOpts{Redact: redact}, "/bin/echo", "s3cret-hash"); err != nil {
+			t.Fatal(err)
+		}
+		want := "Executing: '/bin/echo s3cret-hash'"
+		if redact {
+			want = "Executing: '[redacted]'"
+		}
+		if lines := linesAt(*got, "Puppet"); !slices.Equal(lines, []string{want}) {
+			t.Errorf("redact=%v: Puppet lines = %q, want %q", redact, lines, want)
+		}
+	}
+}
+
+func TestRunArgvWithRedactedTruncationWarning(t *testing.T) {
+	withOutputCap(t, 4)
+	ctx, got := debugContext("debug")
+	if _, _, err := runArgvWith(ctx, argvOpts{Redact: true}, "/bin/echo", "s3cret-hash", "0123456789"); err != nil {
+		t.Fatal(err)
+	}
+	for _, e := range *got {
+		if strings.Contains(e.Message, "s3cret") {
+			t.Errorf("log entry leaks the argument: %q", e.Message)
+		}
+	}
+}
+
+func TestHostShadowRunnerRunsTheCommand(t *testing.T) {
+	var r shadowRunner = hostShadowRunner{}
+	code, out, err := r.run(context.Background(), argvOpts{Stdin: []byte("x")}, "/bin/cat")
+	if err != nil || code != 0 || out != "x" {
+		t.Errorf("got (%d, %q, %v), want (0, \"x\", nil)", code, out, err)
+	}
+}
+
+func TestExecFailureText(t *testing.T) {
+	cmd := []string{"/usr/sbin/usermod", "-u", "5", "foo"}
+	for _, tc := range []struct {
+		name   string
+		cmd    []string
+		redact bool
+		code   int
+		output string
+		want   string
+	}{
+		{"plain", cmd, false, 4, "usermod: x\n", "Execution of '/usr/sbin/usermod -u 5 foo' returned 4: usermod: x"},
+		{"redacted", cmd, true, 4, "usermod: x\n", "Execution of '[redacted]' returned 4: usermod: x"},
+		{"empty element", []string{"/usr/sbin/usermod", "-c", "", "foo"}, false, 1, "bad",
+			"Execution of '/usr/sbin/usermod -c  foo' returned 1: bad"},
+		{"strip NUL and space", cmd, false, 2, " \x00\n x y \x00\t\n", "Execution of '/usr/sbin/usermod -u 5 foo' returned 2: x y"},
+		{"empty output", cmd, false, 3, "", "Execution of '/usr/sbin/usermod -u 5 foo' returned 3: "},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := execFailure(tc.cmd, tc.redact, tc.code, tc.output).Error(); got != tc.want {
+				t.Errorf("got %q, want %q", got, tc.want)
+			}
+		})
+	}
+}

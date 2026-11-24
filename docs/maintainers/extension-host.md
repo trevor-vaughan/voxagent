@@ -310,10 +310,16 @@ The host answers `relationships` for every Tier 3 resource, and its answers are
 already filtered to resources in the catalog (`type.rb:2076-2113`). The
 native `File` also autorequires `User[owner]` and `Group[group]` by name
 (`type/file.rb:403-418`; `internal/ral/file.go`), skipping an owner that is all
-digits, so a Tier 3 `user` or `group` is ordered before the files it owns.
-Puppet's `exec` autorequires `User[user]` (`type/exec.rb:642`); that applies
-only once voxagent's `exec` implements `user`, which it does not (a pre-flight
-gap), so native `exec` has no such autorequire.
+digits, and the native `exec` autorequires `User[user]` for a `user` that is
+not numeric (`type/exec.rb:642-648`; `internal/ral/exec.go`). `user` and
+`group` are themselves native on the platform their contract was measured on
+(`ral.NativeUserGroup`, apply-spine.md's `user` and `group` provider section)
+and Tier 3 everywhere else, so these edges join two native resources there
+and cross the boundary elsewhere; the graph orders them the same either way.
+A catalog with a `User` whose `purge_ssh_keys` is anything but `false`, `"false"` or
+`[]` sends every `User` to the host, so a native `Group` and host-applied
+users can share one catalog (the mixed-routing case of
+`tests/spine/report-diff-extension.sh`).
 
 **No suitable provider.** Puppet never evaluates a resource that is not
 `suitable?` (`type.rb:1923-1939`): `relationship_graph.rb:116-137` defers it,

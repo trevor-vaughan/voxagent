@@ -177,6 +177,8 @@ and the number is retired rather than reused:
 | D-84 | A whole-number Float in the catalog (`2.0`, `1.0`) is read as the Integer of the same value. `exec`'s `tries => 2.0` runs the command where Puppet fails `returns` with ``undefined method `times' for 2.0:Float``, and `try_sleep => 1.0` logs the debug line `Sleeping for 1 seconds between tries` where Puppet logs `1.0` | The compiled catalog keeps the Float (measured: `"tries":2.0,"try_sleep":1.0`), and Ruby parses it back as one; openvox 8.33.0 then fails `tries => 2.0` and prints `1.0` (measured, `puppet apply --debug`). `catalog.Decode` reads every JSON number as a `float64`, and `catalog.NormaliseNumbers` does the same for the extension host, so `2.0` and `2` are one value before any provider sees it. `tries` and `try_sleep` are the only attributes known to behave differently for the two. A non-whole Float (`2.5`, `0.5`) is unaffected | `internal/ral/exec_test.go:TestExecTrySleepIntegerShown` pins `1.0` printing `1`. G5's `tries-third` uses `try_sleep => 0.2`, which both print the same |
 | D-85 | An `exec` whose `user` or `group` is unknown logs `Error: Could not execute posix command: Invalid user: <u>` (or `Invalid group: <g>`) as its output without colour; under Puppet that text follows Puppet's console settings | Puppet raises the error in the forked child, whose rescue logs it with `Puppet.log_exception` (`util/execution.rb:393-395`) through the agent's own log destinations into the captured output. On a coloured console, Puppet's default `color=ansi`, the report message is therefore `\e[1;31mError: … \e[0m`. The same mechanism as D-48(a), where `failure_detail` masks it; here the text is a plain `logoutput` line, so nothing masks it. The exec-complete measurements (M6, M16) were taken with `--color=false`, and voxagent never colours (`runlog.md`, "Console format"), so voxagent writes the `--color=false` text. G5 therefore runs Ruby with `--color=false`, which changes only child-logged output in a report | `internal/ral/exec_stage_test.go:TestExecUnknownIdentity` pins the exact text; G5's `as-unknown` fixture compares it against Ruby under `--color=false` (`tests/spine/report-diff-container.sh`) |
 | D-86 | A numeric `user` or `group` string is read as a decimal id, and an id with no passwd or group entry is refused. `exec`'s `user => '0010'` is uid 10 where Puppet runs uid 8, `'0x10'` is a name where Puppet runs uid 16, and `'09'` is uid 9 where Puppet looks up a user named `09`. An unknown id, a digit string or an Integer, fails with `Invalid user: <id>` (or `Invalid group: <id>`); under Puppet an unknown Integer group runs with that gid, and an unknown Integer user fails with `can't find user for <id>` | Unmeasured; read from source. `get_posix_value` parses the string with `Kernel#Integer` (`util/posix.rb:174`), which honours the `0`, `0x` and `0b` prefixes and rejects `09`, and `convert_xid` returns an Integer unchanged without a lookup (`util/suidmanager.rb:142-143`), so only the later `Etc.getpwuid` for the user's groups fails. voxagent's `identityKey` (`internal/ral/exec_stage.go`) reads a digit string with `strconv.ParseUint(v, 10, 32)` and resolves every id through `os/user`, refusing one with no entry. M16 measured a digit string with no entry (`'12345'`, `'4242'`), which both read the same way | Nothing pins the decimal reading of a prefixed string. `internal/ral/exec_stage_test.go:TestExecUnknownIdentity` (`UnknownIntegerUser`) pins the refusal of an unknown Integer user as `Invalid user: 12345` |
+| D-87 | `user` and `group` are native only on the platform they were measured on (RHEL family, major 10 or later, not Fedora, no libuser), and each is delegated to the extension host when a resource of it names another provider, or, for `user`, when any `purge_ssh_keys` would purge. Everywhere else voxagent delegates them, so with `--no-ruby` such a catalog is refused where Ruby applies it | Ruby's attribute set and commands depend on the host: its provider features (libuser's `forcelocal`, `manages_members`, libshadow) decide which attributes are managed and which commands run, and only this combination was measured (M1–M45). Delegating elsewhere is never a regression, because the host is Ruby itself. Purging generates `Ssh_authorized_key` resources, a type only the host applies (M32) | `internal/ral/usergroup_route_test.go` pins each condition, os-release missing and garbled included; `cmd/voxagent/usergroup_test.go:TestUserGroupAreNativeOnlyOnTheMeasuredPlatform` pins what `nativeProviders` claims. The extension gate's mixed-routing case (`tests/spine/report-diff-extension.sh`) applies a native `Group` beside a delegated `User` |
+| D-88 | Under `--debug`, voxagent does not emit Ruby's provider-suitability lines for `useradd` and `groupadd`, nor `Puppet::Util::POSIX`'s fallback lines `Falling back to Puppet::Etc.group: can't find user for <u>` and `Removing any duplicate group entries` (`util/posix.rb:20,30`). A member of the D-82 family | voxagent performs neither act: it chooses no provider, and it reads a user's groups with `getgrouplist` or, for a user that does not exist, one group scan, without Ruby's exception-driven fallback. The scan's result is the same (M2, M43) | Nothing pins an absence. The gates do not compare debug lines |
 
 Two differences are not numbered divergences but `cross_implementation` entries
 in `tests/spine/allowlist.json`, because each is dropped from the **Ruby side
@@ -488,6 +490,14 @@ event carries. This is Ruby's `is_to_s`/`should_to_s`, which `previous_value` an
 the split there is no way to be right about both at once — and getting it wrong
 produces a report that looks correct to a human reading the message and is wrong
 to anything reading the fields.
+
+`Change.DisplayVerbatim` makes the transaction use `WasDisplay` and `IsDisplay`
+exactly as given, empty strings included and with no quotes added, in the
+failure line (`change from <was> to <is> failed: …`) and nowhere else; the
+provider then owns Ruby's quoting. `user` sets it on every change but `ensure`,
+and `group` on `members` only (not `ensure` or `gid`). Their `is_to_s`/`should_to_s` print some values bare and some quoted, and a
+group with no members fails as `change from  to nosuchuser failed: …` (M39,
+two spaces), which no quoting rule applied by the transaction can produce.
 
 **A bare `error` return means only that no property can be blamed.** It is
 Ruby's `status.failed_because` (`resource/status.rb:140`), which synthesizes a
@@ -1574,7 +1584,8 @@ declares, with `provider` recognised **only** so that a value other than `dnf`
 can be refused. `service` is bounded to `ensure`, `enable`, `hasstatus`,
 `hasrestart`, `start`, `stop`, `status`, `restart`, `name` and `provider`.
 Everything else — and every resource type other than `notify`, `file`, `exec`,
-`package` and `service` — is a pre-flight refusal, not a silent omission,
+`package` and `service`, and `user` and `group` where they are native (below) —
+is a pre-flight refusal or a resource for the extension host, not a silent omission,
 and the refusal covers the **whole catalog**: a partially applied node produces
 state-diff divergences that are artifacts of coverage rather than defects.
 
@@ -1634,7 +1645,80 @@ catalog setting it, the run reported success, and the attribute had no effect.
 
 The refusal list doubles as the porting roadmap: run `voxagent apply` against a
 fleet's catalogs and the gaps it prints, ranked by frequency, are the measured
-answer to "what should Tier 1 cover next".
+answer to "what should Tier 1 cover next". With the extension host, the same
+ranking is the `N <type> resource(s) applied via extension host` lines. On the
+SIMP gate's catalog (737 resources), measured 2026-11-19 before `user` and
+`group` went native, 246 resources went to the host or would have been
+refused without it: 210 of module types, which voxagent can only delegate, and
+36 of core types applied through the host (`augeas` 18, `mount` 5, `cron` 4,
+`group` 4, `user` 3, `host` 1, `tidy` 1). By type, all 246: `sysctl` 63,
+`ssh_config` 49, `sshd_config` 36, `concat_fragment` 20, `ini_setting` 20,
+`augeas` 18, `concat_file` 6, `mount` 5, `anchor`, `cron`, `group` and
+`reboot_notify` 4 each, `user` 3, `kernel_parameter` 2, and one each of
+`host`, `init_ulimit`, `runlevel`, `selinux_state`, `simp_file_line`,
+`sshd_config_subsystem`, `svckill` and `tidy`. 169 of the 246 (69%) are
+Augeas-backed: `sysctl`, `ssh_config`, `sshd_config`, `augeas`,
+`kernel_parameter` and `sshd_config_subsystem`. With `user` and `group` native
+there, 239 remain; the order after them is `concat`, then the Augeas family.
+
+### `user` and `group`
+
+`ral.User` (`internal/ral/user.go`, `user_params.go`, `user_apply.go`) and
+`ral.Group` (`internal/ral/group.go`) reproduce openvox 8.33.0's `useradd` and
+`groupadd` providers, measured on CentOS Stream 10 (M1–M45, 2026-11-19,
+openvox 8.33.0).
+
+- **Routing.** `ral.NativeUserGroup` (`internal/ral/usergroup_route.go`) is
+  asked once per run by `nativeProviders` (`cmd/voxagent/apply.go`), the one
+  place natives are listed for `apply` and `agent`. Both types need a
+  RHEL-family `/etc/os-release` (`ID` `rhel`, or `rhel` among `ID_LIKE`'s
+  words), not Fedora, with `VERSION_ID`'s major at least 10, and Puppet's
+  libuser feature off (`/usr/sbin/luseradd` and `/usr/sbin/lgroupadd` not both
+  executable). An unreadable or unparsable os-release delegates. Then each type
+  is decided on its own: it is delegated when any resource of it names a
+  `provider` other than `useradd`/`groupadd`, and `User` also when any `User`'s
+  `purge_ssh_keys` is not `false`, `"false"` or `[]`, because purging generates
+  `Ssh_authorized_key` resources only the host can apply. A type is also
+  delegated when any resource of it has a value shape the native parser does
+  not implement (`unimplementedValue`: a `gid` array, a non-string `comment`,
+  a number among `members`); a value Ruby itself refuses stays native and is
+  refused with Ruby's message. Ruby's attribute set
+  depends on the host's provider features, so elsewhere the host is the oracle
+  (D-87).
+- **Attributes.** Every attribute the Ruby types declare is accepted, so
+  pre-flight never refuses one as unknown. Those whose provider feature is
+  missing (`user`'s `roles`, `auths`, `profiles`, `keys`, `project`,
+  `attributes`, `salt`, `iterations`, `loginclass`, `ia_load_module` and
+  `forcelocal`; `group`'s `attributes`, `ia_load_module` and `forcelocal`) are
+  dropped as
+  `type.rb:788-791` drops them, each with Ruby's `Provider <p> does not support
+  features <f>; not managing attribute <a>` debug line, logged while the
+  catalog is converted (`ral.ConversionDebugging`). Values are validated before
+  anything is applied, with Ruby's texts, and numeric strings are read with
+  Ruby's `Integer()` (`'0010'` is uid 8).
+- **State.** Accounts are read through libc NSS with cgo
+  (`internal/ral/nss_linux.go`, the only cgo in voxagent): `getpwnam_r`,
+  `getgrnam_r`, `getgrgid_r`, `getspnam_r`, `getgrouplist`, and a group
+  enumeration under a process-wide mutex. Buffers grow on `ERANGE` up to 1 MiB,
+  then the property fails. As non-root `getspnam_r` is refused and the shadow
+  fields read as absent, as Ruby's nil.
+- **Commands.** shadow-utils, found on Ruby's default `PATH` order
+  (`shadowPath`), run as argv with `LANG=C LC_ALL=C` through the same path as
+  every other provider's commands. When any property is Sensitive (password
+  always is), every create command is logged and reported as `[redacted]`; on
+  modify only a Sensitive property's own command. The changed password is written to `chpasswd` on stdin; the create path
+  sets it with `usermod -p`, as Ruby does (I-34). A name beginning with `-`
+  reaches shadow-utils as an option, as under Ruby (I-33).
+- **Messages.** Every `user` change but `ensure`, and `group`'s `members`
+  change, sets `Change.DisplayVerbatim`, which governs the failure line only
+  (the provider boundary, above).
+
+Unit tests use a fake command runner and a fake NSS seam
+(`internal/ral/user_apply_test.go`, `group_test.go`); the root-only
+`nss_linux_test.go` reads real entries it creates. G5
+(`tests/spine/report-diff-container.sh`) compares the measured cases against
+Ruby, live and, from fresh containers, under `--noop`; the extension gate holds the mixed-routing case, and the SIMP gate
+applies SIMP's three users and four groups natively. D-87 and D-88 are theirs.
 
 ### `file` source, recurse and purge
 

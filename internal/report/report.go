@@ -371,7 +371,7 @@ func (r *Report) FinalizeIncomplete() { r.finalize(false) }
 
 func (r *Report) finalize(completed bool) {
 	var changes, outOfSyncCount, failed, restarts, restarted, skipped, changed, outOfSync, corrective int
-	var events, evFailure, evSuccess int
+	var events, evFailure, evSuccess, evNoop int
 	byType := map[string]float64{}
 	for _, rs := range r.ResourceStatuses {
 		if !rs.Untimed {
@@ -407,6 +407,8 @@ func (r *Report) finalize(completed bool) {
 				evFailure++
 			case "success":
 				evSuccess++
+			case "noop":
+				evNoop++
 			}
 		}
 	}
@@ -444,14 +446,20 @@ func (r *Report) finalize(completed bool) {
 	// Measured: Puppet emits an events metric and the first version of this
 	// omitted it entirely, which would have been a whole missing category in
 	// the differential rather than a wrong value inside one.
-	r.Metrics["events"] = Metric{
-		Name: "events", Label: "Events",
-		Values: [][]any{
-			{"total", "Total", events},
-			{"failure", "Failure", evFailure},
-			{"success", "Success", evSuccess},
-		},
+	//
+	// total, failure and success are always present; Puppet counts any other
+	// status only when an event has it (report.rb:467-478), labelled by
+	// util/metric.rb:65-67's labelize. noop is the only other status voxagent
+	// produces: event.rb:19's audit comes from the audit metaparameter.
+	eventValues := [][]any{
+		{"total", "Total", events},
+		{"failure", "Failure", evFailure},
+		{"success", "Success", evSuccess},
 	}
+	if evNoop > 0 {
+		eventValues = append(eventValues, []any{"noop", "Noop", evNoop})
+	}
+	r.Metrics["events"] = Metric{Name: "events", Label: "Events", Values: eventValues}
 	// A per-resource-type breakdown, an agent run's phases (AddTime), then the
 	// three phase timings, measured field for field from a live Puppet 8.10.0
 	// report.

@@ -1,8 +1,8 @@
 package main
 
 import (
-	"fmt"
 	"io"
+	"strings"
 
 	"github.com/voxagent/voxagent/internal/report"
 )
@@ -71,5 +71,10 @@ func (c *puppetConsole) print(e report.LogEntry) {
 	if e.Level == "debug" || e.Level == "info" || e.Level == "notice" {
 		w = c.stdout
 	}
-	fmt.Fprintf(w, "%s: %s\n", name, msg)
+	// Ruby's puts adds the newline only when the line lacks one.
+	line := name + ": " + msg
+	if !strings.HasSuffix(line, "\n") {
+		line += "\n"
+	}
+	io.WriteString(w, line)
 }

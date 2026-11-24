@@ -37,6 +37,23 @@ type applyOptions struct {
 	console                         func(report.LogEntry) // prints a Puppet console line; nil prints none
 }
 
+// nativeProviders lists the providers voxagent applies itself for cat. User
+// and Group join them where p is the platform their contract was measured on
+// (spec §2), each decided on its own.
+func nativeProviders(cat *catalog.Catalog, o applyOptions, p ral.Platform) []ral.Provider {
+	// File names the catalog's environment in a missing source's message
+	// (type/file/source.rb:208).
+	natives := []ral.Provider{ral.Notify{}, ral.File{Environment: cat.Environment, Sources: o.sources, Vardir: o.vardir}, ral.Exec{}, ral.Package{}, ral.Service{}}
+	user, group := ral.NativeUserGroup(p, cat)
+	if user {
+		natives = append(natives, ral.User{CatalogGroups: ral.GroupGIDs(cat)})
+	}
+	if group {
+		natives = append(natives, ral.Group{})
+	}
+	return natives
+}
+
 // applyCatalog applies raw (exact catalog bytes) and returns the run's status
 // and, once the transaction has started, its finalized report -- even when the
 // run is could-not-run, because the machine may have been modified and an
@@ -61,9 +78,7 @@ func applyCatalog(raw []byte, o applyOptions) (report.Status, *report.Report) {
 		return report.Status{CouldNotRun: true}, nil
 	}
 
-	// File names the catalog's environment in a missing source's message
-	// (type/file/source.rb:208).
-	natives := []ral.Provider{ral.Notify{}, ral.File{Environment: cat.Environment, Sources: o.sources, Vardir: o.vardir}, ral.Exec{}, ral.Package{}, ral.Service{}}
+	natives := nativeProviders(cat, o, ral.HostPlatform)
 	ext, errMsg := ingestExtensions(extensionConfig{ruby: o.ruby, libdir: o.libdir, vardir: o.vardir, level: o.level, disabled: o.noRuby,
 		timeouts: o.timeouts}, raw, cat, natives)
 	// done closes the host before the caller's outcome line, which must stay
@@ -202,6 +217,20 @@ func applyCatalog(raw []byte, o applyOptions) (report.Status, *report.Report) {
 		if ext.host != nil {
 			runlog.Debugf(ctx, "voxagent", "extension host: started in %s", ext.host.Stats().Startup.Round(time.Millisecond))
 			runlog.Debugf(ctx, "voxagent", "extension host: load in %s", ext.loadTook.Round(time.Millisecond))
+		}
+	}
+
+	// Puppet drops an attribute whose provider feature is missing while it
+	// converts the catalog, and says so at the resource's path (type.rb:790).
+	for _, r := range cat.Resources {
+		p, ok := registry.Provider(r.Type)
+		if !ok {
+			continue
+		}
+		if cd, ok := p.(ral.ConversionDebugging); ok {
+			for _, line := range cd.ConversionDebug(r) {
+				runlog.Debugf(ctx, "/"+r.Ref(), "%s", line)
+			}
 		}
 	}
 

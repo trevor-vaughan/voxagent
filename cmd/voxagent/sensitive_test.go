@@ -3,10 +3,14 @@ package main
 import (
 	"encoding/json"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strings"
 	"testing"
+
+	"github.com/voxagent/voxagent/internal/catalog"
+	"github.com/voxagent/voxagent/internal/ral"
 )
 
 // markedResource returns a resource marking the given attributes sensitive.
@@ -32,6 +36,10 @@ type leakCase struct {
 	agentOnly bool
 	// rootOnly cases change ownership, which needs privilege.
 	rootOnly bool
+	// fakeShadow cases apply a native User. They run the fakeShadowBinary
+	// build, whose shadow-utils are fakes, so no host account is touched, and
+	// are skipped where user is not native.
+	fakeShadow bool
 	// seed prepares pre-existing state under dir before the run.
 	seed      func(t *testing.T, dir string)
 	resources func(dir string) []map[string]any
@@ -214,6 +222,29 @@ func leakCases() []leakCase {
 				markedResource("Service", "voxagent-no-such-service", map[string]any{"ensure": "running", "enable": true}, "ensure", "enable"),
 			}
 		}},
+		// A Sensitive password on a create the fake useradd accepts and on one
+		// it refuses, and an unmarked one on an existing user: password is
+		// sensitive whether or not the catalog marks it (type/user.rb:280), so
+		// that plain string must not appear either.
+		{name: "user-password", fakeShadow: true, resources: func(dir string) []map[string]any {
+			return []map[string]any{
+				markedResource("User", "voxagent-leak-ok", map[string]any{"password": "D8SECRET-User-password-create", "comment": "c"}, "password"),
+				markedResource("User", "voxagent-leak-fail", map[string]any{"password": "D8SECRET-User-password-create-fail", "comment": "c"}, "password"),
+				{"type": "User", "title": "nobody", "tags": []any{},
+					"parameters": map[string]any{"password": "D8SECRET-User-password-change"}},
+			}
+		}},
+		// A Sensitive comment, which is not password: a create the fake useradd
+		// accepts, one it refuses, and a modify the fake usermod refuses. Every
+		// create command and the comment's own usermod are redacted
+		// (useradd.rb:311-318, nameservice.rb:162 and :270).
+		{name: "user-comment", fakeShadow: true, resources: func(dir string) []map[string]any {
+			return []map[string]any{
+				markedResource("User", "voxagent-leak-ok2", map[string]any{"comment": "D8SECRET-User-comment-create"}, "comment"),
+				markedResource("User", "voxagent-leak-fail2", map[string]any{"comment": "D8SECRET-User-comment-create-fail"}, "comment"),
+				markedResource("User", "nobody", map[string]any{"comment": "D8SECRET-User-comment-change"}, "comment"),
+			}
+		}},
 		// The refusal text of an unimplemented marked value must carry no marker.
 		{name: "service-unimplemented-values", refused: true, resources: func(dir string) []map[string]any {
 			return []map[string]any{
@@ -228,6 +259,36 @@ func leakCases() []leakCase {
 func pid1IsNotSystemd() bool {
 	comm, err := os.ReadFile("/proc/1/comm")
 	return err != nil || !strings.Contains(string(comm), "systemd")
+}
+
+// fakeShadowBinary builds voxagent with its shadow-utils search path linked
+// to a directory of fakes (ral.shadowDirs), so a native User never runs the
+// host's useradd, usermod or chpasswd, as root or not. The fake useradd
+// refuses the names starting voxagent-leak-fail and the fake usermod refuses
+// nobody; both accept every other name. No fake prints its arguments or its
+// input, as the real commands do not.
+func fakeShadowBinary(t *testing.T) string {
+	t.Helper()
+	fakes := t.TempDir()
+	for name, body := range map[string]string{
+		"useradd": `for a; do name="$a"; done
+case "$name" in voxagent-leak-fail*) echo "useradd: fake refusal of $name" >&2; exit 1;; esac`,
+		"usermod": `for a; do name="$a"; done
+if [ "$name" = nobody ]; then echo "usermod: fake refusal of $name" >&2; exit 6; fi`,
+		"userdel":  ":",
+		"chage":    ":",
+		"chpasswd": "cat >/dev/null",
+	} {
+		if err := os.WriteFile(filepath.Join(fakes, name), []byte("#!/bin/sh\n"+body+"\nexit 0\n"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	bin := filepath.Join(t.TempDir(), "voxagent")
+	cmd := exec.Command("go", "build", "-ldflags", "-X github.com/voxagent/voxagent/internal/ral.shadowDirs="+fakes, "-o", bin, ".")
+	if out, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("build failed: %v\n%s", err, out)
+	}
+	return bin
 }
 
 // leakAllowed lists markers of plain parameters (never properties) that Ruby
@@ -257,6 +318,7 @@ var debugEntry = regexp.MustCompile(`"level":\s*"debug"`)
 
 func TestNoSensitiveMarkerLeaks(t *testing.T) {
 	bin := buildBinary(t)
+	shadowBin := fakeShadowBinary(t)
 	sawWarning := false
 
 	// The -debug modes add --debug, the level that logs the most (graph,
@@ -272,6 +334,14 @@ func TestNoSensitiveMarkerLeaks(t *testing.T) {
 				}
 				if tc.rootOnly && os.Geteuid() != 0 {
 					t.Skip("changing ownership needs root; verified only when run as root")
+				}
+				bin := bin
+				if tc.fakeShadow {
+					probe := &catalog.Catalog{Resources: []catalog.Resource{{Type: "User", Title: "nobody"}}}
+					if user, _ := ral.NativeUserGroup(ral.HostPlatform, probe); !user {
+						t.Skip("user is not native on this host")
+					}
+					bin = shadowBin
 				}
 				var stdout, stderr string
 				var code int
@@ -351,6 +421,34 @@ func TestNoSensitiveMarkerLeaks(t *testing.T) {
 				}
 				if len(tc.plain) > 0 && kind != "noop" && !strings.Contains(string(reportBytes), "[redacted]") {
 					t.Errorf("the seeded change never ran: no [redacted] in the report; stderr:\n%s", stderr)
+				}
+				if tc.name == "user-password" {
+					report := string(reportBytes)
+					for _, w := range []string{"[redacted]", `"redacted": true`} {
+						if !strings.Contains(report, w) {
+							t.Errorf("%s missing from the report", w)
+						}
+					}
+					if kind != "noop" && !strings.Contains(stderr+stdout, "Could not create user voxagent-leak-fail: Execution of '[redacted]' returned 1: useradd: fake refusal of voxagent-leak-fail") {
+						t.Errorf("the create failure is not redacted; stdout:\n%s\nstderr:\n%s", stdout, stderr)
+					}
+					if kind != "noop" && !strings.Contains(stdout, "Notice: /User[voxagent-leak-ok]/ensure: created") {
+						t.Errorf("the accepted create was not reported; stdout:\n%s\nstderr:\n%s", stdout, stderr)
+					}
+					if debug && kind != "noop" && !strings.Contains(stdout, "Executing: '[redacted]'") {
+						t.Errorf("--debug: no Executing: '[redacted]' line; stdout:\n%s", stdout)
+					}
+				}
+				if tc.name == "user-comment" && kind != "noop" {
+					for _, w := range []string{
+						"Could not create user voxagent-leak-fail2: Execution of '[redacted]' returned 1: useradd: fake refusal of voxagent-leak-fail2",
+						"Could not set comment on user[nobody]: Execution of '[redacted]' returned 6: usermod: fake refusal of nobody",
+						"Notice: /User[voxagent-leak-ok2]/ensure: created",
+					} {
+						if !strings.Contains(stderr+stdout, w) {
+							t.Errorf("%q missing; stdout:\n%s\nstderr:\n%s", w, stdout, stderr)
+						}
+					}
 				}
 				if tc.name == "exec" {
 					if strings.Contains(stderr, "Unable to mark 'cwd' as sensitive") {

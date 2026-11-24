@@ -124,6 +124,15 @@ type Change struct {
 	// except owner and group.
 	WasDisplay string
 	IsDisplay  string
+
+	// DisplayVerbatim, when true, makes the transaction render WasDisplay and
+	// IsDisplay exactly as given in the failure line ("change from <was> to
+	// <is> failed: ..."), including empty strings and without added quotes; no
+	// other message uses it. The provider is then responsible for Ruby's
+	// quoting. User sets it on every change but ensure, group on members only
+	// (not ensure or gid). Group's members is_to_s joins names bare, so a group
+	// with no members fails as "change from  to nosuchuser failed: ..." (M39).
+	DisplayVerbatim bool
 }
 
 // posix is the provider name Puppet resolves file and exec to on Linux. A

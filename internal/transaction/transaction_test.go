@@ -218,6 +218,14 @@ func (p recorder) Apply(ctx context.Context, r catalog.Resource, noop bool) ([]r
 			PathNotices: []string{"path notice"}, PropertyNotices: []string{"a"},
 			Err: errors.New("'x' returned 2 instead of one of [0]"),
 		}}, p.warn, nil
+	case "verbatim":
+		// Group's members failure (M39): an empty current list and an
+		// unquoted should, which only verbatim display can render.
+		return []ral.Change{{
+			Property: "members", Was: []any{}, Is: []any{"nosuchuser"},
+			WasDisplay: "", IsDisplay: "nosuchuser", DisplayVerbatim: true,
+			Err: errors.New("can't find user for nosuchuser"),
+		}}, p.warn, nil
 	case "mixed":
 		// One property that moved and one that was attempted and failed --
 		// the shape that distinguishes add_event's two counters. A
@@ -1068,6 +1076,29 @@ func TestFailedArrayMatchingPropertyRendersItsListLikeRuby(t *testing.T) {
 	}
 }
 
+// DisplayVerbatim renders WasDisplay and IsDisplay as given -- empty included,
+// no quotes added -- while the event keeps the raw values (M39 Group[g15a]).
+func TestDisplayVerbatimRendersTheFailureLineAsGiven(t *testing.T) {
+	var applied, refreshed []string
+	tx := &Transaction{Registry: ral.NewRegistry(recorder{typ: "group", applied: &applied, refreshed: &refreshed,
+		failChange: map[string]string{"Group[g15a]": "verbatim"}, changes: 1})}
+
+	rep := runCatalog(t, tx, &catalog.Catalog{Resources: []catalog.Resource{{Type: "Group", Title: "g15a"}}})
+
+	st := rep.ResourceStatuses["Group[g15a]"]
+	if len(st.Events) != 1 {
+		t.Fatalf("want 1 event, got %+v", st.Events)
+	}
+	ev := st.Events[0]
+	want := "change from  to nosuchuser failed: can't find user for nosuchuser"
+	if ev.Message != want {
+		t.Errorf("message =\n  %q\nwant\n  %q", ev.Message, want)
+	}
+	if !reflect.DeepEqual(ev.PreviousValue, []any{}) || !reflect.DeepEqual(ev.DesiredValue, []any{"nosuchuser"}) {
+		t.Errorf("previous/desired = %#v / %#v, want the raw lists", ev.PreviousValue, ev.DesiredValue)
+	}
+}
+
 // The transaction adds no wrapper of its own. A property whose error arrives
 // unwrapped is reported unwrapped, with no "(file:, line:)" suffix even though
 // the fixture's resource carries both -- property.rb:190 call_provider, which
@@ -1379,13 +1410,13 @@ func TestFmtValueMatchesPuppetDisplayFormat(t *testing.T) {
 // previous_value 1000 whose message reads "change from 'llm' to 'nosuchuser'
 // failed: ...". The override governs the message only.
 func TestDisplayHonoursTheOverride(t *testing.T) {
-	if got := display(1000, "llm"); got != "'llm'" {
+	if got := display(1000, "llm", false); got != "'llm'" {
 		t.Errorf("display(1000, \"llm\") = %q, want %q", got, "'llm'")
 	}
-	if got := display(1000, ""); got != "1000" {
+	if got := display(1000, "", false); got != "1000" {
 		t.Errorf("display(1000, \"\") = %q, want %q -- no override means fmtValue", got, "1000")
 	}
-	if got := display("absent", ""); got != "'absent'" {
+	if got := display("absent", "", false); got != "'absent'" {
 		t.Errorf("display(\"absent\", \"\") = %q, want %q", got, "'absent'")
 	}
 }

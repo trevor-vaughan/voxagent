@@ -52,6 +52,15 @@ fi
 . "$HERE/fresh.sh" || exit 2
 require_fresh report-diff-extension "$ROOT" "$VOXAGENT" "$GATEKIT"
 
+# The mixed-routing case's starting state, which this gate cannot seed: it is
+# the host's, and the case is only meaningful if it runs no command.
+if ! getent group nobody >/dev/null || [ "$(getent passwd nobody | cut -d: -f6)" != / ] \
+  || [ -e /.ssh/authorized_keys ]; then
+  echo "report-diff-extension: the host's accounts do not fit the mixed-routing case (a group nobody," >&2
+  echo "report-diff-extension: a user nobody with home /, and no /.ssh/authorized_keys)" >&2
+  exit 2
+fi
+
 WORK="$(mktemp -d)" || exit 2
 trap 'rm -rf "$WORK"' EXIT
 
@@ -142,6 +151,17 @@ node default {
   notify { 'after_tidy': }
   file { '$T/d': recurse => true }
   notify { 'last': }
+  # Mixed routing: Group stays native while purge_ssh_keys sends User to the
+  # host, and the edges between them cross the boundary both ways. Nothing
+  # here may run a command (the host's Ruby cannot fork, and this gate is not
+  # root), so the existing nobody accounts are held in sync, and nobody's
+  # keyfile, /.ssh/authorized_keys, does not exist, so no key is purged. No
+  # Group property beyond ensure is compared: this oracle is the host's
+  # Puppet, not openvox 8.33.0, and its groupadd provider lacks the
+  # manages_members feature the native Group implements (spec section 6).
+  group { 'nobody': ensure => present, notify => Vox_value['after-group'] }
+  vox_value { 'after-group': path => '$T/ag', value => 'g' }
+  user { 'nobody': ensure => present, purge_ssh_keys => true, require => Group['nobody'] }
 }
 EOF
 
@@ -323,9 +343,10 @@ converged() {
 # Ruby as under voxagent, whether declared or generated.
 if converged "File_line[add]" "File[$T/after-anchor]" "File[$T/conf]" \
   "Vox_value[refreshed]" "Vox_value[notifier]" "File[$T/notified]" "File[$T/refuser-conf]" \
-  "Vox_value[refuser]" "File[$T/c.conf]" "File[$T/empty.conf]" "Vox_value[vt]" \
+  "Vox_value[refuser]" "File[$T/c.conf]" "File[$T/empty.conf]" "Vox_value[vt]" "Vox_value[after-group]" \
   -- "Anchor[mid]" "File[$T]" "File[$T/lines]" "Concat_file[$T/c.conf]" "Concat_file[$T/empty.conf]" \
-  "Concat_fragment[c-first]" "Concat_fragment[c-second]" "Vox_evalgen[g]" "Vox_gen[loud]"; then
+  "Concat_fragment[c-first]" "Concat_fragment[c-second]" "Vox_evalgen[g]" "Vox_gen[loud]" \
+  "Group[nobody]" "User[nobody]"; then
   echo "report-diff-extension: second apply: every converging resource changed nothing"
 else
   echo "report-diff-extension: second apply: a converging resource changed again" >&2

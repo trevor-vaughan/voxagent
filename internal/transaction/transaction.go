@@ -654,8 +654,8 @@ func (w *walk) apply(provider ral.Provider, s subject, propagate bool) result {
 				// layer raised: property.rb:490 re-raises a Puppet::Error
 				// untouched and wraps only other StandardErrors at :492. See
 				// ral.wrapEnsureError.
-				message := "change from " + display(ch.Was, ch.WasDisplay) +
-					" to " + display(ch.Is, ch.IsDisplay) + " failed: " + ch.Err.Error()
+				message := "change from " + display(ch.Was, ch.WasDisplay, ch.DisplayVerbatim) +
+					" to " + display(ch.Is, ch.IsDisplay, ch.DisplayVerbatim) + " failed: " + ch.Err.Error()
 				if redact {
 					message = "change from [redacted] to [redacted] failed: " + ch.Err.Error()
 				}
@@ -1755,7 +1755,13 @@ func fmtValue(v any) string {
 // message only -- create_change_event populates previous_value and
 // desired_value from the raw values -- so this is a rendering concern and not
 // a value one.
-func display(v any, override string) string {
+//
+// verbatim is Change.DisplayVerbatim: the override is the whole rendering,
+// even when empty.
+func display(v any, override string, verbatim bool) string {
+	if verbatim {
+		return override
+	}
 	if override != "" {
 		return "'" + override + "'"
 	}

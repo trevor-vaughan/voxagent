@@ -542,6 +542,46 @@ func TestEventsMetricCountsByStatus(t *testing.T) {
 	}
 }
 
+// Puppet counts every event status it sees, not only failure and success
+// (report.rb:467-478, metrics[event.status] += 1): a noop run's events metric
+// carries noop, labelled "Noop" (util/metric.rb:65-67), and a status no event
+// has is absent rather than zero. Measured: G5's noop pass, Ruby's
+// events.noop = 63.
+func TestEventsMetricCountsNoopEvents(t *testing.T) {
+	r := New("n", "production", true)
+	r.AddResource(ResourceStatus{Resource: "User[a]", Events: []Event{
+		{Property: "ensure", Status: "noop"},
+	}})
+	r.AddResource(ResourceStatus{Resource: "User[b]", Events: []Event{
+		{Property: "uid", Status: "noop"},
+		{Property: "gid", Status: "failure"},
+	}})
+	r.Finalize()
+
+	got := map[string][]any{}
+	for _, v := range r.Metrics["events"].Values {
+		got[v[0].(string)] = v
+	}
+	if v := got["noop"]; v == nil || v[1] != "Noop" || v[2] != 2 {
+		t.Errorf("events.noop = %v, want [noop Noop 2]", v)
+	}
+	if v := got["total"]; v == nil || v[2] != 3 {
+		t.Errorf("events.total = %v, want 3", v)
+	}
+	if v := got["success"]; v == nil || v[2] != 0 {
+		t.Errorf("events.success = %v, want 0, always present", v)
+	}
+
+	live := New("n", "production", false)
+	live.AddResource(ResourceStatus{Resource: "User[c]", Events: []Event{{Property: "ensure", Status: "success"}}})
+	live.Finalize()
+	for _, v := range live.Metrics["events"].Values {
+		if v[0] == "noop" {
+			t.Errorf("a run with no noop event has events.noop = %v; Puppet omits it", v)
+		}
+	}
+}
+
 // restarted counts refreshes that SUCCEEDED, and is a different field from
 // failed_to_restart. Conflating them would report every successful
 // notify-triggered reload as a failure.

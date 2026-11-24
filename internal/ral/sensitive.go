@@ -67,6 +67,12 @@ func MarkSensitive(p Provider, r catalog.Resource) (Attrs, []report.LogEntry) {
 				}
 			}
 		}
+	case "user":
+		// type/user.rb:280: password is a sensitive property whether or not
+		// the catalog marks it (type.rb:2404-2410).
+		if given("password") {
+			marked["password"] = struct{}{}
+		}
 	}
 
 	for _, name := range names {

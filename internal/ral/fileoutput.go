@@ -8,6 +8,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"slices"
 	"strings"
 	"unicode/utf8"
 
@@ -70,6 +71,67 @@ func runArgv(ctx context.Context, name string, args ...string) (int, string, err
 	cmd := exec.CommandContext(ctx, name, args...)
 	cmd.Env = withoutUserEnv(os.Environ())
 	return runLogged(ctx, cmd, quoteOrRedact(line, redact), redactIf(redact, "%s", line))
+}
+
+// rubyLocaleVars is util/posix.rb:6-7's LOCALE_ENV_VARS: the variables Puppet
+// deletes in the child, which util/execution.rb:372-379 then replaces with
+// LANG=C and LC_ALL=C.
+var rubyLocaleVars = []string{
+	"LANG", "LC_ALL", "LC_MESSAGES", "LANGUAGE", "LC_COLLATE",
+	"LC_CTYPE", "LC_MONETARY", "LC_NUMERIC", "LC_TIME",
+}
+
+// argvOpts shapes one runArgvWith command.
+type argvOpts struct {
+	// Stdin is the child's standard input; nil is an empty input.
+	Stdin []byte
+	// Redact shows the command as '[redacted]' in the Executing line and as
+	// [command redacted] in the truncation warning: its argv or Stdin names a
+	// value that must not reach a log, such as a password hash.
+	Redact bool
+}
+
+// runArgvWith is runArgv for a command Puppet runs through Puppet::Util::
+// Execution.execute with the locale override (util/execution.rb:372-377): the
+// locale variables are removed and LANG=C, LC_ALL=C set, so a tool's messages
+// are the C locale's. o gives its stdin and whether it is logged redacted.
+func runArgvWith(ctx context.Context, o argvOpts, name string, args ...string) (int, string, error) {
+	line := strings.Join(append([]string{name}, args...), " ")
+	cmd := exec.CommandContext(ctx, name, args...)
+	env := withoutUserEnv(os.Environ())
+	cmd.Env = make([]string, 0, len(env)+2)
+	for _, kv := range env {
+		varName, _, _ := strings.Cut(kv, "=")
+		if !slices.Contains(rubyLocaleVars, varName) {
+			cmd.Env = append(cmd.Env, kv)
+		}
+	}
+	cmd.Env = append(cmd.Env, "LANG=C", "LC_ALL=C")
+	if o.Stdin != nil {
+		cmd.Stdin = bytes.NewReader(o.Stdin)
+	}
+	return runLogged(ctx, cmd, quoteOrRedact(line, o.Redact), redactIf(o.Redact, "%s", line))
+}
+
+// shadowRunner is how the user and group providers run shadow-utils commands;
+// tests substitute a fake.
+type shadowRunner interface {
+	run(ctx context.Context, o argvOpts, name string, args ...string) (int, string, error)
+}
+
+// hostShadowRunner runs the command on the host through runArgvWith.
+type hostShadowRunner struct{}
+
+// run implements shadowRunner.
+func (hostShadowRunner) run(ctx context.Context, o argvOpts, name string, args ...string) (int, string, error) {
+	return runArgvWith(ctx, o, name, args...)
+}
+
+// execFailure is the Puppet::ExecutionFailure for a command that exited with
+// code (util/execution.rb:312). cmd is joined by single spaces, so an empty
+// element leaves a double space; redact shows it as [redacted] (:162).
+func execFailure(cmd []string, redact bool, code int, output string) error {
+	return &executionFailure{command: redactIf(redact, "%s", strings.Join(cmd, " ")), status: code, output: output}
 }
 
 // maxCommandOutput caps the output kept from one command, so a command that

@@ -10,6 +10,10 @@ the `voxagent` apply spine.
 Applies a Puppet catalog: reads it from a file, refuses anything it cannot fully
 implement, applies the rest, and writes a `report_format 12` report.
 
+voxagent is built with cgo (`CGO_ENABLED=1`, Go's default where a C compiler
+is installed): `user` and `group` read accounts through libc's name service,
+as Puppet does, so a `CGO_ENABLED=0` build fails.
+
 ```bash
 task build
 ./bin/voxagent apply --catalog catalog.json --detailed-exitcodes
@@ -78,6 +82,19 @@ listed in D-79 of `docs/maintainers/apply-spine.md`),
 `hasrestart`, `name`, `provider`), systemd only; `enable` is `true` or `false`
 (`mask`, `manual` and `delayed` are refused).
 A catalog with a `service` is refused whole on a host whose PID 1 is not systemd.
+Two more, `user` and `group`, are applied natively, through shadow-utils (`useradd`,
+`usermod`, `userdel`, `chage`, `chpasswd`, `groupadd`, `groupmod`,
+`groupdel`) as Puppet's `useradd` and `groupadd` providers do, only on a
+RHEL-family host of major release 10 or later that is not Fedora
+(`/etc/os-release` `ID` is `rhel` or `ID_LIKE` lists it) and does not have
+libuser's `/usr/sbin/luseradd` and `/usr/sbin/lgroupadd` both installed. Each type is decided per
+run, on its own: it stays with the Ruby extension host when any of its
+resources names a `provider` other than `useradd` or `groupadd`, and `user`
+does when any `user` sets `purge_ssh_keys` to anything but `false`, `"false"` or `[]`.
+Every attribute either type declares is accepted, and those its provider
+does not support (`forcelocal`, and the Solaris, AIX, BSD and macOS ones) are ignored, as
+Puppet ignores them. Everywhere else `user` and `group` need the extension
+host, and `--no-ruby` refuses a catalog that has them.
 Of the metaparameters, `loglevel` is accepted on any resource only as `notice`,
 Puppet's default, which `concat` copies onto every file it generates.
 Any other type is applied by the Ruby extension host if it is a legacy
@@ -458,7 +475,7 @@ task dev:report-diff-extension  # the same for Tier 3 types, run through the ext
 task dev:idempotence         # a second apply must change nothing
 task dev:derive-run-to-run   # re-measure report-diff's allowlist against Ruby
 task dev:state-diff          # both agents, two containers, same resulting state
-task dev:report-diff-container  # the report comparison for package and exec, in a container
+task dev:report-diff-container  # the report comparison for package, exec, user and group, in a container
 task dev:report-diff-systemd    # the report comparison for service, in a systemd container
 task dev:report-diff-simp       # both agents apply the public SIMP catalog, in systemd containers
 ```
@@ -475,6 +492,8 @@ which manages dnf *modules*, while every `exec` dies with `Errno::EBADF` before
 running anything. Inside the container both work, and it is the only gate that
 compares an `exec` event — `executed_command`, `returns` as the property a
 non-zero status is attributed to, the refresh callback event — against Ruby.
+`user` and `group` are compared there too: they change the machine's
+accounts, which only a disposable container may have changed for it.
 
 `dev:report-diff-simp` is the extension host's acceptance gate: it compiles the
 public SIMP catalog from pinned forge modules, applies it for real with Ruby

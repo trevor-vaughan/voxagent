@@ -26,6 +26,10 @@
 # to, `desired_value` as the accepted list, and the refresh callback event --
 # against Ruby.
 #
+# `user` and `group` are here for the same two reasons: their providers shell
+# out to shadow-utils, and they change the machine's accounts, which only a
+# disposable container may have changed for it.
+#
 # TWO CONTAINERS, ONE PER AGENT, and that is not a stylistic choice. G1 resets
 # its target/ directory between the two applies; a package has no such
 # analogue, because it mutates the machine rather than a directory. Sharing one
@@ -38,7 +42,8 @@
 # tests/spine/allowlist.json, used unchanged. A second comparator would be a
 # second thing to keep in step with Ruby.
 #
-#   0  the reports agree outside the allowlist and the walk order agrees
+#   0  the reports agree outside the allowlist and the walk order agrees, for
+#      the live run and for the account cases' noop run
 #   1  they diverge -- a result about voxagent
 #   2  the comparison could not run
 set -uo pipefail
@@ -114,9 +119,65 @@ SEED_SENSITIVE="printf 'old\\n' > /tmp/target/s-change &&
 # entered as root before the identity drop.
 SEED_EXEC="mkdir -m 0700 /tmp/target/private"
 
+# The user and group fixtures' starting state, run in every container: the
+# accounts each modify, failure and in-sync case needs, seeded as each
+# measurement seeded them (M1-M45, 2026-11-19, openvox 8.33.0), with ids and homes renumbered so the cases share one catalog without
+# colliding. An id a case moves TO is kept below 2000: useradd and groupadd
+# give an account without one the highest id in use plus one, so any id above
+# a seeded one is soon taken by a later seed. Joined with && so a failing seed stops at once. The lock file M15
+# needs is not seeded here: it would make every other useradd fail, so the
+# catalog itself takes and drops it around User[u8e].
+SEED_ACCOUNTS="$(cat <<'EOF'
+groupadd -g 2500 g2 &&
+groupadd u3 &&
+groupadd -g 2504 g4 &&
+useradd -u 2041 -c 'old comment' -d /home/old4 -s /bin/sh -G adm -e 2030-01-01 -p '$6$pepperpepper$JWrGsuAx0JISFDCAbpVLK.MEEOLS0K4Rd71CayDQsVNSgPG8HSzfJfKD5fg9.sJnsxPEaHZixkCpOQQG9RaBx.' u4 &&
+chage -m 2 -M 50 -W 3 u4 &&
+useradd -u 1551 -c 'old comment' -d /home/old5 -s /bin/sh -G adm -e 2030-01-01 -p '$6$pepperpepper$JWrGsuAx0JISFDCAbpVLK.MEEOLS0K4Rd71CayDQsVNSgPG8HSzfJfKD5fg9.sJnsxPEaHZixkCpOQQG9RaBx.' u5a &&
+chage -m 2 -M 50 -W 3 u5a &&
+useradd -u 1550 -G adm,wheel u5b &&
+useradd -p '$6$pepperpepper$JWrGsuAx0JISFDCAbpVLK.MEEOLS0K4Rd71CayDQsVNSgPG8HSzfJfKD5fg9.sJnsxPEaHZixkCpOQQG9RaBx.' u6b &&
+useradd -m u7a && echo hi > /home/u7a/file &&
+useradd -u 2001 other8 && useradd -u 2101 u8b && useradd -u 2102 u8c && useradd -u 2103 u8d &&
+useradd u8e &&
+groupadd -g 1600 g14a && groupadd -g 1602 g14b &&
+usermod -aG g14a bin && usermod -aG g14b bin &&
+useradd a && useradd b &&
+groupadd g15a && groupadd g15b && groupadd g15c && groupadd g15d && groupadd g15e &&
+usermod -aG g15c bin && usermod -aG g15c daemon &&
+groupadd -g 3016 g16b && groupadd -g 3017 g16c && useradd -g g16c u16c &&
+groupadd -g 2519 g19 &&
+useradd -u 2191 u19a && useradd -u 2192 u19b && useradd -u 2193 -c 'had comment' u19c &&
+useradd -u 2194 u19d && useradd -u 2195 u19e && useradd -u 2196 u19f &&
+groupadd -g 2600 rg1 &&
+useradd -u 2201 -g rg1 -c 'In, sync' -d /home/r1 -s /bin/bash -G wheel,adm -e 2030-01-02 -p '$6$saltsalt1234$HimiUiYsyc2p0rqG.cX8/iShr9/K5g3WzW5..pCTGTgbsq96UiBD4shzEFnvokdAe6TQ0basOKThrVS/UCByk.' r1 &&
+chage -m 1 -M 90 -W 7 r1 &&
+useradd -p '$6$pepperpepper$JWrGsuAx0JISFDCAbpVLK.MEEOLS0K4Rd71CayDQsVNSgPG8HSzfJfKD5fg9.sJnsxPEaHZixkCpOQQG9RaBx.' r3 &&
+groupadd -g 2602 rg2 && usermod -aG rg2 bin && usermod -aG rg2 daemon &&
+groupadd -g 2603 rg3 &&
+groupadd rg4 && groupadd rg5 && useradd -g rg4 -G rg5 r4 &&
+useradd r5 &&
+useradd -G adm,wheel r6 &&
+useradd r7 &&
+groupadd rg6 && usermod -aG rg6 bin && usermod -aG rg6 daemon &&
+groupadd -g 74 sshd &&
+useradd -c 'Privilege-separated SSH' -u 74 -g sshd -s /usr/sbin/nologin -r -d /usr/share/empty.sshd sshd
+EOF
+)"
+# The names the catalog creates, which must not exist after seeding, and the
+# ones it modifies or holds in sync, which must: a fixture whose starting
+# state drifted (an image that ships `sshd`, a seed that silently created
+# `u1`) turns a create into a no-op and still passes.
+ACCOUNTS_ABSENT_USERS="u1 u2 u2b u3 u6a u7b u8a u10 u11 u17"
+ACCOUNTS_ABSENT_GROUPS="g13 g13b g16d g17 g17b"
+ACCOUNTS_PRESENT_USERS="root u4 u5a u5b u6b u7a u8b u8c u8d u8e other8 a b u16c u19a u19b u19c u19d u19e u19f r1 r3 r4 r5 r6 r7 sshd"
+ACCOUNTS_PRESENT_GROUPS="root g2 u3 g4 g14a g14b g15a g15b g15c g15d g15e g16b g16c g19 rg1 rg2 rg3 rg4 rg5 rg6 sshd"
+
 RUBY_SIDE="report-ruby-$$"
 GO_SIDE="report-go-$$"
 COMPILER="report-compile-$$"
+RUBY_NOOP="report-ruby-noop-$$"
+GO_NOOP="report-go-noop-$$"
 
 command -v podman >/dev/null 2>&1 || {
   echo "report-diff-container: podman is not available" >&2
@@ -161,7 +222,7 @@ fi
 # path came into existence -- would leave that resource indistinguishable from
 # the plain successful one.
 WORK="$(mktemp -d)" || exit 2
-trap 'rm -rf "$WORK"; podman rm -f "$RUBY_SIDE" "$GO_SIDE" "$COMPILER" >/dev/null 2>&1' EXIT
+trap 'rm -rf "$WORK"; podman rm -f "$RUBY_SIDE" "$GO_SIDE" "$COMPILER" "$RUBY_NOOP" "$GO_NOOP" >/dev/null 2>&1' EXIT
 
 if ! podman run --rm "$IMAGE" sh -c "
   if ! $SEED_LATEST; then
@@ -210,12 +271,27 @@ if ! podman run --rm "$IMAGE" sh -c "
   if [ -e /usr/bin/nosuchcmd ]; then
     echo '/usr/bin/nosuchcmd exists, so the missing argv command is not missing'; exit 1
   fi
+  if ! ( $SEED_ACCOUNTS ) >/dev/null 2>&1; then
+    echo 'seeding the user and group fixtures failed'; exit 1
+  fi
+  for u in $ACCOUNTS_ABSENT_USERS; do
+    if getent passwd \"\$u\" >/dev/null; then echo \"the user \$u exists after seeding, so creating it is a no-op\"; exit 1; fi
+  done
+  for g in $ACCOUNTS_ABSENT_GROUPS; do
+    if getent group \"\$g\" >/dev/null; then echo \"the group \$g exists after seeding, so creating it is a no-op\"; exit 1; fi
+  done
+  for u in $ACCOUNTS_PRESENT_USERS; do
+    if ! getent passwd \"\$u\" >/dev/null; then echo \"the user \$u does not exist after seeding\"; exit 1; fi
+  done
+  for g in $ACCOUNTS_PRESENT_GROUPS; do
+    if ! getent group \"\$g\" >/dev/null; then echo \"the group \$g does not exist after seeding\"; exit 1; fi
+  done
   /usr/bin/test -d /nonexistent-spine
   if [ \$? -ne 1 ]; then
     echo 'test -d /nonexistent-spine does not exit 1, so returns => [0, 1] accepts nothing it would not accept anyway'; exit 1
   fi
 " >"$WORK/fixture.err" 2>&1; then
-  echo "report-diff-container: the package or exec fixture does not fit $IMAGE:" >&2
+  echo "report-diff-container: the package, exec or account fixture does not fit $IMAGE:" >&2
   sed -n '1,10p' "$WORK/fixture.err" >&2
   exit 2
 fi
@@ -461,6 +537,146 @@ node default {
   exec { 'unless-127': command => '/bin/true', unless => '/bin/sh -c "echo u; exit 127"' }
 EOF
 
+# The account half, in files of its own because it is compiled twice: into the
+# live catalog here, and into the noop catalog below without lock.pp, whose
+# execs only make M15's chpasswd fail and which a noop run never reaches.
+cat > "$WORK/lock.pp" <<'EOF' || exit 2
+
+  # user and group, native on this image (CentOS Stream 10, no libuser). Each
+  # case is measured (Mn, 2026-11-19, openvox 8.33.0), with SEED_ACCOUNTS's
+  # starting state.
+  #
+  # M15 first: chpasswd refused by a stale lock (its seed). The lock would
+  # fail every other account command too, so it is taken and dropped before
+  # any of them. passwd-unlock requires only the lock, not User[u8e], so the
+  # failure it exists to cause skips nothing; it runs after u8e because both
+  # are ready at once and the catalog's order breaks the tie.
+  exec { 'passwd-lock': command => '/bin/sh -c "echo 1 > /etc/passwd.lock; echo 1 > /etc/shadow.lock"' }
+  user { 'u8e':
+    password => '$6$saltsalt1234$HimiUiYsyc2p0rqG.cX8/iShr9/K5g3WzW5..pCTGTgbsq96UiBD4shzEFnvokdAe6TQ0basOKThrVS/UCByk.',
+    require  => Exec['passwd-lock'],
+  }
+  exec { 'passwd-unlock': command => '/bin/rm /etc/passwd.lock /etc/shadow.lock', require => Exec['passwd-lock'] }
+  Exec['passwd-unlock'] -> User <| title != 'u8e' |>
+  Exec['passwd-unlock'] -> Group <| |>
+EOF
+cat > "$WORK/accounts.pp" <<'EOF' || exit 2
+  # M1: minimal create.
+  user { 'u1': ensure => present }
+  # M2: every create flag, the password set after useradd and chage.
+  user { 'u2':
+    ensure => present, uid => 2002, gid => 'g2', comment => 'A, B', home => '/home/u2',
+    shell => '/bin/bash', groups => ['wheel', 'adm'], expiry => '2030-01-02',
+    password => '$6$saltsalt1234$HimiUiYsyc2p0rqG.cX8/iShr9/K5g3WzW5..pCTGTgbsq96UiBD4shzEFnvokdAe6TQ0basOKThrVS/UCByk.',
+    password_min_age => 1, password_max_age => 90, password_warn_days => 7,
+    system => false, allowdupe => true, managehome => true,
+  }
+  # M3: the same without a password, so nothing is redacted; a duplicate uid.
+  user { 'u2b':
+    ensure => present, uid => 2002, gid => 'g2', comment => 'A, B', home => '/home/u2b',
+    shell => '/bin/bash', groups => ['wheel', 'adm'], expiry => '2030-01-02',
+    password_min_age => 1, password_max_age => 90, password_warn_days => 7,
+    system => false, allowdupe => true, managehome => true,
+  }
+  # M5: a group of the user's name exists, so useradd gets -g.
+  user { 'u3': ensure => present }
+  # M7: every property modified, minimum membership.
+  user { 'u4':
+    uid => 2042, gid => 'g4', comment => 'new, comment', home => '/home/new4', shell => '/bin/bash',
+    expiry => absent, password => '$6$saltsalt1234$HimiUiYsyc2p0rqG.cX8/iShr9/K5g3WzW5..pCTGTgbsq96UiBD4shzEFnvokdAe6TQ0basOKThrVS/UCByk.',
+    password_min_age => 5, password_max_age => 60, password_warn_days => 9,
+    groups => ['wheel'], membership => minimum,
+  }
+  # M9: the same under inclusive membership, and an inclusive empty list.
+  user { 'u5a':
+    uid => 1552, gid => 'g4', comment => 'new, comment', home => '/home/new5', shell => '/bin/bash',
+    expiry => absent, password => '$6$saltsalt1234$HimiUiYsyc2p0rqG.cX8/iShr9/K5g3WzW5..pCTGTgbsq96UiBD4shzEFnvokdAe6TQ0basOKThrVS/UCByk.',
+    password_min_age => 5, password_max_age => 60, password_warn_days => 9,
+    groups => ['wheel'], membership => inclusive,
+  }
+  user { 'u5b': groups => [], membership => inclusive }
+  # M11: a Sensitive password on a create and on a change.
+  user { 'u6a': password => Sensitive('$6$saltsalt1234$HimiUiYsyc2p0rqG.cX8/iShr9/K5g3WzW5..pCTGTgbsq96UiBD4shzEFnvokdAe6TQ0basOKThrVS/UCByk.') }
+  user { 'u6b': password => Sensitive('$6$saltsalt1234$HimiUiYsyc2p0rqG.cX8/iShr9/K5g3WzW5..pCTGTgbsq96UiBD4shzEFnvokdAe6TQ0basOKThrVS/UCByk.') }
+  # M13: delete with managehome, and an absent user already absent.
+  user { 'u7a': ensure => absent, managehome => true }
+  user { 'u7b': ensure => absent, managehome => true }
+  # M14: the shell check, an unknown gid and group, and a uid in use.
+  user { 'u8a': shell => '/nonexistent/sh' }
+  user { 'u8b': gid => 'nosuchgroup' }
+  user { 'u8c': groups => ['nosuchgroup'] }
+  user { 'u8d': uid => 2001 }
+  # M30: attributes whose provider feature is missing are dropped, so no ensure.
+  user { 'u10': roles => ['r1'], auths => ['a1'], profiles => ['p1'], keys => { 'k' => 'v' }, project => 'proj',
+    loginclass => 'lc', salt => 'abcd', iterations => 5, attributes => ['x=y'], forcelocal => true }
+  # M31: a property given, so ensure defaults to present.
+  user { 'u11': uid => 2011 }
+  # M35: group creates.
+  group { 'g13': ensure => present, gid => 2013, system => true, members => ['root', 'bin'] }
+  group { 'g13b': members => ['daemon'] }
+  # M37: gid and members, without and with auth_membership.
+  group { 'g14a': gid => 1601, members => ['daemon'], auth_membership => false }
+  group { 'g14b': gid => 1603, members => ['daemon'], auth_membership => true }
+  # M39: an unknown member, comma strings, and auth_membership emptying g15c.
+  group { 'g15a': members => ['nosuchuser'] }
+  group { 'g15b': members => 'a,b' }
+  group { 'g15c': members => [], auth_membership => true }
+  group { 'g15d': members => 'bin,daemon' }
+  group { 'g15e': members => ['a', 'b'] }
+  # M42: delete, a delete groupdel refuses, and one already absent.
+  group { 'g16b': ensure => absent }
+  group { 'g16c': ensure => absent }
+  group { 'g16d': ensure => absent }
+  # M43: declared before its groups, applied after them (autorequire).
+  user { 'u17': gid => 'g17', groups => ['g17b'] }
+  group { 'g17': }
+  group { 'g17b': }
+  # M45: one property each.
+  user { 'u19a': groups => ['wheel', 'adm'] }
+  user { 'u19b': gid => 2519 }
+  user { 'u19c': comment => '' }
+  user { 'u19d': expiry => '2031-02-03' }
+  user { 'u19e': password_max_age => 30 }
+  user { 'u19f': password => 'plain-not-a-hash' }
+  # Already in sync, as a rerun of M2/M4, M6, M8, M10, M12, M14/M15, M36, M38
+  # and M44 finds them: every property checked, nothing changed.
+  user { 'r1':
+    ensure => present, uid => 2201, gid => 'rg1', comment => 'In, sync', home => '/home/r1',
+    shell => '/bin/bash', groups => ['wheel', 'adm'], membership => inclusive, expiry => '2030-01-02',
+    password => '$6$saltsalt1234$HimiUiYsyc2p0rqG.cX8/iShr9/K5g3WzW5..pCTGTgbsq96UiBD4shzEFnvokdAe6TQ0basOKThrVS/UCByk.',
+    password_min_age => 1, password_max_age => 90, password_warn_days => 7,
+  }
+  user { 'r3': password => Sensitive('$6$pepperpepper$JWrGsuAx0JISFDCAbpVLK.MEEOLS0K4Rd71CayDQsVNSgPG8HSzfJfKD5fg9.sJnsxPEaHZixkCpOQQG9RaBx.') }
+  group { 'rg2': gid => 2602, members => ['bin', 'daemon'], auth_membership => true }
+  group { 'rg3': gid => 2603 }
+  user { 'r4': gid => 'rg4', groups => ['rg5'] }
+  group { 'rg4': }
+  group { 'rg5': }
+  user { 'r5': ensure => present }
+  # M8: minimum membership, in more groups than declared. M10: inclusive and
+  # no supplementary groups. M38: without auth_membership, more members than
+  # declared.
+  user { 'r6': groups => ['wheel'], membership => minimum }
+  user { 'r7': groups => [], membership => inclusive }
+  group { 'rg6': members => ['bin'], auth_membership => false }
+  # SIMP-shaped: simp::root_user's Group[root] and User[root], and
+  # ssh::server's User[sshd] with string ids over the RPM's account.
+  group { 'root':
+    ensure => present, gid => 0, allowdupe => false, auth_membership => true,
+    forcelocal => true, members => ['root'],
+  }
+  user { 'root':
+    ensure => present, uid => 0, gid => 0, allowdupe => false, home => '/root',
+    shell => '/bin/bash', membership => minimum, forcelocal => true,
+  }
+  user { 'sshd':
+    ensure => present, allowdupe => false, comment => 'Privilege-separated SSH', gid => '74',
+    home => '/var/empty/sshd', membership => inclusive, shell => '/sbin/nologin', uid => '74',
+  }
+EOF
+cat "$WORK/lock.pp" "$WORK/accounts.pp" >> "$WORK/site.pp" || exit 2
+{ echo 'node default {'; cat "$WORK/accounts.pp"; echo '}'; } > "$WORK/noop.pp" || exit 2
+
 cat >> "$WORK/site.pp" <<EOF || exit 2
   package { '$PKG_INSTALL': ensure => present }
   package { '$PKG_REMOVE':  ensure => absent }
@@ -478,21 +694,25 @@ podman run --name "$COMPILER" --detach "$IMAGE" sleep 300 >/dev/null 2>&1 || {
   echo "report-diff-container: could not start a container to compile the fixture" >&2
   exit 2
 }
-podman cp "$WORK/site.pp" "$COMPILER:/tmp/site.pp" >/dev/null 2>&1 || exit 2
-podman exec "$COMPILER" sh -c '
-  mkdir -p /tmp/e/production/manifests &&
-  cp /tmp/site.pp /tmp/e/production/manifests/site.pp &&
-  /opt/puppetlabs/bin/puppet catalog find spine.example --terminus compiler \
-    --render-as json --node_name_value spine.example \
-    --environmentpath /tmp/e --environment production 2>/dev/null |
-  sed -n "/^{/,\$p"
-' > "$WORK/catalog.json" 2>"$WORK/compile.err"
-podman rm -f "$COMPILER" >/dev/null 2>&1
-[ -s "$WORK/catalog.json" ] || {
-  echo "report-diff-container: compiling the fixture catalog failed" >&2
-  sed -n '1,20p' "$WORK/compile.err" >&2
-  exit 2
+# compile MANIFEST CATALOG: one compile in the compiler container.
+compile() {
+  podman cp "$WORK/$1" "$COMPILER:/tmp/site.pp" >/dev/null 2>&1 || return 2
+  podman exec "$COMPILER" sh -c '
+    mkdir -p /tmp/e/production/manifests &&
+    cp /tmp/site.pp /tmp/e/production/manifests/site.pp &&
+    /opt/puppetlabs/bin/puppet catalog find spine.example --terminus compiler \
+      --render-as json --node_name_value spine.example \
+      --environmentpath /tmp/e --environment production 2>/dev/null |
+    sed -n "/^{/,\$p"
+  ' > "$WORK/$2" 2>"$WORK/compile.err"
+  [ -s "$WORK/$2" ] || {
+    echo "report-diff-container: compiling $1 failed" >&2
+    sed -n '1,20p' "$WORK/compile.err" >&2
+    return 2
+  }
 }
+compile site.pp catalog.json && compile noop.pp catalog-noop.json || exit 2
+podman rm -f "$COMPILER" >/dev/null 2>&1
 
 # One container per agent, both from the same image, both starting identical.
 # The apply's own exit status is not consulted: measured against Puppet 8,
@@ -511,16 +731,17 @@ podman rm -f "$COMPILER" >/dev/null 2>&1
 # COMPARED -- an agent that read the hostname wrongly would still be caught --
 # where an allowlist entry would have stopped comparing it here and in G1 too.
 start_side() {
-  local name="$1"
+  local name="$1" catalog="${2:-catalog.json}"
   podman run --name "$name" --hostname spine.example --detach "$IMAGE" \
     sleep 900 >/dev/null 2>&1 || return 2
-  podman cp "$WORK/catalog.json" "$name:/tmp/catalog.json" >/dev/null 2>&1 || return 2
+  podman cp "$WORK/$catalog" "$name:/tmp/catalog.json" >/dev/null 2>&1 || return 2
   podman cp "$HERE/lib" "$name:/tmp/gatelib" >/dev/null 2>&1 || return 2
   podman exec "$name" sh -c 'mkdir -p /tmp/target' >/dev/null 2>&1 || return 2
   podman exec "$name" sh -c "$SEED_LATEST" || return 2
   podman exec "$name" sh -c "$SEED_VALIDATE" || return 2
   podman exec "$name" sh -c "$SEED_SENSITIVE" || return 2
   podman exec "$name" sh -c "$SEED_EXEC" || return 2
+  podman exec "$name" sh -c "$SEED_ACCOUNTS" >/dev/null 2>&1 || return 2
   return 0
 }
 
@@ -645,4 +866,83 @@ case "$order_rc" in
     ;;
 esac
 [ "$order_rc" -gt "$rc" ] && rc=$order_rc
+
+# The account cases once more under --noop, on both sides, from fresh seeded
+# containers: noop is where a provider says what it WOULD do -- `created
+# (noop)` for a create whose shell check never runs, a gid it never resolves,
+# a password redacted without being set -- and a live run cannot show it. One
+# pair of applies of the account half alone (noop.pp), compared by the same
+# judge against the same allowlist. The other resource types are left out:
+# this pass exists for user and group.
+start_side "$RUBY_NOOP" catalog-noop.json || {
+  echo "report-diff-container: could not start the Ruby noop side" >&2
+  exit 2
+}
+podman exec "$RUBY_NOOP" sh -c '
+  /opt/puppetlabs/bin/puppet apply --catalog /tmp/catalog.json --noop \
+    --report --reports gatejson --libdir /tmp/gatelib --reportdir /tmp/ruby \
+    --color=false
+' >"$WORK/ruby-noop.out" 2>&1
+podman exec "$RUBY_NOOP" cat /tmp/ruby/gate.json >"$WORK/ruby-noop.json" 2>/dev/null
+# A noop report with no noop event compared nothing: the seed or the catalog
+# no longer reaches the providers.
+if ! grep -Eq '"status": ?"noop"' "$WORK/ruby-noop.json" 2>/dev/null; then
+  echo "report-diff-container: Ruby's noop run wrote no report with a noop event" >&2
+  sed -n '1,20p' "$WORK/ruby-noop.out" >&2
+  exit 2
+fi
+start_side "$GO_NOOP" catalog-noop.json || {
+  echo "report-diff-container: could not start the voxagent noop side" >&2
+  exit 2
+}
+podman cp "$VOXAGENT" "$GO_NOOP:/tmp/voxagent" >/dev/null 2>&1 || exit 2
+podman exec "$GO_NOOP" sh -c '
+  chmod +x /tmp/voxagent &&
+  /tmp/voxagent apply --catalog /tmp/catalog.json --report-dir /tmp/go --noop
+' >"$WORK/go-noop.out" 2>&1
+podman exec "$GO_NOOP" sh -c '
+  g="$(find /tmp/go -name "*.json" | head -1)"
+  [ -n "$g" ] || exit 3
+  cat "$g"
+' >"$WORK/go-noop.json" 2>/dev/null
+if [ ! -s "$WORK/go-noop.json" ]; then
+  echo "report-diff-container: voxagent's noop run wrote no report" >&2
+  sed -n '1,20p' "$WORK/go-noop.out" >&2
+  exit 2
+fi
+keep_noop_evidence() {
+  mkdir -p "$EVIDENCE" \
+    && cp "$WORK/ruby-noop.json" "$EVIDENCE/container-noop-ruby.json" \
+    && cp "$WORK/go-noop.json" "$EVIDENCE/container-noop-voxagent.json" \
+    && cp "$WORK/catalog-noop.json" "$EVIDENCE/container-noop-catalog.json" \
+    && echo "report-diff-container: the two noop reports and their catalog are in $EVIDENCE" >&2
+}
+"$GATEKIT" compare-reports \
+  "$WORK/ruby-noop.json" "$WORK/go-noop.json" "$HERE/allowlist.json"
+noop_rc=$?
+case "$noop_rc" in
+  0) echo "report-diff-container: noop: reports agree outside the allowlist" ;;
+  1)
+    keep_noop_evidence
+    echo "report-diff-container: noop: reports diverge" >&2
+    ;;
+  *)
+    echo "report-diff-container: noop: the comparison could not run" >&2
+    noop_rc=2
+    ;;
+esac
+"$GATEKIT" compare-order "$WORK/ruby-noop.json" "$WORK/go-noop.json"
+case $? in
+  0) ;;
+  1)
+    [ "$noop_rc" -eq 1 ] || keep_noop_evidence
+    echo "report-diff-container: noop: the walk order diverges" >&2
+    [ "$noop_rc" -ge 1 ] || noop_rc=1
+    ;;
+  *)
+    echo "report-diff-container: noop: the walk order could not be compared" >&2
+    noop_rc=2
+    ;;
+esac
+[ "$noop_rc" -gt "$rc" ] && rc=$noop_rc
 exit "$rc"
