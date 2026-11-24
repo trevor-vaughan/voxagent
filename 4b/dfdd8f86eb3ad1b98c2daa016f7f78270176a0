@@ -1,0 +1,50 @@
+docs/dev/testing.md
+  s_edec75bbf1b7b3::t_c81e0e5cc2c7c4 1-13
+docs/usage/logging.md
+  s_edec75bbf1b7b3::t_c81e0e5cc2c7c4 1-31
+docs/usage/README.md
+  s_edec75bbf1b7b3::t_145fb02d9c193f 1-12
+docs/usage/units.md
+  s_edec75bbf1b7b3::t_c81e0e5cc2c7c4 1-48
+docs/maintainers/extension-host.md
+  s_edec75bbf1b7b3::t_65e1a997e23980 5
+docs/usage/openvox-server.md
+  s_edec75bbf1b7b3::t_c81e0e5cc2c7c4 1-98,100-134
+  s_edec75bbf1b7b3::t_63177ed044dfa5 99
+docs/usage/backups.md
+  s_edec75bbf1b7b3::t_c81e0e5cc2c7c4 1-49
+docs/usage/voxdiff.md
+  s_edec75bbf1b7b3::t_c81e0e5cc2c7c4 1-54
+docs/dev/README.md
+  s_edec75bbf1b7b3::t_145fb02d9c193f 1-22
+docs/dev/fleet-harness.md
+  s_edec75bbf1b7b3::t_c81e0e5cc2c7c4 1-46
+docs/usage/extension-host.md
+  s_edec75bbf1b7b3::t_c81e0e5cc2c7c4 1-79
+README.md
+  s_edec75bbf1b7b3::t_65e1a997e23980 5,7,9-19,27-28,37,39-45
+docs/usage/resource-types.md
+  s_edec75bbf1b7b3::t_c81e0e5cc2c7c4 1-260
+docs/maintainers/units.md
+  s_edec75bbf1b7b3::t_65e1a997e23980 5,222
+docs/maintainers/agent-transport.md
+  s_edec75bbf1b7b3::t_65e1a997e23980 6
+docs/dev/gates.md
+  s_edec75bbf1b7b3::t_c81e0e5cc2c7c4 1-86
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "4bdfdd8f86eb3ad1b98c2daa016f7f78270176a0",
+  "prompts": {},
+  "sessions": {
+    "s_edec75bbf1b7b3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f82cc920-c095-4025-9de4-ef70d9879282",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "LLM (riotbox) <llm@riotbox>"
+    }
+  }
+}
