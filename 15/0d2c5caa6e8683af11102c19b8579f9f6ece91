@@ -1,0 +1,19 @@
+docs/usage/backups.md
+  s_87888b7b678da1::t_ef953c9232dd26 25-32,36,38-39,55-61,68-69,78-79,100-107
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "150d2c5caa6e8683af11102c19b8579f9f6ece91",
+  "prompts": {},
+  "sessions": {
+    "s_87888b7b678da1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "39cc1b4e-b00b-4987-9657-3212be8ef9f3",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "LLM (riotbox) <llm@riotbox>"
+    }
+  }
+}
