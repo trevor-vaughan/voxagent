@@ -1,0 +1,21 @@
+README.md
+  s_edec75bbf1b7b3::t_8a7f4f383c808a 92-93,793-794
+  s_edec75bbf1b7b3::t_d2e9c956a49244 385-394,637-639,653-655,677-679
+  s_edec75bbf1b7b3::t_cdafdce07c1abc 87,134,149,152,159,164,180,190,210,228,231,234,241,291-293,299-301,345-347,356,384,499
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "51f00b334d09bc25d4f2ce6766d11ec9574a29be",
+  "prompts": {},
+  "sessions": {
+    "s_edec75bbf1b7b3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f82cc920-c095-4025-9de4-ef70d9879282",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "LLM (riotbox) <llm@riotbox>"
+    }
+  }
+}
