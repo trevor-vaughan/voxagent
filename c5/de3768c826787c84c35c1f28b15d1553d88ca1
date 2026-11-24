@@ -1,0 +1,19 @@
+docs/maintainers/provider-boundary.md
+  s_31d6f266b5a088::t_df5d63f5851b40 5-46
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "c5de3768c826787c84c35c1f28b15d1553d88ca1",
+  "prompts": {},
+  "sessions": {
+    "s_31d6f266b5a088": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a25e2495285617dc9",
+        "model": "unknown"
+      },
+      "human_author": "LLM (riotbox) <llm@riotbox>"
+    }
+  }
+}
