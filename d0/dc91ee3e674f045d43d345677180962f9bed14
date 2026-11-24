@@ -1,0 +1,20 @@
+docs/usage/resource-types.md
+  s_87888b7b678da1::t_3fe87160f76e66 225-272,347-384
+  s_87888b7b678da1::t_5d91d9f38e8bfd 385
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "d0dc91ee3e674f045d43d345677180962f9bed14",
+  "prompts": {},
+  "sessions": {
+    "s_87888b7b678da1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "39cc1b4e-b00b-4987-9657-3212be8ef9f3",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "LLM (riotbox) <llm@riotbox>"
+    }
+  }
+}
