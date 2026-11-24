@@ -4,6 +4,7 @@ import (
 	"context"
 	"strings"
 
+	"github.com/voxagent/voxagent/internal/lib/rubyvalue"
 	"github.com/voxagent/voxagent/internal/runlog"
 )
 
@@ -31,7 +32,7 @@ func warnOnce(ctx context.Context, key, message, file string, line int) {
 		}
 		seen[key] = struct{}{}
 	}
-	location := strings.TrimPrefix(errorLocation(file, line), " ")
+	location := strings.TrimPrefix(rubyvalue.ErrorLocation(file, line), " ")
 	if location == "" {
 		location = "(file & line not available)"
 	}

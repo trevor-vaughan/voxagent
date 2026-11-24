@@ -12,6 +12,9 @@ import (
 	"strings"
 	"sync"
 	"syscall"
+
+	"github.com/voxagent/voxagent/internal/lib/puppetpath"
+	"github.com/voxagent/voxagent/internal/lib/rubyvalue"
 )
 
 // ErrStagingBroken is a staged exec start after which the agent's working
@@ -121,14 +124,14 @@ func identityKey(kind string, v any, redact bool) (key string, byID bool, err er
 			return v, false, nil
 		}
 		if _, err := strconv.ParseUint(v, 10, 32); err != nil {
-			return "", false, invalidIdentityError{kind, redactIf(redact, "%s", v)}
+			return "", false, invalidIdentityError{kind, rubyvalue.RedactIf(redact, "%s", v)}
 		}
 		return v, true, nil
 	case float64:
 		// Kernel#Integer truncates a Float (posix.rb:174).
 		n := math.Trunc(v)
 		if n < 0 || n > math.MaxUint32 {
-			return "", false, invalidIdentityError{kind, redactIf(redact, "%s", rubyInspectValue(v))}
+			return "", false, invalidIdentityError{kind, rubyvalue.RedactIf(redact, "%s", rubyvalue.InspectValue(v))}
 		}
 		return strconv.FormatUint(uint64(n), 10), true, nil
 	default:
@@ -153,9 +156,9 @@ func unknownIdentity(kind string, v any, redact bool, err error) error {
 	}
 	name, ok := v.(string)
 	if !ok {
-		name = rubyInspectValue(v)
+		name = rubyvalue.InspectValue(v)
 	}
-	return invalidIdentityError{kind, redactIf(redact, "%s", name)}
+	return invalidIdentityError{kind, rubyvalue.RedactIf(redact, "%s", name)}
 }
 
 // parseXID reads an id from the user or group database. A malformed one is
@@ -208,7 +211,7 @@ func (s staging) start(cmd *exec.Cmd) error {
 	if s.cwd != "" {
 		if stageOrigin < 0 {
 			// O_PATH needs no read permission, so a search-only cwd is saved.
-			fd, err := syscall.Open(".", oPath|syscall.O_DIRECTORY|syscall.O_CLOEXEC, 0)
+			fd, err := syscall.Open(".", puppetpath.OPath|syscall.O_DIRECTORY|syscall.O_CLOEXEC, 0)
 			if err != nil {
 				return fmt.Errorf("%w: open it: %v", ErrStagingBroken, err)
 			}

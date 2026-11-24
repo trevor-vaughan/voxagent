@@ -8,6 +8,8 @@ import (
 	"syscall"
 
 	"github.com/voxagent/voxagent/internal/catalog"
+	"github.com/voxagent/voxagent/internal/lib/augeas"
+	"github.com/voxagent/voxagent/internal/lib/sources"
 	"github.com/voxagent/voxagent/internal/runlog"
 )
 
@@ -22,17 +24,17 @@ import (
 // File.delete's system call, a seam for the replay tests, whose recorded
 // .augnew files are not on this host.
 type Augeas struct {
-	lib      augLib
+	lib      augeas.Lib
 	lensPath string
 	unlink   func(path string) error
 }
 
-func newAugeas(lib augLib, lensPath string) Augeas {
+func newAugeas(lib augeas.Lib, lensPath string) Augeas {
 	return Augeas{lib: lib, lensPath: lensPath, unlink: syscall.Unlink}
 }
 
 func (Augeas) Type() string                                              { return "augeas" }
-func (Augeas) ProviderUsed() *string                                     { return &augeasProvider }
+func (Augeas) ProviderUsed() *string                                     { return &augeas.ProviderName }
 func (Augeas) AutoRequires(catalog.Resource, func(string) bool) []string { return nil }
 
 // Attrs is every attribute T declares, name and provider included (spec §1
@@ -53,7 +55,7 @@ func (Augeas) Refresh(context.Context, catalog.Resource, bool) (bool, error) { r
 func (Augeas) Refreshable(catalog.Resource) bool { return false }
 
 // augNoLoad is AUG_NO_LOAD (augeas.h), P:167's flag without incl; with incl
-// P:165 uses augNoModlAutoload. type_check is always false here.
+// P:165 uses augeas.NoModlAutoload. type_check is always false here.
 const augNoLoad uint = 1 << 5
 
 // Ruby's regexps at P:180 and P:189. Contexts reaching here hold no newline
@@ -68,7 +70,7 @@ var (
 
 // augeasOpen is one resource's handle and what its provider logs through.
 type augeasOpen struct {
-	*rubyAug
+	*augeas.Aug
 	ctx context.Context
 	src string
 	p   augeasParams
@@ -85,12 +87,12 @@ func (a Augeas) Apply(ctx context.Context, r catalog.Resource, noop bool) ([]Cha
 	if err != nil {
 		return nil, nil, err
 	}
-	o := &augeasOpen{ctx: ctx, src: SourcesFrom(ctx).Provider, p: p}
+	o := &augeasOpen{ctx: ctx, src: sources.SourcesFrom(ctx).Provider, p: p}
 
 	// open_augeas (P:159-204).
 	flags := augNoLoad
 	if p.HasIncl {
-		flags = augNoModlAutoload
+		flags = augeas.NoModlAutoload
 	}
 	o.debug("Opening augeas with root /, lens path %s, flags %d", a.lensPath, flags)
 	root, lensPath := "/", a.lensPath
@@ -98,9 +100,9 @@ func (a Augeas) Apply(ctx context.Context, r catalog.Resource, noop bool) ([]Cha
 	if !ok {
 		return nil, nil, errors.New("unknown error - Failed to initialize Augeas")
 	}
-	o.rubyAug = &rubyAug{lib: a.lib, h: h}
+	o.Aug = &augeas.Aug{Lib: a.lib, H: h}
 	defer func() {
-		o.close()
+		o.Close()
 		o.debug("Closed the augeas connection")
 	}()
 	warnings, err := o.open()
@@ -127,7 +129,7 @@ func (a Augeas) Apply(ctx context.Context, r catalog.Resource, noop bool) ([]Cha
 func (o *augeasOpen) open() ([]Warning, error) {
 	o.version() // P:175's versioncmp, which 1.15.0 always passes (spec §4 step 2).
 	o.debug("Augeas version %s is installed", o.version())
-	glob, err := o.match("/augeas/version/pathx/functions/glob")
+	glob, err := o.Match("/augeas/version/pathx/functions/glob")
 	if err != nil {
 		return nil, err
 	}
@@ -135,31 +137,31 @@ func (o *augeasOpen) open() ([]Warning, error) {
 	hasRestricted := false
 	switch {
 	case o.p.HasIncl:
-		o.set("/augeas/load/Xfm/lens", o.p.Lens)
-		o.set("/augeas/load/Xfm/incl", o.p.Incl)
+		o.Set("/augeas/load/Xfm/lens", o.p.Lens)
+		o.Set("/augeas/load/Xfm/incl", o.p.Incl)
 		restricted, hasRestricted = "/augeas//error", true
 	case len(glob) > 0 && augOptCtx.MatchString(o.p.Context):
 		ctxPath := augCtxPath.ReplaceAllString(o.p.Context, "$1/")
 		loadPath := fmt.Sprintf("/augeas/load/*['%s' !~ glob(incl) + regexp('/.*')]", ctxPath)
-		some, err := o.match(loadPath)
+		some, err := o.Match(loadPath)
 		if err != nil {
 			return nil, err
 		}
-		all, err := o.match("/augeas/load/*")
+		all, err := o.Match("/augeas/load/*")
 		if err != nil {
 			return nil, err
 		}
 		if len(some) < len(all) {
-			o.rm(loadPath)
+			o.Rm(loadPath)
 			restricted, hasRestricted = "/augeas/files"+ctxPath+"/error", true
 		} else {
 			o.debug("Unable to optimize files loaded by context path, no glob matches")
 		}
 	}
-	o.lib.Load(o.h) // P:200: the result is ignored.
+	o.Lib.Load(o.H) // P:200: the result is ignored.
 
 	// print_load_errors (P:397-407).
-	errs, err := o.match("/augeas//error")
+	errs, err := o.Match("/augeas//error")
 	if err != nil {
 		return nil, err
 	}
@@ -167,7 +169,7 @@ func (o *augeasOpen) open() ([]Warning, error) {
 	if len(errs) > 0 {
 		warn := false
 		if hasRestricted {
-			m, err := o.match(restricted)
+			m, err := o.Match(restricted)
 			if err != nil {
 				return nil, err
 			}
@@ -185,7 +187,7 @@ func (o *augeasOpen) open() ([]Warning, error) {
 
 // version is get_augeas_version (P:389-391).
 func (o *augeasOpen) version() string {
-	v, _ := o.get("/augeas/version")
+	v, _ := o.Get("/augeas/version")
 	return v
 }
 
@@ -193,15 +195,15 @@ func (o *augeasOpen) version() string {
 // printed, a valueless child is printed empty.
 func (o *augeasOpen) printErrors(errs []string) error {
 	for _, node := range errs {
-		if v, ok := o.get(node); ok {
+		if v, ok := o.Get(node); ok {
 			o.debug("%s = %s", node, v)
 		}
-		children, err := o.match(node + "/*")
+		children, err := o.Match(node + "/*")
 		if err != nil {
 			return err
 		}
 		for _, child := range children {
-			v, _ := o.get(child)
+			v, _ := o.Get(child)
 			o.debug("%s = %s", child, v)
 		}
 	}
@@ -210,11 +212,11 @@ func (o *augeasOpen) printErrors(errs []string) error {
 
 // save is aug.save, raising as P:455-459 and P:498-501 do when it fails.
 func (o *augeasOpen) save() error {
-	if o.lib.Save(o.h) == 0 {
+	if o.Lib.Save(o.H) == 0 {
 		return nil
 	}
 	// print_put_errors (P:409-413).
-	errs, err := o.match("/augeas//error[. = 'put_failed']")
+	errs, err := o.Match("/augeas//error[. = 'put_failed']")
 	if err != nil {
 		return err
 	}
@@ -232,14 +234,14 @@ func (o *augeasOpen) save() error {
 func (o *augeasOpen) dryRun(unlink func(string) error) (bool, error) {
 	o.version() // P:450's versioncmp.
 	o.debug("Will attempt to save and only run if files changed")
-	o.set("/augeas/save", "newfile")
+	o.Set("/augeas/save", "newfile")
 	if err := o.execute(); err != nil {
 		return false, err
 	}
 	if err := o.save(); err != nil {
 		return false, err
 	}
-	saved, err := o.match("/augeas/events/saved")
+	saved, err := o.Match("/augeas/events/saved")
 	if err != nil {
 		return false, err
 	}
@@ -250,7 +252,7 @@ func (o *augeasOpen) dryRun(unlink func(string) error) (bool, error) {
 	// root is "/", so P:463's root is "". A nil get is Ruby's NoMethodError.
 	files := make([]string, 0, len(saved))
 	for _, key := range saved {
-		v, ok := o.get(key)
+		v, ok := o.Get(key)
 		if !ok {
 			return false, errors.New("undefined method `sub' for nil:NilClass")
 		}
@@ -282,22 +284,22 @@ func rubyErrno(err error, path string) error {
 	if !errors.As(err, &e) {
 		return err
 	}
-	return fmt.Errorf("%s @ apply2files - %s", libcStrerror(e), path)
+	return fmt.Errorf("%s @ apply2files - %s", augeas.LibcStrerror(e), path)
 }
 
 // sync is execute_changes (P:487-506) without its close, which Apply makes.
 func (o *augeasOpen) sync() error {
-	saved, err := o.match("/augeas/events/saved")
+	saved, err := o.Match("/augeas/events/saved")
 	if err != nil {
 		return err
 	}
 	for _, key := range saved {
-		v, _ := o.get(key) // nil interpolates as "".
-		o.rm("/augeas" + v + "/mtime")
+		v, _ := o.Get(key) // nil interpolates as "".
+		o.Rm("/augeas" + v + "/mtime")
 	}
 	o.version() // P:495's versioncmp.
-	o.set("/augeas/save", "overwrite")
-	o.lib.Load(o.h) // P:496: the result is ignored.
+	o.Set("/augeas/save", "overwrite")
+	o.Lib.Load(o.H) // P:496: the result is ignored.
 	if err := o.execute(); err != nil {
 		return err
 	}
@@ -324,24 +326,24 @@ func (o *augeasOpen) command(c augeasCommand) error {
 	switch c.Name {
 	case "set":
 		o.debug("sending command '%s' with params %s", c.Name, params)
-		o.set(args[0], args[1]) // ruby-augeas returns the value array: never false.
+		o.Set(args[0], args[1]) // ruby-augeas returns the value array: never false.
 	case "rm", "remove":
 		o.debug("sending command '%s' with params %s", c.Name, params)
-		if o.rm(args[0]) == -1 {
+		if o.Rm(args[0]) == -1 {
 			return failed
 		}
 	case "clear":
 		o.debug("sending command '%s' with params %s", c.Name, params)
-		if o.lib.Set(o.h, args[0], nil) != 0 {
+		if o.Lib.Set(o.H, args[0], nil) != 0 {
 			return failed
 		}
 	case "touch":
 		o.debug("sending command '%s' (match, set) with params %s", c.Name, params)
-		m, err := o.match(args[0])
+		m, err := o.Match(args[0])
 		if err != nil {
 			return err
 		}
-		if len(m) == 0 && o.lib.Set(o.h, args[0], nil) != 0 {
+		if len(m) == 0 && o.Lib.Set(o.H, args[0], nil) != 0 {
 			return failed
 		}
 	case "insert", "ins":
@@ -356,22 +358,22 @@ func (o *augeasOpen) command(c augeasCommand) error {
 			return fmt.Errorf("Invalid value '%s' for where param", where)
 		}
 		o.debug("sending command '%s' with params %s", c.Name, params)
-		if o.insert(path, label, before) == -1 {
+		if o.Insert(path, label, before) == -1 {
 			return failed
 		}
 	case "defvar":
 		o.debug("sending command '%s' with params %s", c.Name, params)
-		if o.lib.Defvar(o.h, args[0], args[1]) < 0 {
+		if o.Lib.Defvar(o.H, args[0], args[1]) < 0 {
 			return failed
 		}
 	case "defnode":
 		o.debug("sending command '%s' with params %s", c.Name, params)
-		if o.lib.Defnode(o.h, args[0], args[1], &args[2]) < 0 {
+		if o.Lib.Defnode(o.H, args[0], args[1], &args[2]) < 0 {
 			return failed
 		}
 	case "mv", "move":
 		o.debug("sending command '%s' with params %s", c.Name, params)
-		if o.lib.Mv(o.h, args[0], args[1]) == -1 {
+		if o.Lib.Mv(o.H, args[0], args[1]) == -1 {
 			return failed
 		}
 	default:

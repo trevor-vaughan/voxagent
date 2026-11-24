@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/voxagent/voxagent/internal/catalog"
+	"github.com/voxagent/voxagent/internal/lib/raltest"
 )
 
 var _ Provider = SshdConfigSubsystem{}
@@ -15,7 +16,7 @@ func subsystemOver(run *augeasRun) []Provider { return []Provider{SshdConfigSubs
 // subsysRes is a measured Sshd_config_subsystem: the default target and the
 // given parameters.
 func subsysRes(title string, params map[string]any) catalog.Resource {
-	return augRes("Sshd_config_subsystem", title, params)
+	return raltest.AugRes("Sshd_config_subsystem", title, params)
 }
 
 // wantCommandChange checks r's single change is a command change.
@@ -34,7 +35,7 @@ func wantCommandChange(t *testing.T, r caseResult, was any, is, message string) 
 // Subsystem entry.
 func TestSubsystemReplays04a(t *testing.T) {
 	withAugVersionMemo(t, map[string]bool{})
-	got := runAugeasCase(t, loadTrace(t, "04a"), []string{sshdConfigFile}, subsystemOver, []catalog.Resource{
+	got := runAugeasCase(t, raltest.LoadTrace(t, "04a"), []string{sshdConfigFile}, subsystemOver, []catalog.Resource{
 		subsysRes("sftp", map[string]any{"command": "/usr/libexec/openssh/sftp-server"}),
 	}, false)
 	wantNoErrors(t, got)
@@ -44,7 +45,7 @@ func TestSubsystemReplays04a(t *testing.T) {
 // M31: an existing subsystem's command is read and set through $resource.
 func TestSubsystemReplays04b(t *testing.T) {
 	withAugVersionMemo(t, map[string]bool{})
-	got := runAugeasCase(t, loadTrace(t, "04b"), []string{sshdConfigFile}, subsystemOver, []catalog.Resource{
+	got := runAugeasCase(t, raltest.LoadTrace(t, "04b"), []string{sshdConfigFile}, subsystemOver, []catalog.Resource{
 		subsysRes("sftp", map[string]any{"command": "internal-sftp -l INFO"}),
 	}, false)
 	wantNoErrors(t, got)
@@ -55,7 +56,7 @@ func TestSubsystemReplays04b(t *testing.T) {
 // 04b under noop: exists? and the command getter only, nothing set or saved.
 func TestSubsystemReplays04bNoop(t *testing.T) {
 	withAugVersionMemo(t, map[string]bool{})
-	calls := traceLines(t, "04b", [2]int{4, 20}, [2]int{34, 34})
+	calls := raltest.TraceLines(t, "04b", [2]int{4, 20}, [2]int{34, 34})
 	got := runAugeasCase(t, calls, []string{sshdConfigFile}, subsystemOver, []catalog.Resource{
 		subsysRes("sftp", map[string]any{"command": "internal-sftp -l INFO"}),
 	}, true)
@@ -68,7 +69,7 @@ func TestSubsystemReplays04bNoop(t *testing.T) {
 // applies to the should.
 func TestSubsystemCommandFromNil(t *testing.T) {
 	withAugVersionMemo(t, map[string]bool{})
-	calls := append(traceLines(t, "04b", [2]int{4, 19}), parseTrace(t, "script", `h1 aug_get "$resource" => 1 NULL
+	calls := append(raltest.TraceLines(t, "04b", [2]int{4, 19}), raltest.ParseTrace(t, "script", `h1 aug_get "$resource" => 1 NULL
 h1 aug_close
 `)...)
 	got := runAugeasCase(t, calls, []string{sshdConfigFile}, subsystemOver, []catalog.Resource{
@@ -83,7 +84,7 @@ h1 aug_close
 // shares the class handle and the version memo.
 func TestSubsystemReplays04d(t *testing.T) {
 	withAugVersionMemo(t, map[string]bool{})
-	got := runAugeasCase(t, loadTrace(t, "04d"), []string{sshdConfigFile}, subsystemOver, []catalog.Resource{
+	got := runAugeasCase(t, raltest.LoadTrace(t, "04d"), []string{sshdConfigFile}, subsystemOver, []catalog.Resource{
 		subsysRes("sftp", map[string]any{"command": "/usr/libexec/openssh/sftp-server"}),
 		subsysRes("other", map[string]any{"command": "/bin/other"}),
 	}, false)
@@ -96,7 +97,7 @@ func TestSubsystemReplays04d(t *testing.T) {
 // M34: destroy removes every Subsystem entry holding the name.
 func TestSubsystemReplays04e(t *testing.T) {
 	withAugVersionMemo(t, map[string]bool{})
-	got := runAugeasCase(t, loadTrace(t, "04e"), []string{sshdConfigFile}, subsystemOver, []catalog.Resource{
+	got := runAugeasCase(t, raltest.LoadTrace(t, "04e"), []string{sshdConfigFile}, subsystemOver, []catalog.Resource{
 		subsysRes("sftp", map[string]any{"ensure": "absent"}),
 	}, false)
 	wantNoErrors(t, got)
@@ -106,7 +107,7 @@ func TestSubsystemReplays04e(t *testing.T) {
 // An absent subsystem with no ensure is not managed, with Ruby's debug line.
 func TestSubsystemAbsentNotManaged(t *testing.T) {
 	withAugVersionMemo(t, map[string]bool{})
-	got := runAugeasCase(t, traceLines(t, "04a", [2]int{4, 13}, [2]int{28, 28}), []string{sshdConfigFile}, subsystemOver, []catalog.Resource{
+	got := runAugeasCase(t, raltest.TraceLines(t, "04a", [2]int{4, 13}, [2]int{28, 28}), []string{sshdConfigFile}, subsystemOver, []catalog.Resource{
 		subsysRes("sftp", map[string]any{}),
 	}, false)
 	wantNoErrors(t, got)
@@ -139,11 +140,11 @@ func relabel(text string, names map[string]string) string {
 // h5, which never sees the subsystem's save.
 func TestSubsystemAndSshdConfigUseSeparateHandles(t *testing.T) {
 	withAugVersionMemo(t, map[string]bool{})
-	sub := strings.SplitAfter(readTraceFile(t, "04a"), "\n")[3:27]
-	calls := traceLines(t, "07a", [2]int{69, 100})
-	calls = append(calls, parseTrace(t, "04a-relabeled", relabel(strings.Join(sub, ""), map[string]string{"h1": "h9", "h2": "h10"}))...)
-	calls = append(calls, traceLines(t, "07a", [2]int{101, 127})...)
-	calls = append(calls, parseTrace(t, "end", "h5 aug_close\nh9 aug_close\n")...)
+	sub := strings.SplitAfter(raltest.ReadTraceFile(t, "04a"), "\n")[3:27]
+	calls := raltest.TraceLines(t, "07a", [2]int{69, 100})
+	calls = append(calls, raltest.ParseTrace(t, "04a-relabeled", relabel(strings.Join(sub, ""), map[string]string{"h1": "h9", "h2": "h10"}))...)
+	calls = append(calls, raltest.TraceLines(t, "07a", [2]int{101, 127})...)
+	calls = append(calls, raltest.ParseTrace(t, "end", "h5 aug_close\nh9 aug_close\n")...)
 	got := runAugeasCase(t, calls, []string{sshdConfigFile}, func(run *augeasRun) []Provider {
 		return []Provider{SshdConfig{run: run}, SshdConfigSubsystem{run: run}}
 	}, []catalog.Resource{
@@ -178,7 +179,7 @@ func sshTypes07() []catalog.Resource {
 // is closed at the run's end in open order.
 func TestReplays07a(t *testing.T) {
 	withAugVersionMemo(t, map[string]bool{})
-	got := runAugeasCase(t, loadTrace(t, "07a"), []string{sshConfigFile, sshdConfigFile}, sshTypesOver, sshTypes07(), false)
+	got := runAugeasCase(t, raltest.LoadTrace(t, "07a"), []string{sshConfigFile, sshdConfigFile}, sshTypesOver, sshTypes07(), false)
 	wantNoErrors(t, got)
 	wantMessages(t, got,
 		[]string{"value changed ['yes'] to ['no']"},
@@ -194,7 +195,7 @@ func TestReplays07a(t *testing.T) {
 // their own handles, are unaffected.
 func TestReplays07b(t *testing.T) {
 	withAugVersionMemo(t, map[string]bool{})
-	got := runAugeasCase(t, loadTrace(t, "07b"), []string{gateLoadpath, sshConfigFile, sshdConfigFile}, sshTypesOver, sshTypes07(), false)
+	got := runAugeasCase(t, raltest.LoadTrace(t, "07b"), []string{gateLoadpath, sshConfigFile, sshdConfigFile}, sshTypesOver, sshTypes07(), false)
 	want := "Augeas didn't load /etc/ssh/ssh_config with Ssh.lns from /tmp/gatelib/augeas/lenses: Get did not match entire input (line:3, character:0)"
 	for _, r := range got[:2] {
 		if r.err == nil || r.err.Error() != want || len(r.changes) != 0 {

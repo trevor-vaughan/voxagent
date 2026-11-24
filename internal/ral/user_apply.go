@@ -12,6 +12,10 @@ import (
 	"time"
 
 	"github.com/voxagent/voxagent/internal/catalog"
+	"github.com/voxagent/voxagent/internal/lib/command"
+	"github.com/voxagent/voxagent/internal/lib/nameservice"
+	"github.com/voxagent/voxagent/internal/lib/rubyvalue"
+	"github.com/voxagent/voxagent/internal/lib/sources"
 	"github.com/voxagent/voxagent/internal/runlog"
 )
 
@@ -29,8 +33,8 @@ type userCommands struct{ add, del, mod, chage, chpasswd string }
 // userCurrent is what retrieve reads for an existing user: passwd, the shadow
 // entry when a shadow property is managed, and the groups when groups is.
 type userCurrent struct {
-	pw      passwdEntry
-	sp      shadowEntry
+	pw      nameservice.PasswdEntry
+	sp      nameservice.ShadowEntry
 	spFound bool
 	groups  []string // getgrouplist order; never nil
 }
@@ -59,13 +63,13 @@ func (u User) Apply(ctx context.Context, r catalog.Resource, noop bool) ([]Chang
 		name string
 		dst  *string
 	}{{"useradd", &cmds.add}, {"userdel", &cmds.del}, {"usermod", &cmds.mod}, {"chage", &cmds.chage}, {"chpasswd", &cmds.chpasswd}} {
-		if *c.dst, err = shadowCommand(c.name); err != nil {
+		if *c.dst, err = nameservice.ShadowCommand(c.name); err != nil {
 			// transaction.rb:130's words for a provider its commands confine.
 			return nil, nil, errors.New("Provider useradd is not functional on this host")
 		}
 	}
 	ns := u.nss()
-	pw, exists, err := ns.user(p.Name)
+	pw, exists, err := ns.User(p.Name)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -82,7 +86,7 @@ func (u User) Apply(ctx context.Context, r catalog.Resource, noop bool) ([]Chang
 			if p.ManageHome {
 				argv = append(argv, "-r")
 			}
-			if err := u.exec(ctx, argvOpts{}, append(argv, p.Name)); err != nil {
+			if err := u.exec(ctx, command.ArgvOpts{}, append(argv, p.Name)); err != nil {
 				ch.Err = fmt.Errorf("Could not delete user %s: %w", p.Name, err)
 			}
 		}
@@ -94,18 +98,18 @@ func (u User) Apply(ctx context.Context, r catalog.Resource, noop bool) ([]Chang
 		}
 		return []Change{ch}, nil, nil
 	case !exists:
-		runlog.Debugf(ctx, SourcesFrom(ctx).Resource, "Nothing to manage: no ensure and the resource doesn't exist")
+		runlog.Debugf(ctx, sources.SourcesFrom(ctx).Resource, "Nothing to manage: no ensure and the resource doesn't exist")
 		return nil, nil, nil
 	}
 
 	cur := userCurrent{pw: pw}
 	if p.Password != nil || p.MinAge != nil || p.MaxAge != nil || p.WarnDays != nil || p.Expiry != nil {
-		if cur.sp, cur.spFound, err = ns.shadow(p.Name); err != nil {
+		if cur.sp, cur.spFound, err = ns.Shadow(p.Name); err != nil {
 			return nil, nil, err
 		}
 	}
 	if p.Groups != nil {
-		groups, err := groupsOf(ns, p.Name)
+		groups, err := nameservice.GroupsOf(ns, p.Name)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -121,7 +125,7 @@ func (u User) Apply(ctx context.Context, r catalog.Resource, noop bool) ([]Chang
 // as they are; any other error is wrapped by property.rb:492.
 func (u User) create(ctx context.Context, r catalog.Resource, p userParams, cmds userCommands, redact bool) error {
 	ensureErr := func(err error) error {
-		return fmt.Errorf("Could not set 'present' on ensure: %s%s", err, errorLocation(r.File, r.Line))
+		return fmt.Errorf("Could not set 'present' on ensure: %s%s", err, rubyvalue.ErrorLocation(r.File, r.Line))
 	}
 	if p.Shell != nil {
 		if err := checkShell(*p.Shell); err != nil {
@@ -131,7 +135,7 @@ func (u User) create(ctx context.Context, r catalog.Resource, p userParams, cmds
 	ns := u.nss()
 	argv := []string{cmds.add}
 	if p.GID == nil {
-		_, ok, err := posixGID(ctx, ns, p.Name)
+		_, ok, err := nameservice.PosixGID(ctx, ns, p.Name)
 		if err != nil {
 			return ensureErr(err)
 		}
@@ -162,7 +166,7 @@ func (u User) create(ctx context.Context, r catalog.Resource, p userParams, cmds
 			// The should csv reads the user's groups; for a user that does not
 			// exist that is the fallback scan (posix.rb:38-70).
 			var err error
-			if current, err = groupsOf(ns, p.Name); err != nil {
+			if current, err = nameservice.GroupsOf(ns, p.Name); err != nil {
 				return ensureErr(err)
 			}
 		}
@@ -188,7 +192,7 @@ func (u User) create(ctx context.Context, r catalog.Resource, p userParams, cmds
 	if p.System {
 		argv = append(argv, "-r")
 	}
-	opts := argvOpts{Redact: redact}
+	opts := command.ArgvOpts{Redact: redact}
 	if err := u.exec(ctx, opts, append(argv, p.Name)); err != nil {
 		return fmt.Errorf("Could not create user %s: %w", p.Name, err)
 	}
@@ -209,7 +213,7 @@ func (u User) create(ctx context.Context, r catalog.Resource, p userParams, cmds
 	}
 	if p.Password != nil {
 		// set(:password) asks has_sensitive_data?(:password): always marked.
-		if err := u.exec(ctx, argvOpts{Redact: true}, []string{cmds.mod, "-p", *p.Password, p.Name}); err != nil {
+		if err := u.exec(ctx, command.ArgvOpts{Redact: true}, []string{cmds.mod, "-p", *p.Password, p.Name}); err != nil {
 			return fmt.Errorf("Could not set password on user[%s]: %w", p.Name, err)
 		}
 	}
@@ -252,7 +256,7 @@ func (u User) modify(ctx context.Context, p userParams, cur userCurrent, cmds us
 	set := func(prop, cmd, flag, value string, extra ...string) error {
 		argv := append([]string{cmd, flag, value}, extra...)
 		_, redact := marked[prop]
-		if err := u.exec(ctx, argvOpts{Redact: redact}, append(argv, p.Name)); err != nil {
+		if err := u.exec(ctx, command.ArgvOpts{Redact: redact}, append(argv, p.Name)); err != nil {
 			return fmt.Errorf("Could not set %s on user[%s]: %w", prop, p.Name, err)
 		}
 		return nil
@@ -261,7 +265,7 @@ func (u User) modify(ctx context.Context, p userParams, cur userCurrent, cmds us
 		if should == nil || current == *should {
 			return
 		}
-		add(prop, current, *should, puppetQuote(current), puppetQuote(*should), puppetQuote(*should), false, false, func() error {
+		add(prop, current, *should, rubyvalue.PuppetQuote(current), rubyvalue.PuppetQuote(*should), rubyvalue.PuppetQuote(*should), false, false, func() error {
 			if check != nil {
 				if err := check(); err != nil {
 					return err
@@ -282,14 +286,14 @@ func (u User) modify(ctx context.Context, p userParams, cur userCurrent, cmds us
 		})
 	}
 	if p.GID != nil {
-		gid, ok, err := posixGID(ctx, u.nss(), p.GID)
+		gid, ok, err := nameservice.PosixGID(ctx, u.nss(), p.GID)
 		if err != nil || !ok || gid != cur.pw.GID {
 			add("gid", cur.pw.GID, p.GID, puppetValue(cur.pw.GID), puppetValue(p.GID), puppetValue(p.GID), false, false, func() error {
 				if err != nil {
 					return err
 				}
 				// type/user.rb:172-186 resolves the value again to sync it.
-				gid, ok, err := posixGID(ctx, u.nss(), p.GID)
+				gid, ok, err := nameservice.PosixGID(ctx, u.nss(), p.GID)
 				if err != nil {
 					return err
 				}
@@ -349,10 +353,10 @@ func (u User) modify(ctx context.Context, p userParams, cur userCurrent, cmds us
 		if strings.Join(slices.Sorted(slices.Values(cur.groups)), ",") != should {
 			// change_to_s (type/user.rb:353-364) shows the csv split into a list.
 			shown := make([]string, 0)
-			for _, g := range rubySplitComma(should) {
-				shown = append(shown, puppetQuote(g))
+			for _, g := range rubyvalue.SplitComma(should) {
+				shown = append(shown, rubyvalue.PuppetQuote(g))
 			}
-			add("groups", cur.groups, should, strings.Join(cur.groups, ","), puppetQuote(should), "["+strings.Join(shown, ", ")+"]", false, false, func() error {
+			add("groups", cur.groups, should, strings.Join(cur.groups, ","), rubyvalue.PuppetQuote(should), "["+strings.Join(shown, ", ")+"]", false, false, func() error {
 				if groupsWhitespace.MatchString(should) {
 					return fmt.Errorf("Invalid value %s: Groups must be comma-separated", should)
 				}
@@ -367,7 +371,7 @@ func (u User) modify(ctx context.Context, p userParams, cur userCurrent, cmds us
 			current = time.Unix(cur.sp.Expire*86400, 0).UTC().Format("2006-01-02")
 		}
 		if current != *p.Expiry {
-			add("expiry", current, *p.Expiry, puppetQuote(current), puppetQuote(*p.Expiry), puppetQuote(*p.Expiry), current == "absent", *p.Expiry == "absent", func() error {
+			add("expiry", current, *p.Expiry, rubyvalue.PuppetQuote(current), rubyvalue.PuppetQuote(*p.Expiry), rubyvalue.PuppetQuote(*p.Expiry), current == "absent", *p.Expiry == "absent", func() error {
 				return set("expiry", cmds.mod, "-e", expiryArg(*p.Expiry))
 			})
 		}
@@ -379,7 +383,7 @@ func (u User) modify(ctx context.Context, p userParams, cur userCurrent, cmds us
 // (a pipe, where Ruby uses a Tempfile), the command redacted. The exit status
 // is ignored; any output is the failure, unwrapped and verbatim.
 func (u User) chpasswd(ctx context.Context, cmd, name, hash string) error {
-	_, out, err := u.shadowRunner().run(ctx, argvOpts{Stdin: []byte(name + ":" + hash + "\n"), Redact: true}, cmd, "-e")
+	_, out, err := u.shadowRunner().Run(ctx, command.ArgvOpts{Stdin: []byte(name + ":" + hash + "\n"), Redact: true}, cmd, "-e")
 	if err != nil {
 		return fmt.Errorf("Could not set password on user[%s]: %w", name, err)
 	}
@@ -391,27 +395,27 @@ func (u User) chpasswd(ctx context.Context, cmd, name, hash string) error {
 
 // exec runs one command with Puppet's failonfail: a non-zero exit is a
 // Puppet::ExecutionFailure naming the command, or [redacted] under o.Redact.
-func (u User) exec(ctx context.Context, o argvOpts, argv []string) error {
-	code, out, err := u.shadowRunner().run(ctx, o, argv[0], argv[1:]...)
+func (u User) exec(ctx context.Context, o command.ArgvOpts, argv []string) error {
+	code, out, err := u.shadowRunner().Run(ctx, o, argv[0], argv[1:]...)
 	if err != nil {
 		return err
 	}
 	if code != 0 {
-		return execFailure(argv, o.Redact, code, out)
+		return command.ExecFailure(argv, o.Redact, code, out)
 	}
 	return nil
 }
 
-func (u User) shadowRunner() shadowRunner {
+func (u User) shadowRunner() command.ShadowRunner {
 	if u.runner == nil {
-		return hostShadowRunner{}
+		return command.HostShadowRunner{}
 	}
 	return u.runner
 }
 
-func (u User) nss() nameService {
+func (u User) nss() nameservice.NameService {
 	if u.ns == nil {
-		return hostNSS
+		return nameservice.Host
 	}
 	return u.ns
 }
@@ -423,7 +427,7 @@ func checkShell(shell string) error {
 	if err != nil {
 		return fmt.Errorf("Shell %s must exist", shell)
 	}
-	if !executable(shell, fi) {
+	if !command.Executable(shell, fi) {
 		return fmt.Errorf("Shell %s must be executable", shell)
 	}
 	return nil
@@ -436,7 +440,7 @@ func groupsShould(should, current []string, inclusive bool) string {
 	if inclusive {
 		return strings.Join(slices.Sorted(slices.Values(should)), ",")
 	}
-	return strings.Join(uniqSorted(append(slices.Clone(should), current...)), ",")
+	return strings.Join(rubyvalue.UniqSorted(append(slices.Clone(should), current...)), ",")
 }
 
 // expiryArg is useradd.rb:26-44's munge on EL: :absent is the empty argument.
@@ -462,66 +466,5 @@ func puppetValue(v any) string {
 	if n, ok := v.(int64); ok {
 		return strconv.FormatInt(n, 10)
 	}
-	return puppetQuote(v.(string))
-}
-
-// puppetQuote is StringConverter#puppet_quote (pops/types/string_converter.rb:
-// 862-924), which format_value_for_display's %p applies to a String: single
-// quotes, a quote escaped and a backslash kept with the character after it,
-// unless the string has a control character, which double-quotes it with
-// escapes instead.
-func puppetQuote(s string) string {
-	var b strings.Builder
-	b.WriteByte('\'')
-	escaped := false
-	for _, c := range s {
-		switch {
-		case c < 0x20:
-			return puppetDoubleQuote(s)
-		case escaped:
-			b.WriteByte('\\')
-			b.WriteRune(c)
-			escaped = false
-		case c == '\'':
-			b.WriteString(`\'`)
-		case c == '\\':
-			escaped = true
-		default:
-			b.WriteRune(c)
-		}
-	}
-	if escaped {
-		b.WriteByte('\\')
-	}
-	b.WriteByte('\'')
-	return b.String()
-}
-
-func puppetDoubleQuote(s string) string {
-	var b strings.Builder
-	b.WriteByte('"')
-	for _, c := range s {
-		switch c {
-		case '\t':
-			b.WriteString(`\t`)
-		case '\n':
-			b.WriteString(`\n`)
-		case '\r':
-			b.WriteString(`\r`)
-		case '"':
-			b.WriteString(`\"`)
-		case '$':
-			b.WriteString(`\$`)
-		case '\\':
-			b.WriteString(`\\`)
-		default:
-			if c < 0x20 {
-				fmt.Fprintf(&b, `\u{%X}`, c)
-			} else {
-				b.WriteRune(c)
-			}
-		}
-	}
-	b.WriteByte('"')
-	return b.String()
+	return rubyvalue.PuppetQuote(v.(string))
 }

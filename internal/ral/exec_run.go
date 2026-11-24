@@ -7,6 +7,8 @@ import (
 	"os/exec"
 	"syscall"
 	"time"
+
+	"github.com/voxagent/voxagent/internal/lib/command"
 )
 
 // errExecTimeout is the timeout as Ruby's Timeout::Error has it. type/exec.rb
@@ -55,7 +57,7 @@ func (e exit127Error) Error() string { return e.output }
 // at any time, and its WaitDelay expiry SIGKILLs the leader.
 func runExec(ctx context.Context, cmd *exec.Cmd, start func(*exec.Cmd) error, timeout time.Duration, what string) (int, string, error) {
 	timedOut := false
-	code, out, err := runCapped(ctx, cmd, what, func(cmd *exec.Cmd) error {
+	code, out, err := command.RunCapped(ctx, cmd, what, func(cmd *exec.Cmd) error {
 		if err := ctx.Err(); err != nil {
 			return err
 		}

@@ -8,6 +8,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/voxagent/voxagent/internal/catalog"
+	"github.com/voxagent/voxagent/internal/lib/command"
 )
 
 // logoutputMode reads Exec's logoutput (type/exec.rb:271, newvalues(:true,
@@ -60,7 +61,7 @@ func outputNotices(mode string, failed bool, output string, redact bool) ([]stri
 	if !valid {
 		return nil, fmt.Errorf("invalid byte sequence in %s", enc)
 	}
-	return splitOutput(output), nil
+	return command.SplitOutput(output), nil
 }
 
 // outputEncoding is Ruby's Encoding.default_external for the locale: the
@@ -82,18 +83,4 @@ func outputEncoding(getenv func(string) string) string {
 		return "US-ASCII"
 	}
 	return "US-ASCII"
-}
-
-// splitOutput is Ruby's String#split(/\n/): split on "\n", trailing empty
-// strings removed, interior ones and "\r" kept. Empty output, or only
-// newlines, gives no lines.
-func splitOutput(out string) []string {
-	lines := strings.Split(out, "\n")
-	for len(lines) > 0 && lines[len(lines)-1] == "" {
-		lines = lines[:len(lines)-1]
-	}
-	if len(lines) == 0 {
-		return nil
-	}
-	return lines
 }

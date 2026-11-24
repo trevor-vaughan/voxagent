@@ -6,6 +6,8 @@ import (
 	"strings"
 
 	"github.com/voxagent/voxagent/internal/catalog"
+	"github.com/voxagent/voxagent/internal/lib/augeas"
+	"github.com/voxagent/voxagent/internal/lib/command"
 )
 
 // The four augeasproviders types. Their Apply, Prefetch and Refresh come with
@@ -49,7 +51,7 @@ type SshdConfigSubsystem struct{ run *augeasRun }
 type argvSysctl struct{}
 
 func (argvSysctl) run(ctx context.Context, name string, args ...string) (int, string, error) {
-	return runArgvWith(ctx, argvOpts{}, name, args...)
+	return command.RunArgvWith(ctx, command.ArgvOpts{}, name, args...)
 }
 
 // EndRun implements RunEnding: each type ends the run it shares with the
@@ -59,19 +61,15 @@ func (s SshConfig) EndRun()           { s.run.EndRun() }
 func (s SshdConfig) EndRun()          { s.run.EndRun() }
 func (s SshdConfigSubsystem) EndRun() { s.run.EndRun() }
 
-// augeasProvider is the provider name all four report: the only provider
-// directory the routing admits holds augeas.rb.
-var augeasProvider = "augeas"
-
 func (Sysctl) Type() string              { return "sysctl" }
 func (SshConfig) Type() string           { return "ssh_config" }
 func (SshdConfig) Type() string          { return "sshd_config" }
 func (SshdConfigSubsystem) Type() string { return "sshd_config_subsystem" }
 
-func (Sysctl) ProviderUsed() *string              { return &augeasProvider }
-func (SshConfig) ProviderUsed() *string           { return &augeasProvider }
-func (SshdConfig) ProviderUsed() *string          { return &augeasProvider }
-func (SshdConfigSubsystem) ProviderUsed() *string { return &augeasProvider }
+func (Sysctl) ProviderUsed() *string              { return &augeas.ProviderName }
+func (SshConfig) ProviderUsed() *string           { return &augeas.ProviderName }
+func (SshdConfig) ProviderUsed() *string          { return &augeas.ProviderName }
+func (SshdConfigSubsystem) ProviderUsed() *string { return &augeas.ProviderName }
 
 // Attrs is every attribute the type declares, name and provider included
 // (spec §3's allattrs).
@@ -92,7 +90,7 @@ func (SshdConfigSubsystem) Attrs() Attrs {
 }
 
 // Validate implements Validating: the first failure in allattrs order, which
-// is Ruby's. A value native does not implement is an *unimplementedValue.
+// is Ruby's. A value native does not implement is an *rubyvalue.UnimplementedValue.
 func (Sysctl) Validate(r catalog.Resource) error {
 	_, err := parseSysctl(r)
 	return err

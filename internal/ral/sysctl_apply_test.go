@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/voxagent/voxagent/internal/catalog"
+	"github.com/voxagent/voxagent/internal/lib/raltest"
 )
 
 var _ Provider = Sysctl{}
@@ -19,7 +20,7 @@ func sysctlOver(runner sysctlRunner) func(*augeasRun) []Provider {
 }
 
 func sysctlRes(title string, params map[string]any) catalog.Resource {
-	return augRes("Sysctl", title, params)
+	return raltest.AugRes("Sysctl", title, params)
 }
 
 // eTitles is `-e` and the titles.
@@ -64,7 +65,7 @@ func TestSysctlReplays01a(t *testing.T) {
 		sysctlCall{args: []string{"-n", "vm.swappiness"}, out: "10\n"},
 		sysctlCall{args: []string{"-w", "vm.swappiness=20"}, out: "vm.swappiness = 20\n"},
 	)
-	got := runAugeasCase(t, loadTrace(t, "01a"), nil, sysctlOver(runner),
+	got := runAugeasCase(t, raltest.LoadTrace(t, "01a"), nil, sysctlOver(runner),
 		[]catalog.Resource{sysctlRes("vm.swappiness", map[string]any{"value": "20"})}, false)
 	wantNoErrors(t, got)
 	wantMessages(t, got, []string{"changed configuration value from '' to '20' and live value from '10' to '20'"})
@@ -87,7 +88,7 @@ func TestSysctlReplays01c(t *testing.T) {
 		sysctlCall{args: []string{"-n", "net.ipv4.conf.all.rp_filter"}, out: "1\n"},
 		sysctlCall{args: []string{"-w", "net.ipv4.conf.all.rp_filter=1"}, out: "net.ipv4.conf.all.rp_filter = 1\n"},
 	)
-	got := runAugeasCase(t, loadTrace(t, "01c"), []string{sysctlConf}, sysctlOver(runner), []catalog.Resource{
+	got := runAugeasCase(t, raltest.LoadTrace(t, "01c"), []string{sysctlConf}, sysctlOver(runner), []catalog.Resource{
 		sysctlRes(titles[0], map[string]any{"value": "20"}),
 		sysctlRes(titles[1], map[string]any{"value": "1"}),
 		sysctlRes(titles[2], map[string]any{"value": "1"}),
@@ -113,7 +114,7 @@ func TestSysctlReplays01e(t *testing.T) {
 		sysctlCall{args: []string{"-w", "net.ipv4.ip_forward=1"}, code: 1, out: "sysctl: permission denied on key \"net.ipv4.ip_forward\"\n"},
 		sysctlCall{args: []string{"-w", "net.ipv4.conf.all.rp_filter=1"}, code: 1, out: "sysctl: permission denied on key \"net.ipv4.conf.all.rp_filter\"\n"},
 	)
-	got := runAugeasCase(t, loadTrace(t, "01e"), []string{sysctlConf}, sysctlOver(runner), []catalog.Resource{
+	got := runAugeasCase(t, raltest.LoadTrace(t, "01e"), []string{sysctlConf}, sysctlOver(runner), []catalog.Resource{
 		sysctlRes("net.ipv4.ip_forward", map[string]any{"value": "1", "silent": false}),
 		sysctlRes("net.ipv4.conf.all.rp_filter", map[string]any{"value": "1", "silent": true}),
 		sysctlRes("foo.bar", map[string]any{"value": "1", "silent": false}),
@@ -181,7 +182,7 @@ func TestSysctlReplays01h(t *testing.T) {
 		sysctlCall{args: []string{"-n", "vm.swappiness"}, out: "10\n"},
 		sysctlCall{args: []string{"-w", "vm.swappiness=20"}, out: "vm.swappiness = 20\n"},
 	)
-	got := runAugeasCase(t, loadTrace(t, "01h"), []string{sysctlConf}, sysctlOver(runner), []catalog.Resource{
+	got := runAugeasCase(t, raltest.LoadTrace(t, "01h"), []string{sysctlConf}, sysctlOver(runner), []catalog.Resource{
 		sysctlRes("kernel.hostname", map[string]any{"value": "zz", "silent": false}),
 		sysctlRes("kernel.domainname", map[string]any{"value": "zz.example", "silent": true}),
 		sysctlRes("vm.swappiness", map[string]any{"value": "20"}),
@@ -206,7 +207,7 @@ func TestSysctlReplays01h(t *testing.T) {
 func TestSysctlReplays01j(t *testing.T) {
 	withAugVersionMemo(t, map[string]bool{})
 	runner := newScriptSysctl(t, sysctlCall{args: eTitles("vm.swappiness"), out: "vm.swappiness = 60\n"})
-	got := runAugeasCase(t, loadTrace(t, "01j"), []string{sysctlConf}, sysctlOver(runner),
+	got := runAugeasCase(t, raltest.LoadTrace(t, "01j"), []string{sysctlConf}, sysctlOver(runner),
 		[]catalog.Resource{sysctlRes("vm.swappiness", map[string]any{"value": "20", "apply": false})}, false)
 	wantNoErrors(t, got)
 	wantMessages(t, got, []string{"changed configuration value from '' to '20'"})
@@ -222,7 +223,7 @@ func TestSysctlNoopAppendsNoop(t *testing.T) {
 		sysctlCall{args: []string{"-n", "net.ipv4.conf.all.rp_filter"}, out: "1\n"},
 	)
 	// 01c's prefetch and each resource's retrieve, then the run's close.
-	calls := traceLines(t, "01c", [2]int{4, 28}, [2]int{49, 55}, [2]int{73, 79}, [2]int{97, 97})
+	calls := raltest.TraceLines(t, "01c", [2]int{4, 28}, [2]int{49, 55}, [2]int{73, 79}, [2]int{97, 97})
 	got := runAugeasCase(t, calls, []string{sysctlConf}, sysctlOver(runner), []catalog.Resource{
 		sysctlRes(titles[0], map[string]any{"value": "20"}),
 		sysctlRes(titles[1], map[string]any{"value": "1"}),
@@ -240,7 +241,7 @@ func TestSysctlNoopAppendsNoop(t *testing.T) {
 // already loaded after the first block: lines are joined as they are given,
 // and "augopen <name>" expands to augopen's calls on the loaded file with
 // $resource bound to $target/<name> (defvar's count is resourceCount).
-func sysctlScript(t *testing.T, resourceCount string, lines ...string) []traceCall {
+func sysctlScript(t *testing.T, resourceCount string, lines ...string) []raltest.TraceCall {
 	t.Helper()
 	var b strings.Builder
 	for _, l := range lines {
@@ -256,7 +257,7 @@ func sysctlScript(t *testing.T, resourceCount string, lines ...string) []traceCa
 			`h1 aug_defnode "target" "/files/etc/sysctl.conf" NULL NULL => 1` + "\n" +
 			`h1 aug_defvar "resource" "$target/` + name + `" => ` + resourceCount + "\n")
 	}
-	return parseTrace(t, t.Name(), b.String())
+	return raltest.ParseTrace(t, t.Name(), b.String())
 }
 
 // sysctlFirstLoad is the class handle's open and first load with $resource

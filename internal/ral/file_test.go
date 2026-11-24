@@ -16,20 +16,14 @@ import (
 	"time"
 
 	"github.com/voxagent/voxagent/internal/catalog"
+	"github.com/voxagent/voxagent/internal/lib/raltest"
+	"github.com/voxagent/voxagent/internal/lib/sources"
 )
-
-func fileRes(path string, params map[string]any) catalog.Resource {
-	p := map[string]any{}
-	for k, v := range params {
-		p[k] = v
-	}
-	return catalog.Resource{Type: "File", Title: path, Parameters: p}
-}
 
 func TestFileCreatesWithContentAndMode(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "a.txt")
 	changes, _, err := File{}.Apply(context.Background(),
-		fileRes(path, map[string]any{"ensure": "file", "content": "alpha\n", "mode": "0640"}), false)
+		raltest.FileRes(path, map[string]any{"ensure": "file", "content": "alpha\n", "mode": "0640"}), false)
 	if err != nil {
 		t.Fatalf("Apply returned error: %v", err)
 	}
@@ -57,7 +51,7 @@ func TestFileCreatesWithContentAndMode(t *testing.T) {
 // level where a failure is easy to localise.
 func TestFileIsIdempotent(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "a.txt")
-	r := fileRes(path, map[string]any{"ensure": "file", "content": "alpha\n", "mode": "0644"})
+	r := raltest.FileRes(path, map[string]any{"ensure": "file", "content": "alpha\n", "mode": "0644"})
 	if _, _, err := (File{}).Apply(context.Background(), r, false); err != nil {
 		t.Fatalf("first Apply returned error: %v", err)
 	}
@@ -73,11 +67,11 @@ func TestFileIsIdempotent(t *testing.T) {
 func TestFileReportsOnlyTheChangedProperty(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "a.txt")
 	base := map[string]any{"ensure": "file", "content": "alpha\n", "mode": "0644"}
-	if _, _, err := (File{}).Apply(context.Background(), fileRes(path, base), false); err != nil {
+	if _, _, err := (File{}).Apply(context.Background(), raltest.FileRes(path, base), false); err != nil {
 		t.Fatalf("first Apply returned error: %v", err)
 	}
 	changed := map[string]any{"ensure": "file", "content": "alpha\n", "mode": "0600"}
-	changes, _, err := File{}.Apply(context.Background(), fileRes(path, changed), false)
+	changes, _, err := File{}.Apply(context.Background(), raltest.FileRes(path, changed), false)
 	if err != nil {
 		t.Fatalf("second Apply returned error: %v", err)
 	}
@@ -95,11 +89,11 @@ func TestFileReportsOnlyTheChangedProperty(t *testing.T) {
 func TestFileReportsContentChangeAlone(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "a.txt")
 	base := map[string]any{"ensure": "file", "content": "alpha\n", "mode": "0644"}
-	if _, _, err := (File{}).Apply(context.Background(), fileRes(path, base), false); err != nil {
+	if _, _, err := (File{}).Apply(context.Background(), raltest.FileRes(path, base), false); err != nil {
 		t.Fatalf("first Apply returned error: %v", err)
 	}
 	changed := map[string]any{"ensure": "file", "content": "beta\n", "mode": "0644"}
-	changes, _, err := File{}.Apply(context.Background(), fileRes(path, changed), false)
+	changes, _, err := File{}.Apply(context.Background(), raltest.FileRes(path, changed), false)
 	if err != nil {
 		t.Fatalf("second Apply returned error: %v", err)
 	}
@@ -118,7 +112,7 @@ func TestFileReportsContentChangeAlone(t *testing.T) {
 func TestFileEnsureDirectory(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "d")
 	if _, _, err := (File{}).Apply(context.Background(),
-		fileRes(path, map[string]any{"ensure": "directory", "mode": "0750"}), false); err != nil {
+		raltest.FileRes(path, map[string]any{"ensure": "directory", "mode": "0750"}), false); err != nil {
 		t.Fatalf("Apply returned error: %v", err)
 	}
 	fi, err := os.Stat(path)
@@ -140,7 +134,7 @@ func TestFileEnsureAbsent(t *testing.T) {
 		t.Fatalf("seed: %v", err)
 	}
 	changes, _, err := File{}.Apply(context.Background(),
-		fileRes(path, map[string]any{"ensure": "absent"}), false)
+		raltest.FileRes(path, map[string]any{"ensure": "absent"}), false)
 	if err != nil {
 		t.Fatalf("Apply returned error: %v", err)
 	}
@@ -152,7 +146,7 @@ func TestFileEnsureAbsent(t *testing.T) {
 	}
 	// Absent on an already-absent file is a no-op.
 	again, _, err := File{}.Apply(context.Background(),
-		fileRes(path, map[string]any{"ensure": "absent"}), false)
+		raltest.FileRes(path, map[string]any{"ensure": "absent"}), false)
 	if err != nil {
 		t.Fatalf("second Apply returned error: %v", err)
 	}
@@ -167,7 +161,7 @@ func TestFileEnsureAbsent(t *testing.T) {
 func TestFileWithoutContentIsEmpty(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "a.txt")
 	if _, _, err := (File{}).Apply(context.Background(),
-		fileRes(path, map[string]any{"ensure": "file"}), false); err != nil {
+		raltest.FileRes(path, map[string]any{"ensure": "file"}), false); err != nil {
 		t.Fatalf("Apply returned error: %v", err)
 	}
 	b, err := os.ReadFile(path)
@@ -182,7 +176,7 @@ func TestFileWithoutContentIsEmpty(t *testing.T) {
 func TestFileNoopChangesNothing(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "a.txt")
 	changes, _, err := File{}.Apply(context.Background(),
-		fileRes(path, map[string]any{"ensure": "file", "content": "alpha\n"}), true)
+		raltest.FileRes(path, map[string]any{"ensure": "file", "content": "alpha\n"}), true)
 	if err != nil {
 		t.Fatalf("Apply returned error: %v", err)
 	}
@@ -211,13 +205,13 @@ func TestFileNoopMessagesEndInNoop(t *testing.T) {
 		r    catalog.Resource
 		want []string
 	}{
-		{fileRes(filepath.Join(dir, "new.txt"), map[string]any{"ensure": "file", "content": "alpha\n"}),
-			[]string{"defined content as '{sha256}" + sha256Hex([]byte("alpha\n")) + "' (noop)"}},
-		{fileRes(existing, map[string]any{"ensure": "file", "content": "new\n", "mode": "0600"}),
-			[]string{"content changed '{sha256}" + sha256Hex([]byte("old\n")) + "' to '{sha256}" + sha256Hex([]byte("new\n")) + "' (noop)",
+		{raltest.FileRes(filepath.Join(dir, "new.txt"), map[string]any{"ensure": "file", "content": "alpha\n"}),
+			[]string{"defined content as '{sha256}" + raltest.SHA256Hex([]byte("alpha\n")) + "' (noop)"}},
+		{raltest.FileRes(existing, map[string]any{"ensure": "file", "content": "new\n", "mode": "0600"}),
+			[]string{"content changed '{sha256}" + raltest.SHA256Hex([]byte("old\n")) + "' to '{sha256}" + raltest.SHA256Hex([]byte("new\n")) + "' (noop)",
 				"mode changed '0644' to '0600' (noop)"}},
-		{fileRes(gone, map[string]any{"ensure": "absent"}), []string{"removed (noop)"}},
-		{fileRes(filepath.Join(dir, "missing", "x.txt"), map[string]any{"ensure": "file"}), []string{"created (noop)"}},
+		{raltest.FileRes(gone, map[string]any{"ensure": "absent"}), []string{"removed (noop)"}},
+		{raltest.FileRes(filepath.Join(dir, "missing", "x.txt"), map[string]any{"ensure": "file"}), []string{"created (noop)"}},
 	} {
 		changes, _, err := File{}.Apply(context.Background(), tc.r, true)
 		if err != nil {
@@ -242,7 +236,7 @@ func TestFileNoopDoesNotRewriteExistingFile(t *testing.T) {
 		t.Fatalf("seed: %v", err)
 	}
 	changes, _, err := File{}.Apply(context.Background(),
-		fileRes(path, map[string]any{"ensure": "file", "content": "new\n", "mode": "0600"}), true)
+		raltest.FileRes(path, map[string]any{"ensure": "file", "content": "new\n", "mode": "0600"}), true)
 	if err != nil {
 		t.Fatalf("Apply returned error: %v", err)
 	}
@@ -279,7 +273,7 @@ func TestFileNoopDoesNotRewriteExistingFile(t *testing.T) {
 func TestFileCreateFailureIsAttributedToEnsure(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "no-such-dir", "a.txt")
-	r := fileRes(path, map[string]any{"ensure": "file", "content": "x"})
+	r := raltest.FileRes(path, map[string]any{"ensure": "file", "content": "x"})
 	r.File, r.Line = "/etc/puppetlabs/code/environments/production/manifests/site.pp", 7
 
 	changes, _, err := File{}.Apply(context.Background(), r, false)
@@ -336,7 +330,7 @@ func TestFileContentFailureIsAttributedToContent(t *testing.T) {
 	// t.TempDir's own cleanup cannot unlink through a read-only parent.
 	t.Cleanup(func() { _ = os.Chmod(dir, 0o755) })
 
-	r := fileRes(path, map[string]any{"ensure": "file", "content": "new"})
+	r := raltest.FileRes(path, map[string]any{"ensure": "file", "content": "new"})
 	r.File, r.Line = "/etc/site.pp", 3
 	changes, _, err := File{}.Apply(context.Background(), r, false)
 	if err != nil {
@@ -386,7 +380,7 @@ func TestFileAbsentRemovalFailureIsAttributedToEnsure(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = os.Chmod(dir, 0o755) })
 
-	r := fileRes(path, map[string]any{"ensure": "absent"})
+	r := raltest.FileRes(path, map[string]any{"ensure": "absent"})
 	r.File, r.Line = "/etc/site.pp", 4
 	changes, _, err := File{}.Apply(context.Background(), r, false)
 	if err != nil {
@@ -416,7 +410,7 @@ func TestFileAbsentRemovalFailureIsAttributedToEnsure(t *testing.T) {
 func TestFileRejectsAnInvalidMode(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "a.txt")
 	if _, _, err := (File{}).Apply(context.Background(),
-		fileRes(path, map[string]any{"ensure": "file", "mode": "rwxr-xr-x"}), false); err == nil {
+		raltest.FileRes(path, map[string]any{"ensure": "file", "mode": "rwxr-xr-x"}), false); err == nil {
 		t.Fatal("Apply accepted an invalid mode; want an error")
 	}
 }
@@ -426,7 +420,7 @@ func TestFileRejectsAnInvalidMode(t *testing.T) {
 func TestFileUnparseableModeMovesNoOwnership(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "a.txt")
 	mustWrite(t, path, "x\n")
-	changes, _, err := applyMetadataOnly(context.Background(), osFS{}, path, fileRes(path, map[string]any{
+	changes, _, err := applyMetadataOnly(context.Background(), osFS{}, path, raltest.FileRes(path, map[string]any{
 		"group": strconv.Itoa(os.Getgid() + 1), "mode": "rwxr-xr-x"}), false, nil)
 	if err == nil || len(changes) != 0 {
 		t.Errorf("applyMetadataOnly = %+v, %v; want a bare error and no change", changes, err)
@@ -434,7 +428,7 @@ func TestFileUnparseableModeMovesNoOwnership(t *testing.T) {
 }
 
 func TestFileRefreshIsANoOp(t *testing.T) {
-	refreshed, err := File{}.Refresh(context.Background(), fileRes("/tmp/x", nil), false)
+	refreshed, err := File{}.Refresh(context.Background(), raltest.FileRes("/tmp/x", nil), false)
 	if err != nil {
 		t.Fatalf("Refresh returned error: %v", err)
 	}
@@ -448,7 +442,7 @@ func TestFileRefreshIsANoOp(t *testing.T) {
 func TestFileDefaultEnsureIsFile(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "a.txt")
 	changes, _, err := File{}.Apply(context.Background(),
-		fileRes(path, map[string]any{"content": "x"}), false)
+		raltest.FileRes(path, map[string]any{"content": "x"}), false)
 	if err != nil {
 		t.Fatalf("Apply returned error: %v", err)
 	}
@@ -468,7 +462,7 @@ func TestFileDefaultEnsureIsFile(t *testing.T) {
 func TestFileCreateDefaultModeIs644(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "a.txt")
 	if _, _, err := (File{}).Apply(context.Background(),
-		fileRes(path, map[string]any{"ensure": "file", "content": "x"}), false); err != nil {
+		raltest.FileRes(path, map[string]any{"ensure": "file", "content": "x"}), false); err != nil {
 		t.Fatalf("Apply returned error: %v", err)
 	}
 	fi, err := os.Stat(path)
@@ -485,7 +479,7 @@ func TestFileCreateDefaultModeIs644(t *testing.T) {
 func TestFileDirectoryDefaultModeIs755(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "d")
 	if _, _, err := (File{}).Apply(context.Background(),
-		fileRes(path, map[string]any{"ensure": "directory"}), false); err != nil {
+		raltest.FileRes(path, map[string]any{"ensure": "directory"}), false); err != nil {
 		t.Fatalf("Apply returned error: %v", err)
 	}
 	fi, err := os.Stat(path)
@@ -516,7 +510,7 @@ func TestFileDirectoryMissingParentIsAttributedToEnsure(t *testing.T) {
 	dir := t.TempDir()
 	parent := filepath.Join(dir, "no-such-parent")
 	path := filepath.Join(parent, "d")
-	r := fileRes(path, map[string]any{"ensure": "directory"})
+	r := raltest.FileRes(path, map[string]any{"ensure": "directory"})
 	r.File, r.Line = "/etc/site.pp", 1
 
 	changes, _, err := File{}.Apply(context.Background(), r, false)
@@ -549,7 +543,7 @@ func TestFileAbsentNoopLeavesFileInPlace(t *testing.T) {
 		t.Fatalf("seed: %v", err)
 	}
 	changes, _, err := File{}.Apply(context.Background(),
-		fileRes(path, map[string]any{"ensure": "absent"}), true)
+		raltest.FileRes(path, map[string]any{"ensure": "absent"}), true)
 	if err != nil {
 		t.Fatalf("Apply returned error: %v", err)
 	}
@@ -580,7 +574,7 @@ func TestFileAbsentForceRemovesTheTree(t *testing.T) {
 	mustMkdir(t, d)
 	mustWrite(t, filepath.Join(d, "x"), "x")
 	changes, _, err := (File{}).Apply(context.Background(),
-		fileRes(d, map[string]any{"ensure": "absent", "force": true}), false)
+		raltest.FileRes(d, map[string]any{"ensure": "absent", "force": true}), false)
 	if err != nil || len(changes) != 1 || changes[0].Was != "directory" || changes[0].Message != "removed" {
 		t.Fatalf("Apply = %+v, %v", changes, err)
 	}
@@ -594,7 +588,7 @@ func TestFileAbsentForceRemovesTheTree(t *testing.T) {
 func TestFileAbsentWithoutForceNoticesAndReportsRemoved(t *testing.T) {
 	d := filepath.Join(t.TempDir(), "d")
 	mustMkdir(t, d)
-	changes, _, err := (File{}).Apply(context.Background(), fileRes(d, map[string]any{"ensure": "absent"}), false)
+	changes, _, err := (File{}).Apply(context.Background(), raltest.FileRes(d, map[string]any{"ensure": "absent"}), false)
 	if err != nil || len(changes) != 1 {
 		t.Fatalf("Apply = %+v, %v", changes, err)
 	}
@@ -619,7 +613,7 @@ func TestFileForceRemovalDoesNotFollowAPlantedSymlink(t *testing.T) {
 		t.Fatal(err)
 	}
 	if _, _, err := (File{}).Apply(context.Background(),
-		fileRes(d, map[string]any{"ensure": "absent", "force": true}), false); err != nil {
+		raltest.FileRes(d, map[string]any{"ensure": "absent", "force": true}), false); err != nil {
 		t.Fatal(err)
 	}
 	if b, err := os.ReadFile(filepath.Join(outside, "precious")); err != nil || string(b) != "keep" {
@@ -631,7 +625,7 @@ func TestFileAbsentForceUnderNoopRemovesNothing(t *testing.T) {
 	d := filepath.Join(t.TempDir(), "d")
 	mustMkdir(t, d)
 	changes, _, err := (File{}).Apply(context.Background(),
-		fileRes(d, map[string]any{"ensure": "absent", "force": true}), true)
+		raltest.FileRes(d, map[string]any{"ensure": "absent", "force": true}), true)
 	if err != nil || len(changes) != 1 || changes[0].Was != "directory" || len(changes[0].PathNotices) != 0 {
 		t.Fatalf("Apply = %+v, %v", changes, err)
 	}
@@ -644,7 +638,7 @@ func TestFileOverADirectoryWithoutForceFailsWithTwoNotices(t *testing.T) {
 	d := filepath.Join(t.TempDir(), "d")
 	mustMkdir(t, d)
 	changes, _, err := (File{}).Apply(context.Background(),
-		fileRes(d, map[string]any{"ensure": "file", "content": "c\n"}), false)
+		raltest.FileRes(d, map[string]any{"ensure": "file", "content": "c\n"}), false)
 	if err != nil || len(changes) != 1 {
 		t.Fatalf("Apply = %+v, %v", changes, err)
 	}
@@ -667,7 +661,7 @@ func TestFileOverADirectoryWithForceReplacesIt(t *testing.T) {
 	mustMkdir(t, d)
 	mustWrite(t, filepath.Join(d, "x"), "x")
 	changes, _, err := (File{}).Apply(context.Background(),
-		fileRes(d, map[string]any{"ensure": "file", "content": "c\n", "force": true}), false)
+		raltest.FileRes(d, map[string]any{"ensure": "file", "content": "c\n", "force": true}), false)
 	if err != nil || len(changes) != 1 {
 		t.Fatalf("Apply = %+v, %v", changes, err)
 	}
@@ -684,7 +678,7 @@ func TestFileWithoutContentOverADirectoryWithForceSaysEnsureChanged(t *testing.T
 	d := filepath.Join(t.TempDir(), "d")
 	mustMkdir(t, d)
 	changes, _, err := (File{}).Apply(context.Background(),
-		fileRes(d, map[string]any{"ensure": "file", "force": true}), false)
+		raltest.FileRes(d, map[string]any{"ensure": "file", "force": true}), false)
 	if err != nil || len(changes) != 1 || changes[0].Err != nil || changes[0].Message != "ensure changed 'directory' to 'file'" {
 		t.Errorf("Apply = %+v, %v", changes, err)
 	}
@@ -703,7 +697,7 @@ func TestFileFollowWithForceOverALinkToADirectoryRemovesOnlyTheLink(t *testing.T
 	l := filepath.Join(base, "l")
 	mustSymlink(t, "t", l)
 	changes, _, err := (File{}).Apply(context.Background(),
-		fileRes(l, map[string]any{"ensure": "file", "links": "follow", "force": true}), false)
+		raltest.FileRes(l, map[string]any{"ensure": "file", "links": "follow", "force": true}), false)
 	if err != nil || len(changes) != 1 || changes[0].Err != nil || changes[0].Was != "directory" {
 		t.Fatalf("Apply = %+v, %v", changes, err)
 	}
@@ -720,7 +714,7 @@ func TestFileFollowWithForceOverALinkToADirectoryRemovesOnlyTheLink(t *testing.T
 func TestDirectoryOverAFileReplacesIt(t *testing.T) {
 	f := filepath.Join(t.TempDir(), "f")
 	mustWrite(t, f, "x")
-	changes, _, err := (File{}).Apply(context.Background(), fileRes(f, map[string]any{"ensure": "directory"}), false)
+	changes, _, err := (File{}).Apply(context.Background(), raltest.FileRes(f, map[string]any{"ensure": "directory"}), false)
 	if err != nil || len(changes) != 1 || changes[0].Name != "directory_created" ||
 		changes[0].Was != "file" || changes[0].Message != "ensure changed 'file' to 'directory'" {
 		t.Fatalf("Apply = %+v, %v", changes, err)
@@ -737,7 +731,7 @@ func TestDirectoryOverAFifoReplacesIt(t *testing.T) {
 	if err := syscall.Mkfifo(f, 0o644); err != nil {
 		t.Fatal(err)
 	}
-	changes, _, err := (File{}).Apply(context.Background(), fileRes(f, map[string]any{"ensure": "directory"}), false)
+	changes, _, err := (File{}).Apply(context.Background(), raltest.FileRes(f, map[string]any{"ensure": "directory"}), false)
 	if err != nil || len(changes) != 1 || changes[0].Err != nil || changes[0].Was != "fifo" ||
 		changes[0].Message != "ensure changed 'fifo' to 'directory'" {
 		t.Fatalf("Apply = %+v, %v", changes, err)
@@ -804,7 +798,7 @@ func TestFileOverAFifoOrSocketReplacesIt(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			p := filepath.Join(t.TempDir(), "p")
 			tc.mk(t, p)
-			changes, err := applyBounded(t, fileRes(p, tc.params))
+			changes, err := applyBounded(t, raltest.FileRes(p, tc.params))
 			if err != nil || len(changes) != 1 || changes[0].Err != nil || changes[0].Name != "file_created" ||
 				changes[0].Was != tc.was || changes[0].Message != tc.msg {
 				t.Fatalf("Apply = %+v, %v", changes, err)
@@ -822,7 +816,7 @@ func TestFileOverAFifoOrSocketReplacesIt(t *testing.T) {
 func TestFilePresentWithContentLeavesAFifo(t *testing.T) {
 	p := filepath.Join(t.TempDir(), "p")
 	mkFifo(t, p)
-	changes, err := applyBounded(t, fileRes(p, map[string]any{"ensure": "present", "content": "c\n"}))
+	changes, err := applyBounded(t, raltest.FileRes(p, map[string]any{"ensure": "present", "content": "c\n"}))
 	if err != nil || len(changes) != 0 {
 		t.Fatalf("Apply = %+v, %v; want nothing", changes, err)
 	}
@@ -839,7 +833,7 @@ func TestFileContentReadRefusesAFifoSwappedIn(t *testing.T) {
 	fsys := swappedFS{osFS: osFS{}, regular: p}
 	done := make(chan error, 1)
 	go func() {
-		_, _, err := applyFile(context.Background(), fsys, p, fileRes(p, map[string]any{"ensure": "file", "content": "c\n"}), false, false, nil, nil, nil)
+		_, _, err := applyFile(context.Background(), fsys, p, raltest.FileRes(p, map[string]any{"ensure": "file", "content": "c\n"}), false, false, nil, nil, nil)
 		done <- err
 	}()
 	select {
@@ -858,7 +852,7 @@ func TestFileContentReadRefusesAFifoSwappedIn(t *testing.T) {
 func TestFileOverADeviceFailsWithPuppetsWording(t *testing.T) {
 	p := filepath.Join(t.TempDir(), "n")
 	fsys := deviceFS{osFS: osFS{}, device: p}
-	changes, _, err := applyFile(context.Background(), fsys, p, fileRes(p, map[string]any{"ensure": "file", "content": "c\n"}), false, false, nil, nil, nil)
+	changes, _, err := applyFile(context.Background(), fsys, p, raltest.FileRes(p, map[string]any{"ensure": "file", "content": "c\n"}), false, false, nil, nil, nil)
 	if err != nil || len(changes) != 1 || changes[0].Was != "characterSpecial" || changes[0].Err == nil ||
 		changes[0].Err.Error() != "Could not remove files of type characterSpecial" {
 		t.Fatalf("applyFile = %+v, %v", changes, err)
@@ -932,7 +926,7 @@ func TestFileForceReplaceOfADirectoryUnderNoopTouchesNothing(t *testing.T) {
 	mustMkdir(t, d)
 	mustWrite(t, filepath.Join(d, "x"), "x")
 	changes, _, err := (File{}).Apply(context.Background(),
-		fileRes(d, map[string]any{"ensure": "file", "content": "c\n", "force": true}), true)
+		raltest.FileRes(d, map[string]any{"ensure": "file", "content": "c\n", "force": true}), true)
 	if err != nil || len(changes) != 1 {
 		t.Fatalf("Apply = %+v, %v", changes, err)
 	}
@@ -949,7 +943,7 @@ func TestFileForceReplaceOfADirectoryUnderNoopTouchesNothing(t *testing.T) {
 func TestDirectoryOverAFileUnderNoopTouchesNothing(t *testing.T) {
 	f := filepath.Join(t.TempDir(), "f")
 	mustWrite(t, f, "keep")
-	changes, _, err := (File{}).Apply(context.Background(), fileRes(f, map[string]any{"ensure": "directory"}), true)
+	changes, _, err := (File{}).Apply(context.Background(), raltest.FileRes(f, map[string]any{"ensure": "directory"}), true)
 	if err != nil || len(changes) != 1 || changes[0].Was != "file" || changes[0].Err != nil ||
 		changes[0].Message != "ensure changed 'file' to 'directory' (noop)" {
 		t.Fatalf("Apply = %+v, %v", changes, err)
@@ -960,7 +954,7 @@ func TestDirectoryOverAFileUnderNoopTouchesNothing(t *testing.T) {
 }
 
 func TestFileForceMustBeABoolean(t *testing.T) {
-	if err := (File{}).Validate(fileRes("/x/f", map[string]any{"force": "maybe"})); err == nil ||
+	if err := (File{}).Validate(raltest.FileRes("/x/f", map[string]any{"force": "maybe"})); err == nil ||
 		!strings.Contains(err.Error(), `Parameter force failed on`) {
 		t.Errorf("err = %v", err)
 	}
@@ -980,7 +974,7 @@ func TestFileAbsentRemovesDanglingSymlink(t *testing.T) {
 		t.Fatalf("seed symlink: %v", err)
 	}
 	changes, _, err := File{}.Apply(context.Background(),
-		fileRes(link, map[string]any{"ensure": "absent"}), false)
+		raltest.FileRes(link, map[string]any{"ensure": "absent"}), false)
 	if err != nil {
 		t.Fatalf("Apply returned error: %v", err)
 	}
@@ -1015,7 +1009,7 @@ func TestFileEnsureFileWithoutContentReplacesALink(t *testing.T) {
 		t.Fatalf("seed symlink: %v", err)
 	}
 	changes, _, err := (File{}).Apply(context.Background(),
-		fileRes(link, map[string]any{"ensure": "file"}), false)
+		raltest.FileRes(link, map[string]any{"ensure": "file"}), false)
 	if err != nil || len(changes) != 1 || changes[0].Name != "file_created" || changes[0].Was != "link" ||
 		changes[0].Message != "ensure changed 'link' to 'file'" || changes[0].Err != nil {
 		t.Fatalf("Apply = %+v, %v", changes, err)
@@ -1050,7 +1044,7 @@ func TestFileDirectoryReplacesALink(t *testing.T) {
 		t.Fatalf("seed symlink: %v", err)
 	}
 	changes, _, err := (File{}).Apply(context.Background(),
-		fileRes(link, map[string]any{"ensure": "directory", "mode": "0700"}), false)
+		raltest.FileRes(link, map[string]any{"ensure": "directory", "mode": "0700"}), false)
 	if err != nil || len(changes) != 1 || changes[0].Name != "directory_created" || changes[0].Was != "link" ||
 		changes[0].Message != "ensure changed 'link' to 'directory'" || changes[0].Err != nil {
 		t.Fatalf("Apply = %+v, %v", changes, err)
@@ -1096,12 +1090,12 @@ func TestFileNonCleanTitleOverSymlinkActsAsTheCleanTitle(t *testing.T) {
 		for _, suffix := range []string{"/link/", "//link", "/link//", "/link/."} {
 			t.Run(tc.name+" "+suffix, func(t *testing.T) {
 				cleanDir, _ := seed(t)
-				want, _, err := (File{}).Apply(context.Background(), fileRes(filepath.Join(cleanDir, "link"), tc.params), false)
+				want, _, err := (File{}).Apply(context.Background(), raltest.FileRes(filepath.Join(cleanDir, "link"), tc.params), false)
 				if err != nil {
 					t.Fatalf("clean title: %v", err)
 				}
 				dir, realDir := seed(t)
-				got, _, err := (File{}).Apply(context.Background(), fileRes(dir+suffix, tc.params), false)
+				got, _, err := (File{}).Apply(context.Background(), raltest.FileRes(dir+suffix, tc.params), false)
 				if err != nil {
 					t.Fatalf("title %q: %v", dir+suffix, err)
 				}
@@ -1136,7 +1130,7 @@ func TestFileAbsentTrailingSlashOverSymlinkRemovesTheLinkOnly(t *testing.T) {
 		t.Fatalf("seed symlink: %v", err)
 	}
 	changes, _, err := (File{}).Apply(context.Background(),
-		fileRes(link+"/", map[string]any{"ensure": "absent"}), false)
+		raltest.FileRes(link+"/", map[string]any{"ensure": "absent"}), false)
 	if err != nil {
 		t.Fatalf("Apply: %v", err)
 	}
@@ -1158,7 +1152,7 @@ func TestFileAbsentTrailingSlashOverSymlinkRemovesTheLinkOnly(t *testing.T) {
 func TestFileNonCleanTitleIsAppliedAtTheCleanedPath(t *testing.T) {
 	dir := t.TempDir()
 	changes, _, err := (File{}).Apply(context.Background(),
-		fileRes(dir+"/x/../keep2", map[string]any{"ensure": "file", "content": "k\n"}), false)
+		raltest.FileRes(dir+"/x/../keep2", map[string]any{"ensure": "file", "content": "k\n"}), false)
 	if err != nil {
 		t.Fatalf("Apply: %v", err)
 	}
@@ -1177,7 +1171,7 @@ func TestFileNonCleanTitleIsAppliedAtTheCleanedPath(t *testing.T) {
 		t.Fatalf("seed: %v", err)
 	}
 	if _, _, err := (File{}).Apply(context.Background(),
-		fileRes(realDir+"//", map[string]any{"ensure": "directory", "mode": "0700"}), false); err != nil {
+		raltest.FileRes(realDir+"//", map[string]any{"ensure": "directory", "mode": "0700"}), false); err != nil {
 		t.Fatalf("Apply %s//: %v", realDir, err)
 	}
 	fi, err := os.Stat(realDir)
@@ -1199,7 +1193,7 @@ func TestFilePresentOverExistingDirectoryIsANoop(t *testing.T) {
 		t.Fatalf("seed: %v", err)
 	}
 	changes, _, err := File{}.Apply(context.Background(),
-		fileRes(path, map[string]any{"ensure": "present"}), false)
+		raltest.FileRes(path, map[string]any{"ensure": "present"}), false)
 	if err != nil {
 		t.Fatalf("Apply returned error: %v", err)
 	}
@@ -1220,7 +1214,7 @@ func TestFilePresentOverExistingDirectoryIsANoop(t *testing.T) {
 func TestFilePresentCreatesAsFile(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "a.txt")
 	if _, _, err := (File{}).Apply(context.Background(),
-		fileRes(path, map[string]any{"ensure": "present", "content": "x"}), false); err != nil {
+		raltest.FileRes(path, map[string]any{"ensure": "present", "content": "x"}), false); err != nil {
 		t.Fatalf("Apply returned error: %v", err)
 	}
 	fi, err := os.Stat(path)
@@ -1243,7 +1237,7 @@ func TestFilePresentCreatesAsFile(t *testing.T) {
 func TestFileRejectsNumericMode(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "a.txt")
 	if _, _, err := (File{}).Apply(context.Background(),
-		fileRes(path, map[string]any{"ensure": "file", "mode": float64(420)}), false); err == nil {
+		raltest.FileRes(path, map[string]any{"ensure": "file", "mode": float64(420)}), false); err == nil {
 		t.Fatal("Apply accepted a numeric mode; want an error")
 	}
 	if _, err := os.Stat(path); !os.IsNotExist(err) {
@@ -1254,7 +1248,7 @@ func TestFileRejectsNumericMode(t *testing.T) {
 func TestFileRejectsModeAboveMax(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "a.txt")
 	if _, _, err := (File{}).Apply(context.Background(),
-		fileRes(path, map[string]any{"ensure": "file", "mode": "17777"}), false); err == nil {
+		raltest.FileRes(path, map[string]any{"ensure": "file", "mode": "17777"}), false); err == nil {
 		t.Fatal("Apply accepted a mode above 07777; want an error")
 	}
 }
@@ -1265,7 +1259,7 @@ func TestFileRejectsModeAboveMax(t *testing.T) {
 func TestFileModePreservesSetuidBit(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "a.txt")
 	if _, _, err := (File{}).Apply(context.Background(),
-		fileRes(path, map[string]any{"ensure": "file", "content": "x", "mode": "4755"}), false); err != nil {
+		raltest.FileRes(path, map[string]any{"ensure": "file", "content": "x", "mode": "4755"}), false); err != nil {
 		t.Fatalf("Apply returned error: %v", err)
 	}
 	fi, err := os.Stat(path)
@@ -1279,7 +1273,7 @@ func TestFileModePreservesSetuidBit(t *testing.T) {
 		t.Errorf("permission bits = %o, want 755", got)
 	}
 	again, _, err := File{}.Apply(context.Background(),
-		fileRes(path, map[string]any{"ensure": "file", "content": "x", "mode": "4755"}), false)
+		raltest.FileRes(path, map[string]any{"ensure": "file", "content": "x", "mode": "4755"}), false)
 	if err != nil {
 		t.Fatalf("second Apply returned error: %v", err)
 	}
@@ -1293,7 +1287,7 @@ func TestFileModePreservesSetuidBit(t *testing.T) {
 func TestFileModePreservesStickyBitOnDirectory(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "d")
 	if _, _, err := (File{}).Apply(context.Background(),
-		fileRes(path, map[string]any{"ensure": "directory", "mode": "1777"}), false); err != nil {
+		raltest.FileRes(path, map[string]any{"ensure": "directory", "mode": "1777"}), false); err != nil {
 		t.Fatalf("Apply returned error: %v", err)
 	}
 	fi, err := os.Stat(path)
@@ -1316,7 +1310,7 @@ func TestFileModeChangeMessageIsFourDigitOctal(t *testing.T) {
 		t.Fatalf("seed: %v", err)
 	}
 	changes, _, err := File{}.Apply(context.Background(),
-		fileRes(path, map[string]any{"ensure": "file", "content": "x", "mode": "0600"}), false)
+		raltest.FileRes(path, map[string]any{"ensure": "file", "content": "x", "mode": "0600"}), false)
 	if err != nil {
 		t.Fatalf("Apply returned error: %v", err)
 	}
@@ -1345,7 +1339,7 @@ func TestFileNoopReportsModeChangeOnExistingFile(t *testing.T) {
 		t.Fatalf("seed: %v", err)
 	}
 	changes, _, err := File{}.Apply(context.Background(),
-		fileRes(path, map[string]any{"ensure": "file", "content": "same\n", "mode": "0600"}), true)
+		raltest.FileRes(path, map[string]any{"ensure": "file", "content": "same\n", "mode": "0600"}), true)
 	if err != nil {
 		t.Fatalf("noop Apply returned error: %v", err)
 	}
@@ -1372,7 +1366,7 @@ func TestFileNoopReportsModeChangeOnExistingFile(t *testing.T) {
 func TestFileRejectsNonStringContent(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "a.txt")
 	if _, _, err := (File{}).Apply(context.Background(),
-		fileRes(path, map[string]any{"ensure": "file", "content": float64(1e21)}), false); err == nil {
+		raltest.FileRes(path, map[string]any{"ensure": "file", "content": float64(1e21)}), false); err == nil {
 		t.Fatal("Apply accepted a numeric content value; want an error")
 	}
 	if _, err := os.Stat(path); !os.IsNotExist(err) {
@@ -1385,7 +1379,7 @@ func TestFileRejectsNonStringContent(t *testing.T) {
 func TestFileRejectsNullContent(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "a.txt")
 	if _, _, err := (File{}).Apply(context.Background(),
-		fileRes(path, map[string]any{"ensure": "file", "content": nil}), false); err == nil {
+		raltest.FileRes(path, map[string]any{"ensure": "file", "content": nil}), false); err == nil {
 		t.Fatal("Apply accepted a null content value; want an error")
 	}
 	if _, err := os.Stat(path); !os.IsNotExist(err) {
@@ -1413,7 +1407,7 @@ func TestFileUnreadableExistingFileIsAnError(t *testing.T) {
 		t.Fatalf("chmod: %v", err)
 	}
 	if _, _, err := (File{}).Apply(context.Background(),
-		fileRes(path, map[string]any{"ensure": "file", "content": "new"}), false); err == nil {
+		raltest.FileRes(path, map[string]any{"ensure": "file", "content": "new"}), false); err == nil {
 		t.Fatal("Apply silently overwrote an unreadable file; want an error")
 	}
 	if err := os.Chmod(path, 0o644); err != nil {
@@ -1452,7 +1446,7 @@ func TestFileCreatedMetadataFailureCollapsesOntoEnsure(t *testing.T) {
 	// level. It is also the exact fixture the measurement above used, so the
 	// whole message can be compared rather than sampled.
 	const absent = "nosuch-voxagent-test"
-	r := fileRes(path, map[string]any{
+	r := raltest.FileRes(path, map[string]any{
 		"ensure": "file", "content": "created-then-owner-fails", "owner": absent,
 	})
 	r.File, r.Line = "/etc/site.pp", 12
@@ -1511,7 +1505,7 @@ func TestFileCreateFailureOutranksMetadataFailure(t *testing.T) {
 	// nothing to collapse and this test would pass with the guard gone. group.rb
 	// has no such check, so its chown is attempted and its ENOENT is what would
 	// land on ensure.
-	r := fileRes(path, map[string]any{
+	r := raltest.FileRes(path, map[string]any{
 		"ensure": "file", "content": "x", "owner": "0", "group": "0",
 	})
 	r.File, r.Line = "/etc/site.pp", 2
@@ -1557,7 +1551,7 @@ func TestFileCreatedMetadataIsAppliedButNotReported(t *testing.T) {
 	// their numeric path, so the fixture does not depend on which users and
 	// groups the host happens to have.
 	const wantID = 12345
-	r := fileRes(path, map[string]any{
+	r := raltest.FileRes(path, map[string]any{
 		"ensure": "file", "content": "x",
 		"owner": strconv.Itoa(wantID), "group": strconv.Itoa(wantID),
 	})
@@ -1616,7 +1610,7 @@ func TestFileCreatedSetIDModeSurvivesTheChown(t *testing.T) {
 			if tc.ensure == "file" {
 				params["content"] = "x"
 			}
-			changes, _, err := File{}.Apply(context.Background(), fileRes(path, params), false)
+			changes, _, err := File{}.Apply(context.Background(), raltest.FileRes(path, params), false)
 			if err != nil || len(changes) != 1 || changes[0].Property != "ensure" || changes[0].Err != nil {
 				t.Fatalf("Apply = %+v, %v; want one successful ensure change", changes, err)
 			}
@@ -1673,7 +1667,7 @@ func TestFileCreatedSetIDResyncFailureCollapsesInOrder(t *testing.T) {
 			path := filepath.Join(t.TempDir(), "p")
 			chowned := false
 			fsys := setIDFaultFS{groupErr: tc.groupErr, chmodAfterChown: errors.New("chmod injected failure"), chowned: &chowned}
-			changes, _, err := applyFile(context.Background(), fsys, path, fileRes(path, map[string]any{
+			changes, _, err := applyFile(context.Background(), fsys, path, raltest.FileRes(path, map[string]any{
 				"ensure": "file", "content": "x", "mode": "4755", "owner": "12345", "group": "12345"}),
 				false, false, nil, nil, nil)
 			if err != nil || len(changes) != 1 || changes[0].Err == nil {
@@ -1705,7 +1699,7 @@ func TestFileResourceLevelFailuresStayBare(t *testing.T) {
 		{"a mode that does not parse", filepath.Join(dir, "x"), map[string]any{"ensure": "file", "mode": "9"}},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			changes, _, err := File{}.Apply(context.Background(), fileRes(tt.path, tt.params), false)
+			changes, _, err := File{}.Apply(context.Background(), raltest.FileRes(tt.path, tt.params), false)
 			if err == nil {
 				t.Fatalf("Apply returned no error; changes = %+v", changes)
 			}
@@ -1733,7 +1727,7 @@ func TestFileOwnerNumericStringNoopWhenUnchanged(t *testing.T) {
 	beforeUID := before.Sys().(*syscall.Stat_t).Uid
 
 	changes, _, err := File{}.Apply(context.Background(),
-		fileRes(path, map[string]any{"ensure": "file", "owner": strconv.Itoa(os.Getuid())}), false)
+		raltest.FileRes(path, map[string]any{"ensure": "file", "owner": strconv.Itoa(os.Getuid())}), false)
 	if err != nil {
 		t.Fatalf("Apply returned error: %v", err)
 	}
@@ -1775,7 +1769,7 @@ func TestFileGroupChangeUnprivilegedFails(t *testing.T) {
 		t.Fatalf("seed: %v", err)
 	}
 	changes, _, err := File{}.Apply(context.Background(),
-		fileRes(path, map[string]any{"ensure": "file", "group": "0"}), false)
+		raltest.FileRes(path, map[string]any{"ensure": "file", "group": "0"}), false)
 	if err != nil {
 		t.Fatalf("Apply returned a resource-level error %v; a failed chown names group", err)
 	}
@@ -1818,7 +1812,7 @@ func TestFileOwnerNoopReportsChangeWithoutChowning(t *testing.T) {
 	beforeUID := before.Sys().(*syscall.Stat_t).Uid
 
 	changes, _, err := File{}.Apply(context.Background(),
-		fileRes(path, map[string]any{"ensure": "file", "owner": want}), true)
+		raltest.FileRes(path, map[string]any{"ensure": "file", "owner": want}), true)
 	if err != nil {
 		t.Fatalf("noop Apply returned error: %v", err)
 	}
@@ -1874,7 +1868,7 @@ func TestFileOwnerNoopUnprivilegedReportsNoChange(t *testing.T) {
 		t.Fatalf("seed: %v", err)
 	}
 	changes, warnings, err := File{}.Apply(context.Background(),
-		fileRes(path, map[string]any{"ensure": "file", "owner": "0"}), true)
+		raltest.FileRes(path, map[string]any{"ensure": "file", "owner": "0"}), true)
 	if err != nil {
 		t.Fatalf("noop Apply returned error: %v", err)
 	}
@@ -1911,12 +1905,12 @@ func TestFileOwnerNumericAndNamedResolveSame(t *testing.T) {
 	}
 
 	numericChanges, _, err := File{}.Apply(context.Background(),
-		fileRes(pathNumeric, map[string]any{"ensure": "file", "owner": strconv.Itoa(uid)}), false)
+		raltest.FileRes(pathNumeric, map[string]any{"ensure": "file", "owner": strconv.Itoa(uid)}), false)
 	if err != nil {
 		t.Fatalf("numeric owner Apply returned error: %v", err)
 	}
 	namedChanges, _, err := File{}.Apply(context.Background(),
-		fileRes(pathNamed, map[string]any{"ensure": "file", "owner": u.Username}), false)
+		raltest.FileRes(pathNamed, map[string]any{"ensure": "file", "owner": u.Username}), false)
 	if err != nil {
 		t.Fatalf("named owner Apply returned error: %v", err)
 	}
@@ -1948,7 +1942,7 @@ func TestFileChownAppliesOwnerAndGroupNotSwapped(t *testing.T) {
 	}
 	const wantUID, wantGID = 1, 2
 	if _, _, err := (File{}).Apply(context.Background(),
-		fileRes(path, map[string]any{"ensure": "file",
+		raltest.FileRes(path, map[string]any{"ensure": "file",
 			"owner": strconv.Itoa(wantUID), "group": strconv.Itoa(wantGID)}), false); err != nil {
 		t.Fatalf("Apply returned error: %v", err)
 	}
@@ -2475,35 +2469,6 @@ func TestFileOwnershipInSyncReportsNothing(t *testing.T) {
 	}
 }
 
-// error_location's branches, including the empty one. voxagent previously
-// rendered "(file: , line: 0)" for a resource with no source metadata, which is
-// a real input: a catalog resource carries file/line only when the compiler
-// knew them.
-//
-// util/errors.rb error_location treats "" as not-known and returns an empty
-// string when neither is known, and error_location_with_space adds the space only
-// when the result is non-empty -- so the space belongs to the suffix, not to
-// the caller's format string.
-func TestErrorLocationBranches(t *testing.T) {
-	for _, tc := range []struct {
-		name string
-		file string
-		line int
-		want string
-	}{
-		{"file and line", "/etc/site.pp", 6, " (file: /etc/site.pp, line: 6)"},
-		{"line only", "", 6, " (line: 6)"},
-		{"file only", "/etc/site.pp", 0, " (file: /etc/site.pp)"},
-		{"neither", "", 0, ""},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			if got := errorLocation(tc.file, tc.line); got != tc.want {
-				t.Errorf("errorLocation(%q, %d) = %q, want %q", tc.file, tc.line, got, tc.want)
-			}
-		})
-	}
-}
-
 // property.rb:493's wording, verbatim: the value is single-quoted, the class
 // name is the property's, and the detail is the raised error's own message with
 // the resource's source location appended.
@@ -2538,7 +2503,7 @@ func TestFileUnresolvableOwnershipUnderNoopIsNotAFailure(t *testing.T) {
 			}
 			const absent = "nosuch-voxagent-test"
 
-			r := fileRes(path, map[string]any{"ensure": "file", property: absent})
+			r := raltest.FileRes(path, map[string]any{"ensure": "file", property: absent})
 			changes, _, err := File{}.Apply(context.Background(), r, true)
 			if err != nil {
 				t.Fatalf("Apply returned a resource-level error: %v", err)
@@ -2596,7 +2561,7 @@ func TestFileMetadataFailureDoesNotStopLaterProperties(t *testing.T) {
 	// root check at :35 -- so the property still fails and still has to be
 	// stepped over. The three-property walk this test exists for is therefore
 	// intact, and it now steps over a failure the root check cannot spare.
-	r := fileRes(path, map[string]any{
+	r := raltest.FileRes(path, map[string]any{
 		"ensure": "file", "mode": "0600", "owner": "nosuchuser", "group": "root",
 	})
 	changes, _, err := File{}.Apply(context.Background(), r, false)
@@ -2645,7 +2610,7 @@ func TestFileMetadataIsReportedOwnerGroupMode(t *testing.T) {
 			if err := os.Chmod(path, 0o700); err != nil {
 				t.Fatal(err)
 			}
-			changes, _, err := File{}.Apply(context.Background(), fileRes(path, map[string]any{
+			changes, _, err := File{}.Apply(context.Background(), raltest.FileRes(path, map[string]any{
 				"ensure": ensure, "owner": "nosuchuser-voxagent", "group": group, "mode": "0640",
 			}), true)
 			if err != nil {
@@ -2690,7 +2655,7 @@ func TestFileMetadataChmodFailureIsAttributedToMode(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = os.Chmod(sub, 0o755) })
 
-	r := fileRes(path, map[string]any{"ensure": "file", "mode": "0600"})
+	r := raltest.FileRes(path, map[string]any{"ensure": "file", "mode": "0600"})
 	_, _, err := File{}.Apply(context.Background(), r, false)
 	// currentMode's stat failure IS a legitimate resource-level error: the run
 	// could not read the state it was about to reconcile, and no property moved.
@@ -2756,7 +2721,7 @@ func TestFileMetadataChmodFailureStillAttemptsOwnership(t *testing.T) {
 	// out-of-sync owner is now suppressed and emits no change, which reads
 	// identically to "the walk stopped" in just the same way -- so the evidence
 	// moves to group, which group.rb still attempts unprivileged.
-	r := fileRes(foreign, map[string]any{
+	r := raltest.FileRes(foreign, map[string]any{
 		"ensure": "file", "mode": wantMode, "group": strconv.Itoa(os.Getgid()),
 	})
 	changes, _, applyErr := File{}.Apply(context.Background(), r, false)
@@ -2826,7 +2791,7 @@ func TestFileOwnerChangeUnprivilegedWarnsAndReportsNoChange(t *testing.T) {
 	beforeUID := before.Sys().(*syscall.Stat_t).Uid
 
 	changes, warnings, err := File{}.Apply(context.Background(),
-		fileRes(path, map[string]any{"ensure": "file", "owner": "0"}), false)
+		raltest.FileRes(path, map[string]any{"ensure": "file", "owner": "0"}), false)
 	if err != nil {
 		t.Fatalf("Apply returned error: %v", err)
 	}
@@ -2865,7 +2830,7 @@ func TestFileOwnerInSyncUnprivilegedDoesNotWarn(t *testing.T) {
 		t.Fatalf("seed: %v", err)
 	}
 	changes, warnings, err := File{}.Apply(context.Background(),
-		fileRes(path, map[string]any{"ensure": "file", "owner": strconv.Itoa(os.Getuid())}), false)
+		raltest.FileRes(path, map[string]any{"ensure": "file", "owner": strconv.Itoa(os.Getuid())}), false)
 	if err != nil {
 		t.Fatalf("Apply returned error: %v", err)
 	}
@@ -2896,7 +2861,7 @@ func TestFileUnresolvableOwnerUnprivilegedStillFails(t *testing.T) {
 		t.Fatalf("seed: %v", err)
 	}
 	changes, warnings, err := File{}.Apply(context.Background(),
-		fileRes(path, map[string]any{"ensure": "file", "owner": "nosuchuser"}), false)
+		raltest.FileRes(path, map[string]any{"ensure": "file", "owner": "nosuchuser"}), false)
 	if err != nil {
 		t.Fatalf("Apply returned a resource-level error %v; an unresolvable owner names owner", err)
 	}
@@ -2933,7 +2898,7 @@ func TestFileOwnerChangeAsRootIsAppliedWithoutWarning(t *testing.T) {
 	}
 	const wantUID = 1
 	changes, warnings, err := File{}.Apply(context.Background(),
-		fileRes(path, map[string]any{"ensure": "file", "owner": strconv.Itoa(wantUID)}), false)
+		raltest.FileRes(path, map[string]any{"ensure": "file", "owner": strconv.Itoa(wantUID)}), false)
 	if err != nil {
 		t.Fatalf("Apply returned error: %v", err)
 	}
@@ -2985,7 +2950,7 @@ func TestFileEnsureValuesPassPreflight(t *testing.T) {
 func TestFileWithoutEnsureLeavesAnAbsentPathAbsent(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "absent")
 	changes, warnings, err := File{}.Apply(context.Background(),
-		fileRes(path, map[string]any{"mode": "0600"}), false)
+		raltest.FileRes(path, map[string]any{"mode": "0600"}), false)
 	if err != nil || len(changes) != 0 || len(warnings) != 0 {
 		t.Fatalf("Apply = %+v, %v, %v; want no changes, no warnings, no error", changes, warnings, err)
 	}
@@ -3005,7 +2970,7 @@ func TestFileWithoutEnsureReconcilesAnExistingFilesMode(t *testing.T) {
 		t.Fatal(err)
 	}
 	changes, _, err := File{}.Apply(context.Background(),
-		fileRes(path, map[string]any{"mode": "0600"}), false)
+		raltest.FileRes(path, map[string]any{"mode": "0600"}), false)
 	if err != nil {
 		t.Fatalf("Apply returned error: %v", err)
 	}
@@ -3034,7 +2999,7 @@ func TestFileWithoutEnsureUnderNoopChangesNothing(t *testing.T) {
 		t.Fatal(err)
 	}
 	changes, _, err := File{}.Apply(context.Background(),
-		fileRes(path, map[string]any{"mode": "0600"}), true)
+		raltest.FileRes(path, map[string]any{"mode": "0600"}), true)
 	if err != nil || len(changes) != 1 {
 		t.Fatalf("Apply = %+v, %v; want the one would-be mode change", changes, err)
 	}
@@ -3063,7 +3028,7 @@ func TestFileManageLeavesALinksModeAlone(t *testing.T) {
 	if err := os.Symlink(target, link); err != nil {
 		t.Fatal(err)
 	}
-	changes, _, err := File{}.Apply(context.Background(), fileRes(link, map[string]any{"mode": "0600"}), false)
+	changes, _, err := File{}.Apply(context.Background(), raltest.FileRes(link, map[string]any{"mode": "0600"}), false)
 	if err != nil || len(changes) != 0 {
 		t.Fatalf("Apply = %+v, %v; want nothing", changes, err)
 	}
@@ -3092,7 +3057,7 @@ func TestFileCreatedDirectoryModeGainsSearchWhereItHasRead(t *testing.T) {
 	} {
 		path := filepath.Join(t.TempDir(), "d")
 		changes, _, err := File{}.Apply(context.Background(),
-			fileRes(path, map[string]any{"ensure": "directory", "mode": tc.mode}), false)
+			raltest.FileRes(path, map[string]any{"ensure": "directory", "mode": tc.mode}), false)
 		if err != nil || len(changes) != 1 || changes[0].Message != "created" {
 			t.Fatalf("mode %s: Apply = %+v, %v; want one \"created\"", tc.mode, changes, err)
 		}
@@ -3117,7 +3082,7 @@ func TestFileExistingDirectoryModeComparesTheMaskedValue(t *testing.T) {
 	if err := os.Chmod(path, 0o700); err != nil {
 		t.Fatal(err)
 	}
-	r := fileRes(path, map[string]any{"ensure": "directory", "mode": "0640"})
+	r := raltest.FileRes(path, map[string]any{"ensure": "directory", "mode": "0640"})
 	changes, _, err := File{}.Apply(context.Background(), r, false)
 	if err != nil {
 		t.Fatalf("Apply returned error: %v", err)
@@ -3149,7 +3114,7 @@ func TestFilePresentOverADirectoryMasksTheMode(t *testing.T) {
 		t.Fatal(err)
 	}
 	changes, _, err := File{}.Apply(context.Background(),
-		fileRes(path, map[string]any{"ensure": "present", "mode": "0644"}), false)
+		raltest.FileRes(path, map[string]any{"ensure": "present", "mode": "0644"}), false)
 	if err != nil || len(changes) != 1 || changes[0].Message != "mode changed '0700' to '0755'" {
 		t.Fatalf("Apply = %+v, %v; want one mode change '0700' to '0755'", changes, err)
 	}
@@ -3190,7 +3155,7 @@ func TestFileReplaceFalseLeavesExistingContent(t *testing.T) {
 		t.Fatal(err)
 	}
 	changes, _, err := (File{}).Apply(context.Background(),
-		fileRes(p, map[string]any{"ensure": "file", "content": "new\n", "replace": false}), false)
+		raltest.FileRes(p, map[string]any{"ensure": "file", "content": "new\n", "replace": false}), false)
 	if err != nil || len(changes) != 0 {
 		t.Fatalf("Apply = %+v, %v; want no change", changes, err)
 	}
@@ -3202,14 +3167,14 @@ func TestFileReplaceFalseLeavesExistingContent(t *testing.T) {
 func TestFileReplaceFalseStillCreates(t *testing.T) {
 	p := filepath.Join(t.TempDir(), "f")
 	changes, _, err := (File{}).Apply(context.Background(),
-		fileRes(p, map[string]any{"ensure": "file", "content": "new\n", "replace": "no"}), false)
+		raltest.FileRes(p, map[string]any{"ensure": "file", "content": "new\n", "replace": "no"}), false)
 	if err != nil || len(changes) != 1 || changes[0].Name != "file_created" {
 		t.Fatalf("Apply = %+v, %v; want one file_created", changes, err)
 	}
 }
 
 func TestFileValidateRejectsANonBooleanReplace(t *testing.T) {
-	r := fileRes("/x/f", map[string]any{"replace": "maybe"})
+	r := raltest.FileRes("/x/f", map[string]any{"replace": "maybe"})
 	want := `Parameter replace failed on File[/x/f]: Invalid value "maybe". Valid values are true, false, yes, no.`
 	if err := (File{}).Validate(r); err == nil || err.Error() != want {
 		t.Errorf("Validate = %v; want %q", err, want)
@@ -3222,7 +3187,7 @@ func TestFileShowDiffChangesNothing(t *testing.T) {
 		t.Fatal(err)
 	}
 	changes, _, err := (File{}).Apply(context.Background(),
-		fileRes(p, map[string]any{"ensure": "file", "content": "new\n", "show_diff": true}), false)
+		raltest.FileRes(p, map[string]any{"ensure": "file", "content": "new\n", "show_diff": true}), false)
 	if err != nil || len(changes) != 1 || changes[0].Property != "content" {
 		t.Fatalf("Apply = %+v, %v; want exactly the content change", changes, err)
 	}
@@ -3240,7 +3205,7 @@ func TestFileSourcePlusReplaceFalseOverExistingLeavesUnchanged(t *testing.T) {
 		t.Fatal(err)
 	}
 	changes, _, err := (File{}).Apply(context.Background(),
-		fileRes(targetFile, map[string]any{"ensure": "file", "source": srcFile, "replace": false}), false)
+		raltest.FileRes(targetFile, map[string]any{"ensure": "file", "source": srcFile, "replace": false}), false)
 	if err != nil || len(changes) != 0 {
 		t.Fatalf("Apply = %+v, %v; want no change", changes, err)
 	}
@@ -3317,7 +3282,7 @@ func TestFileReplaceFalseKeepsWhateverExists(t *testing.T) {
 				}
 				params[k] = v
 			}
-			changes, _, err := (File{}).Apply(context.Background(), fileRes(filepath.Join(base, tc.path), params), false)
+			changes, _, err := (File{}).Apply(context.Background(), raltest.FileRes(filepath.Join(base, tc.path), params), false)
 			var got []string
 			for _, ch := range changes {
 				got = append(got, ch.Message)
@@ -3344,7 +3309,7 @@ func TestFilePurgeWithReplaceFalseRemovesNothing(t *testing.T) {
 	base := t.TempDir()
 	tree(t, base, "dst/extra", "dst/sub/y")
 	dst := filepath.Join(base, "dst")
-	parent := fileRes(dst, map[string]any{"ensure": "directory", "recurse": true, "purge": true,
+	parent := raltest.FileRes(dst, map[string]any{"ensure": "directory", "recurse": true, "purge": true,
 		"force": true, "replace": false, "mode": "0700"})
 	children, _, err := File{}.Generate(context.Background(), parent, noneManaged)
 	if err != nil || len(children) != 3 {
@@ -3373,7 +3338,7 @@ func TestFileReplaceFalseStillReconcilesOwnerAndGroup(t *testing.T) {
 	}
 	d := filepath.Join(t.TempDir(), "d")
 	mustMkdir(t, d)
-	changes, _, err := (File{}).Apply(context.Background(), fileRes(d, map[string]any{
+	changes, _, err := (File{}).Apply(context.Background(), raltest.FileRes(d, map[string]any{
 		"ensure": "file", "replace": false, "owner": "nobody", "group": "nobody"}), false)
 	var got []string
 	for _, ch := range changes {
@@ -3399,7 +3364,7 @@ func TestFileBoolParam(t *testing.T) {
 		{"yes", true, false}, {"no", false, false},
 		{float64(1), false, true}, {"True", false, true},
 	} {
-		got, err := fileBoolParam(fileRes("/x/f", map[string]any{"replace": tc.raw}), "replace", true)
+		got, err := fileBoolParam(raltest.FileRes("/x/f", map[string]any{"replace": tc.raw}), "replace", true)
 		if got != tc.want || (err != nil) != tc.wantErr {
 			t.Errorf("%#v: = %v, %v; want %v, error %v", tc.raw, got, err, tc.want, tc.wantErr)
 		}
@@ -3407,13 +3372,13 @@ func TestFileBoolParam(t *testing.T) {
 	// Measured: Puppet prints the value's inspect, so a number is unquoted
 	// ("Invalid value 1.", "Invalid value 1.5.") and a string is quoted.
 	for raw, shown := range map[any]string{float64(1): "1", 1.5: "1.5", "maybe": `"maybe"`} {
-		_, err := fileBoolParam(fileRes("/x/f", map[string]any{"replace": raw}), "replace", true)
+		_, err := fileBoolParam(raltest.FileRes("/x/f", map[string]any{"replace": raw}), "replace", true)
 		want := "Parameter replace failed on File[/x/f]: Invalid value " + shown + ". Valid values are true, false, yes, no."
 		if err == nil || err.Error() != want {
 			t.Errorf("%#v: error = %v; want %q", raw, err, want)
 		}
 	}
-	if got, err := fileBoolParam(fileRes("/x/f", nil), "replace", true); !got || err != nil {
+	if got, err := fileBoolParam(raltest.FileRes("/x/f", nil), "replace", true); !got || err != nil {
 		t.Errorf("absent: = %v, %v; want the default", got, err)
 	}
 }
@@ -3436,7 +3401,7 @@ func seedLink(t *testing.T, body string, mode os.FileMode) (real, l string) {
 func TestFileManageReplacesALinkWithAFile(t *testing.T) {
 	real, l := seedLink(t, "a\n", 0o644)
 	changes, _, err := (File{}).Apply(context.Background(),
-		fileRes(l, map[string]any{"ensure": "file", "content": "c\n"}), false)
+		raltest.FileRes(l, map[string]any{"ensure": "file", "content": "c\n"}), false)
 	if err != nil || len(changes) != 1 || changes[0].Name != "file_created" || changes[0].Was != "link" ||
 		changes[0].Message != fmt.Sprintf("defined content as '%s'", checksum([]byte("c\n"))) {
 		t.Fatalf("Apply = %+v, %v", changes, err)
@@ -3459,7 +3424,7 @@ func TestFileManageReplacesALinkWithAFile(t *testing.T) {
 func TestFileFollowContentReplacesTheLinkNotItsTarget(t *testing.T) {
 	real, l := seedLink(t, "old\n", 0o644)
 	changes, _, err := (File{}).Apply(context.Background(),
-		fileRes(l, map[string]any{"ensure": "file", "content": "new\n", "links": "follow"}), false)
+		raltest.FileRes(l, map[string]any{"ensure": "file", "content": "new\n", "links": "follow"}), false)
 	if err != nil || len(changes) != 1 || changes[0].Property != "content" || changes[0].Err != nil {
 		t.Fatalf("Apply = %+v, %v", changes, err)
 	}
@@ -3485,7 +3450,7 @@ func TestFileFollowContentReplacesTheLinkNotItsTarget(t *testing.T) {
 func TestFileFollowContentTakesTheLinksOwnModeAsPuppetDoes(t *testing.T) {
 	real, l := seedLink(t, "old\n", 0o640)
 	if _, _, err := (File{}).Apply(context.Background(),
-		fileRes(l, map[string]any{"ensure": "file", "content": "new\n", "links": "follow"}), false); err != nil {
+		raltest.FileRes(l, map[string]any{"ensure": "file", "content": "new\n", "links": "follow"}), false); err != nil {
 		t.Fatal(err)
 	}
 	if fi, err := os.Lstat(l); err != nil || !fi.Mode().IsRegular() || fi.Mode().Perm() != 0o777 {
@@ -3512,7 +3477,7 @@ func TestFileFollowContentAndModeReportTheTargetsMode(t *testing.T) {
 	} {
 		t.Run(tc.mode, func(t *testing.T) {
 			real, l := seedLink(t, "old\n", 0o640)
-			changes, _, err := (File{}).Apply(context.Background(), fileRes(l, map[string]any{
+			changes, _, err := (File{}).Apply(context.Background(), raltest.FileRes(l, map[string]any{
 				"ensure": "file", "content": "new\n", "links": "follow", "mode": tc.mode}), false)
 			if err != nil || propertyFixErr(changes, nil) != nil {
 				t.Fatalf("Apply = %+v, %v", changes, err)
@@ -3543,7 +3508,7 @@ func TestFileFollowContentAndModeReportTheTargetsMode(t *testing.T) {
 func TestFileFollowModeChangesTheTarget(t *testing.T) {
 	real, l := seedLink(t, "a\n", 0o644)
 	changes, _, err := (File{}).Apply(context.Background(),
-		fileRes(l, map[string]any{"ensure": "file", "links": "follow", "mode": "0600"}), false)
+		raltest.FileRes(l, map[string]any{"ensure": "file", "links": "follow", "mode": "0600"}), false)
 	if err != nil || len(changes) != 1 || changes[0].Message != "mode changed '0644' to '0600'" {
 		t.Fatalf("Apply = %+v, %v", changes, err)
 	}
@@ -3567,7 +3532,7 @@ func TestFileFollowDirectoryIsSatisfiedByALinkToADirectory(t *testing.T) {
 		t.Fatal(err)
 	}
 	changes, _, err := (File{}).Apply(context.Background(),
-		fileRes(l, map[string]any{"ensure": "directory", "links": "follow"}), false)
+		raltest.FileRes(l, map[string]any{"ensure": "directory", "links": "follow"}), false)
 	if err != nil || len(changes) != 0 {
 		t.Fatalf("Apply = %+v, %v; want nothing", changes, err)
 	}
@@ -3606,7 +3571,7 @@ func TestFileFollowAbsentReportsTheTargetsType(t *testing.T) {
 			if err := os.Symlink(real, l); err != nil {
 				t.Fatal(err)
 			}
-			changes, _, err := (File{}).Apply(context.Background(), fileRes(l, map[string]any{
+			changes, _, err := (File{}).Apply(context.Background(), raltest.FileRes(l, map[string]any{
 				"ensure": "absent", "links": "follow", "force": tc.force}), false)
 			if err != nil || len(changes) != 1 || changes[0].Was != tc.was || changes[0].Message != "removed" ||
 				len(changes[0].PathNotices) != tc.notices || changes[0].Err != nil {
@@ -3624,7 +3589,7 @@ func TestFileFollowAbsentReportsTheTargetsType(t *testing.T) {
 
 func TestFilePresentIsSatisfiedByALink(t *testing.T) {
 	real, l := seedLink(t, "a\n", 0o644)
-	changes, _, err := (File{}).Apply(context.Background(), fileRes(l, map[string]any{"ensure": "present"}), false)
+	changes, _, err := (File{}).Apply(context.Background(), raltest.FileRes(l, map[string]any{"ensure": "present"}), false)
 	if err != nil || len(changes) != 0 {
 		t.Fatalf("Apply = %+v, %v; want nothing", changes, err)
 	}
@@ -3634,13 +3599,13 @@ func TestFilePresentIsSatisfiedByALink(t *testing.T) {
 }
 
 func TestFileValidateRejectsLinksIgnore(t *testing.T) {
-	r := fileRes("/x/f", map[string]any{"links": "ignore"})
+	r := raltest.FileRes("/x/f", map[string]any{"links": "ignore"})
 	want := `Parameter links failed on File[/x/f]: Invalid value "ignore". Valid values are follow, manage.`
 	if err := (File{}).Validate(r); err == nil || err.Error() != want {
 		t.Errorf("Validate = %v; want %q", err, want)
 	}
 	for _, v := range []string{"manage", "follow"} {
-		if err := (File{}).Validate(fileRes("/x/f", map[string]any{"links": v})); err != nil {
+		if err := (File{}).Validate(raltest.FileRes("/x/f", map[string]any{"links": v})); err != nil {
 			t.Errorf("Validate(links => %s) = %v", v, err)
 		}
 	}
@@ -3658,7 +3623,7 @@ func TestFileFollowEnsureFileOverADanglingLinkWritesNothingThroughIt(t *testing.
 		t.Fatal(err)
 	}
 	changes, _, err := (File{}).Apply(context.Background(),
-		fileRes(l, map[string]any{"ensure": "file", "links": "follow"}), false)
+		raltest.FileRes(l, map[string]any{"ensure": "file", "links": "follow"}), false)
 	if err != nil || len(changes) != 1 || changes[0].Was != "absent" || changes[0].Err == nil ||
 		!strings.HasSuffix(changes[0].Err.Error(), l+": file exists") {
 		t.Fatalf("Apply = %+v, %v; want one failed create", changes, err)
@@ -3704,7 +3669,7 @@ func TestFileAutorequiresOwnerAndGroupByName(t *testing.T) {
 func TestFileGeneratedByANonFileAppliesAtItsOwnPath(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "made.txt")
 	parent := catalog.Resource{Type: "Vox_evalgen", Title: "p"}
-	r := fileRes(path, map[string]any{"ensure": "file", "content": "made\n"})
+	r := raltest.FileRes(path, map[string]any{"ensure": "file", "content": "made\n"})
 	r.GeneratedFrom = &parent
 	if _, _, err := (File{}).Apply(context.Background(), r, false); err != nil {
 		t.Fatalf("Apply: %v", err)
@@ -3725,9 +3690,9 @@ func TestFileRecursionChildCannotEscapeItsParentsDirectory(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	parent := fileRes(dir, map[string]any{"ensure": "directory", "recurse": "true"})
+	parent := raltest.FileRes(dir, map[string]any{"ensure": "directory", "recurse": "true"})
 	escape := filepath.Join(other, "x")
-	r := fileRes(escape, map[string]any{"ensure": "file", "content": "no\n"})
+	r := raltest.FileRes(escape, map[string]any{"ensure": "file", "content": "no\n"})
 	r.GeneratedFrom = &parent
 	if _, _, err := (File{}).Apply(context.Background(), r, false); err == nil {
 		t.Error("Apply succeeded outside the parent's directory")
@@ -3760,7 +3725,7 @@ func seededFile(t *testing.T, path string, mode os.FileMode) {
 func TestFileSymbolicModeChangesAnExistingFile(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "a")
 	seededFile(t, path, 0o750)
-	r := fileRes(path, map[string]any{"ensure": "file", "mode": "u+rwX,g-rwx,o-rwx"})
+	r := raltest.FileRes(path, map[string]any{"ensure": "file", "mode": "u+rwX,g-rwx,o-rwx"})
 	changes, _, err := File{}.Apply(context.Background(), r, false)
 	want := Change{Property: "mode", Was: "0750", Is: "u+rwX,g-rwx,o-rwx",
 		Message: "mode changed '0750' to '0700' (u+rwX,g-rwx,o-rwx)"}
@@ -3792,7 +3757,7 @@ func TestFileSymbolicModeOnCreation(t *testing.T) {
 		{"sticky", map[string]any{"ensure": "directory", "mode": "u+rwx,g+rwx,o+rwxt"}, 0o1777},
 	} {
 		path := filepath.Join(dir, tc.name)
-		changes, _, err := File{}.Apply(context.Background(), fileRes(path, tc.params), false)
+		changes, _, err := File{}.Apply(context.Background(), raltest.FileRes(path, tc.params), false)
 		if err != nil || len(changes) != 1 || changes[0].Property != "ensure" || changes[0].Err != nil {
 			t.Errorf("%s: Apply = %+v, %v; want only a successful ensure change", tc.name, changes, err)
 			continue
@@ -3808,7 +3773,7 @@ func TestFileOctalModeClearsSpecialBits(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "a")
 	seededFile(t, path, 0o755|os.ModeSetgid)
 	changes, _, err := File{}.Apply(context.Background(),
-		fileRes(path, map[string]any{"ensure": "file", "mode": "0755"}), false)
+		raltest.FileRes(path, map[string]any{"ensure": "file", "mode": "0755"}), false)
 	if err != nil || len(changes) != 1 || changes[0].Message != "mode changed '2755' to '0755'" ||
 		changes[0].Was != "2755" || changes[0].Is != "0755" {
 		t.Fatalf("Apply = %+v, %v; want mode changed '2755' to '0755'", changes, err)
@@ -3825,7 +3790,7 @@ func TestFileSymbolicModeXFailureIsAPropertyFailure(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "a")
 	seededFile(t, path, 0o644)
 	changes, _, err := File{}.Apply(context.Background(),
-		fileRes(path, map[string]any{"ensure": "file", "mode": "u-X"}), false)
+		raltest.FileRes(path, map[string]any{"ensure": "file", "mode": "u-X"}), false)
 	if err != nil || len(changes) != 1 {
 		t.Fatalf("Apply = %+v, %v; want one failed mode change", changes, err)
 	}
@@ -3847,7 +3812,7 @@ func TestFileSymbolicModeXFailureOnCreateFailsEnsure(t *testing.T) {
 	for _, ensure := range []string{"file", "directory"} {
 		path := filepath.Join(dir, ensure)
 		changes, _, err := File{}.Apply(context.Background(),
-			fileRes(path, map[string]any{"ensure": ensure, "mode": "u=rwX"}), false)
+			raltest.FileRes(path, map[string]any{"ensure": ensure, "mode": "u=rwX"}), false)
 		const wantErr = `X only works with the '+' operator in symbolic mode "u=rwX"`
 		if err != nil || len(changes) != 1 || changes[0].Property != "ensure" || changes[0].Was != "absent" ||
 			changes[0].Err == nil || changes[0].Err.Error() != wantErr {
@@ -3865,7 +3830,7 @@ func TestFileSymbolicModeAfterContent(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "a")
 	seededFile(t, path, 0o700)
 	changes, _, err := File{}.Apply(context.Background(),
-		fileRes(path, map[string]any{"ensure": "file", "content": "new", "mode": "g+r,o+r"}), false)
+		raltest.FileRes(path, map[string]any{"ensure": "file", "content": "new", "mode": "g+r,o+r"}), false)
 	if err != nil || len(changes) != 2 || changes[0].Property != "content" ||
 		changes[1].Message != "mode changed '0700' to '0744' (g+r,o+r)" || changes[1].Was != "0700" {
 		t.Fatalf("Apply = %+v, %v; want content, then mode changed '0700' to '0744' (g+r,o+r)", changes, err)
@@ -3888,7 +3853,7 @@ func TestFileSymbolicModeRecurseComputesPerEntry(t *testing.T) {
 		t.Fatal(err)
 	}
 	const mode = "u+rwX,g-rwx,o-rwx"
-	parent := fileRes(n, map[string]any{"recurse": true, "mode": mode})
+	parent := raltest.FileRes(n, map[string]any{"recurse": true, "mode": mode})
 	children, _, err := File{}.Generate(context.Background(), parent, noneManaged)
 	if err != nil {
 		t.Fatal(err)
@@ -3943,13 +3908,13 @@ func TestFileValidateRefusesBadModes(t *testing.T) {
 		{"000755", `Parameter mode failed on File[/x]: The file mode specification is invalid: "000755"`},
 		{"u+x\nj", `Parameter mode failed on File[/x]: The file mode specification is invalid: "u+x\nj"`},
 	} {
-		err := File{}.Validate(fileRes("/x", map[string]any{"mode": tc.mode}))
+		err := File{}.Validate(raltest.FileRes("/x", map[string]any{"mode": tc.mode}))
 		if err == nil || err.Error() != tc.want {
 			t.Errorf("Validate(mode %#v) = %v; want %q", tc.mode, err, tc.want)
 		}
 	}
 	for _, mode := range []string{"0644", "u+rwX,g-rwx,o-rwx"} {
-		if err := (File{}).Validate(fileRes("/x", map[string]any{"mode": mode})); err != nil {
+		if err := (File{}).Validate(raltest.FileRes("/x", map[string]any{"mode": mode})); err != nil {
 			t.Errorf("Validate(mode %q) = %v; want it accepted", mode, err)
 		}
 	}
@@ -3970,7 +3935,7 @@ func TestFileSymbolicModeXErrorUnderNoopIsNotAFailure(t *testing.T) {
 		{replaced, map[string]any{"ensure": "file", "force": true}},
 	} {
 		tc.params["mode"] = "u=rwX"
-		changes, _, err := File{}.Apply(context.Background(), fileRes(tc.path, tc.params), true)
+		changes, _, err := File{}.Apply(context.Background(), raltest.FileRes(tc.path, tc.params), true)
 		if err != nil || len(changes) != 1 || changes[0].Property != "ensure" || changes[0].Err != nil {
 			t.Errorf("%s: Apply(noop) = %+v, %v; want one ensure change and no Err", tc.path, changes, err)
 		}
@@ -3988,7 +3953,7 @@ func TestFileSymbolicModeXErrorOnReplacementLosesTheOldPath(t *testing.T) {
 	path := filepath.Join(dir, "d")
 	tree(t, dir, "d/x")
 	changes, _, err := File{}.Apply(context.Background(),
-		fileRes(path, map[string]any{"ensure": "file", "force": true, "mode": "u=rwX"}), false)
+		raltest.FileRes(path, map[string]any{"ensure": "file", "force": true, "mode": "u=rwX"}), false)
 	const wantErr = `X only works with the '+' operator in symbolic mode "u=rwX"`
 	if err != nil || len(changes) != 1 || changes[0].Property != "ensure" || changes[0].Was != "directory" ||
 		changes[0].Err == nil || changes[0].Err.Error() != wantErr {
@@ -4006,7 +3971,7 @@ func TestFileSymbolicModeThatDoesNotConverge(t *testing.T) {
 	dir := t.TempDir()
 	created := filepath.Join(dir, "created")
 	changes, _, err := File{}.Apply(context.Background(),
-		fileRes(created, map[string]any{"ensure": "file", "mode": "u+x,g+X"}), false)
+		raltest.FileRes(created, map[string]any{"ensure": "file", "mode": "u+x,g+X"}), false)
 	if err != nil || len(changes) != 1 || changes[0].Property != "ensure" || changes[0].Err != nil {
 		t.Fatalf("Apply = %+v, %v; want only a successful ensure change", changes, err)
 	}
@@ -4015,7 +3980,7 @@ func TestFileSymbolicModeThatDoesNotConverge(t *testing.T) {
 	}
 	existing := filepath.Join(dir, "existing")
 	seededFile(t, existing, 0o644)
-	r := fileRes(existing, map[string]any{"ensure": "file", "mode": "u+x,g+X"})
+	r := raltest.FileRes(existing, map[string]any{"ensure": "file", "mode": "u+x,g+X"})
 	for _, want := range []string{
 		"mode changed '0644' to '0744' (u+x,g+X)",
 		"mode changed '0744' to '0754' (u+x,g+X)",
@@ -4044,11 +4009,11 @@ func TestFileIsNotRefreshable(t *testing.T) {
 // resource_harness.rb:97: a file with no ensure, content, source or target
 // whose path does not exist has nothing to manage.
 func TestFileWithNothingToManageLogsRubysDebugLine(t *testing.T) {
-	r := fileRes(filepath.Join(t.TempDir(), "absent"), map[string]any{"mode": "0600"})
-	src := Sources{Resource: "/Stage[main]/Main/File[absent]", Provider: "File[absent](provider=posix)", Ref: "File[absent]"}
+	r := raltest.FileRes(filepath.Join(t.TempDir(), "absent"), map[string]any{"mode": "0600"})
+	src := sources.Sources{Resource: "/Stage[main]/Main/File[absent]", Provider: "File[absent](provider=posix)", Ref: "File[absent]"}
 
-	ctx, got := debugContext("debug")
-	if _, _, err := (File{}).Apply(WithSources(ctx, src), r, false); err != nil {
+	ctx, got := raltest.DebugContext("debug")
+	if _, _, err := (File{}).Apply(sources.WithSources(ctx, src), r, false); err != nil {
 		t.Fatalf("Apply returned error: %v", err)
 	}
 	if len(*got) != 1 || (*got)[0].Level != "debug" || (*got)[0].Source != src.Resource ||
@@ -4056,8 +4021,8 @@ func TestFileWithNothingToManageLogsRubysDebugLine(t *testing.T) {
 		t.Errorf("entries = %+v, want one debug line at %s", *got, src.Resource)
 	}
 
-	ctx, got = debugContext("notice")
-	if _, _, err := (File{}).Apply(WithSources(ctx, src), r, false); err != nil {
+	ctx, got = raltest.DebugContext("notice")
+	if _, _, err := (File{}).Apply(sources.WithSources(ctx, src), r, false); err != nil {
 		t.Fatalf("Apply returned error: %v", err)
 	}
 	if len(*got) != 0 {
@@ -4070,8 +4035,8 @@ func TestFileThatExistsHasSomethingToManage(t *testing.T) {
 	if err := os.WriteFile(path, []byte("x"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	ctx, got := debugContext("debug")
-	if _, _, err := (File{}).Apply(ctx, fileRes(path, map[string]any{"mode": "0600"}), false); err != nil {
+	ctx, got := raltest.DebugContext("debug")
+	if _, _, err := (File{}).Apply(ctx, raltest.FileRes(path, map[string]any{"mode": "0600"}), false); err != nil {
 		t.Fatalf("Apply returned error: %v", err)
 	}
 	if len(*got) != 0 {
@@ -4081,9 +4046,9 @@ func TestFileThatExistsHasSomethingToManage(t *testing.T) {
 
 // fileSources is the identity the transaction puts on the context for a File
 // whose path is the title.
-func fileSources(path string) Sources {
+func fileSources(path string) sources.Sources {
 	ref := "File[" + path + "]"
-	return Sources{Resource: "/Stage[main]/Main/" + ref, Provider: ref + "(provider=posix)", Ref: ref}
+	return sources.Sources{Resource: "/Stage[main]/Main/" + ref, Provider: ref + "(provider=posix)", Ref: ref}
 }
 
 // type/file.rb:1035 and :1048: remove_existing says what it removes and what
@@ -4137,15 +4102,15 @@ func TestFileRemovalLogsRubysDebugLine(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			p := filepath.Join(t.TempDir(), "p")
 			tc.setup(p)
-			r := fileRes(p, tc.params)
+			r := raltest.FileRes(p, tc.params)
 			r.SensitiveParameters = tc.marked
 			src := fileSources(p)
 
-			ctx, got := debugContext("debug")
-			if _, _, err := (File{}).Apply(WithSources(ctx, src), r, false); err != nil {
+			ctx, got := raltest.DebugContext("debug")
+			if _, _, err := (File{}).Apply(sources.WithSources(ctx, src), r, false); err != nil {
 				t.Fatalf("Apply returned error: %v", err)
 			}
-			if lines := linesAt(*got, src.Resource); !slices.Equal(lines, tc.want) {
+			if lines := raltest.LinesAt(*got, src.Resource); !slices.Equal(lines, tc.want) {
 				t.Errorf("debug lines at %s = %q, want %q", src.Resource, lines, tc.want)
 			}
 		})
@@ -4168,15 +4133,15 @@ func TestFileRelinkLogsTheTargetAsWhatReplacesTheLink(t *testing.T) {
 			if err := os.Symlink("/old", p); err != nil {
 				t.Fatal(err)
 			}
-			r := fileRes(p, map[string]any{"ensure": "link", "target": "/new"})
+			r := raltest.FileRes(p, map[string]any{"ensure": "link", "target": "/new"})
 			r.SensitiveParameters = tc.marked
 			src := fileSources(p)
 
-			ctx, got := debugContext("debug")
-			if _, _, err := (File{}).Apply(WithSources(ctx, src), r, false); err != nil {
+			ctx, got := raltest.DebugContext("debug")
+			if _, _, err := (File{}).Apply(sources.WithSources(ctx, src), r, false); err != nil {
 				t.Fatalf("Apply returned error: %v", err)
 			}
-			if lines := linesAt(*got, src.Resource); !slices.Equal(lines, []string{tc.want}) {
+			if lines := raltest.LinesAt(*got, src.Resource); !slices.Equal(lines, []string{tc.want}) {
 				t.Errorf("debug lines = %q, want %q", lines, tc.want)
 			}
 		})
@@ -4192,9 +4157,9 @@ func TestFileRemovalLogsNothingUnderNoopOrAtNotice(t *testing.T) {
 	}{{"debug", true}, {"notice", false}} {
 		p := filepath.Join(t.TempDir(), "p")
 		mustWrite(t, p, "x")
-		ctx, got := debugContext(tc.level)
-		if _, _, err := (File{}).Apply(WithSources(ctx, fileSources(p)),
-			fileRes(p, map[string]any{"ensure": "absent"}), tc.noop); err != nil {
+		ctx, got := raltest.DebugContext(tc.level)
+		if _, _, err := (File{}).Apply(sources.WithSources(ctx, fileSources(p)),
+			raltest.FileRes(p, map[string]any{"ensure": "absent"}), tc.noop); err != nil {
 			t.Fatalf("Apply returned error: %v", err)
 		}
 		if len(*got) != 0 {
@@ -4230,11 +4195,11 @@ func TestFileModeOfALinkLogsRubysDebugLine(t *testing.T) {
 			}
 			src := fileSources(p)
 
-			ctx, got := debugContext("debug")
-			if _, _, err := (File{}).Apply(WithSources(ctx, src), fileRes(p, params), false); err != nil {
+			ctx, got := raltest.DebugContext("debug")
+			if _, _, err := (File{}).Apply(sources.WithSources(ctx, src), raltest.FileRes(p, params), false); err != nil {
 				t.Fatalf("Apply returned error: %v", err)
 			}
-			if lines := linesAt(*got, src.Resource+"/mode"); !slices.Equal(lines, tc.want) {
+			if lines := raltest.LinesAt(*got, src.Resource+"/mode"); !slices.Equal(lines, tc.want) {
 				t.Errorf("debug lines at %s/mode = %q, want %q", src.Resource, lines, tc.want)
 			}
 		})
@@ -4244,8 +4209,8 @@ func TestFileModeOfALinkLogsRubysDebugLine(t *testing.T) {
 	if err := os.Symlink("x", p); err != nil {
 		t.Fatal(err)
 	}
-	ctx, got := debugContext("notice")
-	if _, _, err := (File{}).Apply(WithSources(ctx, fileSources(p)), fileRes(p, map[string]any{"mode": "0600"}), false); err != nil {
+	ctx, got := raltest.DebugContext("notice")
+	if _, _, err := (File{}).Apply(sources.WithSources(ctx, fileSources(p)), raltest.FileRes(p, map[string]any{"mode": "0600"}), false); err != nil {
 		t.Fatalf("Apply returned error: %v", err)
 	}
 	if len(*got) != 0 {

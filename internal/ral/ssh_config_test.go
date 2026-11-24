@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/voxagent/voxagent/internal/catalog"
+	"github.com/voxagent/voxagent/internal/lib/raltest"
 )
 
 var _ Provider = SshConfig{}
@@ -28,7 +29,7 @@ func sshConfigRes(key string, value any, ensure any) catalog.Resource {
 	if ensure != nil {
 		params["ensure"] = ensure
 	}
-	return augRes("Ssh_config", "zzzz98_st____"+key, params)
+	return raltest.AugRes("Ssh_config", "zzzz98_st____"+key, params)
 }
 
 func wantEnsureChange(t *testing.T, r caseResult, was, is, name, message string) {
@@ -56,7 +57,7 @@ func wantValueChange(t *testing.T, r caseResult, was, is []any, message string) 
 // M11: three keys new to the stock file are created under Host *.
 func TestSshConfigReplays02a(t *testing.T) {
 	withAugVersionMemo(t, map[string]bool{})
-	got := runAugeasCase(t, loadTrace(t, "02a"), []string{sshConfigFile}, sshConfigOver, []catalog.Resource{
+	got := runAugeasCase(t, raltest.LoadTrace(t, "02a"), []string{sshConfigFile}, sshConfigOver, []catalog.Resource{
 		sshConfigRes("Compression", "no", nil),
 		sshConfigRes("GSSAPIAuthentication", "yes", nil),
 		sshConfigRes("ServerAliveInterval", "300", nil),
@@ -78,7 +79,7 @@ func sshConfig02b() []catalog.Resource {
 // M12: a changed key, one already in sync, one created.
 func TestSshConfigReplays02b(t *testing.T) {
 	withAugVersionMemo(t, map[string]bool{})
-	got := runAugeasCase(t, loadTrace(t, "02b"), []string{sshConfigFile}, sshConfigOver, sshConfig02b(), false)
+	got := runAugeasCase(t, raltest.LoadTrace(t, "02b"), []string{sshConfigFile}, sshConfigOver, sshConfig02b(), false)
 	wantNoErrors(t, got)
 	wantMessages(t, got, []string{"value changed ['yes'] to ['no']"}, nil, []string{"created"})
 	wantValueChange(t, got[0], []any{"yes"}, []any{"no"}, "value changed ['yes'] to ['no']")
@@ -88,7 +89,7 @@ func TestSshConfigReplays02b(t *testing.T) {
 // 02b under noop: the retrieves only, no value=, create or flush.
 func TestSshConfigReplays02bNoop(t *testing.T) {
 	withAugVersionMemo(t, map[string]bool{})
-	calls := traceLines(t, "02b", [2]int{4, 22}, [2]int{43, 65}, [2]int{86, 86})
+	calls := raltest.TraceLines(t, "02b", [2]int{4, 22}, [2]int{43, 65}, [2]int{86, 86})
 	got := runAugeasCase(t, calls, []string{sshConfigFile}, sshConfigOver, sshConfig02b(), true)
 	wantNoErrors(t, got)
 	wantMessages(t, got, []string{"value changed ['yes'] to ['no'] (noop)"}, nil, []string{"created (noop)"})
@@ -113,7 +114,7 @@ func sshConfigArrays() []catalog.Resource {
 // M15: array keys (parsed_as? true) are rewritten in place.
 func TestSshConfigReplays02e(t *testing.T) {
 	withAugVersionMemo(t, map[string]bool{})
-	got := runAugeasCase(t, loadTrace(t, "02e"), []string{sshConfigFile}, sshConfigOver, sshConfigArrays(), false)
+	got := runAugeasCase(t, raltest.LoadTrace(t, "02e"), []string{sshConfigFile}, sshConfigOver, sshConfigArrays(), false)
 	wantNoErrors(t, got)
 	wantMessages(t, got, arrayChanges...)
 	wantValueChange(t, got[1], []any{"hmac-sha2-512", "hmac-sha1", "hmac-md5"}, []any{"hmac-sha2-512", "hmac-sha2-256"}, arrayChanges[1][0])
@@ -123,7 +124,7 @@ func TestSshConfigReplays02e(t *testing.T) {
 // key has nothing to manage.
 func TestSshConfigReplays02f(t *testing.T) {
 	withAugVersionMemo(t, map[string]bool{})
-	got := runAugeasCase(t, loadTrace(t, "02f"), []string{sshConfigFile}, sshConfigOver, []catalog.Resource{
+	got := runAugeasCase(t, raltest.LoadTrace(t, "02f"), []string{sshConfigFile}, sshConfigOver, []catalog.Resource{
 		sshConfigRes("CompressionLevel", "6", "absent"),
 		sshConfigRes("ForwardX11", nil, "absent"),
 		sshConfigRes("Nothere", nil, "absent"),
@@ -147,7 +148,7 @@ func TestSshConfigReplays02f(t *testing.T) {
 // The trace's sshd_config and subsystem calls are Tasks 11-12's.
 func TestSshConfigReplays07a(t *testing.T) {
 	withAugVersionMemo(t, map[string]bool{})
-	calls := traceLines(t, "07a", [2]int{4, 68}, [2]int{145, 145})
+	calls := raltest.TraceLines(t, "07a", [2]int{4, 68}, [2]int{145, 145})
 	got := runAugeasCase(t, calls, []string{sshConfigFile}, sshConfigOver, []catalog.Resource{
 		sshConfigRes("Compression", "no", nil),
 		sshConfigRes("Ciphers", []any{"aes256-ctr", "aes128-ctr"}, nil),
@@ -161,7 +162,7 @@ func TestSshConfigReplays07a(t *testing.T) {
 // its exists? with the load error and changes nothing.
 func TestSshConfigReplays07b(t *testing.T) {
 	withAugVersionMemo(t, map[string]bool{})
-	calls := traceLines(t, "07b", [2]int{4, 20}, [2]int{97, 97})
+	calls := raltest.TraceLines(t, "07b", [2]int{4, 20}, [2]int{97, 97})
 	got := runAugeasCase(t, calls, []string{gateLoadpath, sshConfigFile}, sshConfigOver, []catalog.Resource{
 		sshConfigRes("Compression", "no", nil),
 		sshConfigRes("Ciphers", []any{"aes256-ctr", "aes128-ctr"}, nil),
@@ -190,7 +191,7 @@ func TestSshConfigReplays07f(t *testing.T) {
 		sshConfigRes("GSSAPIAuthentication", "yes", nil),
 		sshConfigRes("ServerAliveInterval", "300", nil),
 	}, sshConfigArrays()...)
-	got := runAugeasCase(t, loadTrace(t, "07f"), []string{gateLoadpath, sshConfigFile}, sshConfigOver, rs, false)
+	got := runAugeasCase(t, raltest.LoadTrace(t, "07f"), []string{gateLoadpath, sshConfigFile}, sshConfigOver, rs, false)
 	wantNoErrors(t, got)
 	for _, r := range got {
 		wantEnsureChange(t, r, "absent", "present", "ssh_config_created", "created")
@@ -200,7 +201,7 @@ func TestSshConfigReplays07f(t *testing.T) {
 // 07h: SIMP's lens, the array changes of 02e.
 func TestSshConfigReplays07h(t *testing.T) {
 	withAugVersionMemo(t, map[string]bool{})
-	got := runAugeasCase(t, loadTrace(t, "07h"), []string{gateLoadpath, sshConfigFile}, sshConfigOver, sshConfigArrays(), false)
+	got := runAugeasCase(t, raltest.LoadTrace(t, "07h"), []string{gateLoadpath, sshConfigFile}, sshConfigOver, sshConfigArrays(), false)
 	wantNoErrors(t, got)
 	wantMessages(t, got, arrayChanges...)
 }
@@ -209,7 +210,7 @@ func TestSshConfigReplays07h(t *testing.T) {
 // with Ruby's is_to_s/should_to_s, and nothing is flushed.
 func TestSshConfigValueSyncFailure(t *testing.T) {
 	withAugVersionMemo(t, map[string]bool{})
-	calls := append(traceLines(t, "02b", [2]int{4, 28}), parseTrace(t, "script", "h0 aug_init NULL NULL 64\nh1 aug_close\n")...)
+	calls := append(raltest.TraceLines(t, "02b", [2]int{4, 28}), raltest.ParseTrace(t, "script", "h0 aug_init NULL NULL 64\nh1 aug_close\n")...)
 	got := runAugeasCase(t, calls, []string{sshConfigFile}, sshConfigOver, sshConfig02b()[:1], false)
 	if got[0].err != nil || len(got[0].changes) != 1 {
 		t.Fatalf("result = %+v", got[0])
@@ -226,7 +227,7 @@ func TestSshConfigValueSyncFailure(t *testing.T) {
 // A raise inside create fails ensure, and nothing is flushed.
 func TestSshConfigCreateFailure(t *testing.T) {
 	withAugVersionMemo(t, map[string]bool{})
-	calls := append(traceLines(t, "02a", [2]int{4, 20}), parseTrace(t, "script", "h0 aug_init NULL NULL 64\nh1 aug_close\n")...)
+	calls := append(raltest.TraceLines(t, "02a", [2]int{4, 20}), raltest.ParseTrace(t, "script", "h0 aug_init NULL NULL 64\nh1 aug_close\n")...)
 	got := runAugeasCase(t, calls, []string{sshConfigFile}, sshConfigOver, []catalog.Resource{sshConfigRes("Compression", "no", nil)}, false)
 	if got[0].err != nil || len(got[0].changes) != 1 {
 		t.Fatalf("result = %+v", got[0])
@@ -240,7 +241,7 @@ func TestSshConfigCreateFailure(t *testing.T) {
 // A failed save is the flush's FlushError beside the success change (S1).
 func TestSshConfigFlushFailure(t *testing.T) {
 	withAugVersionMemo(t, map[string]bool{"Ssh_config": true})
-	calls := append(traceLines(t, "02f", [2]int{4, 29}), parseTrace(t, "script", `h1 aug_save => -1
+	calls := append(raltest.TraceLines(t, "02f", [2]int{4, 29}), raltest.ParseTrace(t, "script", `h1 aug_save => -1
 h1 aug_match "/augeas//error" => 0
 h1 aug_load => 0
 h1 aug_load => 0
@@ -258,7 +259,7 @@ h1 aug_close
 // and never matches a should.
 func TestSshConfigNilValue(t *testing.T) {
 	withAugVersionMemo(t, map[string]bool{})
-	calls := append(traceLines(t, "02b", [2]int{4, 20}), parseTrace(t, "script", `h1 aug_match "/files/etc/ssh/ssh_config/Host[1]/Compression/*[label()=~regexp('[0-9]*')]" => 0
+	calls := append(raltest.TraceLines(t, "02b", [2]int{4, 20}), raltest.ParseTrace(t, "script", `h1 aug_match "/files/etc/ssh/ssh_config/Host[1]/Compression/*[label()=~regexp('[0-9]*')]" => 0
 h1 aug_get "/files/etc/ssh/ssh_config/Host[1]/Compression" => 1 NULL
 h1 aug_close
 `)...)
@@ -270,7 +271,7 @@ h1 aug_close
 // An ensure-less resource without a value manages nothing: absent, a debug
 // line; present, no change.
 func TestSshConfigNoEnsureNoValue(t *testing.T) {
-	calls := append(traceLines(t, "02f", [2]int{4, 13}), parseTrace(t, "script", `h1 aug_match "/augeas/load/Ssh" => 1 "/augeas/load/Ssh"
+	calls := append(raltest.TraceLines(t, "02f", [2]int{4, 13}), raltest.ParseTrace(t, "script", `h1 aug_match "/augeas/load/Ssh" => 1 "/augeas/load/Ssh"
 h1 aug_match "/augeas/load/Ssh/incl[.='/etc/ssh/ssh_config']" => 1 "/augeas/load/Ssh/incl"
 h1 aug_match "/files/etc/ssh/ssh_config" => 1 "/files/etc/ssh/ssh_config"
 h1 aug_set "/augeas/context" "/files/etc/ssh/ssh_config" => 0
@@ -294,9 +295,9 @@ h1 aug_close
 
 // The default target is /etc/ssh/ssh_config and host defaults to "*".
 func TestSshConfigDefaults(t *testing.T) {
-	calls := traceLines(t, "02f", [2]int{4, 22}, [2]int{60, 60})
+	calls := raltest.TraceLines(t, "02f", [2]int{4, 22}, [2]int{60, 60})
 	got := runAugeasCase(t, calls, []string{sshConfigFile}, sshConfigOver, []catalog.Resource{
-		augRes("Ssh_config", "CompressionLevel", map[string]any{"value": "6"}),
+		raltest.AugRes("Ssh_config", "CompressionLevel", map[string]any{"value": "6"}),
 	}, false)
 	wantNoErrors(t, got)
 	if len(got[0].changes) != 0 {

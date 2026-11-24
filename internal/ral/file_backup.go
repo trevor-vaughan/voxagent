@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/voxagent/voxagent/internal/catalog"
+	"github.com/voxagent/voxagent/internal/lib/rubyvalue"
 )
 
 // backup is a resource's backup parameter (type/file.rb:76-146) with what
@@ -46,14 +47,6 @@ type backup struct {
 // 'puppet' names when the catalog declares no filebucket of that name
 // (type/file.rb:500-510).
 const defaultBucket = "puppet"
-
-// Filebucket is the core type a catalog declares a named bucket with. Any
-// declared filebucket is a pre-flight gap (ResourceGaps), even though the
-// extension host could apply the resource itself: File's backup would not use
-// it, so a File naming it would fail where Puppet backs up into it, and a
-// declared 'puppet' bucket (a path or a server) would be silently bypassed for
-// <vardir>/clientbucket.
-const Filebucket = "filebucket"
 
 // backupValue munges backup as type/file.rb:126-142 does: false and "false"
 // are no backup, true and "true" the suffix .puppet-bak, any other string is
@@ -87,7 +80,7 @@ func backupValue(r catalog.Resource) (string, error) {
 		}
 		return v, nil
 	}
-	return "", fmt.Errorf("Parameter backup failed on %s: Invalid backup type %s", r.Ref(), rubyInspectValue(v))
+	return "", fmt.Errorf("Parameter backup failed on %s: Invalid backup type %s", r.Ref(), rubyvalue.InspectValue(v))
 }
 
 // newBackup is r's backup, or nil when it has none.
@@ -97,7 +90,7 @@ func newBackup(r catalog.Resource, vardir string) (*backup, error) {
 		return nil, err
 	}
 	return &backup{value: value, vardir: vardir, force: forceTrue(r), follow: linksFollow(r),
-		recurse: paramString(r, "recurse", "false") == "true"}, nil
+		recurse: rubyvalue.ParamString(r, "recurse", "false") == "true"}, nil
 }
 
 // isSuffix is bucket's `backup =~ /^\./` (type/file.rb:492): Ruby's ^

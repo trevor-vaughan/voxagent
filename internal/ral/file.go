@@ -17,6 +17,10 @@ import (
 	"syscall"
 
 	"github.com/voxagent/voxagent/internal/catalog"
+	"github.com/voxagent/voxagent/internal/lib/command"
+	"github.com/voxagent/voxagent/internal/lib/puppetpath"
+	"github.com/voxagent/voxagent/internal/lib/rubyvalue"
+	"github.com/voxagent/voxagent/internal/lib/sources"
 	"github.com/voxagent/voxagent/internal/runlog"
 )
 
@@ -70,7 +74,7 @@ type runDefaults struct {
 // defaultSELinux is the SELinux of a File built without its own se: the
 // host's. The package's tests replace it (TestMain), so none reaches the
 // host's SELinux unless it asks to.
-var defaultSELinux selinuxOps = hostSELinux{run: execRunner{}, handle: &handleProbe{}}
+var defaultSELinux selinuxOps = hostSELinux{run: command.ExecRunner{}, handle: &handleProbe{}}
 
 // selinux is f.se, or defaultSELinux when the provider was built without one.
 // A prefetched provider answers from its batched defaults first.
@@ -246,7 +250,7 @@ func (f File) Validate(r catalog.Resource) error {
 	if raw, ok := r.Parameters["mode"]; ok {
 		// mode.rb:78-96 validates while the catalog becomes a RAL, so an
 		// invalid mode aborts the run before anything applies (measured).
-		if _, err := parseDeclaredMode(raw, isMarked(f, r, "mode")); err != nil {
+		if _, err := puppetpath.ParseDeclaredMode(raw, isMarked(f, r, "mode")); err != nil {
 			return fmt.Errorf("Parameter mode failed on %s: %w", r.Ref(), err)
 		}
 	}
@@ -270,7 +274,7 @@ func (f File) Validate(r catalog.Resource) error {
 			if _, isString := v.(string); !isString {
 				// Ours: Puppet takes any value and joins it into the context.
 				return fmt.Errorf("%s: %s => %v (%T) is not implemented: an SELinux context field is a string",
-					r.Ref(), prop, redactIf(isMarked(f, r, prop), "%v", v), v)
+					r.Ref(), prop, rubyvalue.RedactIf(isMarked(f, r, prop), "%v", v), v)
 			}
 		}
 	}
@@ -307,13 +311,13 @@ func (f File) Validate(r catalog.Resource) error {
 			// expected Pathname, got: 'TrueClass'"), or, for a list, links
 			// to its last element (measured).
 			return fmt.Errorf("%s: ensure => %v (%T) is not implemented: only a string or false is an ensure value or a link target",
-				r.Ref(), redactIf(isMarked(f, r, "ensure"), "%v", v), v)
+				r.Ref(), rubyvalue.RedactIf(isMarked(f, r, "ensure"), "%v", v), v)
 		}
 	}
 	if v, ok := r.Parameters["target"]; ok {
 		if _, isString := v.(string); !isString {
 			return fmt.Errorf("%s: target => %v (%T) is not implemented: a link target is a string",
-				r.Ref(), redactIf(isMarked(f, r, "target"), "%v", v), v)
+				r.Ref(), rubyvalue.RedactIf(isMarked(f, r, "target"), "%v", v), v)
 		}
 	}
 	_, hasContent := r.Parameters["content"]
@@ -329,18 +333,18 @@ func (f File) Validate(r catalog.Resource) error {
 		// ensure supplies counts (ensure.rb:117 sets it while munging).
 		return fmt.Errorf("Validation of %s failed: You cannot specify more than one of content, source, target", r.Ref())
 	}
-	if paramString(r, "recurse", "false") == "true" {
+	if rubyvalue.ParamString(r, "recurse", "false") == "true" {
 		// Ours: Puppet mirrors a target's tree as links (recurse_link,
 		// type/file.rb:634-636, 680-700) and never retargets a recursed
 		// link (target.rb:64), none of which is implemented.
 		switch {
 		case hasTarget:
 			return fmt.Errorf("%s: target with recurse => true is not implemented: Puppet mirrors the target's tree as links", r.Ref())
-		case paramString(r, "ensure", "") == "link":
+		case rubyvalue.ParamString(r, "ensure", "") == "link":
 			return fmt.Errorf("%s: ensure => link with recurse => true is not implemented: Puppet mirrors the target's tree as links", r.Ref())
 		}
 	}
-	if paramString(r, "recurse", "false") == "true" && linksFollow(r) {
+	if rubyvalue.ParamString(r, "recurse", "false") == "true" && linksFollow(r) {
 		// Ours: measured on Puppet 8.10.0, source => '<dir>/dl' with recurse
 		// => true and links => follow, where dl links to a directory, creates
 		// the destination and copies the linked tree; under manage it makes
@@ -349,7 +353,7 @@ func (f File) Validate(r catalog.Resource) error {
 		// confinement is not implemented.
 		return fmt.Errorf("%s: links => follow with recurse => true is not implemented: Puppet's walk follows a linked directory and copies its tree", r.Ref())
 	}
-	if hasContent && paramString(r, "recurse", "false") == "true" {
+	if hasContent && rubyvalue.ParamString(r, "recurse", "false") == "true" {
 		// Ours: Puppet accepts it, and every generated child inherits the
 		// content (newchild, type/file.rb:583-603), writing the same bytes
 		// into every file of the tree.
@@ -375,7 +379,7 @@ func (f File) Apply(ctx context.Context, r catalog.Resource, noop bool) (changes
 	if raw, ok := r.Parameters["mode"]; ok {
 		// Validate refuses an invalid mode; a caller that skipped it still
 		// gets a bare error, and nothing is touched.
-		if _, err := parseDeclaredMode(raw, isMarked(f, r, "mode")); err != nil {
+		if _, err := puppetpath.ParseDeclaredMode(raw, isMarked(f, r, "mode")); err != nil {
 			return nil, nil, err
 		}
 	}
@@ -446,7 +450,7 @@ func (f File) Apply(ctx context.Context, r catalog.Resource, noop bool) (changes
 			return propertiesAfterEnsure(ctx, fsys, path, r, noop, fi, sel, bk)
 		}
 		switch {
-		case paramString(r, "ensure", "") == "absent" || paramString(r, "ensure", "") == "false":
+		case rubyvalue.ParamString(r, "ensure", "") == "absent" || rubyvalue.ParamString(r, "ensure", "") == "false":
 			// copy_source_values leaves an explicit absent alone
 			// (type/file/source.rb:168), and false is its alias.
 			changes, err := applyAbsent(ctx, fsys, path, wantedType(r, "absent"), noop, forceTrue(r), linksFollow(r), bk)
@@ -490,12 +494,12 @@ func (f File) Apply(ctx context.Context, r catalog.Resource, noop bool) (changes
 		}
 		return applyMetadataOnly(ctx, fsys, path, r, noop, sel)
 	}
-	ensure := paramString(r, "ensure", "")
+	ensure := rubyvalue.ParamString(r, "ensure", "")
 
 	switch ensure {
 	case "absent", "false":
 		// false is an alias of absent (type/file/ensure.rb:62); a JSON false
-		// reaches here as "false" through paramString.
+		// reaches here as "false" through rubyvalue.ParamString.
 		// No warnings from this branch: a removal reconciles no ownership, so
 		// nothing on it can reach applyOwnership's root check.
 		changes, err := applyAbsent(ctx, fsys, path, wantedType(r, "absent"), noop, forceTrue(r), linksFollow(r), bk)
@@ -536,7 +540,7 @@ func (p File) Prefetch(context.Context, []catalog.Resource) (Provider, error) {
 
 // linksFollow is links => follow; manage is the default (type/file.rb:272-281).
 func linksFollow(r catalog.Resource) bool {
-	return paramString(r, "links", "manage") == "follow"
+	return rubyvalue.ParamString(r, "links", "manage") == "follow"
 }
 
 // syncsSELinux reports whether the resource can sync its SELinux properties,
@@ -545,7 +549,7 @@ func linksFollow(r catalog.Resource) bool {
 // and its properties sync (keptByReplaceFalse). Validate and Apply must
 // agree on it.
 func syncsSELinux(r catalog.Resource) bool {
-	e := paramString(r, "ensure", "")
+	e := rubyvalue.ParamString(r, "ensure", "")
 	return (e != "absent" && e != "false") || replaceFalse(r)
 }
 
@@ -660,13 +664,13 @@ func removeExisting(ctx context.Context, fsys fileSystem, path string, fi os.Fil
 		if !force {
 			return false, []string{"Not removing directory; use 'force' to override"}, nil
 		}
-		runlog.Debugf(ctx, SourcesFrom(ctx).Resource, "Removing existing directory for replacement with %s", wanted)
+		runlog.Debugf(ctx, sources.SourcesFrom(ctx).Resource, "Removing existing directory for replacement with %s", wanted)
 		err = fsys.RemoveAll(path)
 		return err == nil, nil, err
 	}
 	switch current := ftype(fi); current {
 	case "file", "link", "fifo", "socket":
-		runlog.Debugf(ctx, SourcesFrom(ctx).Resource, "Removing existing %s for replacement with %s", current, wanted)
+		runlog.Debugf(ctx, sources.SourcesFrom(ctx).Resource, "Removing existing %s for replacement with %s", current, wanted)
 		err = fsys.Remove(path)
 		return err == nil, nil, err
 	}
@@ -676,7 +680,7 @@ func removeExisting(ctx context.Context, fsys fileSystem, path string, fi os.Fil
 // wantedType is should.to_s in remove_existing's debug line: kind, or
 // [redacted] when the catalog marks ensure (D-78: Ruby leaks it).
 func wantedType(r catalog.Resource, kind string) string {
-	return redactIf(isMarked(File{}, r, "ensure"), "%s", kind)
+	return rubyvalue.RedactIf(isMarked(File{}, r, "ensure"), "%s", kind)
 }
 
 // ftype names what fi is as Ruby's File.lstat(path).ftype does, which is the
@@ -837,7 +841,7 @@ func applyFile(ctx context.Context, fsys fileSystem, path string, r catalog.Reso
 					// re-raises untouched. So is a validate_cmd's
 					// Puppet::ExecutionFailure (measurement c02c).
 					var mismatch *checksumMismatchError
-					var failed *executionFailure
+					var failed *command.ExecutionFailure
 					if errors.As(err, &mismatch) || errors.As(err, &failed) {
 						ensureChange.Err = err
 					} else {
@@ -1034,15 +1038,15 @@ func createMode(r catalog.Resource, isDir bool) (os.FileMode, error) {
 	if !ok {
 		return bitsToFileMode(base), nil
 	}
-	m, err := parseDeclaredMode(raw, isMarked(File{}, r, "mode"))
+	m, err := puppetpath.ParseDeclaredMode(raw, isMarked(File{}, r, "mode"))
 	if err != nil {
 		return 0, err
 	}
-	n, err := m.apply(base, isDir)
+	n, err := m.Apply(base, isDir)
 	if err != nil {
 		return 0, err
 	}
-	if isDir && m.octal {
+	if isDir && m.Octal {
 		n = dirmask(n)
 	}
 	return bitsToFileMode(n), nil
@@ -1167,7 +1171,7 @@ func applyMetadataOnly(ctx context.Context, fsys fileSystem, path string, r cata
 	if err != nil {
 		if os.IsNotExist(err) {
 			// resource_harness.rb:97, at the resource's path.
-			runlog.Debugf(ctx, SourcesFrom(ctx).Resource, "Nothing to manage: no ensure and the resource doesn't exist")
+			runlog.Debugf(ctx, sources.SourcesFrom(ctx).Resource, "Nothing to manage: no ensure and the resource doesn't exist")
 			return nil, nil, nil
 		}
 		return nil, nil, fmt.Errorf("lstat %s: %w", path, err)
@@ -1225,10 +1229,10 @@ func applyMetadata(ctx context.Context, fsys fileSystem, path string, r catalog.
 	// resource-level (bare error, no Change): nothing was attempted, so
 	// nothing can be blamed.
 	raw, manageMode := r.Parameters["mode"]
-	var declared declaredMode
+	var declared puppetpath.DeclaredMode
 	if manageMode {
 		var err error
-		if declared, err = parseDeclaredMode(raw, isMarked(File{}, r, "mode")); err != nil {
+		if declared, err = puppetpath.ParseDeclaredMode(raw, isMarked(File{}, r, "mode")); err != nil {
 			return nil, nil, err
 		}
 	}
@@ -1266,7 +1270,7 @@ func applyMetadata(ctx context.Context, fsys fileSystem, path string, r catalog.
 			isDir = fi.IsDir()
 		}
 		if isLink {
-			runlog.Debugf(ctx, SourcesFrom(ctx).Resource+"/mode", "Not managing symlink mode")
+			runlog.Debugf(ctx, sources.SourcesFrom(ctx).Resource+"/mode", "Not managing symlink mode")
 		} else if ch, changed := modeChange(fsys, path, noop, declared, current, isDir); changed {
 			changes = append(changes, ch)
 		}
@@ -1289,14 +1293,14 @@ func applyMetadata(ctx context.Context, fsys fileSystem, path string, r catalog.
 // desired value and its message carry the masked mode (mode.rb:154-159;
 // measured: "mode changed '0700' to '0750'" for mode => '0640'). A symbolic
 // event's desired value is the mode as written, and its message names it.
-func modeChange(fsys fileSystem, path string, noop bool, m declaredMode, current uint32, isDir bool) (Change, bool) {
+func modeChange(fsys fileSystem, path string, noop bool, m puppetpath.DeclaredMode, current uint32, isDir bool) (Change, bool) {
 	was := fmt.Sprintf("%04o", current)
-	want, err := m.apply(current, isDir)
+	want, err := m.Apply(current, isDir)
 	if err != nil {
-		return Change{Property: "mode", Was: was, Is: m.raw, IsDisplay: m.failureDisplay(), Err: err}, true
+		return Change{Property: "mode", Was: was, Is: m.Raw, IsDisplay: m.FailureDisplay(), Err: err}, true
 	}
-	is := m.desired()
-	if isDir && m.octal {
+	is := m.Desired()
+	if isDir && m.Octal {
 		want = dirmask(want)
 		is = fmt.Sprintf("%04o", want)
 	}
@@ -1305,8 +1309,8 @@ func modeChange(fsys fileSystem, path string, noop bool, m declaredMode, current
 	}
 	ch := Change{Property: "mode", Was: was, Is: is,
 		Message: fmt.Sprintf("mode changed '%s' to '%04o'", was, want)}
-	if !m.octal {
-		ch.Message += " (" + m.raw + ")"
+	if !m.Octal {
+		ch.Message += " (" + m.Raw + ")"
 	}
 	if !noop {
 		if err := fsys.Chmod(path, bitsToFileMode(want)); err != nil {
@@ -1517,7 +1521,7 @@ func applyOwnership(fsys fileSystem, path string, r catalog.Resource, noop bool,
 			if !noop {
 				if cerr := chown(path, wantUID, -1); cerr != nil {
 					// posix.rb:110's wording.
-					ch.Err = fmt.Errorf("Failed to set owner to %s: %w", redactIf(ownerMarked, "'%d'", wantUID), cerr)
+					ch.Err = fmt.Errorf("Failed to set owner to %s: %w", rubyvalue.RedactIf(ownerMarked, "'%d'", wantUID), cerr)
 				}
 			}
 			changes = append(changes, ch)
@@ -1552,7 +1556,7 @@ func applyOwnership(fsys fileSystem, path string, r catalog.Resource, noop bool,
 			if !noop {
 				if cerr := chown(path, -1, wantGID); cerr != nil {
 					// posix.rb:142's wording.
-					ch.Err = fmt.Errorf("Failed to set group to %s: %w", redactIf(groupMarked, "'%d'", wantGID), cerr)
+					ch.Err = fmt.Errorf("Failed to set group to %s: %w", rubyvalue.RedactIf(groupMarked, "'%d'", wantGID), cerr)
 				}
 			}
 			changes = append(changes, ch)
@@ -1599,7 +1603,7 @@ func lookupUID(name string, redact bool) (int, error) {
 		// event's failure detail, where the differential compares it. Go's
 		// "user: unknown user nosuchuser" adds no fact the sentence does not
 		// already state.
-		return 0, fmt.Errorf("Could not find user %s", redactIf(redact, "%s", name))
+		return 0, fmt.Errorf("Could not find user %s", rubyvalue.RedactIf(redact, "%s", name))
 	}
 	return strconv.Atoi(u.Uid)
 }
@@ -1612,7 +1616,7 @@ func lookupGID(name string, redact bool) (int, error) {
 	if err != nil {
 		// type/file/group.rb:34's wording. See lookupUID on why the underlying
 		// error is not wrapped.
-		return 0, fmt.Errorf("Could not find group %s", redactIf(redact, "%s", name))
+		return 0, fmt.Errorf("Could not find group %s", rubyvalue.RedactIf(redact, "%s", name))
 	}
 	return strconv.Atoi(g.Gid)
 }
@@ -1633,13 +1637,6 @@ func FilePath(r catalog.Resource) string {
 // (an extension host's eval_generate) is an ordinary File, as in Puppet.
 func recursionChild(r catalog.Resource) bool {
 	return r.GeneratedFrom != nil && strings.EqualFold(r.GeneratedFrom.Type, "file")
-}
-
-func paramString(r catalog.Resource, name, fallback string) string {
-	if v, ok := r.Parameters[name]; ok {
-		return fmt.Sprintf("%v", v)
-	}
-	return fallback
 }
 
 // fileBoolParam accepts a Go bool or the strings "true", "false", "yes", "no",
@@ -1934,29 +1931,5 @@ func writeViaTemp(ctx context.Context, fsys fileSystem, path string, c content, 
 // tell those apart.
 func wrapEnsureError(value string, r catalog.Resource, err error) error {
 	return fmt.Errorf("Could not set %s on ensure: %s%s",
-		redactIf(isMarked(File{}, r, "ensure"), "'%s'", value), err, errorLocation(r.File, r.Line))
-}
-
-// errorLocation reproduces Puppet::Util::Errors.error_location's branches,
-// including its empty result when neither file nor line is known.
-//
-// Read from util/errors.rb: an empty string counts as absent, so a catalog
-// resource with no source metadata gets NO suffix -- not "(file: , line: 0)",
-// which voxagent emitted. The leading space is error_location_with_space's,
-// which error.rb:45 uses to compose an ExternalFileError's message and which
-// adds the space only when the location itself is non-empty.
-//
-// The column branches are omitted: a resource status carries no column, so
-// they are unreachable here.
-func errorLocation(file string, line int) string {
-	switch {
-	case file != "" && line != 0:
-		return fmt.Sprintf(" (file: %s, line: %d)", file, line)
-	case line != 0:
-		return fmt.Sprintf(" (line: %d)", line)
-	case file != "":
-		return fmt.Sprintf(" (file: %s)", file)
-	default:
-		return ""
-	}
+		rubyvalue.RedactIf(isMarked(File{}, r, "ensure"), "'%s'", value), err, rubyvalue.ErrorLocation(r.File, r.Line))
 }

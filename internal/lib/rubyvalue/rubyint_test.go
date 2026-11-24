@@ -1,6 +1,8 @@
-package ral
+package rubyvalue
 
-import "testing"
+import (
+	"testing"
+)
 
 func TestRubyInteger(t *testing.T) {
 	ok := map[string]int64{
@@ -8,15 +10,15 @@ func TestRubyInteger(t *testing.T) {
 		"-5": -5, "+5": 5, " 7 ": 7, "\t7\n": 7, "1_000": 1000, "0": 0, "-0x10": -16, "0_7": 7,
 	}
 	for in, want := range ok {
-		got, err := rubyInteger(in)
+		got, err := Integer(in)
 		if err != nil || got != want {
-			t.Errorf("rubyInteger(%q) = %d, %v; want %d", in, got, err, want)
+			t.Errorf("Integer(%q) = %d, %v; want %d", in, got, err, want)
 		}
 	}
 	for _, in := range []string{"09", "1-2", "abc", "", " ", "1__0", "_1", "1_", "0x", "0x_1", "- 5", "--5", "0b2", "99999999999999999999"} {
-		_, err := rubyInteger(in)
+		_, err := Integer(in)
 		if want := `invalid value for Integer(): "` + in + `"`; err == nil || err.Error() != want {
-			t.Errorf("rubyInteger(%q) error = %v; want %s", in, err, want)
+			t.Errorf("Integer(%q) error = %v; want %s", in, err, want)
 		}
 	}
 }

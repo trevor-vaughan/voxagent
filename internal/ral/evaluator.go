@@ -161,6 +161,15 @@ type AutoRelationWarning interface {
 	GraphWarnings(r catalog.Resource, c *catalog.Catalog) []string
 }
 
+// ConversionDebugging is implemented by a provider whose type logs debug lines
+// while Puppet converts the catalog: the user and group types drop an
+// attribute whose provider feature is missing and say so (type.rb:788-791).
+// applyCatalog logs each line at source "/"+r.Ref(), resources in catalog
+// order, after validation and before "Applying configuration".
+type ConversionDebugging interface {
+	ConversionDebug(r catalog.Resource) []string
+}
+
 // ContentMark is what an Override does to a File's content mark. Ruby's flag
 // has three states (true, false, nil) and the override needs a fourth, "no
 // change", so a *bool cannot carry it (concat design §5.4).

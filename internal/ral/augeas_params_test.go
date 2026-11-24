@@ -8,11 +8,9 @@ import (
 	"testing"
 
 	"github.com/voxagent/voxagent/internal/catalog"
+	"github.com/voxagent/voxagent/internal/lib/raltest"
+	"github.com/voxagent/voxagent/internal/lib/rubyvalue"
 )
-
-func augRes(typ, title string, params map[string]any, marked ...string) catalog.Resource {
-	return catalog.Resource{Type: typ, Title: title, Parameters: params, SensitiveParameters: marked}
-}
 
 // augValidator is what the four types share.
 type augValidator interface {
@@ -69,7 +67,7 @@ func TestAugeasValidation(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			err := augTypes[c.typ].Validate(augRes(c.typ, c.title, c.params, c.marked...))
+			err := augTypes[c.typ].Validate(raltest.AugRes(c.typ, c.title, c.params, c.marked...))
 			if c.want == "" {
 				if err != nil && c.marked == nil {
 					t.Fatalf("want accepted, got %v", err)
@@ -79,16 +77,16 @@ func TestAugeasValidation(t *testing.T) {
 			if err == nil || err.Error() != c.want {
 				t.Fatalf("got %v\nwant %s", err, c.want)
 			}
-			var uv *unimplementedValue
+			var uv *rubyvalue.UnimplementedValue
 			if errors.As(err, &uv) {
-				t.Fatalf("a Ruby refusal must not be an unimplementedValue: %v", err)
+				t.Fatalf("a Ruby refusal must not be an rubyvalue.UnimplementedValue: %v", err)
 			}
 		})
 	}
 }
 
 // TestAugeasDelegates: what Ruby accepts and native does not implement is an
-// unimplementedValue, so the router sends the type to the host (spec §2 d-f).
+// rubyvalue.UnimplementedValue, so the router sends the type to the host (spec §2 d-f).
 func TestAugeasDelegates(t *testing.T) {
 	big := float64(1 << 53)
 	cases := []struct {
@@ -149,10 +147,10 @@ func TestAugeasDelegates(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			err := augTypes[c.typ].Validate(augRes(c.typ, c.title, c.params, c.marked...))
-			var uv *unimplementedValue
+			err := augTypes[c.typ].Validate(raltest.AugRes(c.typ, c.title, c.params, c.marked...))
+			var uv *rubyvalue.UnimplementedValue
 			if !errors.As(err, &uv) {
-				t.Fatalf("want unimplementedValue, got %v", err)
+				t.Fatalf("want rubyvalue.UnimplementedValue, got %v", err)
 			}
 			if len(c.marked) > 0 && strings.Contains(err.Error(), `"1"`) {
 				t.Errorf("marked value leaks: %v", err)
@@ -163,51 +161,51 @@ func TestAugeasDelegates(t *testing.T) {
 
 func TestAugeasParse(t *testing.T) {
 	t.Run("sysctl", func(t *testing.T) {
-		got, err := parseSysctl(augRes("Sysctl", "net.ipv4.ip_forward", map[string]any{"value": float64(1), "target": "/etc/sysctl.d/a.conf", "apply": "false", "silent": true, "ensure": "present"}))
+		got, err := parseSysctl(raltest.AugRes("Sysctl", "net.ipv4.ip_forward", map[string]any{"value": float64(1), "target": "/etc/sysctl.d/a.conf", "apply": "false", "silent": true, "ensure": "present"}))
 		want := sysctlParams{Name: "net.ipv4.ip_forward", Target: "/etc/sysctl.d/a.conf", Value: "1", HasValue: true, Apply: false, Silent: true, EnsureSet: true}
 		if err != nil || got != want {
 			t.Fatalf("got %+v, %v\nwant %+v", got, err, want)
 		}
-		got, err = parseSysctl(augRes("Sysctl", "vm.swappiness", nil))
+		got, err = parseSysctl(raltest.AugRes("Sysctl", "vm.swappiness", nil))
 		if want := (sysctlParams{Name: "vm.swappiness", Apply: true}); err != nil || got != want {
 			t.Fatalf("defaults: got %+v, %v\nwant %+v", got, err, want)
 		}
-		got, err = parseSysctl(augRes("Sysctl", "vm.swappiness", map[string]any{"value": ""}))
+		got, err = parseSysctl(raltest.AugRes("Sysctl", "vm.swappiness", map[string]any{"value": ""}))
 		if err != nil || !got.HasValue || got.Value != "" {
 			t.Fatalf("empty value: %+v, %v", got, err)
 		}
 	})
 	t.Run("ssh_config", func(t *testing.T) {
-		got, err := parseSshConfig(augRes("Ssh_config", "Ciphers", map[string]any{"value": []any{"a", "b"}, "key": "MACs", "ensure": "present", "target": "/etc/ssh/x"}))
+		got, err := parseSshConfig(raltest.AugRes("Ssh_config", "Ciphers", map[string]any{"value": []any{"a", "b"}, "key": "MACs", "ensure": "present", "target": "/etc/ssh/x"}))
 		want := sshConfigParams{Name: "Ciphers", Key: "MACs", Host: "*", Target: "/etc/ssh/x", Value: []string{"a", "b"}, Ensure: "present"}
 		if err != nil || !reflect.DeepEqual(got, want) {
 			t.Fatalf("got %+v, %v\nwant %+v", got, err, want)
 		}
-		got, err = parseSshConfig(augRes("Ssh_config", "Ciphers", map[string]any{"value": "a", "host": "web*"}))
+		got, err = parseSshConfig(raltest.AugRes("Ssh_config", "Ciphers", map[string]any{"value": "a", "host": "web*"}))
 		want = sshConfigParams{Name: "Ciphers", Key: "Ciphers", Host: "web*", Value: []string{"a"}}
 		if err != nil || !reflect.DeepEqual(got, want) {
 			t.Fatalf("got %+v, %v\nwant %+v", got, err, want)
 		}
 	})
 	t.Run("sshd_config", func(t *testing.T) {
-		got, err := parseSshdConfig(augRes("Sshd_config", "Port", map[string]any{"value": []any{float64(22), "2222"}, "array_append": true, "condition": "User a Host b"}))
+		got, err := parseSshdConfig(raltest.AugRes("Sshd_config", "Port", map[string]any{"value": []any{float64(22), "2222"}, "array_append": true, "condition": "User a Host b"}))
 		want := sshdConfigParams{Name: "Port", Key: "Port", Value: []string{"22", "2222"}, ArrayAppend: true, Condition: []condPair{{"User", "a"}, {"Host", "b"}}}
 		if err != nil || !reflect.DeepEqual(got, want) {
 			t.Fatalf("got %+v, %v\nwant %+v", got, err, want)
 		}
-		got, err = parseSshdConfig(augRes("Sshd_config", "x", map[string]any{"key": "PermitRootLogin", "value": float64(3), "ensure": "absent"}))
+		got, err = parseSshdConfig(raltest.AugRes("Sshd_config", "x", map[string]any{"key": "PermitRootLogin", "value": float64(3), "ensure": "absent"}))
 		want = sshdConfigParams{Name: "x", Key: "PermitRootLogin", Value: []string{"3"}, Ensure: "absent"}
 		if err != nil || !reflect.DeepEqual(got, want) {
 			t.Fatalf("got %+v, %v\nwant %+v", got, err, want)
 		}
 	})
 	t.Run("subsystem", func(t *testing.T) {
-		got, err := parseSubsystem(augRes("Sshd_config_subsystem", "sftp", map[string]any{"command": "/x", "ensure": "present", "target": "/etc/ssh/sshd_config"}))
+		got, err := parseSubsystem(raltest.AugRes("Sshd_config_subsystem", "sftp", map[string]any{"command": "/x", "ensure": "present", "target": "/etc/ssh/sshd_config"}))
 		want := subsystemParams{Name: "sftp", Target: "/etc/ssh/sshd_config", Command: "/x", HasCommand: true, Ensure: "present"}
 		if err != nil || got != want {
 			t.Fatalf("got %+v, %v\nwant %+v", got, err, want)
 		}
-		got, err = parseSubsystem(augRes("Sshd_config_subsystem", "sftp", map[string]any{"ensure": "absent"}))
+		got, err = parseSubsystem(raltest.AugRes("Sshd_config_subsystem", "sftp", map[string]any{"ensure": "absent"}))
 		if err != nil || got.HasCommand || got.Ensure != "absent" {
 			t.Fatalf("absent: %+v, %v", got, err)
 		}
@@ -242,21 +240,21 @@ func TestAugeasAutoRequires(t *testing.T) {
 		if title == "" {
 			title = "Port"
 		}
-		r := augRes(typ, title, map[string]any{"target": "/etc/x.conf"})
+		r := raltest.AugRes(typ, title, map[string]any{"target": "/etc/x.conf"})
 		if got := v.AutoRequires(r, all); !reflect.DeepEqual(got, []string{"File[/etc/x.conf]"}) {
 			t.Errorf("%s with target: %v", typ, got)
 		}
 		if got := v.AutoRequires(r, none); len(got) != 0 {
 			t.Errorf("%s unmanaged is no edge: %v", typ, got)
 		}
-		if got := v.AutoRequires(augRes(typ, title, nil), all); len(got) != 0 {
+		if got := v.AutoRequires(raltest.AugRes(typ, title, nil), all); len(got) != 0 {
 			t.Errorf("%s without target: %v", typ, got)
 		}
-		if got := v.AutoRequires(augRes(typ, title, map[string]any{"target": "rel", "ensure": "bogus"}), all); len(got) != 0 {
+		if got := v.AutoRequires(raltest.AugRes(typ, title, map[string]any{"target": "rel", "ensure": "bogus"}), all); len(got) != 0 {
 			t.Errorf("%s invalid: %v", typ, got)
 		}
 	}
-	r := augRes("Sshd_config", "PermitRootLogin", map[string]any{"value": "no", "condition": "Host example.net User root", "target": "/etc/ssh/sshd_config"})
+	r := raltest.AugRes("Sshd_config", "PermitRootLogin", map[string]any{"value": "no", "condition": "Host example.net User root", "target": "/etc/ssh/sshd_config"})
 	want := []string{
 		"File[/etc/ssh/sshd_config]",
 		"Sshd_config_match[Host example.net User root]",
@@ -272,7 +270,7 @@ func TestAugeasAutoRequires(t *testing.T) {
 	if got := sshd.AutoRequires(r, all); !reflect.DeepEqual(got, want) {
 		t.Errorf("condition with target:\n got %q\nwant %q", got, want)
 	}
-	r = augRes("Sshd_config", "PermitRootLogin", map[string]any{"value": "no", "condition": "Host example.net User root"})
+	r = raltest.AugRes("Sshd_config", "PermitRootLogin", map[string]any{"value": "no", "condition": "Host example.net User root"})
 	want = []string{
 		"Sshd_config_match[Host example.net User root]",
 		"Sshd_config_match[Host example.net User root in ]",
@@ -322,7 +320,7 @@ func TestConditionHash(t *testing.T) {
 		{"Host x User y Host z", []condPair{{"Host", "z"}, {"User", "y"}}},
 	}
 	for _, c := range cases {
-		got, err := parseSshdConfig(augRes("Sshd_config", "x", map[string]any{"value": "v", "condition": c.in}))
+		got, err := parseSshdConfig(raltest.AugRes("Sshd_config", "x", map[string]any{"value": "v", "condition": c.in}))
 		if err != nil || !reflect.DeepEqual(got.Condition, c.want) {
 			t.Errorf("%q: %+v, %v; want %v", c.in, got.Condition, err, c.want)
 		}
@@ -346,7 +344,7 @@ func TestAugeasValidateNeverPanics(t *testing.T) {
 						if marked {
 							m = []string{attr}
 						}
-						r := augRes(typ, "Port", map[string]any{attr: val}, m...)
+						r := raltest.AugRes(typ, "Port", map[string]any{attr: val}, m...)
 						_ = v.Validate(r)
 						_ = v.AutoRequires(r, func(string) bool { return true })
 					})
@@ -360,7 +358,7 @@ func TestAugeasValidateNeverPanics(t *testing.T) {
 // repeated key counts once.
 func TestConditionKeysUnbounded(t *testing.T) {
 	res := func(c string) catalog.Resource {
-		return augRes("Sshd_config", "x", map[string]any{"value": "a", "condition": c})
+		return raltest.AugRes("Sshd_config", "x", map[string]any{"value": "a", "condition": c})
 	}
 	if err := (SshdConfig{}).Validate(res("A a B b C c D d E e F f G g H h I i")); err != nil {
 		t.Errorf("nine keys: %v", err)

@@ -11,6 +11,9 @@ import (
 	"strings"
 
 	"github.com/voxagent/voxagent/internal/catalog"
+	"github.com/voxagent/voxagent/internal/lib/augeas"
+	"github.com/voxagent/voxagent/internal/lib/puppetpath"
+	"github.com/voxagent/voxagent/internal/lib/rubyvalue"
 )
 
 // AugeasTypes is NativeAugeas' answer: which of the four augeasproviders
@@ -21,16 +24,12 @@ type AugeasTypes struct {
 	Sysctl, SshConfig, SshdConfig, SshdConfigSubsystem, Augeas bool
 	Reasons                                                    map[string]string
 
-	lib      augLib // the probed library, when any type is native
+	lib      augeas.Lib // the probed library, when any type is native
 	libdir   string
 	lensPath string           // the generic augeas type's lens path: "" or <libdir>/augeas/lenses
 	sysctl   string           // the sysctl command, when Sysctl is native
 	cat      *catalog.Catalog // the run's catalog, which SshdConfig's autorequire reads
 }
-
-// Environ is os.Getenv: the value of key in voxagent's environment, "" when
-// unset. It is a function so tests do not depend on the agent's environment.
-type Environ func(key string) string
 
 // augeasFingerprints are the sha256 digests of the plugin-tree files whose
 // code the native types reimplement (spec §0 row 4): augeasproviders_core
@@ -66,7 +65,7 @@ var augeasprovidersCore = []string{
 }
 
 // augeasRouted are the five types in routing order, each with its parser,
-// whose *unimplementedValue is §2 (d)-(f), and the fingerprinted files it
+// whose *rubyvalue.UnimplementedValue is §2 (d)-(f), and the fingerprinted files it
 // depends on: its module's shared files (augeasprovidersCore for the four
 // augeasproviders types, augeas_core's parser and feature for augeas), then,
 // besides its own type and provider, any extra. sshd_config's extra is the
@@ -111,7 +110,7 @@ var augeasEnvironment = []string{"AUGEAS_ROOT", "AUGEAS_LENS_LIB", "AUGEAS_DEBUG
 // command is "agent" or "apply". Only an agent run gives the augeas type a
 // lens path: <libdir>/augeas/lenses, when that exists, as pluginsync'd lenses
 // are loaded by the agent alone (provider/augeas/augeas.rb:372-375); otherwise "".
-func NativeAugeas(t PluginTree, p Platform, probe AugeasProbe, env Environ, libdir, command string, cat *catalog.Catalog) AugeasTypes {
+func NativeAugeas(t PluginTree, p Platform, probe augeas.Probe, env Environ, libdir, command string, cat *catalog.Catalog) AugeasTypes {
 	a := AugeasTypes{Reasons: map[string]string{}, libdir: libdir}
 	held := map[string]bool{}
 	for _, r := range cat.Resources {
@@ -157,7 +156,7 @@ func NativeAugeas(t PluginTree, p Platform, probe AugeasProbe, env Environ, libd
 			delegateAll(v + " is set")
 		}
 	}
-	if !strings.HasPrefix(libdir, "/") || !concatPathClean(libdir) {
+	if !strings.HasPrefix(libdir, "/") || !puppetpath.Clean(libdir) {
 		delegateAll(fmt.Sprintf("--libdir %q is not absolute and clean", libdir))
 	}
 
@@ -171,7 +170,7 @@ func NativeAugeas(t PluginTree, p Platform, probe AugeasProbe, env Environ, libd
 	}
 
 	// (d)-(f)
-	var uv *unimplementedValue
+	var uv *rubyvalue.UnimplementedValue
 	for _, r := range cat.Resources {
 		for _, rt := range augeasRouted {
 			if candidate[rt.typ] && strings.EqualFold(r.Type, rt.typ) {

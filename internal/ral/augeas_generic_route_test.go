@@ -7,6 +7,9 @@ import (
 	"testing"
 
 	"github.com/voxagent/voxagent/internal/catalog"
+	"github.com/voxagent/voxagent/internal/lib/augeas"
+	"github.com/voxagent/voxagent/internal/lib/plugintree"
+	"github.com/voxagent/voxagent/internal/lib/raltest"
 )
 
 // augeasCoreOnly is the augeas type's four files and nothing else, the set
@@ -20,13 +23,13 @@ var augeasCoreOnly = []string{
 
 // genericRes is a resource of the augeas type in a shape that stays native.
 func genericRes() catalog.Resource {
-	return augRes("Augeas", "x", map[string]any{"context": "/files/etc/hosts", "changes": "set 1/ipaddr 1.2.3.4"})
+	return raltest.AugRes("Augeas", "x", map[string]any{"context": "/files/etc/hosts", "changes": "set 1/ipaddr 1.2.3.4"})
 }
 
 // routeAugeas routes rs over libdir on sysctlHost with env and probe.
-func routeAugeas(t *testing.T, libdir, command string, env map[string]string, probe AugeasProbe, rs ...catalog.Resource) AugeasTypes {
+func routeAugeas(t *testing.T, libdir, command string, env map[string]string, probe augeas.Probe, rs ...catalog.Resource) AugeasTypes {
 	t.Helper()
-	return NativeAugeas(LibdirTree(libdir), sysctlHost, probe, envOf(env), libdir, command, &catalog.Catalog{Resources: rs})
+	return NativeAugeas(plugintree.LibdirTree(libdir), sysctlHost, probe, envOf(env), libdir, command, &catalog.Catalog{Resources: rs})
 }
 
 // augeasCoreTree is a libdir holding only augeas_core's fixtures.
@@ -169,7 +172,7 @@ func TestNativeAugeasGenericEnvironmentAndProbe(t *testing.T) {
 // resource to the host, the reason naming the resource; the four types stay.
 func TestNativeAugeasGenericShape(t *testing.T) {
 	dir := augeasTree(t)
-	bad := augRes("Augeas", "bad", map[string]any{"context": "/files/etc/hosts", "onlyif": "match 1 size > 0"})
+	bad := raltest.AugRes("Augeas", "bad", map[string]any{"context": "/files/etc/hosts", "onlyif": "match 1 size > 0"})
 	rs := append(augeasFour(), genericRes(), bad)
 	a := routeAugeas(t, dir, "apply", nil, &augeasProbeFake{t: t}, rs...)
 	checkRoute(t, a, allAugeasTypes)

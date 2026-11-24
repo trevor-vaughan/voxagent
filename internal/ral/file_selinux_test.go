@@ -12,6 +12,9 @@ import (
 	"strings"
 	"syscall"
 	"testing"
+
+	"github.com/voxagent/voxagent/internal/lib/raltest"
+	"github.com/voxagent/voxagent/internal/lib/sources"
 )
 
 func TestParseContextSplitsTheRangeAfterTheThirdColon(t *testing.T) {
@@ -225,15 +228,15 @@ func TestDefaultForParsesSelabelLookup(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	fr := &fakeRunner{replies: map[string]fakeReply{
-		"selabel_lookup -b file -k /etc/shadow -t 32768": {out: string(out)},
+	fr := &raltest.FakeRunner{Replies: map[string]raltest.FakeReply{
+		"selabel_lookup -b file -k /etc/shadow -t 32768": {Out: string(out)},
 	}}
 	c, ok, err := hostSELinux{run: fr}.defaultFor(context.Background(), "/etc/shadow", syscall.S_IFREG)
 	if err != nil || !ok || c.String() != "system_u:object_r:shadow_t:s0" {
 		t.Errorf("defaultFor = %v, %v, %v", c, ok, err)
 	}
 	want := []string{"selabel_lookup", "-b", "file", "-k", "/etc/shadow", "-t", "32768"}
-	if got := fr.onlyCall(t); !slices.Equal(got, want) {
+	if got := fr.OnlyCall(t); !slices.Equal(got, want) {
 		t.Errorf("args = %q; want %q", got, want)
 	}
 }
@@ -243,8 +246,8 @@ func TestDefaultForWithNoMatchHasNoDefault(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	fr := &fakeRunner{replies: map[string]fakeReply{
-		"selabel_lookup -b file -k /proc/1 -t 32768": {exit: 255, out: string(out)},
+	fr := &raltest.FakeRunner{Replies: map[string]raltest.FakeReply{
+		"selabel_lookup -b file -k /proc/1 -t 32768": {Exit: 255, Out: string(out)},
 	}}
 	_, ok, err := hostSELinux{run: fr}.defaultFor(context.Background(), "/proc/1", syscall.S_IFREG)
 	if err != nil || ok {
@@ -260,8 +263,8 @@ func TestDefaultForWithNoHandleIsPuppetsError(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	fr := &fakeRunner{replies: map[string]fakeReply{
-		"selabel_lookup -b file -k /etc/shadow -t 32768": {exit: 255, out: string(out)},
+	fr := &raltest.FakeRunner{Replies: map[string]raltest.FakeReply{
+		"selabel_lookup -b file -k /etc/shadow -t 32768": {Exit: 255, Out: string(out)},
 	}}
 	_, ok, err := hostSELinux{run: fr}.defaultFor(context.Background(), "/etc/shadow", syscall.S_IFREG)
 	if ok || err == nil || err.Error() != "Cannot get default context with nil handle" {
@@ -276,8 +279,8 @@ func TestHandleOpensProbesOnceAndReportsANilHandle(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	fr := &fakeRunner{replies: map[string]fakeReply{
-		"selabel_lookup -b file -k / -t 0": {exit: 255, out: string(out)},
+	fr := &raltest.FakeRunner{Replies: map[string]raltest.FakeReply{
+		"selabel_lookup -b file -k / -t 0": {Exit: 255, Out: string(out)},
 	}}
 	h := hostSELinux{run: fr, handle: &handleProbe{}}
 	for range 3 {
@@ -285,10 +288,10 @@ func TestHandleOpensProbesOnceAndReportsANilHandle(t *testing.T) {
 			t.Fatalf("handleOpens = %v; want Puppet's nil-handle error", err)
 		}
 	}
-	if len(fr.calls) != 1 {
-		t.Errorf("ran %v; want one probe", fr.calls)
+	if len(fr.Calls) != 1 {
+		t.Errorf("ran %v; want one probe", fr.Calls)
 	}
-	ok := hostSELinux{run: &fakeRunner{}, handle: &handleProbe{}}
+	ok := hostSELinux{run: &raltest.FakeRunner{}, handle: &handleProbe{}}
 	if err := ok.handleOpens(context.Background()); err != nil {
 		t.Errorf("an opening handle: handleOpens = %v", err)
 	}
@@ -297,19 +300,19 @@ func TestHandleOpensProbesOnceAndReportsANilHandle(t *testing.T) {
 func TestDefaultForErrors(t *testing.T) {
 	key := "selabel_lookup -b file -k /etc/x -t 0"
 	for name, tc := range map[string]struct {
-		reply   fakeReply
+		reply   raltest.FakeReply
 		wantErr string
 	}{
-		"failure to start":    {fakeReply{err: errors.New("exec: not found")}, "exec: not found"},
-		"a malformed default": {fakeReply{out: "Default context: bogus\n"}, "Invalid context to parse: bogus"},
+		"failure to start":    {raltest.FakeReply{Err: errors.New("exec: not found")}, "exec: not found"},
+		"a malformed default": {raltest.FakeReply{Out: "Default context: bogus\n"}, "Invalid context to parse: bogus"},
 	} {
-		fr := &fakeRunner{replies: map[string]fakeReply{key: tc.reply}}
+		fr := &raltest.FakeRunner{Replies: map[string]raltest.FakeReply{key: tc.reply}}
 		_, ok, err := hostSELinux{run: fr}.defaultFor(context.Background(), "/etc/x", 0)
 		if ok || err == nil || err.Error() != tc.wantErr {
 			t.Errorf("%s: ok=%v err=%v; want error %q", name, ok, err, tc.wantErr)
 		}
 	}
-	fr := &fakeRunner{replies: map[string]fakeReply{key: {out: "something else\n"}}}
+	fr := &raltest.FakeRunner{Replies: map[string]raltest.FakeReply{key: {Out: "something else\n"}}}
 	if _, ok, err := (hostSELinux{run: fr}).defaultFor(context.Background(), "/etc/x", 0); ok || err != nil {
 		t.Errorf("exit 0 without the line: ok=%v err=%v; want no default and no error", ok, err)
 	}
@@ -566,7 +569,7 @@ func TestSELinuxRelabelsToTheDefault(t *testing.T) {
 	p := filepath.Join(t.TempDir(), "f")
 	mustWrite(t, p, "x")
 	se := enabledSE(p, tmpT)
-	changes, warnings, err := File{se: se}.Apply(context.Background(), fileRes(p, map[string]any{"ensure": "file"}), false)
+	changes, warnings, err := File{se: se}.Apply(context.Background(), raltest.FileRes(p, map[string]any{"ensure": "file"}), false)
 	if err != nil || len(warnings) != 0 || len(changes) != 1 || changes[0].Property != "seltype" ||
 		changes[0].Was != "tmp_t" || changes[0].Is != "etc_t" || changes[0].Err != nil ||
 		changes[0].Message != "seltype changed 'tmp_t' to 'etc_t'" {
@@ -585,7 +588,7 @@ func TestSELinuxDeclaredValueOverridesTheDefault(t *testing.T) {
 	mustWrite(t, p, "x")
 	se := enabledSE(p, seContext{"unconfined_u", "object_r", "tmp_t", "s0"})
 	changes, _, err := File{se: se}.Apply(context.Background(),
-		fileRes(p, map[string]any{"ensure": "file", "seltype": "bin_t"}), false)
+		raltest.FileRes(p, map[string]any{"ensure": "file", "seltype": "bin_t"}), false)
 	var got []string
 	for _, c := range changes {
 		got = append(got, c.Message)
@@ -605,7 +608,7 @@ func TestSELinuxNoDefaultLookupWhenAllFourAreDeclared(t *testing.T) {
 	p := filepath.Join(t.TempDir(), "f")
 	mustWrite(t, p, "x")
 	se := enabledSE(p, tmpT)
-	_, _, err := File{se: se}.Apply(context.Background(), fileRes(p, map[string]any{"ensure": "file",
+	_, _, err := File{se: se}.Apply(context.Background(), raltest.FileRes(p, map[string]any{"ensure": "file",
 		"seluser": "system_u", "selrole": "object_r", "seltype": "tmp_t", "selrange": "s0"}), false)
 	if err != nil || len(se.lookups) != 0 || len(se.sets) != 0 {
 		t.Fatalf("err = %v, lookups = %v, sets = %v; want none", err, se.lookups, se.sets)
@@ -617,7 +620,7 @@ func TestSELinuxIgnoreDefaultsManagesOnlyDeclared(t *testing.T) {
 		p := filepath.Join(t.TempDir(), "f")
 		mustWrite(t, p, "x")
 		se := enabledSE(p, seContext{"unconfined_u", "object_r", "tmp_t", "s0"})
-		changes, _, err := File{se: se}.Apply(context.Background(), fileRes(p, map[string]any{"ensure": "file",
+		changes, _, err := File{se: se}.Apply(context.Background(), raltest.FileRes(p, map[string]any{"ensure": "file",
 			"selinux_ignore_defaults": ignore, "selrole": "system_r"}), false)
 		if err != nil || len(changes) != 1 || changes[0].Message != "selrole changed 'object_r' to 'system_r'" {
 			t.Fatalf("%v: Apply = %+v, %v", ignore, changes, err)
@@ -633,7 +636,7 @@ func TestSELinuxDisabledIsANoop(t *testing.T) {
 	mustWrite(t, p, "x")
 	se := enabledSE(p, tmpT)
 	se.on = false
-	r := fileRes(p, map[string]any{"ensure": "file", "seluser": "a_u", "selrole": "b_r",
+	r := raltest.FileRes(p, map[string]any{"ensure": "file", "seluser": "a_u", "selrole": "b_r",
 		"seltype": "c_t", "selrange": "s1", "selinux_ignore_defaults": false})
 	if err := (File{se: se}).Validate(r); err != nil {
 		t.Fatal(err)
@@ -653,7 +656,7 @@ func TestSELinuxUnsupportedFilesystemIsANoop(t *testing.T) {
 	se := enabledSE(p, tmpT)
 	se.supported = false
 	changes, _, err := File{se: se}.Apply(context.Background(),
-		fileRes(p, map[string]any{"ensure": "file", "seltype": "bin_t"}), false)
+		raltest.FileRes(p, map[string]any{"ensure": "file", "seltype": "bin_t"}), false)
 	if err != nil || len(changes) != 0 || len(se.sets) != 0 || len(se.lookups) != 0 || se.reads != 0 {
 		t.Fatalf("Apply = %+v, %v; sets %v lookups %v reads %d", changes, err, se.sets, se.lookups, se.reads)
 	}
@@ -663,7 +666,7 @@ func TestSELinuxCreatedFileIsLabelledSilently(t *testing.T) {
 	p := filepath.Join(t.TempDir(), "f")
 	se := enabledSE(p, seContext{})
 	se.fresh = tmpT.String()
-	changes, warnings, err := File{se: se}.Apply(context.Background(), fileRes(p, map[string]any{"ensure": "file"}), false)
+	changes, warnings, err := File{se: se}.Apply(context.Background(), raltest.FileRes(p, map[string]any{"ensure": "file"}), false)
 	if err != nil || len(warnings) != 0 || len(changes) != 1 || changes[0].Property != "ensure" || changes[0].Err != nil {
 		t.Fatalf("Apply = %+v, %v, %v", changes, warnings, err)
 	}
@@ -690,7 +693,7 @@ func TestSELinuxCreatedDirectoryAndLinkUseTheirEnsuresMode(t *testing.T) {
 		p := filepath.Join(t.TempDir(), "p")
 		se := enabledSE(p, seContext{})
 		se.fresh = tmpT.String()
-		changes, _, err := File{se: se}.Apply(context.Background(), fileRes(p, tc.params), false)
+		changes, _, err := File{se: se}.Apply(context.Background(), raltest.FileRes(p, tc.params), false)
 		if err != nil || len(changes) != 1 || changes[0].Err != nil {
 			t.Fatalf("%v: Apply = %+v, %v", tc.params, changes, err)
 		}
@@ -713,7 +716,7 @@ func TestSELinuxLookupUsesThePathsTypeBeforeTheRun(t *testing.T) {
 		t.Fatal(err)
 	}
 	se := enabledSE(l, tmpT)
-	_, _, err := File{se: se}.Apply(context.Background(), fileRes(l, map[string]any{"ensure": "file"}), false)
+	_, _, err := File{se: se}.Apply(context.Background(), raltest.FileRes(l, map[string]any{"ensure": "file"}), false)
 	if err != nil || len(se.lookups) != 1 || se.lookups[0]&syscall.S_IFMT != syscall.S_IFLNK {
 		t.Fatalf("err = %v, lookups = %o; want one S_IFLNK", err, se.lookups)
 	}
@@ -730,7 +733,7 @@ func TestSELinuxLabelsTheLinkItself(t *testing.T) {
 	se := enabledSE(l, tmpT)
 	se.cur[f] = etcT.String()
 	changes, _, err := File{se: se}.Apply(context.Background(),
-		fileRes(l, map[string]any{"ensure": "link", "target": "f"}), false)
+		raltest.FileRes(l, map[string]any{"ensure": "link", "target": "f"}), false)
 	if err != nil || len(changes) != 1 || changes[0].Message != "seltype changed 'tmp_t' to 'etc_t'" {
 		t.Fatalf("Apply = %+v, %v", changes, err)
 	}
@@ -745,7 +748,7 @@ func TestSELinuxLabelsTheLinkItself(t *testing.T) {
 func TestSELinuxRelabelsAWalkedLinkItself(t *testing.T) {
 	base := t.TempDir()
 	dir, links := walkedLinks(t, base)
-	parent := fileRes(dir, map[string]any{"recurse": true})
+	parent := raltest.FileRes(dir, map[string]any{"recurse": true})
 	for link, target := range links {
 		se := enabledSE(link, tmpT)
 		if target != "" {
@@ -800,7 +803,7 @@ func TestSELinuxSetFailureWarnsAndStillReports(t *testing.T) {
 	mustWrite(t, p, "x")
 	se := enabledSE(p, tmpT)
 	se.setErr = syscall.EINVAL
-	changes, warnings, err := File{se: se}.Apply(context.Background(), fileRes(p, map[string]any{"ensure": "file"}), false)
+	changes, warnings, err := File{se: se}.Apply(context.Background(), raltest.FileRes(p, map[string]any{"ensure": "file"}), false)
 	if err != nil || len(changes) != 1 || changes[0].Err != nil || changes[0].Message != "seltype changed 'tmp_t' to 'etc_t'" {
 		t.Fatalf("Apply = %+v, %v", changes, err)
 	}
@@ -815,7 +818,7 @@ func TestSELinuxCreatedSetFailureOnlyWarns(t *testing.T) {
 	se := enabledSE(p, seContext{})
 	se.fresh = tmpT.String()
 	se.setErr = syscall.EINVAL
-	changes, warnings, err := File{se: se}.Apply(context.Background(), fileRes(p, map[string]any{"ensure": "file"}), false)
+	changes, warnings, err := File{se: se}.Apply(context.Background(), raltest.FileRes(p, map[string]any{"ensure": "file"}), false)
 	if err != nil || len(changes) != 1 || changes[0].Err != nil {
 		t.Fatalf("Apply = %+v, %v", changes, err)
 	}
@@ -834,7 +837,7 @@ func TestSELinuxUnlabeledFileFailsAsPuppetDoes(t *testing.T) {
 	mustWrite(t, p, "x")
 	se := enabledSE(p, seContext{})
 	changes, warnings, err := File{se: se}.Apply(context.Background(),
-		fileRes(p, map[string]any{"ensure": "file", "seltype": "etc_t", "selinux_ignore_defaults": true}), false)
+		raltest.FileRes(p, map[string]any{"ensure": "file", "seltype": "etc_t", "selinux_ignore_defaults": true}), false)
 	if err != nil || len(warnings) != 0 || len(changes) != 1 {
 		t.Fatalf("Apply = %+v, %v, %v", changes, warnings, err)
 	}
@@ -853,7 +856,7 @@ func TestSELinuxUnlabeledFileFailsAsPuppetDoes(t *testing.T) {
 func TestSELinuxCreatedUnlabeledFileFailsEnsure(t *testing.T) {
 	p := filepath.Join(t.TempDir(), "f")
 	se := enabledSE(p, seContext{})
-	changes, _, err := File{se: se}.Apply(context.Background(), fileRes(p, map[string]any{"ensure": "file"}), false)
+	changes, _, err := File{se: se}.Apply(context.Background(), raltest.FileRes(p, map[string]any{"ensure": "file"}), false)
 	if err != nil || len(changes) != 1 || changes[0].Err == nil ||
 		changes[0].Err.Error() != "Could not set 'file' on ensure: undefined method 'split' for an instance of Integer" {
 		t.Fatalf("Apply = %+v, %v", changes, err)
@@ -864,13 +867,13 @@ func TestSELinuxNoopSetsNothing(t *testing.T) {
 	p := filepath.Join(t.TempDir(), "f")
 	mustWrite(t, p, "x")
 	se := enabledSE(p, tmpT)
-	changes, _, err := File{se: se}.Apply(context.Background(), fileRes(p, map[string]any{"ensure": "file"}), true)
+	changes, _, err := File{se: se}.Apply(context.Background(), raltest.FileRes(p, map[string]any{"ensure": "file"}), true)
 	if err != nil || len(changes) != 1 || changes[0].Message != "seltype changed 'tmp_t' to 'etc_t' (noop)" {
 		t.Fatalf("Apply = %+v, %v", changes, err)
 	}
 	q := filepath.Join(t.TempDir(), "absent")
 	se2 := enabledSE(q, seContext{})
-	if _, _, err := (File{se: se2}).Apply(context.Background(), fileRes(q, map[string]any{"ensure": "file"}), true); err != nil {
+	if _, _, err := (File{se: se2}).Apply(context.Background(), raltest.FileRes(q, map[string]any{"ensure": "file"}), true); err != nil {
 		t.Fatal(err)
 	}
 	if len(se.sets) != 0 || len(se2.sets) != 0 {
@@ -883,7 +886,7 @@ func TestSELinuxComesAfterModeOwnerAndGroup(t *testing.T) {
 	mustWrite(t, p, "x")
 	se := enabledSE(p, tmpT)
 	changes, _, err := File{se: se}.Apply(context.Background(),
-		fileRes(p, map[string]any{"ensure": "file", "mode": "0600", "selrange": "s0:c1"}), false)
+		raltest.FileRes(p, map[string]any{"ensure": "file", "mode": "0600", "selrange": "s0:c1"}), false)
 	var got []string
 	for _, c := range changes {
 		got = append(got, c.Property)
@@ -902,7 +905,7 @@ func TestSELinuxContentRewriteIsRelabelledSilently(t *testing.T) {
 	se := enabledSE(p, etcT)
 	se.fresh = tmpT.String()
 	changes, _, err := File{se: se}.Apply(context.Background(),
-		fileRes(p, map[string]any{"ensure": "file", "content": "new"}), false)
+		raltest.FileRes(p, map[string]any{"ensure": "file", "content": "new"}), false)
 	if err != nil || len(changes) != 1 || changes[0].Property != "content" || changes[0].Err != nil {
 		t.Fatalf("Apply = %+v, %v", changes, err)
 	}
@@ -916,7 +919,7 @@ func TestSELinuxDefaultLookupFailureFailsTheResource(t *testing.T) {
 	mustWrite(t, p, "x")
 	se := enabledSE(p, tmpT)
 	se.defErr = errors.New("Cannot get default context with nil handle")
-	if _, _, err := (File{se: se}).Apply(context.Background(), fileRes(p, map[string]any{"ensure": "file"}), false); err == nil ||
+	if _, _, err := (File{se: se}).Apply(context.Background(), raltest.FileRes(p, map[string]any{"ensure": "file"}), false); err == nil ||
 		err.Error() != "Cannot get default context with nil handle" {
 		t.Fatalf("err = %v", err)
 	}
@@ -927,11 +930,11 @@ func TestSELinuxUnmanagedEnsureRelabelsAnExistingPathOnly(t *testing.T) {
 	p, q := filepath.Join(dir, "f"), filepath.Join(dir, "absent")
 	mustWrite(t, p, "x")
 	se := enabledSE(p, tmpT)
-	changes, _, err := File{se: se}.Apply(context.Background(), fileRes(p, map[string]any{"seltype": "etc_t"}), false)
+	changes, _, err := File{se: se}.Apply(context.Background(), raltest.FileRes(p, map[string]any{"seltype": "etc_t"}), false)
 	if err != nil || len(changes) != 1 || changes[0].Property != "seltype" {
 		t.Fatalf("Apply = %+v, %v", changes, err)
 	}
-	changes, _, err = File{se: se}.Apply(context.Background(), fileRes(q, map[string]any{"seltype": "etc_t"}), false)
+	changes, _, err = File{se: se}.Apply(context.Background(), raltest.FileRes(q, map[string]any{"seltype": "etc_t"}), false)
 	if err != nil || len(changes) != 0 {
 		t.Fatalf("absent path: Apply = %+v, %v", changes, err)
 	}
@@ -939,18 +942,18 @@ func TestSELinuxUnmanagedEnsureRelabelsAnExistingPathOnly(t *testing.T) {
 
 func TestFileValidateRefusesWhenSELinuxIsEnabledWithoutTheLookupTool(t *testing.T) {
 	se := &fakeSE{on: true, supported: true}
-	err := File{se: se}.Validate(fileRes("/etc/x", map[string]any{"ensure": "file"}))
+	err := File{se: se}.Validate(raltest.FileRes("/etc/x", map[string]any{"ensure": "file"}))
 	want := "File[/etc/x]: SELinux is enabled, but selabel_lookup (package libselinux-utils) is not installed, " +
 		"so default SELinux contexts cannot be computed as Puppet computes them"
 	if err == nil || err.Error() != want {
 		t.Fatalf("Validate = %v\nwant %s", err, want)
 	}
 	se.tool = true
-	if err := (File{se: se}).Validate(fileRes("/etc/x", map[string]any{"ensure": "file"})); err != nil {
+	if err := (File{se: se}).Validate(raltest.FileRes("/etc/x", map[string]any{"ensure": "file"})); err != nil {
 		t.Errorf("with the tool: Validate = %v", err)
 	}
 	se.on, se.tool = false, false
-	if err := (File{se: se}).Validate(fileRes("/etc/x", map[string]any{"ensure": "file"})); err != nil {
+	if err := (File{se: se}).Validate(raltest.FileRes("/etc/x", map[string]any{"ensure": "file"})); err != nil {
 		t.Errorf("disabled: Validate = %v", err)
 	}
 }
@@ -963,11 +966,11 @@ func TestFileValidateRefusesAMissingToolOnlyWhereALookupIsNeeded(t *testing.T) {
 	se := &fakeSE{on: true, supported: true}
 	all := map[string]any{"ensure": "file", "seluser": "system_u", "selrole": "object_r", "seltype": "etc_t", "selrange": "s0"}
 	for _, params := range []map[string]any{{"ensure": "absent"}, {"ensure": false}, all} {
-		if err := (File{se: se}).Validate(fileRes("/etc/x", params)); err != nil {
+		if err := (File{se: se}).Validate(raltest.FileRes("/etc/x", params)); err != nil {
 			t.Errorf("%v: Validate = %v; want no refusal", params, err)
 		}
 	}
-	if err := (File{se: se}).Validate(fileRes("/etc/x", map[string]any{"ensure": "absent", "replace": false})); err == nil {
+	if err := (File{se: se}).Validate(raltest.FileRes("/etc/x", map[string]any{"ensure": "absent", "replace": false})); err == nil {
 		t.Error("absent with replace => false: Validate accepted it; its kept path's defaults need the tool")
 	}
 }
@@ -980,23 +983,23 @@ func TestFileValidateRefusesAMissingToolOnlyWhereALookupIsNeeded(t *testing.T) {
 // a default up refuses the catalog; one that would not is unaffected.
 func TestFileValidateRefusesTheCatalogWhenNoHandleOpens(t *testing.T) {
 	se := &fakeSE{on: true, supported: true, tool: true, handleErr: errNilHandle}
-	err := (File{se: se}).Validate(fileRes("/etc/x", map[string]any{"ensure": "file"}))
+	err := (File{se: se}).Validate(raltest.FileRes("/etc/x", map[string]any{"ensure": "file"}))
 	want := "File[/etc/x]: Cannot get default context with nil handle"
 	if err == nil || err.Error() != want {
 		t.Fatalf("Validate = %v; want %q", err, want)
 	}
 	all := map[string]any{"seluser": "system_u", "selrole": "object_r", "seltype": "etc_t", "selrange": "s0"}
 	for _, params := range []map[string]any{{"ensure": "absent"}, {"selinux_ignore_defaults": true}, all} {
-		if err := (File{se: se}).Validate(fileRes("/etc/x", params)); err != nil {
+		if err := (File{se: se}).Validate(raltest.FileRes("/etc/x", params)); err != nil {
 			t.Errorf("%v: Validate = %v; want no refusal, it looks nothing up", params, err)
 		}
 	}
 	se.supported = false
-	if err := (File{se: se}).Validate(fileRes("/etc/x", map[string]any{"ensure": "file"})); err != nil {
+	if err := (File{se: se}).Validate(raltest.FileRes("/etc/x", map[string]any{"ensure": "file"})); err != nil {
 		t.Errorf("no label support: Validate = %v; Puppet looks nothing up there", err)
 	}
 	se.supported, se.handleErr = true, nil
-	if err := (File{se: se}).Validate(fileRes("/etc/x", map[string]any{"ensure": "file"})); err != nil {
+	if err := (File{se: se}).Validate(raltest.FileRes("/etc/x", map[string]any{"ensure": "file"})); err != nil {
 		t.Errorf("an opening handle: Validate = %v", err)
 	}
 }
@@ -1004,7 +1007,7 @@ func TestFileValidateRefusesTheCatalogWhenNoHandleOpens(t *testing.T) {
 func TestFileValidateAllowsAMissingToolWhenDefaultsAreIgnored(t *testing.T) {
 	se := &fakeSE{on: true, supported: true}
 	for _, v := range []any{true, "true"} {
-		if err := (File{se: se}).Validate(fileRes("/etc/x", map[string]any{"selinux_ignore_defaults": v})); err != nil {
+		if err := (File{se: se}).Validate(raltest.FileRes("/etc/x", map[string]any{"selinux_ignore_defaults": v})); err != nil {
 			t.Errorf("%v: Validate = %v", v, err)
 		}
 	}
@@ -1025,7 +1028,7 @@ func TestFileValidateSELinuxValues(t *testing.T) {
 			"File[/etc/x]: seltype => 5 (float64) is not implemented: an SELinux context field is a string"},
 		{map[string]any{"seltype": "etc_t", "selinux_ignore_defaults": false}, ""},
 	} {
-		err := File{se: se}.Validate(fileRes("/etc/x", tc.params))
+		err := File{se: se}.Validate(raltest.FileRes("/etc/x", tc.params))
 		if got := fmt.Sprint(err); (tc.want == "" && err != nil) || (tc.want != "" && got != tc.want) {
 			t.Errorf("%v: Validate = %v\nwant %s", tc.params, err, tc.want)
 		}
@@ -1045,7 +1048,7 @@ func TestFileGenerateChildrenInheritTheSELinuxParameters(t *testing.T) {
 	mustWrite(t, filepath.Join(dir, "a"), "x")
 	params := map[string]any{"recurse": true, "seluser": "system_u", "selrole": "object_r",
 		"seltype": "etc_t", "selrange": "s0", "selinux_ignore_defaults": true}
-	children, _, err := File{}.Generate(context.Background(), fileRes(dir, params), noneManaged)
+	children, _, err := File{}.Generate(context.Background(), raltest.FileRes(dir, params), noneManaged)
 	if err != nil || len(children) != 1 {
 		t.Fatalf("Generate = %v, %v", children, err)
 	}
@@ -1086,7 +1089,7 @@ func TestSELinuxGeneratedChildIsLabelledOnlyInsideItsTree(t *testing.T) {
 		}
 	}
 	se := &userXattrSE{fakeSE{on: true, supported: true, tool: true}}
-	parent := fileRes(tree, map[string]any{"recurse": true, "seltype": "etc_t", "selinux_ignore_defaults": true})
+	parent := raltest.FileRes(tree, map[string]any{"recurse": true, "seltype": "etc_t", "selinux_ignore_defaults": true})
 	r := childOf(parent, child, map[string]any{"seltype": "etc_t", "selinux_ignore_defaults": true})
 
 	changes, _, err := File{se: se}.Apply(context.Background(), r, false)
@@ -1126,7 +1129,7 @@ func TestSELinuxUnlabeledContextIsEditedAsARawString(t *testing.T) {
 	se.cur[p] = "unlabeled"
 	se.setErr = syscall.EINVAL
 	changes, warnings, err := File{se: se}.Apply(context.Background(),
-		fileRes(p, map[string]any{"ensure": "file", "seltype": "etc_t", "selinux_ignore_defaults": true}), false)
+		raltest.FileRes(p, map[string]any{"ensure": "file", "seltype": "etc_t", "selinux_ignore_defaults": true}), false)
 	if err != nil || len(changes) != 1 || changes[0].Was != nil || changes[0].Err != nil ||
 		changes[0].Message != "seltype changed  to 'etc_t'" {
 		t.Fatalf("Apply = %+v, %v", changes, err)
@@ -1159,14 +1162,14 @@ func TestDefaultsForBatchesThroughMatchpathcon(t *testing.T) {
 		t.Fatal(err)
 	}
 	argv := append([]string{"matchpathcon", "-n", "-m", "f", "--"}, matchpathconFixturePaths...)
-	fr := &fakeRunner{replies: map[string]fakeReply{strings.Join(argv, " "): {out: string(out)}}}
+	fr := &raltest.FakeRunner{Replies: map[string]raltest.FakeReply{strings.Join(argv, " "): {Out: string(out)}}}
 	var qs []defaultQuery
 	for i, p := range matchpathconFixturePaths {
 		// Permission bits differ; only the file type picks -m.
 		qs = append(qs, defaultQuery{path: p, mode: syscall.S_IFREG | uint32(0o600+i)})
 	}
 	answers := hostSELinux{run: fr}.defaultsFor(context.Background(), qs)
-	if got := fr.onlyCall(t); !slices.Equal(got, argv) {
+	if got := fr.OnlyCall(t); !slices.Equal(got, argv) {
 		t.Errorf("args = %q; want %q", got, argv)
 	}
 	want := []defaultAnswer{
@@ -1193,8 +1196,8 @@ func TestDefaultsForWithNoHandleIsPuppetsError(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	fr := &fakeRunner{replies: map[string]fakeReply{
-		"matchpathcon -n -m f -- /etc/shadow /etc/passwd": {exit: 255, out: string(out)},
+	fr := &raltest.FakeRunner{Replies: map[string]raltest.FakeReply{
+		"matchpathcon -n -m f -- /etc/shadow /etc/passwd": {Exit: 255, Out: string(out)},
 	}}
 	qs := []defaultQuery{{"/etc/shadow", syscall.S_IFREG}, {"/etc/passwd", syscall.S_IFREG}}
 	answers := hostSELinux{run: fr}.defaultsFor(context.Background(), qs)
@@ -1210,7 +1213,7 @@ func TestDefaultsForWithNoHandleIsPuppetsError(t *testing.T) {
 // mode with no file type is never batched: -m cannot force mode 0, and
 // without -m matchpathcon lstats the path itself (matchpathcon.c:149-152).
 func TestDefaultsForGroupsByTypeAndChunks(t *testing.T) {
-	fr := &fakeRunner{}
+	fr := &raltest.FakeRunner{}
 	types := map[uint32]string{
 		syscall.S_IFREG: "f", syscall.S_IFDIR: "d", syscall.S_IFLNK: "l", syscall.S_IFIFO: "p",
 		syscall.S_IFSOCK: "s", syscall.S_IFCHR: "c", syscall.S_IFBLK: "b",
@@ -1222,7 +1225,7 @@ func TestDefaultsForGroupsByTypeAndChunks(t *testing.T) {
 	qs = append(qs, defaultQuery{path: "/t/zero", mode: 0})
 	hostSELinux{run: fr}.defaultsFor(context.Background(), qs)
 	var letters []string
-	for _, call := range fr.calls {
+	for _, call := range fr.Calls {
 		if len(call) != 6 || call[0] != "matchpathcon" || call[1] != "-n" || call[2] != "-m" || call[4] != "--" || call[5] != "/t/"+call[3] {
 			t.Errorf("call = %q; want matchpathcon -n -m <t> -- /t/<t>", call)
 			continue
@@ -1233,7 +1236,7 @@ func TestDefaultsForGroupsByTypeAndChunks(t *testing.T) {
 		t.Errorf("types = %q; want one call each, in order %q", letters, want)
 	}
 
-	fr = &fakeRunner{}
+	fr = &raltest.FakeRunner{}
 	var long []defaultQuery
 	var wantPaths []string
 	for i := range 3000 {
@@ -1242,11 +1245,11 @@ func TestDefaultsForGroupsByTypeAndChunks(t *testing.T) {
 		wantPaths = append(wantPaths, p)
 	}
 	hostSELinux{run: fr}.defaultsFor(context.Background(), long)
-	if len(fr.calls) < 2 {
-		t.Fatalf("%d calls for %d paths; want them chunked", len(fr.calls), len(long))
+	if len(fr.Calls) < 2 {
+		t.Fatalf("%d calls for %d paths; want them chunked", len(fr.Calls), len(long))
 	}
 	var gotPaths []string
-	for _, call := range fr.calls {
+	for _, call := range fr.Calls {
 		size := 0
 		for _, a := range call {
 			size += len(a) + 1 + 8
@@ -1266,18 +1269,18 @@ func TestDefaultsForGroupsByTypeAndChunks(t *testing.T) {
 func TestDefaultsForLeavesWhatItCannotParseToSelabelLookup(t *testing.T) {
 	good := "matchpathcon -n -m f -- /a/f"
 	bad := "matchpathcon -n -m d -- /a/d1 /a/d2"
-	for name, reply := range map[string]fakeReply{
-		"a failed lookup":      {exit: 1, out: "selabel_lookup(/a/d1) failed: Invalid argument\nsystem_u:object_r:etc_t:s0\n"},
-		"a line short":         {out: "system_u:object_r:etc_t:s0\n"},
-		"an extra stderr line": {out: "warning\nsystem_u:object_r:etc_t:s0\nsystem_u:object_r:etc_t:s0\n"},
-		"no final newline":     {out: "system_u:object_r:etc_t:s0\nsystem_u:object_r:etc_t:s0"},
-		"failure to start":     {err: errors.New("exec: not found")},
-		"an unknown exit":      {exit: 2, out: "system_u:object_r:etc_t:s0\nsystem_u:object_r:etc_t:s0\n"},
+	for name, reply := range map[string]raltest.FakeReply{
+		"a failed lookup":      {Exit: 1, Out: "selabel_lookup(/a/d1) failed: Invalid argument\nsystem_u:object_r:etc_t:s0\n"},
+		"a line short":         {Out: "system_u:object_r:etc_t:s0\n"},
+		"an extra stderr line": {Out: "warning\nsystem_u:object_r:etc_t:s0\nsystem_u:object_r:etc_t:s0\n"},
+		"no final newline":     {Out: "system_u:object_r:etc_t:s0\nsystem_u:object_r:etc_t:s0"},
+		"failure to start":     {Err: errors.New("exec: not found")},
+		"an unknown exit":      {Exit: 2, Out: "system_u:object_r:etc_t:s0\nsystem_u:object_r:etc_t:s0\n"},
 	} {
-		fr := &fakeRunner{replies: map[string]fakeReply{
-			good: {out: "system_u:object_r:etc_t:s0\n"},
+		fr := &raltest.FakeRunner{Replies: map[string]raltest.FakeReply{
+			good: {Out: "system_u:object_r:etc_t:s0\n"},
 			bad:  reply,
-			"selabel_lookup -b file -k /a/d2 -t 16384": {out: "Default context: system_u:object_r:bin_t:s0\n"},
+			"selabel_lookup -b file -k /a/d2 -t 16384": {Out: "Default context: system_u:object_r:bin_t:s0\n"},
 		}}
 		qs := []defaultQuery{{"/a/f", syscall.S_IFREG}, {"/a/d1", syscall.S_IFDIR}, {"/a/d2", syscall.S_IFDIR}}
 		answers := hostSELinux{run: fr}.defaultsFor(context.Background(), qs)
@@ -1285,14 +1288,14 @@ func TestDefaultsForLeavesWhatItCannotParseToSelabelLookup(t *testing.T) {
 			t.Errorf("%s: answers = %v; want only /a/f", name, answers)
 		}
 		se := prefetchedSELinux{selinuxOps: hostSELinux{run: fr}, defaults: answers}
-		fr.calls = nil
-		if c, ok, err := se.defaultFor(context.Background(), "/a/f", syscall.S_IFREG); err != nil || !ok || c != etcT || len(fr.calls) != 0 {
-			t.Errorf("%s: /a/f = %v, %v, %v after %q; want the batch's answer and no command", name, c, ok, err, fr.calls)
+		fr.Calls = nil
+		if c, ok, err := se.defaultFor(context.Background(), "/a/f", syscall.S_IFREG); err != nil || !ok || c != etcT || len(fr.Calls) != 0 {
+			t.Errorf("%s: /a/f = %v, %v, %v after %q; want the batch's answer and no command", name, c, ok, err, fr.Calls)
 		}
 		c, ok, err := se.defaultFor(context.Background(), "/a/d2", syscall.S_IFDIR)
 		want := []string{"selabel_lookup", "-b", "file", "-k", "/a/d2", "-t", "16384"}
-		if err != nil || !ok || c.typ != "bin_t" || len(fr.calls) != 1 || !slices.Equal(fr.calls[0], want) {
-			t.Errorf("%s: /a/d2 = %v, %v, %v after %q; want selabel_lookup's answer", name, c, ok, err, fr.calls)
+		if err != nil || !ok || c.typ != "bin_t" || len(fr.Calls) != 1 || !slices.Equal(fr.Calls[0], want) {
+			t.Errorf("%s: /a/d2 = %v, %v, %v after %q; want selabel_lookup's answer", name, c, ok, err, fr.Calls)
 		}
 	}
 }
@@ -1347,7 +1350,7 @@ func TestSELinuxRecursionLooksDefaultsUpInOneBatch(t *testing.T) {
 		t.Fatal(err)
 	}
 	f := prov.(File)
-	children, _, err := f.Generate(context.Background(), fileRes(dir, map[string]any{"recurse": true}), noneManaged)
+	children, _, err := f.Generate(context.Background(), raltest.FileRes(dir, map[string]any{"recurse": true}), noneManaged)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1380,7 +1383,7 @@ func TestSELinuxRecursionChildChangedAfterTheBatchIsLookedUpAgain(t *testing.T) 
 	se := enabledSE(dir, seContext{})
 	prov, _ := File{se: se}.Prefetch(context.Background(), nil)
 	f := prov.(File)
-	children, _, err := f.Generate(context.Background(), fileRes(dir, map[string]any{"recurse": true}), noneManaged)
+	children, _, err := f.Generate(context.Background(), raltest.FileRes(dir, map[string]any{"recurse": true}), noneManaged)
 	if err != nil || len(children) != 1 {
 		t.Fatalf("Generate = %v, %v", titles(children), err)
 	}
@@ -1421,7 +1424,7 @@ func TestSELinuxRecursionBatchesOnlyWhenDefaultsAreWanted(t *testing.T) {
 			prov, _ := f.Prefetch(context.Background(), nil)
 			f = prov.(File)
 		}
-		children, _, err := f.Generate(context.Background(), fileRes(dir, tc.params), noneManaged)
+		children, _, err := f.Generate(context.Background(), raltest.FileRes(dir, tc.params), noneManaged)
 		if err != nil || len(children) != 1 {
 			t.Fatalf("%s: Generate = %v, %v", name, titles(children), err)
 		}
@@ -1440,7 +1443,7 @@ func TestSELinuxRecursionDoesNotBatchAPurgedChild(t *testing.T) {
 	se := enabledSE(dir, seContext{})
 	prov, _ := File{se: se}.Prefetch(context.Background(), nil)
 	children, _, err := prov.(File).Generate(context.Background(),
-		fileRes(dir, map[string]any{"recurse": true, "purge": true, "source": src}), noneManaged)
+		raltest.FileRes(dir, map[string]any{"recurse": true, "purge": true, "source": src}), noneManaged)
 	if err != nil || len(children) != 2 {
 		t.Fatalf("Generate = %v, %v", titles(children), err)
 	}
@@ -1470,8 +1473,8 @@ func TestSELinuxLogsTheDefaultsItFinds(t *testing.T) {
 			mustWrite(t, p, "x")
 			src := fileSources(p)
 
-			ctx, got := debugContext("debug")
-			if _, _, err := (File{se: enabledSE(p, tmpT)}).Apply(WithSources(ctx, src), fileRes(p, tc.params), false); err != nil {
+			ctx, got := raltest.DebugContext("debug")
+			if _, _, err := (File{se: enabledSE(p, tmpT)}).Apply(sources.WithSources(ctx, src), raltest.FileRes(p, tc.params), false); err != nil {
 				t.Fatalf("Apply returned error: %v", err)
 			}
 			for _, prop := range selProps {
@@ -1479,7 +1482,7 @@ func TestSELinuxLogsTheDefaultsItFinds(t *testing.T) {
 				if v, ok := tc.want[prop]; ok {
 					want = []string{fmt.Sprintf("Found %s default '%s' for %s", prop, v, p)}
 				}
-				if lines := linesAt(*got, src.Resource+"/"+prop); !slices.Equal(lines, want) {
+				if lines := raltest.LinesAt(*got, src.Resource+"/"+prop); !slices.Equal(lines, want) {
 					t.Errorf("debug lines at %s/%s = %q, want %q", src.Resource, prop, lines, want)
 				}
 			}
@@ -1488,9 +1491,9 @@ func TestSELinuxLogsTheDefaultsItFinds(t *testing.T) {
 
 	p := filepath.Join(t.TempDir(), "f")
 	mustWrite(t, p, "x")
-	ctx, got := debugContext("notice")
-	if _, _, err := (File{se: enabledSE(p, tmpT)}).Apply(WithSources(ctx, fileSources(p)),
-		fileRes(p, map[string]any{"ensure": "file"}), false); err != nil {
+	ctx, got := raltest.DebugContext("notice")
+	if _, _, err := (File{se: enabledSE(p, tmpT)}).Apply(sources.WithSources(ctx, fileSources(p)),
+		raltest.FileRes(p, map[string]any{"ensure": "file"}), false); err != nil {
 		t.Fatalf("Apply returned error: %v", err)
 	}
 	if len(*got) != 0 {
@@ -1515,9 +1518,9 @@ func TestSELinuxLogsWhyADeclaredPropertyIsIgnored(t *testing.T) {
 			mustWrite(t, p, "x")
 			src := fileSources(p)
 
-			ctx, got := debugContext("debug")
-			r := fileRes(p, map[string]any{"ensure": "file", "seltype": "bin_t", "selrole": "object_r"})
-			if _, _, err := (File{se: tc.se}).Apply(WithSources(ctx, src), r, false); err != nil {
+			ctx, got := raltest.DebugContext("debug")
+			r := raltest.FileRes(p, map[string]any{"ensure": "file", "seltype": "bin_t", "selrole": "object_r"})
+			if _, _, err := (File{se: tc.se}).Apply(sources.WithSources(ctx, src), r, false); err != nil {
 				t.Fatalf("Apply returned error: %v", err)
 			}
 			for _, prop := range selProps {
@@ -1525,13 +1528,13 @@ func TestSELinuxLogsWhyADeclaredPropertyIsIgnored(t *testing.T) {
 				if prop == "seltype" || prop == "selrole" {
 					want = []string{tc.want}
 				}
-				if lines := linesAt(*got, src.Resource+"/"+prop); !slices.Equal(lines, want) {
+				if lines := raltest.LinesAt(*got, src.Resource+"/"+prop); !slices.Equal(lines, want) {
 					t.Errorf("debug lines at %s/%s = %q, want %q", src.Resource, prop, lines, want)
 				}
 			}
 
-			ctx, got = debugContext("notice")
-			if _, _, err := (File{se: tc.se}).Apply(WithSources(ctx, src), r, false); err != nil {
+			ctx, got = raltest.DebugContext("notice")
+			if _, _, err := (File{se: tc.se}).Apply(sources.WithSources(ctx, src), r, false); err != nil {
 				t.Fatalf("Apply returned error: %v", err)
 			}
 			if len(*got) != 0 {

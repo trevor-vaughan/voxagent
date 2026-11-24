@@ -14,6 +14,7 @@ import (
 
 	"github.com/voxagent/voxagent/internal/catalog"
 	"github.com/voxagent/voxagent/internal/graph"
+	"github.com/voxagent/voxagent/internal/lib/sources"
 	"github.com/voxagent/voxagent/internal/ral"
 	"github.com/voxagent/voxagent/internal/report"
 	"github.com/voxagent/voxagent/internal/runlog"
@@ -1092,11 +1093,11 @@ func (w *walk) apply(provider ral.Provider, s subject, propagate bool) result {
 // provider. The provider form is the resource's reference when the provider
 // names no provider (notify), as Ruby's own provider-form source does.
 func (w *walk) withSources(s subject, provider ral.Provider) context.Context {
-	sources := ral.Sources{Resource: s.source, Provider: s.display, Ref: s.display}
+	src := sources.Sources{Resource: s.source, Provider: s.display, Ref: s.display}
 	if used := providerUsed(provider, s.r); used != nil {
-		sources.Provider = s.display + "(provider=" + *used + ")"
+		src.Provider = s.display + "(provider=" + *used + ")"
 	}
-	return ral.WithSources(w.ctx, sources)
+	return sources.WithSources(w.ctx, src)
 }
 
 // logContainerPropagation writes event_manager.rb:107 for each container whose

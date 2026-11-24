@@ -6,29 +6,15 @@ import (
 	"path/filepath"
 	"slices"
 	"testing"
-)
 
-// traceLines is case id's recorded calls at the given trace file lines
-// (1-based, inclusive spans, facts handle included in the numbering), in order.
-func traceLines(t *testing.T, id string, spans ...[2]int) []traceCall {
-	t.Helper()
-	calls := loadTrace(t, id)
-	var out []traceCall
-	for _, s := range spans {
-		from, to := s[0]-len(factsHandle)-1, s[1]-len(factsHandle)
-		if from < 0 || to > len(calls) || from >= to {
-			t.Fatalf("trace %s: bad span %v", id, s)
-		}
-		out = append(out, calls[from:to]...)
-	}
-	return out
-}
+	"github.com/voxagent/voxagent/internal/lib/raltest"
+)
 
 // testAugeasRun is a run over calls whose File.exist? answers true exactly
 // for the paths in present.
-func testAugeasRun(t *testing.T, calls []traceCall, libdir string, present ...string) *augeasRun {
+func testAugeasRun(t *testing.T, calls []raltest.TraceCall, libdir string, present ...string) *augeasRun {
 	t.Helper()
-	r := newAugeasRun(newScriptLib(t, calls), libdir)
+	r := newAugeasRun(raltest.NewScriptLib(t, calls), libdir)
 	r.exists = func(p string) bool { return slices.Contains(present, p) }
 	return r
 }
@@ -50,13 +36,13 @@ func withAugVersionMemo(t *testing.T, types map[string]bool) {
 // 01a: the class handle opens at the first augopen, loads the file once, and
 // a second augopen of the same target only re-runs setvars.
 func TestAugopenReplays01aFirstResource(t *testing.T) {
-	calls := traceLines(t, "01a", [2]int{4, 17}, [2]int{47, 47})
+	calls := raltest.TraceLines(t, "01a", [2]int{4, 17}, [2]int{47, 47})
 	r := testAugeasRun(t, calls, t.TempDir())
 	aug, err := r.augopen(sysctlLens, "/etc/sysctl.conf", "$target/vm.swappiness")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if m, err := aug.match("$target/vm.swappiness"); err != nil || len(m) != 0 {
+	if m, err := aug.Match("$target/vm.swappiness"); err != nil || len(m) != 0 {
 		t.Fatalf("match = %v, %v", m, err)
 	}
 	again, err := r.augopen(sysctlLens, "/etc/sysctl.conf", "$target/vm.swappiness")
@@ -71,7 +57,7 @@ func TestAugopenReplays01aFirstResource(t *testing.T) {
 
 // A later resource with a new target adds an incl and reloads.
 func TestAugopenAddsInclForSecondTarget(t *testing.T) {
-	calls := append(traceLines(t, "01a", [2]int{4, 11}), parseTrace(t, "script", `h1 aug_match "/augeas/load/Sysctl" => 1 "/augeas/load/Sysctl"
+	calls := append(raltest.TraceLines(t, "01a", [2]int{4, 11}), raltest.ParseTrace(t, "script", `h1 aug_match "/augeas/load/Sysctl" => 1 "/augeas/load/Sysctl"
 h1 aug_match "/augeas/load/Sysctl/incl[.='/etc/sysctl.d/50-x.conf']" => 0
 h1 aug_set "/augeas/load/Sysctl/incl[.='/etc/sysctl.d/50-x.conf']" "/etc/sysctl.d/50-x.conf" => 0
 h1 aug_load => 0
@@ -93,7 +79,7 @@ h1 aug_close
 // 07b (M62): an existing file the lens cannot parse fails every augopen, with
 // the loadpath and the error position in the text.
 func TestAugopenLoadErrorNamesLoadpath(t *testing.T) {
-	calls := traceLines(t, "07b", [2]int{4, 20}, [2]int{97, 97})
+	calls := raltest.TraceLines(t, "07b", [2]int{4, 20}, [2]int{97, 97})
 	r := testAugeasRun(t, calls, "/tmp/gatelib", "/tmp/gatelib/augeas/lenses", "/etc/ssh/ssh_config")
 	want := "Augeas didn't load /etc/ssh/ssh_config with Ssh.lns from /tmp/gatelib/augeas/lenses: Get did not match entire input (line:3, character:0)"
 	for i := range 2 {
@@ -105,7 +91,7 @@ func TestAugopenLoadErrorNamesLoadpath(t *testing.T) {
 }
 
 func TestAugopenLoadErrorWithoutLoadpathOrPosition(t *testing.T) {
-	calls := parseTrace(t, "script", `h1 aug_init NULL NULL 64
+	calls := raltest.ParseTrace(t, "script", `h1 aug_init NULL NULL 64
 h1 aug_match "/augeas/load/Ssh" => 0
 h1 aug_set "/augeas/load/Ssh/lens" "Ssh.lns" => 0
 h1 aug_set "/augeas/load/Ssh/incl[last()+1]" "/etc/ssh/ssh_config" => 0
@@ -126,7 +112,7 @@ h1 aug_close
 // A failed aug_init is ruby-augeas' error and is retried by the next augopen,
 // as `@aug_handler ||=` does not memoize a raise.
 func TestAugopenInitFailureRetries(t *testing.T) {
-	calls := parseTrace(t, "script", "h0 aug_init NULL NULL 64\nh0 aug_init NULL NULL 64\n")
+	calls := raltest.ParseTrace(t, "script", "h0 aug_init NULL NULL 64\nh0 aug_init NULL NULL 64\n")
 	r := testAugeasRun(t, calls, t.TempDir())
 	for range 2 {
 		if _, err := r.augopen(sysctlLens, "/etc/sysctl.conf", "$target/a"); err == nil || err.Error() != "unknown error - Failed to initialize Augeas" {
@@ -137,7 +123,7 @@ func TestAugopenInitFailureRetries(t *testing.T) {
 }
 
 func TestAugopenLoadFailureIsAugeasError(t *testing.T) {
-	calls := append(traceLines(t, "01a", [2]int{4, 7}), parseTrace(t, "script", "h1 aug_load => -1\nh1 aug_close\n")...)
+	calls := append(raltest.TraceLines(t, "01a", [2]int{4, 7}), raltest.ParseTrace(t, "script", "h1 aug_load => -1\nh1 aug_close\n")...)
 	r := testAugeasRun(t, calls, t.TempDir())
 	if _, err := r.augopen(sysctlLens, "/etc/sysctl.conf", "$target/a"); err == nil || err.Error() != "Augeas::Error" {
 		t.Fatalf("err = %v", err)
@@ -166,7 +152,7 @@ func TestAugeasRunLoadpath(t *testing.T) {
 
 func TestFlushSaveFailure(t *testing.T) {
 	withAugVersionMemo(t, map[string]bool{"Sysctl": true})
-	calls := parseTrace(t, "script", `h1 aug_init NULL NULL 64
+	calls := raltest.ParseTrace(t, "script", `h1 aug_init NULL NULL 64
 h1 aug_save => -1
 h1 aug_match "/augeas//error" => 1 "/augeas/files/x"
 h1 aug_match "/augeas/files/x/*" => 1 "/augeas/files/x/error"
@@ -176,13 +162,13 @@ h1 aug_load => 0
 h1 aug_close
 `)
 	r := testAugeasRun(t, calls, t.TempDir())
-	ctx, logs := debugContext("debug")
+	ctx, logs := raltest.DebugContext("debug")
 	err := r.flush(ctx, sysctlLens)
 	var fe *FlushError
 	if !errors.As(err, &fe) || err.Error() != "Failed to save Augeas tree to file. See debug logs for details." {
 		t.Fatalf("err = %#v", err)
 	}
-	got := linesAt(*logs, "Puppet::Type::Sysctl::ProviderAugeas")
+	got := raltest.LinesAt(*logs, "Puppet::Type::Sysctl::ProviderAugeas")
 	if want := []string{"Save failure details:\n/augeas/files/x/error = put_failed"}; !slices.Equal(got, want) {
 		t.Fatalf("debug = %q, want %q", got, want)
 	}
@@ -193,20 +179,20 @@ h1 aug_close
 // and the second load is not reached.
 func TestFlushLoadFailureReplacesSaveError(t *testing.T) {
 	withAugVersionMemo(t, map[string]bool{"Sysctl": true})
-	calls := parseTrace(t, "script", `h1 aug_init NULL NULL 64
+	calls := raltest.ParseTrace(t, "script", `h1 aug_init NULL NULL 64
 h1 aug_save => -1
 h1 aug_match "/augeas//error" => 0
 h1 aug_load => -1
 h1 aug_close
 `)
 	r := testAugeasRun(t, calls, t.TempDir())
-	ctx, logs := debugContext("debug")
+	ctx, logs := raltest.DebugContext("debug")
 	err := r.flush(ctx, sysctlLens)
 	var fe *FlushError
 	if !errors.As(err, &fe) || err.Error() != "Augeas::Error" {
 		t.Fatalf("err = %#v", err)
 	}
-	if got := linesAt(*logs, "Puppet::Type::Sysctl::ProviderAugeas"); !slices.Equal(got, []string{"Save failure details:\n"}) {
+	if got := raltest.LinesAt(*logs, "Puppet::Type::Sysctl::ProviderAugeas"); !slices.Equal(got, []string{"Save failure details:\n"}) {
 		t.Fatalf("debug = %q", got)
 	}
 	r.EndRun()
@@ -216,9 +202,9 @@ h1 aug_close
 // the two loads; the type's second flush answers from the memo.
 func TestFlushVersionHandleOncePerType(t *testing.T) {
 	withAugVersionMemo(t, nil)
-	calls := traceLines(t, "02b", [2]int{4, 4}, [2]int{37, 42}, [2]int{83, 86})
+	calls := raltest.TraceLines(t, "02b", [2]int{4, 4}, [2]int{37, 42}, [2]int{83, 86})
 	r := testAugeasRun(t, calls, t.TempDir())
-	ctx, _ := debugContext("debug")
+	ctx, _ := raltest.DebugContext("debug")
 	for i := range 2 {
 		if err := r.flush(ctx, sshConfigLens); err != nil {
 			t.Fatalf("flush %d: %v", i+1, err)
@@ -230,9 +216,9 @@ func TestFlushVersionHandleOncePerType(t *testing.T) {
 // 01a's flush: save, load, the version handle h2, load.
 func TestFlushReplays01a(t *testing.T) {
 	withAugVersionMemo(t, nil)
-	calls := traceLines(t, "01a", [2]int{4, 4}, [2]int{41, 47})
+	calls := raltest.TraceLines(t, "01a", [2]int{4, 4}, [2]int{41, 47})
 	r := testAugeasRun(t, calls, t.TempDir())
-	ctx, _ := debugContext("debug")
+	ctx, _ := raltest.DebugContext("debug")
 	if err := r.flush(ctx, sysctlLens); err != nil {
 		t.Fatal(err)
 	}
@@ -243,7 +229,7 @@ func TestFlushReplays01a(t *testing.T) {
 // empty, so the next flush opens one again.
 func TestFlushVersionInitFailureNotMemoized(t *testing.T) {
 	withAugVersionMemo(t, nil)
-	calls := parseTrace(t, "script", `h1 aug_init NULL NULL 64
+	calls := raltest.ParseTrace(t, "script", `h1 aug_init NULL NULL 64
 h1 aug_save => 0
 h1 aug_load => 0
 h0 aug_init NULL NULL 64
@@ -256,7 +242,7 @@ h1 aug_load => 0
 h1 aug_close
 `)
 	r := testAugeasRun(t, calls, t.TempDir())
-	ctx, _ := debugContext("debug")
+	ctx, _ := raltest.DebugContext("debug")
 	if err := r.flush(ctx, sysctlLens); err == nil || err.Error() != "unknown error - Failed to initialize Augeas" {
 		t.Fatalf("flush 1: err = %v", err)
 	}
@@ -281,7 +267,7 @@ func TestParsedAsUsesNullLoadpath(t *testing.T) {
 		{"02e", 30, "Ciphers", true},
 	} {
 		t.Run(tc.id, func(t *testing.T) {
-			r := newAugeasRun(newScriptLib(t, traceLines(t, tc.id, [2]int{tc.from, tc.from + 4})), libdir)
+			r := newAugeasRun(raltest.NewScriptLib(t, raltest.TraceLines(t, tc.id, [2]int{tc.from, tc.from + 4})), libdir)
 			got, err := r.parsedAs("Ssh.lns", tc.label)
 			if err != nil || got != tc.want {
 				t.Fatalf("parsedAs = %v, %v; want %v", got, err, tc.want)
@@ -292,12 +278,12 @@ func TestParsedAsUsesNullLoadpath(t *testing.T) {
 }
 
 func TestParsedAsTextStoreFailureIsFalse(t *testing.T) {
-	calls := parseTrace(t, "script", `h1 aug_init NULL NULL 64
+	calls := raltest.ParseTrace(t, "script", `h1 aug_init NULL NULL 64
 h1 aug_set "/input" "Bogus FOO\n" => 0
 h1 aug_text_store "Ssh.lns" "/input" "/parsed" => -1
 h1 aug_close
 `)
-	r := newAugeasRun(newScriptLib(t, calls), t.TempDir())
+	r := newAugeasRun(raltest.NewScriptLib(t, calls), t.TempDir())
 	if got, err := r.parsedAs("Ssh.lns", "Bogus"); err != nil || got {
 		t.Fatalf("parsedAs = %v, %v", got, err)
 	}
@@ -305,7 +291,7 @@ h1 aug_close
 }
 
 func TestParsedAsInitFailure(t *testing.T) {
-	r := newAugeasRun(newScriptLib(t, parseTrace(t, "script", "h0 aug_init NULL NULL 64\n")), t.TempDir())
+	r := newAugeasRun(raltest.NewScriptLib(t, raltest.ParseTrace(t, "script", "h0 aug_init NULL NULL 64\n")), t.TempDir())
 	if _, err := r.parsedAs("Ssh.lns", "X"); err == nil || err.Error() != "unknown error - Failed to initialize Augeas" {
 		t.Fatalf("err = %v", err)
 	}
@@ -314,7 +300,7 @@ func TestParsedAsInitFailure(t *testing.T) {
 // 07b: two classes' handles, the first opened by an augopen that failed;
 // EndRun closes each once, in open order, however often it runs.
 func TestAugeasRunEndRunClosesEveryHandleOnce(t *testing.T) {
-	calls := traceLines(t, "07b", [2]int{4, 13}, [2]int{21, 29}, [2]int{97, 98})
+	calls := raltest.TraceLines(t, "07b", [2]int{4, 13}, [2]int{21, 29}, [2]int{97, 98})
 	r := testAugeasRun(t, calls, "/tmp/gatelib", "/tmp/gatelib/augeas/lenses", "/etc/ssh/ssh_config", "/etc/ssh/sshd_config")
 	if _, err := r.augopen(sshConfigLens, "/etc/ssh/ssh_config", "$target/x"); err == nil {
 		t.Fatal("ssh_config augopen succeeded")

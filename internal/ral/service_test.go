@@ -9,6 +9,9 @@ import (
 	"testing"
 
 	"github.com/voxagent/voxagent/internal/catalog"
+	"github.com/voxagent/voxagent/internal/lib/command"
+	"github.com/voxagent/voxagent/internal/lib/raltest"
+	"github.com/voxagent/voxagent/internal/lib/sources"
 )
 
 func svcRes(title string, params map[string]any) catalog.Resource {
@@ -25,13 +28,13 @@ const (
 )
 
 func TestServiceStartsAndEnablesInOneEvent(t *testing.T) {
-	f := &fakeRunner{
-		replies: map[string]fakeReply{
-			isActiveA: {exit: 3, out: "inactive\n"},
-			showA:     {out: "NeedDaemonReload=no\n"},
+	f := &raltest.FakeRunner{
+		Replies: map[string]raltest.FakeReply{
+			isActiveA: {Exit: 3, Out: "inactive\n"},
+			showA:     {Out: "NeedDaemonReload=no\n"},
 		},
-		sequences: map[string][]fakeReply{
-			isEnabledA: {{exit: 1, out: "disabled\n"}, {exit: 1, out: "disabled\n"}},
+		Sequences: map[string][]raltest.FakeReply{
+			isEnabledA: {{Exit: 1, Out: "disabled\n"}, {Exit: 1, Out: "disabled\n"}},
 		},
 	}
 	changes, _, err := Service{run: f}.Apply(context.Background(),
@@ -48,7 +51,7 @@ func TestServiceStartsAndEnablesInOneEvent(t *testing.T) {
 		!ch.InvalidateRefreshes || ch.Err != nil {
 		t.Errorf("change = %+v", ch)
 	}
-	f.ranExactly(t,
+	f.RanExactly(t,
 		argv(isActiveA), argv(isEnabledA), argv(showA),
 		argv("systemctl unmask -- a"), argv("systemctl start -- a"),
 		argv(isEnabledA), // unmask cleared the cache (systemd.rb:74-80)
@@ -56,7 +59,7 @@ func TestServiceStartsAndEnablesInOneEvent(t *testing.T) {
 }
 
 func TestServiceEnableAloneGetsItsOwnEvent(t *testing.T) {
-	f := &fakeRunner{replies: map[string]fakeReply{isEnabledA: {exit: 1, out: "disabled\n"}}}
+	f := &raltest.FakeRunner{Replies: map[string]raltest.FakeReply{isEnabledA: {Exit: 1, Out: "disabled\n"}}}
 	changes, _, err := Service{run: f}.Apply(context.Background(),
 		svcRes("a", map[string]any{"enable": true}), false)
 	if err != nil {
@@ -71,44 +74,44 @@ func TestServiceEnableAloneGetsItsOwnEvent(t *testing.T) {
 		ch.InvalidateRefreshes || ch.Err != nil {
 		t.Errorf("change = %+v", ch)
 	}
-	f.ranExactly(t, argv(isEnabledA), argv("systemctl unmask -- a"), argv("systemctl enable -- a"))
+	f.RanExactly(t, argv(isEnabledA), argv("systemctl unmask -- a"), argv("systemctl enable -- a"))
 }
 
 func TestServiceDisable(t *testing.T) {
-	f := &fakeRunner{replies: map[string]fakeReply{isEnabledA: {exit: 0, out: "enabled\n"}}}
+	f := &raltest.FakeRunner{Replies: map[string]raltest.FakeReply{isEnabledA: {Exit: 0, Out: "enabled\n"}}}
 	changes, _, _ := Service{run: f}.Apply(context.Background(),
 		svcRes("a", map[string]any{"enable": "false"}), false)
 	if len(changes) != 1 || changes[0].Name != "service_disabled" || changes[0].Was != "true" || changes[0].Is != "false" {
 		t.Fatalf("changes = %+v", changes)
 	}
-	f.ranExactly(t, argv(isEnabledA), argv("systemctl disable -- a"))
+	f.RanExactly(t, argv(isEnabledA), argv("systemctl disable -- a"))
 }
 
 func TestServiceStop(t *testing.T) {
-	f := &fakeRunner{}
+	f := &raltest.FakeRunner{}
 	changes, _, _ := Service{run: f}.Apply(context.Background(),
 		svcRes("a", map[string]any{"ensure": "stopped"}), false)
 	if len(changes) != 1 || changes[0].Name != "service_stopped" || changes[0].Was != "running" ||
 		changes[0].InvalidateRefreshes {
 		t.Fatalf("changes = %+v", changes)
 	}
-	f.ranExactly(t, argv(isActiveA), argv("systemctl stop -- a"))
+	f.RanExactly(t, argv(isActiveA), argv("systemctl stop -- a"))
 }
 
 // Under noop the ensure change is reported and nothing runs; the enable change
 // that would have been synced inside it is not reported at all
 // (resource_harness.rb:137-138).
 func TestServiceNoopReportsOnlyEnsure(t *testing.T) {
-	f := &fakeRunner{replies: map[string]fakeReply{
-		isActiveA:  {exit: 3},
-		isEnabledA: {exit: 1, out: "disabled\n"},
+	f := &raltest.FakeRunner{Replies: map[string]raltest.FakeReply{
+		isActiveA:  {Exit: 3},
+		isEnabledA: {Exit: 1, Out: "disabled\n"},
 	}}
 	changes, _, _ := Service{run: f}.Apply(context.Background(),
 		svcRes("a", map[string]any{"ensure": "running", "enable": "true"}), true)
 	if len(changes) != 1 || changes[0].Property != "ensure" || changes[0].Err != nil || !changes[0].InvalidateRefreshes {
 		t.Fatalf("changes = %+v", changes)
 	}
-	f.ranExactly(t, argv(isActiveA), argv(isEnabledA))
+	f.RanExactly(t, argv(isActiveA), argv(isEnabledA))
 }
 
 func TestServiceEnsureAliases(t *testing.T) {
@@ -116,9 +119,9 @@ func TestServiceEnsureAliases(t *testing.T) {
 		value any
 		want  string
 	}{{true, "running"}, {"true", "running"}, {false, "stopped"}, {"false", "stopped"}} {
-		f := &fakeRunner{replies: map[string]fakeReply{isActiveA: {exit: 3}}}
+		f := &raltest.FakeRunner{Replies: map[string]raltest.FakeReply{isActiveA: {Exit: 3}}}
 		if tc.want == "stopped" {
-			f.replies[isActiveA] = fakeReply{exit: 0}
+			f.Replies[isActiveA] = raltest.FakeReply{Exit: 0}
 		}
 		changes, _, _ := Service{run: f}.Apply(context.Background(),
 			svcRes("a", map[string]any{"ensure": tc.value}), true)
@@ -134,7 +137,7 @@ func TestServiceStaticAndIndirectAreInSync(t *testing.T) {
 		exit   int
 		enable string
 	}{{"static", 0, "false"}, {"static", 0, "true"}, {"indirect", 1, "true"}, {"indirect", 1, "false"}} {
-		f := &fakeRunner{replies: map[string]fakeReply{isEnabledA: {exit: tc.exit, out: tc.out + "\n"}}}
+		f := &raltest.FakeRunner{Replies: map[string]raltest.FakeReply{isEnabledA: {Exit: tc.exit, Out: tc.out + "\n"}}}
 		changes, _, _ := Service{run: f}.Apply(context.Background(),
 			svcRes("a", map[string]any{"enable": tc.enable}), false)
 		if len(changes) != 0 {
@@ -146,8 +149,8 @@ func TestServiceStaticAndIndirectAreInSync(t *testing.T) {
 // A missing unit: is-enabled exits non-zero with nothing useful, which reads as
 // false, so enable => false is in sync (systemd.rb:105-127).
 func TestServiceMissingUnitWithEnableFalseIsInSync(t *testing.T) {
-	f := &fakeRunner{replies: map[string]fakeReply{
-		isEnabledA: {exit: 1, out: "Failed to get unit file state for a.service: No such file or directory\n"},
+	f := &raltest.FakeRunner{Replies: map[string]raltest.FakeReply{
+		isEnabledA: {Exit: 1, Out: "Failed to get unit file state for a.service: No such file or directory\n"},
 	}}
 	changes, _, _ := Service{run: f}.Apply(context.Background(), svcRes("a", map[string]any{"enable": "false"}), false)
 	if len(changes) != 0 {
@@ -156,12 +159,12 @@ func TestServiceMissingUnitWithEnableFalseIsInSync(t *testing.T) {
 }
 
 func TestServiceDaemonReloadRunsWhenNeeded(t *testing.T) {
-	f := &fakeRunner{replies: map[string]fakeReply{
-		isActiveA: {exit: 3},
-		showA:     {out: "NeedDaemonReload=yes\n"},
+	f := &raltest.FakeRunner{Replies: map[string]raltest.FakeReply{
+		isActiveA: {Exit: 3},
+		showA:     {Out: "NeedDaemonReload=yes\n"},
 	}}
 	_, _, _ = Service{run: f}.Apply(context.Background(), svcRes("a", map[string]any{"ensure": "running"}), false)
-	f.ranExactly(t, argv(isActiveA), argv(showA), argv("systemctl daemon-reload"),
+	f.RanExactly(t, argv(isActiveA), argv(showA), argv("systemctl daemon-reload"),
 		argv("systemctl unmask -- a"), argv("systemctl start -- a"))
 }
 
@@ -176,13 +179,13 @@ func TestServiceDaemonReloadFindsItsLineAmongOtherOutput(t *testing.T) {
 		{"NeedDaemonReload=no\nOther=yes\n", false},
 		{"Other=yes\n", false},
 	} {
-		f := &fakeRunner{replies: map[string]fakeReply{
-			isActiveA: {exit: 3},
-			showA:     {out: tc.out},
+		f := &raltest.FakeRunner{Replies: map[string]raltest.FakeReply{
+			isActiveA: {Exit: 3},
+			showA:     {Out: tc.out},
 		}}
 		_, _, _ = Service{run: f}.Apply(context.Background(), svcRes("a", map[string]any{"ensure": "running"}), false)
 		ran := false
-		for _, c := range f.calls {
+		for _, c := range f.Calls {
 			if strings.Join(c, " ") == "systemctl daemon-reload" {
 				ran = true
 			}
@@ -197,38 +200,38 @@ func TestServiceDaemonReloadFindsItsLineAmongOtherOutput(t *testing.T) {
 // daemon-reload check still does (systemd.rb:212-217). Custom commands are
 // shell strings in Puppet (util/execution.rb:360,391).
 func TestServiceCustomStartSkipsUnmask(t *testing.T) {
-	f := &fakeRunner{replies: map[string]fakeReply{isActiveA: {exit: 3}}}
+	f := &raltest.FakeRunner{Replies: map[string]raltest.FakeReply{isActiveA: {Exit: 3}}}
 	_, _, _ = Service{run: f}.Apply(context.Background(),
 		svcRes("a", map[string]any{"ensure": "running", "start": "/opt/start a --now"}), false)
-	f.ranExactly(t, argv(isActiveA), argv(showA), []string{"/bin/sh", "-c", "/opt/start a --now"})
+	f.RanExactly(t, argv(isActiveA), argv(showA), []string{"/bin/sh", "-c", "/opt/start a --now"})
 }
 
 func TestServiceCustomStatus(t *testing.T) {
-	f := &fakeRunner{replies: map[string]fakeReply{"/bin/sh -c pgrep a": {exit: 0}}}
+	f := &raltest.FakeRunner{Replies: map[string]raltest.FakeReply{"/bin/sh -c pgrep a": {Exit: 0}}}
 	changes, _, _ := Service{run: f}.Apply(context.Background(),
 		svcRes("a", map[string]any{"ensure": "running", "status": "pgrep a"}), false)
 	if len(changes) != 0 {
 		t.Errorf("changes = %+v, want none (custom status says running)", changes)
 	}
-	f.ranExactly(t, []string{"/bin/sh", "-c", "pgrep a"})
+	f.RanExactly(t, []string{"/bin/sh", "-c", "pgrep a"})
 }
 
 func TestServiceNameOverridesTitle(t *testing.T) {
-	f := &fakeRunner{}
+	f := &raltest.FakeRunner{}
 	_, _, _ = Service{run: f}.Apply(context.Background(),
 		svcRes("web", map[string]any{"name": "httpd.service", "ensure": "stopped"}), false)
-	f.ranExactly(t, argv("systemctl is-active -- httpd.service"), argv("systemctl stop -- httpd.service"))
+	f.RanExactly(t, argv("systemctl is-active -- httpd.service"), argv("systemctl stop -- httpd.service"))
 }
 
 // The message is replaced by the journal (systemd.rb:225-231) and is not
 // wrapped (property.rb:483-497 re-raises a Puppet::Error as-is). enable is not
 // synced after a failed start, because the exception leaves ensure's sync.
 func TestServiceStartFailureCarriesTheJournal(t *testing.T) {
-	f := &fakeRunner{replies: map[string]fakeReply{
-		isActiveA:              {exit: 3},
-		isEnabledA:             {exit: 1, out: "disabled\n"},
-		"systemctl start -- a": {exit: 1, out: "Job for a.service failed.\n"},
-		journalA:               {out: "Oct 05 a systemd[1]: Failed to start a.\n"},
+	f := &raltest.FakeRunner{Replies: map[string]raltest.FakeReply{
+		isActiveA:              {Exit: 3},
+		isEnabledA:             {Exit: 1, Out: "disabled\n"},
+		"systemctl start -- a": {Exit: 1, Out: "Job for a.service failed.\n"},
+		journalA:               {Out: "Oct 05 a systemd[1]: Failed to start a.\n"},
 	}}
 	changes, _, err := Service{run: f}.Apply(context.Background(),
 		svcRes("a", map[string]any{"ensure": "running", "enable": "true"}), false)
@@ -242,20 +245,20 @@ func TestServiceStartFailureCarriesTheJournal(t *testing.T) {
 	if changes[0].Err.Error() != want {
 		t.Errorf("Err = %q, want %q", changes[0].Err.Error(), want)
 	}
-	for _, c := range f.calls {
+	for _, c := range f.Calls {
 		if strings.Join(c, " ") == "systemctl enable -- a" {
 			t.Error("enable ran after a failed start")
 		}
 	}
-	if journal := f.calls[len(f.calls)-1]; strings.Join(journal, " ") != journalA || len(journal) != 11 {
+	if journal := f.Calls[len(f.Calls)-1]; strings.Join(journal, " ") != journalA || len(journal) != 11 {
 		t.Errorf("journalctl argv = %q, want 11 argv elements (no shell)", journal)
 	}
 }
 
 func TestServiceEnableFailure(t *testing.T) {
-	f := &fakeRunner{replies: map[string]fakeReply{
-		isEnabledA:              {exit: 1, out: "disabled\n"},
-		"systemctl enable -- a": {exit: 1, out: "Failed to enable unit\n"},
+	f := &raltest.FakeRunner{Replies: map[string]raltest.FakeReply{
+		isEnabledA:              {Exit: 1, Out: "disabled\n"},
+		"systemctl enable -- a": {Exit: 1, Out: "Failed to enable unit\n"},
 	}}
 	changes, _, _ := Service{run: f}.Apply(context.Background(), svcRes("a", map[string]any{"enable": "true"}), false)
 	if len(changes) != 1 || changes[0].Err == nil || changes[0].Err.Error() != "Could not enable a: " {
@@ -265,38 +268,38 @@ func TestServiceEnableFailure(t *testing.T) {
 
 func TestServiceRefresh(t *testing.T) {
 	t.Run("running restarts", func(t *testing.T) {
-		f := &fakeRunner{replies: map[string]fakeReply{isActiveA: {exit: 0}}}
+		f := &raltest.FakeRunner{Replies: map[string]raltest.FakeReply{isActiveA: {Exit: 0}}}
 		ok, err := Service{run: f}.Refresh(context.Background(), svcRes("a", nil), false)
 		if !ok || err != nil {
 			t.Fatalf("Refresh = %v, %v", ok, err)
 		}
-		f.ranExactly(t, argv(isActiveA), argv(showA), argv("systemctl restart -- a"))
+		f.RanExactly(t, argv(isActiveA), argv(showA), argv("systemctl restart -- a"))
 	})
 	t.Run("stopped skips but still reports a refresh", func(t *testing.T) {
-		f := &fakeRunner{replies: map[string]fakeReply{isActiveA: {exit: 3}}}
+		f := &raltest.FakeRunner{Replies: map[string]raltest.FakeReply{isActiveA: {Exit: 3}}}
 		ok, err := Service{run: f}.Refresh(context.Background(), svcRes("a", nil), false)
 		if !ok || err != nil {
 			t.Fatalf("Refresh = %v, %v; want true, nil (event_manager.rb:149-156 logs Triggered either way)", ok, err)
 		}
-		f.ranExactly(t, argv(isActiveA))
+		f.RanExactly(t, argv(isActiveA))
 	})
 	t.Run("noop runs nothing", func(t *testing.T) {
-		f := &fakeRunner{}
+		f := &raltest.FakeRunner{}
 		ok, err := Service{run: f}.Refresh(context.Background(), svcRes("a", nil), true)
-		if !ok || err != nil || len(f.calls) != 0 {
-			t.Fatalf("Refresh = %v, %v; calls %v", ok, err, f.calls)
+		if !ok || err != nil || len(f.Calls) != 0 {
+			t.Fatalf("Refresh = %v, %v; calls %v", ok, err, f.Calls)
 		}
 	})
 	t.Run("custom restart", func(t *testing.T) {
-		f := &fakeRunner{replies: map[string]fakeReply{isActiveA: {exit: 0}}}
+		f := &raltest.FakeRunner{Replies: map[string]raltest.FakeReply{isActiveA: {Exit: 0}}}
 		_, _ = Service{run: f}.Refresh(context.Background(), svcRes("a", map[string]any{"restart": "/opt/reload a"}), false)
-		f.ranExactly(t, argv(isActiveA), argv(showA), []string{"/bin/sh", "-c", "/opt/reload a"})
+		f.RanExactly(t, argv(isActiveA), argv(showA), []string{"/bin/sh", "-c", "/opt/reload a"})
 	})
 	t.Run("restart failure", func(t *testing.T) {
-		f := &fakeRunner{replies: map[string]fakeReply{
-			isActiveA:                {exit: 0},
-			"systemctl restart -- a": {exit: 1},
-			journalA:                 {out: "boom\n"},
+		f := &raltest.FakeRunner{Replies: map[string]raltest.FakeReply{
+			isActiveA:                {Exit: 0},
+			"systemctl restart -- a": {Exit: 1},
+			journalA:                 {Out: "boom\n"},
 		}}
 		ok, err := Service{run: f}.Refresh(context.Background(), svcRes("a", nil), false)
 		if ok || err == nil || err.Error() != "Systemd restart for a failed!\njournalctl log for a:\nboom\n" {
@@ -339,10 +342,10 @@ func TestServicePrefetchIsANoOp(t *testing.T) {
 // Puppet runs journalctl with failonfail, so its failure replaces the message
 // (util/execution.rb:311-312).
 func TestServiceJournalctlFailureIsExecutionFailure(t *testing.T) {
-	f := &fakeRunner{replies: map[string]fakeReply{
-		isActiveA:             {exit: 0},
-		"systemctl stop -- a": {exit: 1},
-		journalA:              {exit: 1, out: "  no journal\n\n"},
+	f := &raltest.FakeRunner{Replies: map[string]raltest.FakeReply{
+		isActiveA:             {Exit: 0},
+		"systemctl stop -- a": {Exit: 1},
+		journalA:              {Exit: 1, Out: "  no journal\n\n"},
 	}}
 	changes, _, _ := Service{run: f}.Apply(context.Background(), svcRes("a", map[string]any{"ensure": "stopped"}), false)
 	want := "Execution of 'journalctl -n 50 --since '5 minutes ago' -u a --no-pager' returned 1: no journal"
@@ -357,32 +360,32 @@ func TestServiceCustomCommandShapes(t *testing.T) {
 			exit    int
 			changes int
 		}{{0, 0}, {3, 1}} {
-			f := &fakeRunner{replies: map[string]fakeReply{"/usr/bin/check a": {exit: tc.exit}}}
+			f := &raltest.FakeRunner{Replies: map[string]raltest.FakeReply{"/usr/bin/check a": {Exit: tc.exit}}}
 			changes, _, _ := Service{run: f}.Apply(context.Background(),
 				svcRes("a", map[string]any{"ensure": "running", "status": []any{"/usr/bin/check", "a"}}), true)
 			if len(changes) != tc.changes {
 				t.Errorf("exit %d: changes = %+v, want %d", tc.exit, changes, tc.changes)
 			}
-			f.ranExactly(t, []string{"/usr/bin/check", "a"})
+			f.RanExactly(t, []string{"/usr/bin/check", "a"})
 		}
 	})
 	t.Run("array start is a direct exec", func(t *testing.T) {
-		f := &fakeRunner{replies: map[string]fakeReply{isActiveA: {exit: 3}}}
+		f := &raltest.FakeRunner{Replies: map[string]raltest.FakeReply{isActiveA: {Exit: 3}}}
 		_, _, _ = Service{run: f}.Apply(context.Background(),
 			svcRes("a", map[string]any{"ensure": "running", "start": []any{"/opt/x", "--now", 5}}), false)
-		f.ranExactly(t, argv(isActiveA), argv(showA), []string{"/opt/x", "--now", "5"})
+		f.RanExactly(t, argv(isActiveA), argv(showA), []string{"/opt/x", "--now", "5"})
 	})
 	t.Run("single-element array is a shell string", func(t *testing.T) {
-		f := &fakeRunner{replies: map[string]fakeReply{isActiveA: {exit: 3}}}
+		f := &raltest.FakeRunner{Replies: map[string]raltest.FakeReply{isActiveA: {Exit: 3}}}
 		_, _, _ = Service{run: f}.Apply(context.Background(),
 			svcRes("a", map[string]any{"ensure": "running", "start": []any{"/opt/x --now"}}), false)
-		f.ranExactly(t, argv(isActiveA), argv(showA), []string{"/bin/sh", "-c", "/opt/x --now"})
+		f.RanExactly(t, argv(isActiveA), argv(showA), []string{"/bin/sh", "-c", "/opt/x --now"})
 	})
 	t.Run("number is a shell string", func(t *testing.T) {
-		f := &fakeRunner{replies: map[string]fakeReply{isActiveA: {exit: 3}}}
+		f := &raltest.FakeRunner{Replies: map[string]raltest.FakeReply{isActiveA: {Exit: 3}}}
 		_, _, _ = Service{run: f}.Apply(context.Background(),
 			svcRes("a", map[string]any{"ensure": "running", "start": 42}), false)
-		f.ranExactly(t, argv(isActiveA), argv(showA), []string{"/bin/sh", "-c", "42"})
+		f.RanExactly(t, argv(isActiveA), argv(showA), []string{"/bin/sh", "-c", "42"})
 	})
 }
 
@@ -408,7 +411,7 @@ func TestServiceSupportsValue(t *testing.T) {
 // type/service.rb:296: a refresh of a service that is not running is skipped,
 // and Ruby says so at the resource's path.
 func TestServiceRefreshOfAStoppedServiceLogsRubysDebugLine(t *testing.T) {
-	src := Sources{Resource: "/Stage[main]/Main/Service[a]", Provider: "Service[a](provider=systemd)", Ref: "Service[a]"}
+	src := sources.Sources{Resource: "/Stage[main]/Main/Service[a]", Provider: "Service[a](provider=systemd)", Ref: "Service[a]"}
 	for _, tc := range []struct {
 		name  string
 		exit  int
@@ -422,12 +425,12 @@ func TestServiceRefreshOfAStoppedServiceLogsRubysDebugLine(t *testing.T) {
 		{"notice drops it", 3, false, "notice", nil},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			f := &fakeRunner{replies: map[string]fakeReply{isActiveA: {exit: tc.exit}}}
-			ctx, got := debugContext(tc.level)
-			if _, err := (Service{run: f}).Refresh(WithSources(ctx, src), svcRes("a", nil), tc.noop); err != nil {
+			f := &raltest.FakeRunner{Replies: map[string]raltest.FakeReply{isActiveA: {Exit: tc.exit}}}
+			ctx, got := raltest.DebugContext(tc.level)
+			if _, err := (Service{run: f}).Refresh(sources.WithSources(ctx, src), svcRes("a", nil), tc.noop); err != nil {
 				t.Fatalf("Refresh returned %v", err)
 			}
-			if lines := linesAt(*got, src.Resource); !slices.Equal(lines, tc.want) {
+			if lines := raltest.LinesAt(*got, src.Resource); !slices.Equal(lines, tc.want) {
 				t.Errorf("debug lines at %s = %q, want %q", src.Resource, lines, tc.want)
 			}
 			if tc.level == "notice" && len(*got) != 0 {
@@ -441,7 +444,7 @@ func TestServiceRefreshOfAStoppedServiceLogsRubysDebugLine(t *testing.T) {
 // possible, so enable is taken as in sync and Ruby says so from Puppet. An
 // indirect unit has its own message.
 func TestServiceStaticEnableLogsRubysDebugLine(t *testing.T) {
-	src := Sources{Resource: "/Stage[main]/Main/Service[a]", Provider: "Service[a](provider=systemd)", Ref: "Service[a]"}
+	src := sources.Sources{Resource: "/Stage[main]/Main/Service[a]", Provider: "Service[a](provider=systemd)", Ref: "Service[a]"}
 	for _, tc := range []struct {
 		name   string
 		out    string
@@ -459,17 +462,25 @@ func TestServiceStaticEnableLogsRubysDebugLine(t *testing.T) {
 		{"notice drops it", "static", 0, map[string]any{"enable": "true"}, "notice", nil},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			f := &fakeRunner{replies: map[string]fakeReply{isEnabledA: {exit: tc.exit, out: tc.out + "\n"}}}
-			ctx, got := debugContext(tc.level)
-			if _, _, err := (Service{run: f}).Apply(WithSources(ctx, src), svcRes("a", tc.params), false); err != nil {
+			f := &raltest.FakeRunner{Replies: map[string]raltest.FakeReply{isEnabledA: {Exit: tc.exit, Out: tc.out + "\n"}}}
+			ctx, got := raltest.DebugContext(tc.level)
+			if _, _, err := (Service{run: f}).Apply(sources.WithSources(ctx, src), svcRes("a", tc.params), false); err != nil {
 				t.Fatalf("Apply returned %v", err)
 			}
-			if lines := linesAt(*got, "Puppet"); !slices.Equal(lines, tc.want) {
+			if lines := raltest.LinesAt(*got, "Puppet"); !slices.Equal(lines, tc.want) {
 				t.Errorf("debug lines at Puppet = %q, want %q", lines, tc.want)
 			}
 			if tc.level == "notice" && len(*got) != 0 {
 				t.Errorf("entries = %+v, want none at notice", *got)
 			}
 		})
+	}
+}
+
+// Service's commands go through the file runner by default, so a custom start
+// that backgrounds a daemon cannot hang the run.
+func TestServiceDefaultRunnerUsesAFile(t *testing.T) {
+	if _, ok := (Service{}).runner().(command.FileOutputRunner); !ok {
+		t.Errorf("default runner is %T, want command.FileOutputRunner", Service{}.runner())
 	}
 }

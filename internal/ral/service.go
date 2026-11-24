@@ -7,6 +7,9 @@ import (
 	"strings"
 
 	"github.com/voxagent/voxagent/internal/catalog"
+	"github.com/voxagent/voxagent/internal/lib/command"
+	"github.com/voxagent/voxagent/internal/lib/rubyvalue"
+	"github.com/voxagent/voxagent/internal/lib/sources"
 	"github.com/voxagent/voxagent/internal/runlog"
 )
 
@@ -31,7 +34,7 @@ import (
 // (provider/service/service.rb:49-50). The state words parsed from
 // systemctl are not localised.
 type Service struct {
-	run      commandRunner
+	run      command.Runner
 	initComm string // read to confirm systemd is PID 1; "" means /proc/1/comm
 }
 
@@ -78,16 +81,16 @@ func (Service) SupportsValue(attr, value string) bool {
 	return true
 }
 
-func (s Service) runner() commandRunner {
+func (s Service) runner() command.Runner {
 	if s.run == nil {
-		return fileOutputRunner{}
+		return command.FileOutputRunner{}
 	}
 	return s.run
 }
 
 // serviceName is the namevar: name if given, else the title. Puppet never
 // appends .service (systemd.rb:10-12); systemctl does.
-func serviceName(r catalog.Resource) string { return paramString(r, "name", r.Title) }
+func serviceName(r catalog.Resource) string { return rubyvalue.ParamString(r, "name", r.Title) }
 
 // wantedEnsure normalises ensure, whose aliases are true => running and
 // false => stopped (type/service.rb:111-112). Unset means unmanaged.
@@ -95,7 +98,7 @@ func wantedEnsure(r catalog.Resource) (string, bool) {
 	if _, ok := r.Parameters["ensure"]; !ok {
 		return "", false
 	}
-	switch v := paramString(r, "ensure", ""); v {
+	switch v := rubyvalue.ParamString(r, "ensure", ""); v {
 	case "true":
 		return "running", true
 	case "false":
@@ -134,9 +137,9 @@ func (s Service) status(ctx context.Context, r catalog.Resource, name string) (s
 	var code int
 	var err error
 	if c, ok := custom(r, "status"); ok {
-		code, _, err = s.runner().run(ctx, c[0], c[1:]...)
+		code, _, err = s.runner().Run(ctx, c[0], c[1:]...)
 	} else {
-		code, _, err = s.runner().run(ctx, "systemctl", "is-active", "--", name)
+		code, _, err = s.runner().Run(ctx, "systemctl", "is-active", "--", name)
 	}
 	if err != nil {
 		return "", err
@@ -155,7 +158,7 @@ type enabledState struct {
 }
 
 func (s Service) isEnabled(ctx context.Context, name string) (enabledState, error) {
-	code, out, err := s.runner().run(ctx, "systemctl", "is-enabled", "--", name)
+	code, out, err := s.runner().Run(ctx, "systemctl", "is-enabled", "--", name)
 	if err != nil {
 		return enabledState{}, err
 	}
@@ -200,7 +203,7 @@ func (s Service) Apply(ctx context.Context, r catalog.Resource, noop bool) ([]Ch
 	name := serviceName(r)
 	wantEnsure, manageEnsure := wantedEnsure(r)
 	_, manageEnable := r.Parameters["enable"]
-	wantEnable := paramString(r, "enable", "")
+	wantEnable := rubyvalue.ParamString(r, "enable", "")
 
 	var current string
 	if manageEnsure {
@@ -277,13 +280,13 @@ func (s Service) Apply(ctx context.Context, r catalog.Resource, noop bool) ([]Ch
 // stdout and stderr combined (D-20), so it finds the NeedDaemonReload= line
 // instead; on show's clean one-line output the two agree.
 func (s Service) daemonReload(ctx context.Context, name string) {
-	_, out, err := s.runner().run(ctx, "systemctl", "show", "--property=NeedDaemonReload", "--", name)
+	_, out, err := s.runner().Run(ctx, "systemctl", "show", "--property=NeedDaemonReload", "--", name)
 	if err != nil {
 		return
 	}
 	for _, line := range strings.Split(out, "\n") {
 		if v, ok := strings.CutPrefix(strings.TrimSpace(line), "NeedDaemonReload="); ok && v == "yes" {
-			_, _, _ = s.runner().run(ctx, "systemctl", "daemon-reload")
+			_, _, _ = s.runner().Run(ctx, "systemctl", "daemon-reload")
 			return
 		}
 	}
@@ -293,7 +296,7 @@ func (s Service) daemonReload(ctx context.Context, name string) {
 // interpolates a variable that is always nil inside the rescue, so the
 // command's output never reaches it; the trailing space is Puppet's.
 func (s Service) changeEnable(ctx context.Context, action, name string) error {
-	code, _, err := s.runner().run(ctx, "systemctl", action, "--", name)
+	code, _, err := s.runner().Run(ctx, "systemctl", action, "--", name)
 	if err != nil || code != 0 {
 		return fmt.Errorf("Could not %s %s: ", action, name)
 	}
@@ -318,9 +321,9 @@ func (s Service) operate(ctx context.Context, r catalog.Resource, name, op strin
 	var code int
 	var err error
 	if c, ok := custom(r, op); ok {
-		code, _, err = s.runner().run(ctx, c[0], c[1:]...)
+		code, _, err = s.runner().Run(ctx, c[0], c[1:]...)
 	} else {
-		code, _, err = s.runner().run(ctx, "systemctl", op, "--", name)
+		code, _, err = s.runner().Run(ctx, "systemctl", op, "--", name)
 	}
 	if err != nil || code != 0 {
 		return s.failure(ctx, name, op)
@@ -340,7 +343,7 @@ func (s Service) operate(ctx context.Context, r catalog.Resource, name, op strin
 // Puppet runs it with failonfail, so a journalctl that fails replaces the
 // whole message with ExecutionFailure's text (util/execution.rb:311-312).
 func (s Service) failure(ctx context.Context, name, op string) error {
-	code, out, err := s.runner().run(ctx, "env", "LANG=C", "LC_ALL=C", "journalctl",
+	code, out, err := s.runner().Run(ctx, "env", "LANG=C", "LC_ALL=C", "journalctl",
 		"-n", "50", "--since", "5 minutes ago", "-u", name, "--no-pager")
 	line := fmt.Sprintf("journalctl -n 50 --since '5 minutes ago' -u %s --no-pager", name)
 	if err != nil {
@@ -385,7 +388,7 @@ func (s Service) Refresh(ctx context.Context, r catalog.Resource, noop bool) (bo
 		return false, err
 	}
 	if current != "running" {
-		runlog.Debugf(ctx, SourcesFrom(ctx).Resource, "Skipping restart; service is not running")
+		runlog.Debugf(ctx, sources.SourcesFrom(ctx).Resource, "Skipping restart; service is not running")
 		return true, nil
 	}
 	s.daemonReload(ctx, name)

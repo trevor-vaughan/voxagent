@@ -11,12 +11,15 @@ import (
 	"unicode/utf8"
 
 	"github.com/voxagent/voxagent/internal/catalog"
+	"github.com/voxagent/voxagent/internal/lib/augeas"
+	"github.com/voxagent/voxagent/internal/lib/puppetpath"
+	"github.com/voxagent/voxagent/internal/lib/rubyvalue"
 )
 
 // The four augeasproviders types (sysctl, ssh_config, sshd_config,
 // sshd_config_subsystem) parse their parameters here. A value Ruby refuses is
 // an error carrying Ruby's text (spec §3); a value Ruby accepts but native
-// does not implement (spec §2 (d)-(f)) is an *unimplementedValue, which sends
+// does not implement (spec §2 (d)-(f)) is an *rubyvalue.UnimplementedValue, which sends
 // the type to the extension host.
 
 // sysctlParams is a Sysctl as type/sysctl.rb munges it.
@@ -83,31 +86,6 @@ func augeasText(s string) bool {
 	return utf8.ValidString(s) && !strings.ContainsFunc(s, unicode.IsControl)
 }
 
-// augeasUnimplemented is the refusal to handle parameter name natively, for
-// the value the catalog gives it.
-func augeasUnimplemented(r catalog.Resource, name string) error {
-	return &unimplementedValue{r.Ref(), name, shownValue(r, name, r.Parameters[name])}
-}
-
-// augeasPrelude is what every attribute of the four types is subject to: a
-// rich value or a Sensitive mark anywhere, a name parameter that is not the
-// title, and a provider other than augeas.
-func augeasPrelude(r catalog.Resource) error {
-	if err := concatRich(r); err != nil {
-		return err
-	}
-	if len(r.SensitiveParameters) > 0 {
-		return &unimplementedValue{r.Ref(), r.SensitiveParameters[0], "[redacted]"}
-	}
-	if v := r.Parameters["name"]; v != nil && v != r.Title {
-		return augeasUnimplemented(r, "name")
-	}
-	if v := r.Parameters["provider"]; v != nil && v != "augeas" {
-		return augeasUnimplemented(r, "provider")
-	}
-	return nil
-}
-
 // augeasEnsure reads ensure: "" when unset. A scalar that is no ensure value
 // is Ruby's refusal; an Array or Hash is validated element-wise by Ruby, which
 // native does not port.
@@ -120,9 +98,9 @@ func augeasEnsure(r catalog.Resource) (string, error) {
 	default:
 		switch v.(type) {
 		case []any, map[string]any:
-			return "", augeasUnimplemented(r, "ensure")
+			return "", augeas.Unimplemented(r, "ensure")
 		}
-		return "", paramFailure(r, "ensure", fmt.Sprintf("Invalid value %s. Valid values are present, absent.", shownValue(r, "ensure", v)))
+		return "", rubyvalue.ParamFailure(r, "ensure", fmt.Sprintf("Invalid value %s. Valid values are present, absent.", rubyvalue.ShownValue(r, "ensure", v)))
 	}
 }
 
@@ -138,10 +116,10 @@ func augeasBool(r catalog.Resource, name, valid string, def bool) (bool, error) 
 	case false, "false":
 		return false, nil
 	default:
-		if holdsHash(v) {
-			return false, augeasUnimplemented(r, name)
+		if rubyvalue.HoldsHash(v) {
+			return false, augeas.Unimplemented(r, name)
 		}
-		return false, paramFailure(r, name, fmt.Sprintf("Invalid value %s. Valid values are %s.", shownValue(r, name, v), valid))
+		return false, rubyvalue.ParamFailure(r, name, fmt.Sprintf("Invalid value %s. Valid values are %s.", rubyvalue.ShownValue(r, name, v), valid))
 	}
 }
 
@@ -156,7 +134,7 @@ func augeasString(r catalog.Resource, name string) (s string, set bool, err erro
 			return v, true, nil
 		}
 	}
-	return "", false, augeasUnimplemented(r, name)
+	return "", false, augeas.Unimplemented(r, name)
 }
 
 // augeasScalar is a String or an Integer of magnitude below 2^53 as Ruby's
@@ -210,7 +188,7 @@ func augeasValues(r catalog.Resource, name string, integers bool) (vals []string
 			return []string{s}, true, nil
 		}
 	}
-	return nil, false, augeasUnimplemented(r, name)
+	return nil, false, augeas.Unimplemented(r, name)
 }
 
 // augeasTarget reads target: "" when unset. Native takes a clean absolute path
@@ -222,9 +200,9 @@ func augeasTarget(r catalog.Resource, refuseRelative bool) (string, error) {
 		return "", err
 	}
 	if refuseRelative && !strings.HasPrefix(s, "/") {
-		return "", paramFailure(r, "target", "target must be an absolute path")
+		return "", rubyvalue.ParamFailure(r, "target", "target must be an absolute path")
 	}
-	if strings.HasPrefix(s, "/") && concatPathClean(s) {
+	if strings.HasPrefix(s, "/") && puppetpath.Clean(s) {
 		clean := true
 		for _, seg := range strings.Split(s[1:], "/") {
 			clean = clean && targetSegment.MatchString(seg)
@@ -233,13 +211,13 @@ func augeasTarget(r catalog.Resource, refuseRelative bool) (string, error) {
 			return s, nil
 		}
 	}
-	return "", augeasUnimplemented(r, "target")
+	return "", augeas.Unimplemented(r, "target")
 }
 
 // augeasComment refuses comment, which native does not manage.
 func augeasComment(r catalog.Resource) error {
 	if r.Parameters["comment"] != nil {
-		return augeasUnimplemented(r, "comment")
+		return augeas.Unimplemented(r, "comment")
 	}
 	return nil
 }
@@ -256,36 +234,36 @@ func augeasKey(r catalog.Resource) (string, error) {
 	}
 	if !sshKeyName.MatchString(key) {
 		if set {
-			return "", augeasUnimplemented(r, "key")
+			return "", augeas.Unimplemented(r, "key")
 		}
-		return "", augeasUnimplemented(r, "name")
+		return "", augeas.Unimplemented(r, "name")
 	}
 	return key, nil
 }
 
 func parseSysctl(r catalog.Resource) (sysctlParams, error) {
 	p := sysctlParams{Name: r.Title}
-	if err := augeasPrelude(r); err != nil {
+	if err := augeas.Prelude(r); err != nil {
 		return p, err
 	}
 	if !sysctlTitle.MatchString(r.Title) {
-		return p, augeasUnimplemented(r, "name")
+		return p, augeas.Unimplemented(r, "name")
 	}
 	ensure, err := augeasEnsure(r)
 	if err != nil {
 		return p, err
 	}
 	if ensure == "absent" {
-		return p, augeasUnimplemented(r, "ensure")
+		return p, augeas.Unimplemented(r, "ensure")
 	}
 	p.EnsureSet = ensure == "present"
 	if r.Parameters["val"] != nil {
-		return p, augeasUnimplemented(r, "val")
+		return p, augeas.Unimplemented(r, "val")
 	}
 	if v := r.Parameters["value"]; v != nil {
 		s, ok := augeasScalar(v)
 		if !ok {
-			return p, augeasUnimplemented(r, "value")
+			return p, augeas.Unimplemented(r, "value")
 		}
 		p.Value, p.HasValue = s, true
 	}
@@ -303,7 +281,7 @@ func parseSysctl(r catalog.Resource) (sysctlParams, error) {
 		return p, err
 	}
 	if !persist {
-		return p, augeasUnimplemented(r, "persist")
+		return p, augeas.Unimplemented(r, "persist")
 	}
 	p.Silent, err = augeasBool(r, "silent", "true, false", false)
 	return p, err
@@ -311,7 +289,7 @@ func parseSysctl(r catalog.Resource) (sysctlParams, error) {
 
 func parseSshConfig(r catalog.Resource) (sshConfigParams, error) {
 	p := sshConfigParams{Name: r.Title, Host: "*"}
-	if err := augeasPrelude(r); err != nil {
+	if err := augeas.Prelude(r); err != nil {
 		return p, err
 	}
 	var err error
@@ -323,7 +301,7 @@ func parseSshConfig(r catalog.Resource) (sshConfigParams, error) {
 		return p, err
 	}
 	if p.Ensure == "present" && !hasValue {
-		return p, augeasUnimplemented(r, "ensure")
+		return p, augeas.Unimplemented(r, "ensure")
 	}
 	if err := augeasComment(r); err != nil {
 		return p, err
@@ -338,7 +316,7 @@ func parseSshConfig(r catalog.Resource) (sshConfigParams, error) {
 		return p, err
 	} else if set {
 		if strings.ContainsAny(host, `'"\\`) {
-			return p, augeasUnimplemented(r, "host")
+			return p, augeas.Unimplemented(r, "host")
 		}
 		p.Host = host
 	}
@@ -347,7 +325,7 @@ func parseSshConfig(r catalog.Resource) (sshConfigParams, error) {
 
 func parseSshdConfig(r catalog.Resource) (sshdConfigParams, error) {
 	p := sshdConfigParams{Name: r.Title}
-	if err := augeasPrelude(r); err != nil {
+	if err := augeas.Prelude(r); err != nil {
 		return p, err
 	}
 	var err error
@@ -359,7 +337,7 @@ func parseSshdConfig(r catalog.Resource) (sshdConfigParams, error) {
 		return p, err
 	}
 	if p.Ensure == "present" && !hasValue {
-		return p, augeasUnimplemented(r, "ensure")
+		return p, augeas.Unimplemented(r, "ensure")
 	}
 	if err := augeasComment(r); err != nil {
 		return p, err
@@ -391,17 +369,17 @@ var conditionValue = regexp.MustCompile(`^[^'"\\\[\]/]+$`)
 func parseCondition(r catalog.Resource) ([]condPair, error) {
 	s, ok := r.Parameters["condition"].(string)
 	if !ok {
-		return nil, augeasUnimplemented(r, "condition")
+		return nil, augeas.Unimplemented(r, "condition")
 	}
 	tokens := rubySplit(s)
 	if len(tokens) == 0 || len(tokens)%2 != 0 {
-		return nil, augeasUnimplemented(r, "condition")
+		return nil, augeas.Unimplemented(r, "condition")
 	}
 	var pairs []condPair
 	for i := 0; i < len(tokens); i += 2 {
 		k, v := tokens[i], tokens[i+1]
 		if !sshKeyName.MatchString(k) || !conditionValue.MatchString(v) || !augeasText(v) {
-			return nil, augeasUnimplemented(r, "condition")
+			return nil, augeas.Unimplemented(r, "condition")
 		}
 		if at := slices.IndexFunc(pairs, func(c condPair) bool { return c.Key == k }); at >= 0 {
 			pairs[at].Value = v
@@ -414,11 +392,11 @@ func parseCondition(r catalog.Resource) ([]condPair, error) {
 
 func parseSubsystem(r catalog.Resource) (subsystemParams, error) {
 	p := subsystemParams{Name: r.Title}
-	if err := augeasPrelude(r); err != nil {
+	if err := augeas.Prelude(r); err != nil {
 		return p, err
 	}
 	if !subsysTitle.MatchString(r.Title) {
-		return p, augeasUnimplemented(r, "name")
+		return p, augeas.Unimplemented(r, "name")
 	}
 	var err error
 	if p.Ensure, err = augeasEnsure(r); err != nil {

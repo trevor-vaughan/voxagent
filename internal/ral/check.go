@@ -8,6 +8,14 @@ import (
 	"github.com/voxagent/voxagent/internal/catalog"
 )
 
+// Filebucket is the core type a catalog declares a named bucket with. Any
+// declared filebucket is a pre-flight gap (ResourceGaps), even though the
+// extension host could apply the resource itself: File's backup would not use
+// it, so a File naming it would fail where Puppet backs up into it, and a
+// declared 'puppet' bucket (a path or a server) would be silently bypassed for
+// <vardir>/clientbucket.
+const Filebucket = "filebucket"
+
 // ResourceGaps is Preflight's judgement of one resource against one provider:
 // every reason p cannot apply r, sorted. A nil p means r's type has no
 // provider, which is the one gap reported for it.

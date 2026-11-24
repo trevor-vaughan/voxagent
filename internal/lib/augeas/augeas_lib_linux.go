@@ -1,4 +1,4 @@
-package ral
+package augeas
 
 /*
 #cgo LDFLAGS: -ldl
@@ -99,6 +99,8 @@ import (
 	"sync"
 	"syscall"
 	"unsafe"
+
+	"github.com/voxagent/voxagent/internal/lib/plugintree"
 )
 
 // augeasLibPath is openvox's bundled libaugeas 1.15.0 (spec §0 row 1). A
@@ -109,7 +111,7 @@ const augeasLibPath = "/opt/puppetlabs/puppet/lib/libaugeas.so.0"
 const augeasVersion = "1.15.0"
 
 // rubyAugeasFiles are openvox 8.33.0's ruby-augeas files under the Ruby lib
-// root, whose return-value mapping rubyAug reimplements; rubyAugeasDigests
+// root, whose return-value mapping Aug reimplements; rubyAugeasDigests
 // are their measured sha256 values, in the same order (spec §0 row 1).
 var rubyAugeasFiles = [3]string{
 	"vendor_ruby/augeas.rb",
@@ -123,23 +125,23 @@ var rubyAugeasDigests = [3]string{
 	"c5bd6e8f3536cdfd61a54d649a70c1c9c3bc32459f8b2fcfd261c735b9c54108",
 }
 
-// AugeasProbe reports whether the native augeas types can run, and over which
+// Probe reports whether the native augeas types can run, and over which
 // library; reason is §2's text when they cannot. Routing depends on it so its
 // tests need no libaugeas.
-type AugeasProbe interface{ Probe() (augLib, string, bool) }
+type Probe interface{ Probe() (Lib, string, bool) }
 
 // rubyAugeasRoot is openvox's Ruby lib root, which rubyAugeasFiles are under.
 const rubyAugeasRoot = "/opt/puppetlabs/puppet/lib/ruby"
 
-// HostAugeasProbe probes openvox's ruby-augeas and libaugeas on this host
+// HostProbe probes openvox's ruby-augeas and libaugeas on this host
 // (probeAugeas). Its caller makes §2's environment checks first.
-var HostAugeasProbe AugeasProbe = hostAugeasProbe{}
+var HostProbe Probe = hostAugeasProbe{}
 
 type hostAugeasProbe struct{}
 
-func (hostAugeasProbe) Probe() (augLib, string, bool) { return probeAugeas(rubyAugeasRoot) }
+func (hostAugeasProbe) Probe() (Lib, string, bool) { return probeAugeas(rubyAugeasRoot) }
 
-// libAugeas implements augLib over the dlopen'd library; one per process.
+// libAugeas implements Lib over the dlopen'd library; one per process.
 // Each field is a dlsym'd function pointer, called through a C trampoline.
 //
 // A Go string holding a NUL byte has no C equivalent: passing it truncated
@@ -166,8 +168,8 @@ var (
 // text when ok is false. Callers must first run §2's environment checks
 // (AUGEAS_*, LD_PRELOAD, LD_LIBRARY_PATH send the types to the host), which
 // this probe does not make, so that dlopen never runs under them.
-func probeAugeas(rubyRoot string) (lib augLib, reason string, ok bool) {
-	tree := LibdirTree(rubyRoot)
+func probeAugeas(rubyRoot string) (lib Lib, reason string, ok bool) {
+	tree := plugintree.LibdirTree(rubyRoot)
 	for i, rel := range rubyAugeasFiles {
 		b, err := tree.Read(rel)
 		if err != nil {
@@ -214,7 +216,7 @@ func loadAugeas() (*libAugeas, string) {
 		}
 		*s.to = sym
 	}
-	h, ok := l.Init(nil, nil, augNoModlAutoload)
+	h, ok := l.Init(nil, nil, NoModlAutoload)
 	if !ok {
 		return nil, "libaugeas: aug_init(NULL, NULL, AUG_NO_MODL_AUTOLOAD) returned NULL"
 	}
@@ -253,7 +255,7 @@ func cStrings(args ...*string) (cs []*C.char, free func(), ok bool) {
 
 // Init refuses flags that do not fit aug_init's unsigned int rather than
 // truncate them into different flags.
-func (l *libAugeas) Init(root, loadpath *string, flags uint) (augHandle, bool) {
+func (l *libAugeas) Init(root, loadpath *string, flags uint) (Handle, bool) {
 	if flags > math.MaxUint32 {
 		return 0, false
 	}
@@ -262,17 +264,17 @@ func (l *libAugeas) Init(root, loadpath *string, flags uint) (augHandle, bool) {
 		return 0, false
 	}
 	defer free()
-	h := augHandle(C.vox_aug_init(l.init, cs[0], cs[1], C.uint(flags)))
+	h := Handle(C.vox_aug_init(l.init, cs[0], cs[1], C.uint(flags)))
 	return h, h != 0
 }
 
-func (l *libAugeas) Close(h augHandle) {
+func (l *libAugeas) Close(h Handle) {
 	C.vox_aug_close(l.close, C.uintptr_t(h))
 }
 
 // Get copies the value before returning: libaugeas lends it only until the
 // node next changes.
-func (l *libAugeas) Get(h augHandle, path string) (*string, int) {
+func (l *libAugeas) Get(h Handle, path string) (*string, int) {
 	cs, free, ok := cStrings(&path)
 	if !ok {
 		return nil, -1
@@ -287,7 +289,7 @@ func (l *libAugeas) Get(h augHandle, path string) (*string, int) {
 	return &v, rc
 }
 
-func (l *libAugeas) Set(h augHandle, path string, value *string) int {
+func (l *libAugeas) Set(h Handle, path string, value *string) int {
 	cs, free, ok := cStrings(&path, value)
 	if !ok {
 		return -1
@@ -296,7 +298,7 @@ func (l *libAugeas) Set(h augHandle, path string, value *string) int {
 	return int(C.vox_aug_set(l.set, C.uintptr_t(h), cs[0], cs[1]))
 }
 
-func (l *libAugeas) Rm(h augHandle, path string) int {
+func (l *libAugeas) Rm(h Handle, path string) int {
 	cs, free, ok := cStrings(&path)
 	if !ok {
 		return -1
@@ -305,7 +307,7 @@ func (l *libAugeas) Rm(h augHandle, path string) int {
 	return int(C.vox_aug_rm(l.rm, C.uintptr_t(h), cs[0]))
 }
 
-func (l *libAugeas) Insert(h augHandle, path, label string, before bool) int {
+func (l *libAugeas) Insert(h Handle, path, label string, before bool) int {
 	cs, free, ok := cStrings(&path, &label)
 	if !ok {
 		return -1
@@ -320,7 +322,7 @@ func (l *libAugeas) Insert(h augHandle, path, label string, before bool) int {
 
 // Mv is aug_mv (augeas.h 1.15.0: int aug_mv(augeas *aug, const char *src,
 // const char *dst)): 0 on success, -1 on failure, e.g. src matching no node.
-func (l *libAugeas) Mv(h augHandle, src, dst string) int {
+func (l *libAugeas) Mv(h Handle, src, dst string) int {
 	cs, free, ok := cStrings(&src, &dst)
 	if !ok {
 		return -1
@@ -333,7 +335,7 @@ func (l *libAugeas) Mv(h augHandle, src, dst string) int {
 // libaugeas allocates even for 0 matches (augeas.c:1431). On -1 it touches
 // neither: libaugeas has already freed the array without clearing the
 // pointer (augeas.c:1450-1458).
-func (l *libAugeas) Match(h augHandle, path string) ([]string, int) {
+func (l *libAugeas) Match(h Handle, path string) ([]string, int) {
 	cs, free, ok := cStrings(&path)
 	if !ok {
 		return nil, -1
@@ -354,15 +356,15 @@ func (l *libAugeas) Match(h augHandle, path string) ([]string, int) {
 	return paths, rc
 }
 
-func (l *libAugeas) Load(h augHandle) int {
+func (l *libAugeas) Load(h Handle) int {
 	return int(C.vox_aug_void(l.load, C.uintptr_t(h)))
 }
 
-func (l *libAugeas) Save(h augHandle) int {
+func (l *libAugeas) Save(h Handle) int {
 	return int(C.vox_aug_void(l.save, C.uintptr_t(h)))
 }
 
-func (l *libAugeas) Defvar(h augHandle, name, expr string) int {
+func (l *libAugeas) Defvar(h Handle, name, expr string) int {
 	cs, free, ok := cStrings(&name, &expr)
 	if !ok {
 		return -1
@@ -371,7 +373,7 @@ func (l *libAugeas) Defvar(h augHandle, name, expr string) int {
 	return int(C.vox_aug_defvar(l.defvar, C.uintptr_t(h), cs[0], cs[1]))
 }
 
-func (l *libAugeas) Defnode(h augHandle, name, expr string, value *string) int {
+func (l *libAugeas) Defnode(h Handle, name, expr string, value *string) int {
 	cs, free, ok := cStrings(&name, &expr, value)
 	if !ok {
 		return -1
@@ -380,7 +382,7 @@ func (l *libAugeas) Defnode(h augHandle, name, expr string, value *string) int {
 	return int(C.vox_aug_defnode(l.defnode, C.uintptr_t(h), cs[0], cs[1], cs[2]))
 }
 
-func (l *libAugeas) TextStore(h augHandle, lens, node, path string) int {
+func (l *libAugeas) TextStore(h Handle, lens, node, path string) int {
 	cs, free, ok := cStrings(&lens, &node, &path)
 	if !ok {
 		return -1
@@ -389,9 +391,9 @@ func (l *libAugeas) TextStore(h augHandle, lens, node, path string) int {
 	return int(C.vox_aug_text_store(l.textStore, C.uintptr_t(h), cs[0], cs[1], cs[2]))
 }
 
-// libcStrerror is libc's strerror(e), the text Ruby's Errno messages carry
+// LibcStrerror is libc's strerror(e), the text Ruby's Errno messages carry
 // ("No such file or directory"); Go's own errno strings differ in case.
-func libcStrerror(e syscall.Errno) string {
+func LibcStrerror(e syscall.Errno) string {
 	var buf [256]C.char
 	C.vox_strerror(C.int(e), &buf[0], C.size_t(len(buf)))
 	return C.GoString(&buf[0])

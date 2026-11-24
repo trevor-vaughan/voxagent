@@ -1,8 +1,6 @@
 package ral
 
 import (
-	"crypto/sha256"
-	"encoding/hex"
 	"os"
 	"path/filepath"
 	"strings"
@@ -11,12 +9,9 @@ import (
 	"time"
 
 	"github.com/voxagent/voxagent/internal/catalog"
+	"github.com/voxagent/voxagent/internal/lib/plugintree"
+	"github.com/voxagent/voxagent/internal/lib/raltest"
 )
-
-func sha256Hex(b []byte) string {
-	sum := sha256.Sum256(b)
-	return hex.EncodeToString(sum[:])
-}
 
 // fakeFingerprints makes the measured digests those of fixed fake bytes for
 // the rest of the test, so routing is tested without the real module files,
@@ -31,7 +26,7 @@ func fakeFingerprints(t *testing.T) map[ConcatVersion][2][]byte {
 	}
 	concatFingerprints = map[ConcatVersion][2]string{}
 	for v, f := range files {
-		concatFingerprints[v] = [2]string{sha256Hex(f[0]), sha256Hex(f[1])}
+		concatFingerprints[v] = [2]string{raltest.SHA256Hex(f[0]), raltest.SHA256Hex(f[1])}
 	}
 	return files
 }
@@ -116,7 +111,7 @@ func TestNativeConcatFingerprints(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			v, ok := NativeConcat(LibdirTree(c.dir(t)), &catalog.Catalog{})
+			v, ok := NativeConcat(plugintree.LibdirTree(c.dir(t)), &catalog.Catalog{})
 			if ok != (c.want != 0) || v != c.want {
 				t.Fatalf("got %d %v, want %d %v", v, ok, c.want, c.want != 0)
 			}
@@ -137,7 +132,7 @@ func TestNativeConcatFIFO(t *testing.T) {
 	}
 	done := make(chan bool, 1)
 	go func() {
-		_, ok := NativeConcat(LibdirTree(dir), &catalog.Catalog{})
+		_, ok := NativeConcat(plugintree.LibdirTree(dir), &catalog.Catalog{})
 		done <- ok
 	}()
 	select {
@@ -152,13 +147,13 @@ func TestNativeConcatFIFO(t *testing.T) {
 
 func TestLibdirTreeReadLimit(t *testing.T) {
 	dir := writeTree(t, [2][]byte{make([]byte, 1<<20), nil})
-	if b, err := LibdirTree(dir).Read(concatTypeFiles[0]); err != nil || len(b) != 1<<20 {
+	if b, err := plugintree.LibdirTree(dir).Read(concatTypeFiles[0]); err != nil || len(b) != 1<<20 {
 		t.Fatalf("1 MiB: %d bytes, %v; want it read", len(b), err)
 	}
 	if err := os.WriteFile(filepath.Join(dir, concatTypeFiles[0]), make([]byte, 1<<20+1), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := LibdirTree(dir).Read(concatTypeFiles[0]); err == nil {
+	if _, err := plugintree.LibdirTree(dir).Read(concatTypeFiles[0]); err == nil {
 		t.Fatal("1 MiB + 1: read, want an error")
 	}
 }
@@ -267,7 +262,7 @@ func TestConcatTestdataMatchesFingerprints(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if got := sha256Hex(b); got != want[i] {
+			if got := raltest.SHA256Hex(b); got != want[i] {
 				t.Errorf("version %d %s: sha256 %s, want %s", v, rel, got, want[i])
 			}
 		}
@@ -286,7 +281,7 @@ func TestNativeConcatRealTrees(t *testing.T) {
 			}
 			files[i] = b
 		}
-		if got, ok := NativeConcat(LibdirTree(writeTree(t, files)), &catalog.Catalog{}); !ok || got != v {
+		if got, ok := NativeConcat(plugintree.LibdirTree(writeTree(t, files)), &catalog.Catalog{}); !ok || got != v {
 			t.Errorf("version %d tree: got %d %v", v, got, ok)
 		}
 	}

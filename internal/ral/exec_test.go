@@ -16,12 +16,10 @@ import (
 	"time"
 
 	"github.com/voxagent/voxagent/internal/catalog"
+	"github.com/voxagent/voxagent/internal/lib/raltest"
+	"github.com/voxagent/voxagent/internal/lib/sources"
 	"github.com/voxagent/voxagent/internal/report"
 )
-
-func execRes(title string, params map[string]any) catalog.Resource {
-	return catalog.Resource{Type: "Exec", Title: title, Parameters: params}
-}
 
 // execChange applies an exec and returns the one Change it produced. A
 // resource-level error here is a test failure by itself: an exec whose command
@@ -42,7 +40,7 @@ func execChange(t *testing.T, r catalog.Resource) Change {
 func TestExecRunsCommand(t *testing.T) {
 	marker := filepath.Join(t.TempDir(), "ran")
 	changes, _, err := Exec{}.Apply(context.Background(),
-		execRes("touch", map[string]any{"command": "/usr/bin/touch " + marker}), false)
+		raltest.ExecRes("touch", map[string]any{"command": "/usr/bin/touch " + marker}), false)
 	if err != nil {
 		t.Fatalf("Apply returned error: %v", err)
 	}
@@ -71,7 +69,7 @@ func TestExecRunsCommand(t *testing.T) {
 // Puppet::Error, and property.rb:490's rescue re-raises a Puppet::Error
 // untouched, wrapping only other StandardErrors at :492.
 func TestExecNonZeroExitFailsTheReturnsProperty(t *testing.T) {
-	ch := execChange(t, execRes("bad", map[string]any{"command": "/bin/false"}))
+	ch := execChange(t, raltest.ExecRes("bad", map[string]any{"command": "/bin/false"}))
 	if ch.Err == nil {
 		t.Fatal("Change.Err is nil for a command that exited 1; the failure must be attributed to returns")
 	}
@@ -108,7 +106,7 @@ func TestExecNonZeroExitFailsTheReturnsProperty(t *testing.T) {
 //	"desired_value"=>["0", "3"],
 //	"message"=>"change from 'notrun' to ['0', '3'] failed: '/bin/sh -c \"exit 5\"' returned 5 instead of one of [0,3]"
 func TestExecFailureRendersTheReturnsListBothWays(t *testing.T) {
-	ch := execChange(t, execRes("multi_fail", map[string]any{
+	ch := execChange(t, raltest.ExecRes("multi_fail", map[string]any{
 		"command": "exit 5", "returns": []any{float64(0), float64(3)}}))
 	if ch.Err == nil {
 		t.Fatal("Change.Err is nil for exit 5 with returns => [0, 3]")
@@ -140,7 +138,7 @@ func TestExecFailureDetailOmitsCommandOutput(t *testing.T) {
 	}
 	command := "cat " + noisy + "; exit 7"
 
-	ch := execChange(t, execRes("noisy", map[string]any{"command": command}))
+	ch := execChange(t, raltest.ExecRes("noisy", map[string]any{"command": command}))
 	if ch.Err == nil {
 		t.Fatal("Change.Err is nil for a command that exited 7")
 	}
@@ -154,14 +152,14 @@ func TestExecFailureDetailOmitsCommandOutput(t *testing.T) {
 
 func TestExecHonoursReturns(t *testing.T) {
 	// returns => [1] makes exit 1 the success condition.
-	ch := execChange(t, execRes("ok", map[string]any{
+	ch := execChange(t, raltest.ExecRes("ok", map[string]any{
 		"command": "/bin/false", "returns": []any{float64(1)}}))
 	if ch.Err != nil {
 		t.Errorf("Change.Err = %v for a declared-acceptable exit status", ch.Err)
 	}
 	// And a status NOT in the list still fails, so the list is a filter rather
 	// than a blanket permission.
-	ch = execChange(t, execRes("bad", map[string]any{
+	ch = execChange(t, raltest.ExecRes("bad", map[string]any{
 		"command": "/bin/true", "returns": []any{float64(3)}}))
 	if ch.Err == nil {
 		t.Error("exit 0 with returns => [3] reported no failure")
@@ -175,7 +173,7 @@ func TestExecCreatesSkipsWhenPathExists(t *testing.T) {
 	if err := os.WriteFile(guard, []byte("x"), 0o644); err != nil {
 		t.Fatalf("seed: %v", err)
 	}
-	changes, _, err := Exec{}.Apply(context.Background(), execRes("guarded", map[string]any{
+	changes, _, err := Exec{}.Apply(context.Background(), raltest.ExecRes("guarded", map[string]any{
 		"command": "/usr/bin/touch " + marker, "creates": guard,
 	}), false)
 	if err != nil {
@@ -207,7 +205,7 @@ func TestExecOnlyifAndUnless(t *testing.T) {
 			for k, v := range tt.params {
 				params[k] = v
 			}
-			if _, _, err := (Exec{}).Apply(context.Background(), execRes("c", params), false); err != nil {
+			if _, _, err := (Exec{}).Apply(context.Background(), raltest.ExecRes("c", params), false); err != nil {
 				t.Fatalf("Apply returned error: %v", err)
 			}
 			_, statErr := os.Stat(marker)
@@ -223,7 +221,7 @@ func TestExecOnlyifAndUnless(t *testing.T) {
 func TestExecRefreshonly(t *testing.T) {
 	dir := t.TempDir()
 	marker := filepath.Join(dir, "ran")
-	r := execRes("on-refresh", map[string]any{
+	r := raltest.ExecRes("on-refresh", map[string]any{
 		"command": "/usr/bin/touch " + marker, "refreshonly": true,
 	})
 	changes, _, err := Exec{}.Apply(context.Background(), r, false)
@@ -252,7 +250,7 @@ func TestExecRefreshonly(t *testing.T) {
 // (event_manager.rb calls fail_with_event in the same rescue), so the two 0x4
 // clauses always fire together rather than one being reachable alone.
 func TestExecFailingRefreshIsAnError(t *testing.T) {
-	r := execRes("bad", map[string]any{"command": "/bin/false", "refreshonly": true})
+	r := raltest.ExecRes("bad", map[string]any{"command": "/bin/false", "refreshonly": true})
 	refreshed, err := Exec{}.Refresh(context.Background(), r, false)
 	if err == nil {
 		t.Fatal("Refresh succeeded on a failing command; want an error")
@@ -265,7 +263,7 @@ func TestExecFailingRefreshIsAnError(t *testing.T) {
 func TestExecNoopRunsNothing(t *testing.T) {
 	marker := filepath.Join(t.TempDir(), "ran")
 	changes, _, err := Exec{}.Apply(context.Background(),
-		execRes("c", map[string]any{"command": "/usr/bin/touch " + marker}), true)
+		raltest.ExecRes("c", map[string]any{"command": "/usr/bin/touch " + marker}), true)
 	if err != nil {
 		t.Fatalf("Apply returned error: %v", err)
 	}
@@ -281,7 +279,7 @@ func TestExecNoopRunsNothing(t *testing.T) {
 // from Apply and would not inherit the guard.
 func TestExecNoopRefreshRunsNothing(t *testing.T) {
 	marker := filepath.Join(t.TempDir(), "ran")
-	r := execRes("c", map[string]any{
+	r := raltest.ExecRes("c", map[string]any{
 		"command": "/usr/bin/touch " + marker, "refreshonly": true})
 	if _, err := (Exec{}).Refresh(context.Background(), r, true); err != nil {
 		t.Fatalf("Refresh returned error: %v", err)
@@ -292,7 +290,7 @@ func TestExecNoopRefreshRunsNothing(t *testing.T) {
 }
 
 func TestExecRequiresCommand(t *testing.T) {
-	if _, _, err := (Exec{}).Apply(context.Background(), execRes("c", nil), false); err == nil {
+	if _, _, err := (Exec{}).Apply(context.Background(), raltest.ExecRes("c", nil), false); err == nil {
 		t.Fatal("Apply accepted an exec with no command; want an error")
 	}
 }
@@ -302,7 +300,7 @@ func TestExecRequiresCommand(t *testing.T) {
 // the first as the second would silently skip the command.
 func TestExecUnrunnableGuardIsAnError(t *testing.T) {
 	marker := filepath.Join(t.TempDir(), "ran")
-	_, _, err := Exec{}.Apply(context.Background(), execRes("c", map[string]any{
+	_, _, err := Exec{}.Apply(context.Background(), raltest.ExecRes("c", map[string]any{
 		"command": "/usr/bin/touch " + marker,
 		"cwd":     "/no/such/directory",
 		"onlyif":  "/bin/true",
@@ -330,7 +328,7 @@ func TestExecPathArrayJoinsWithColon(t *testing.T) {
 	if err := os.WriteFile(script, []byte("#!/bin/sh\nexit 0\n"), 0o755); err != nil {
 		t.Fatalf("seed script: %v", err)
 	}
-	_, _, err := Exec{}.Apply(context.Background(), execRes("c", map[string]any{
+	_, _, err := Exec{}.Apply(context.Background(), raltest.ExecRes("c", map[string]any{
 		"command": "helper",
 		"path":    []any{dir, "/usr/bin"},
 	}), false)
@@ -341,7 +339,7 @@ func TestExecPathArrayJoinsWithColon(t *testing.T) {
 
 func TestExecOnlyifArrayRequiresAll(t *testing.T) {
 	marker := filepath.Join(t.TempDir(), "ran")
-	_, _, err := Exec{}.Apply(context.Background(), execRes("c", map[string]any{
+	_, _, err := Exec{}.Apply(context.Background(), raltest.ExecRes("c", map[string]any{
 		"command": "/usr/bin/touch " + marker,
 		"onlyif":  []any{"/bin/true", "/bin/false"},
 	}), false)
@@ -355,7 +353,7 @@ func TestExecOnlyifArrayRequiresAll(t *testing.T) {
 
 func TestExecOnlyifArrayAllPassRuns(t *testing.T) {
 	marker := filepath.Join(t.TempDir(), "ran")
-	_, _, err := Exec{}.Apply(context.Background(), execRes("c", map[string]any{
+	_, _, err := Exec{}.Apply(context.Background(), raltest.ExecRes("c", map[string]any{
 		"command": "/usr/bin/touch " + marker,
 		"onlyif":  []any{"/bin/true", "/bin/true"},
 	}), false)
@@ -371,7 +369,7 @@ func TestExecUnlessArrayRequiresAllNonZero(t *testing.T) {
 	// unless only runs the command when EVERY entry exits non-zero; one entry
 	// exiting 0 must skip it.
 	marker := filepath.Join(t.TempDir(), "ran")
-	_, _, err := Exec{}.Apply(context.Background(), execRes("c", map[string]any{
+	_, _, err := Exec{}.Apply(context.Background(), raltest.ExecRes("c", map[string]any{
 		"command": "/usr/bin/touch " + marker,
 		"unless":  []any{"/bin/false", "/bin/true"},
 	}), false)
@@ -385,7 +383,7 @@ func TestExecUnlessArrayRequiresAllNonZero(t *testing.T) {
 
 func TestExecUnlessArrayAllNonZeroRuns(t *testing.T) {
 	marker := filepath.Join(t.TempDir(), "ran")
-	_, _, err := Exec{}.Apply(context.Background(), execRes("c", map[string]any{
+	_, _, err := Exec{}.Apply(context.Background(), raltest.ExecRes("c", map[string]any{
 		"command": "/usr/bin/touch " + marker,
 		"unless":  []any{"/bin/false", "/bin/false"},
 	}), false)
@@ -407,7 +405,7 @@ func TestExecCreatesArrayRequiresAllMissing(t *testing.T) {
 	}
 	// missing comes first so a mutant that only inspects the first entry sees
 	// "missing" and would (wrongly) run the command.
-	_, _, err := Exec{}.Apply(context.Background(), execRes("c", map[string]any{
+	_, _, err := Exec{}.Apply(context.Background(), raltest.ExecRes("c", map[string]any{
 		"command": "/usr/bin/touch " + marker,
 		"creates": []any{missing, exists},
 	}), false)
@@ -424,7 +422,7 @@ func TestExecCreatesArrayAllMissingRuns(t *testing.T) {
 	a := filepath.Join(dir, "a")
 	b := filepath.Join(dir, "b")
 	marker := filepath.Join(dir, "ran")
-	_, _, err := Exec{}.Apply(context.Background(), execRes("c", map[string]any{
+	_, _, err := Exec{}.Apply(context.Background(), raltest.ExecRes("c", map[string]any{
 		"command": "/usr/bin/touch " + marker,
 		"creates": []any{a, b},
 	}), false)
@@ -438,7 +436,7 @@ func TestExecCreatesArrayAllMissingRuns(t *testing.T) {
 
 func TestExecCwdArrayIsRefused(t *testing.T) {
 	if _, _, err := (Exec{}).Apply(context.Background(),
-		execRes("c", map[string]any{"command": "/bin/true", "cwd": []any{"/tmp"}}), false); err == nil {
+		raltest.ExecRes("c", map[string]any{"command": "/bin/true", "cwd": []any{"/tmp"}}), false); err == nil {
 		t.Error("Apply accepted an array cwd; want an error naming the type")
 	}
 }
@@ -468,7 +466,7 @@ func TestExecRefreshBlockedByAGuardStillTriggers(t *testing.T) {
 			for k, v := range tc.guard {
 				params[k] = v
 			}
-			refreshed, err := Exec{}.Refresh(context.Background(), execRes("c", params), false)
+			refreshed, err := Exec{}.Refresh(context.Background(), raltest.ExecRes("c", params), false)
 			if err != nil {
 				t.Fatalf("Refresh returned error: %v", err)
 			}
@@ -492,7 +490,7 @@ func TestExecRefreshBlockedByAGuardStillTriggers(t *testing.T) {
 func TestExecNoopEvaluatesGuardsBeforeReporting(t *testing.T) {
 	marker := filepath.Join(t.TempDir(), "ran")
 
-	changes, _, err := Exec{}.Apply(context.Background(), execRes("c", map[string]any{
+	changes, _, err := Exec{}.Apply(context.Background(), raltest.ExecRes("c", map[string]any{
 		"command": "/usr/bin/touch " + marker,
 		"onlyif":  "/bin/false",
 	}), true)
@@ -503,7 +501,7 @@ func TestExecNoopEvaluatesGuardsBeforeReporting(t *testing.T) {
 		t.Errorf("noop with a failing onlyif reported %d changes, want 0 (guards must run under noop)", len(changes))
 	}
 
-	changes, _, err = Exec{}.Apply(context.Background(), execRes("c", map[string]any{
+	changes, _, err = Exec{}.Apply(context.Background(), raltest.ExecRes("c", map[string]any{
 		"command": "/usr/bin/touch " + marker,
 		"onlyif":  "/bin/true",
 	}), true)
@@ -530,12 +528,12 @@ func TestExecPathReachesEnvironment(t *testing.T) {
 	// Without path, the bare name is not resolvable: the script's directory is
 	// not on any default PATH. The shell exits 127, which is a returns failure
 	// like any other unacceptable status.
-	if ch := execChange(t, execRes("c", map[string]any{"command": "voxagent-exec-test-helper"})); ch.Err == nil {
+	if ch := execChange(t, raltest.ExecRes("c", map[string]any{"command": "voxagent-exec-test-helper"})); ch.Err == nil {
 		t.Error("Apply resolved a bare command name with no path set; want a failed returns change")
 	}
 
 	// With path supplying the directory, the same bare name resolves.
-	if _, _, err := (Exec{}).Apply(context.Background(), execRes("c", map[string]any{
+	if _, _, err := (Exec{}).Apply(context.Background(), raltest.ExecRes("c", map[string]any{
 		"command": "voxagent-exec-test-helper",
 		"path":    dir,
 	}), false); err != nil {
@@ -550,10 +548,10 @@ func TestExecReturnsScalarAcceptsOnlyDeclaredValue(t *testing.T) {
 	// only acceptable status -- not "0 is the only acceptable status", which is
 	// what a hardcoded [0] fallback for non-array, non-nil returns would give.
 	if _, _, err := (Exec{}).Apply(context.Background(),
-		execRes("c", map[string]any{"command": "exit 2", "returns": float64(2)}), false); err != nil {
+		raltest.ExecRes("c", map[string]any{"command": "exit 2", "returns": float64(2)}), false); err != nil {
 		t.Errorf("Apply returned error for exit 2 with returns => 2: %v", err)
 	}
-	ch := execChange(t, execRes("c", map[string]any{"command": "exit 0", "returns": float64(2)}))
+	ch := execChange(t, raltest.ExecRes("c", map[string]any{"command": "exit 0", "returns": float64(2)}))
 	if ch.Err == nil {
 		t.Error("exit 0 with returns => 2 reported no failure")
 	}
@@ -561,13 +559,13 @@ func TestExecReturnsScalarAcceptsOnlyDeclaredValue(t *testing.T) {
 
 func TestExecReturnsStringIsParsed(t *testing.T) {
 	if _, _, err := (Exec{}).Apply(context.Background(),
-		execRes("c", map[string]any{"command": "exit 2", "returns": "2"}), false); err != nil {
+		raltest.ExecRes("c", map[string]any{"command": "exit 2", "returns": "2"}), false); err != nil {
 		t.Errorf("Apply returned error for exit 2 with returns => '2': %v", err)
 	}
 }
 
 func TestExecReturnsReportsActualExitStatus(t *testing.T) {
-	ch := execChange(t, execRes("c", map[string]any{"command": "exit 2", "returns": []any{float64(3)}}))
+	ch := execChange(t, raltest.ExecRes("c", map[string]any{"command": "exit 2", "returns": []any{float64(3)}}))
 	if ch.Err == nil {
 		t.Fatal("exit 2 with returns => [3] reported no failure")
 	}
@@ -605,7 +603,7 @@ func TestExecSuccessEventMatchesPuppetsExecutedCommand(t *testing.T) {
 			"command": "exit 3", "returns": []any{float64(0), float64(3)}}, []string{"0", "3"}},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			ch := execChange(t, execRes("c", tt.params))
+			ch := execChange(t, raltest.ExecRes("c", tt.params))
 			if ch.Err != nil {
 				t.Fatalf("Change.Err = %v, want nil", ch.Err)
 			}
@@ -646,7 +644,7 @@ func TestExecResourceLevelFailuresStayBareErrors(t *testing.T) {
 			"command": "/bin/true", "cwd": "/no/such/directory", "onlyif": "/bin/true"}},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			changes, _, err := Exec{}.Apply(context.Background(), execRes("c", tt.params), false)
+			changes, _, err := Exec{}.Apply(context.Background(), raltest.ExecRes("c", tt.params), false)
 			if err == nil {
 				t.Fatal("Apply returned no error; want a bare resource-level error")
 			}
@@ -662,21 +660,21 @@ func TestExecResourceLevelFailuresStayBareErrors(t *testing.T) {
 
 func TestExecReturnsUnparseableStringIsAnError(t *testing.T) {
 	if _, _, err := (Exec{}).Apply(context.Background(),
-		execRes("c", map[string]any{"command": "/bin/true", "returns": "abc"}), false); err == nil {
+		raltest.ExecRes("c", map[string]any{"command": "/bin/true", "returns": "abc"}), false); err == nil {
 		t.Error("Apply accepted returns => 'abc'; want an error naming the unparseable value")
 	}
 }
 
 func TestExecReturnsUnparseableArrayElementIsAnError(t *testing.T) {
 	if _, _, err := (Exec{}).Apply(context.Background(),
-		execRes("c", map[string]any{"command": "/bin/true", "returns": []any{true}}), false); err == nil {
+		raltest.ExecRes("c", map[string]any{"command": "/bin/true", "returns": []any{true}}), false); err == nil {
 		t.Error("Apply accepted returns => [true]; want an error naming the unparseable value")
 	}
 }
 
 func TestExecReturnsEmptyArrayIsAnError(t *testing.T) {
 	if _, _, err := (Exec{}).Apply(context.Background(),
-		execRes("c", map[string]any{"command": "/bin/true", "returns": []any{}}), false); err == nil {
+		raltest.ExecRes("c", map[string]any{"command": "/bin/true", "returns": []any{}}), false); err == nil {
 		t.Error("Apply accepted returns => []; want an error rather than inventing an acceptable-status policy")
 	}
 }
@@ -700,7 +698,7 @@ func TestExecCreatesStatErrorIsNotTreatedAsMissing(t *testing.T) {
 	target := filepath.Join(blocked, "path")
 	marker := filepath.Join(dir, "ran")
 
-	_, _, err := Exec{}.Apply(context.Background(), execRes("c", map[string]any{
+	_, _, err := Exec{}.Apply(context.Background(), raltest.ExecRes("c", map[string]any{
 		"command": "/usr/bin/touch " + marker,
 		"creates": target,
 	}), false)
@@ -729,7 +727,7 @@ func TestExecContextCancellationStopsCommand(t *testing.T) {
 	// pins process-group cancellation rather than pinning which shell the host
 	// happens to ship.
 	start := time.Now()
-	changes, _, err := Exec{}.Apply(ctx, execRes("c", map[string]any{"command": "sleep 5 & wait"}), false)
+	changes, _, err := Exec{}.Apply(ctx, raltest.ExecRes("c", map[string]any{"command": "sleep 5 & wait"}), false)
 	elapsed := time.Since(start)
 
 	// The killed shell reports a signal rather than an acceptable status, so the
@@ -777,7 +775,7 @@ func TestExecReturnsWhenABackgroundedChildInheritsStdout(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			start := time.Now()
-			change := execChange(t, execRes("c", params))
+			change := execChange(t, raltest.ExecRes("c", params))
 			if elapsed := time.Since(start); elapsed > 500*time.Millisecond {
 				t.Errorf("Apply took %v; want it to return when the shell exits", elapsed)
 			}
@@ -793,7 +791,7 @@ func TestExecReturnsWhenABackgroundedChildInheritsStdout(t *testing.T) {
 func TestExecNoopChangeDoesNotFabricateExitCode(t *testing.T) {
 	marker := filepath.Join(t.TempDir(), "ran")
 	changes, _, err := Exec{}.Apply(context.Background(),
-		execRes("c", map[string]any{"command": "/usr/bin/touch " + marker}), true)
+		raltest.ExecRes("c", map[string]any{"command": "/usr/bin/touch " + marker}), true)
 	if err != nil {
 		t.Fatalf("Apply returned error: %v", err)
 	}
@@ -817,7 +815,7 @@ func TestExecNoopChangeDoesNotFabricateExitCode(t *testing.T) {
 		t.Errorf("noop change = %+v, want %+v", changes[0], want)
 	}
 	changes, _, err = Exec{}.Apply(context.Background(),
-		execRes("c", map[string]any{"command": "/usr/bin/touch " + marker, "returns": []any{0.0, 3.0}}), true)
+		raltest.ExecRes("c", map[string]any{"command": "/usr/bin/touch " + marker, "returns": []any{0.0, 3.0}}), true)
 	if err != nil || len(changes) != 1 || !reflect.DeepEqual(changes[0].Is, []string{"0", "3"}) {
 		t.Errorf("noop with returns [0, 3] = %+v, %v; want desired [0 3]", changes, err)
 	}
@@ -990,7 +988,7 @@ func TestExecValidate(t *testing.T) {
 			"Parameter onlyif failed on Exec[x]: 'test' is not qualified and no path was specified. Please qualify the command or specify a path."},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			err := Exec{}.Validate(execRes(tc.title, tc.params))
+			err := Exec{}.Validate(raltest.ExecRes(tc.title, tc.params))
 			switch {
 			case tc.want == "" && err != nil:
 				t.Errorf("Validate = %v, want nil", err)
@@ -1013,7 +1011,7 @@ func TestExecArgvNeverUsesAShell(t *testing.T) {
 	for _, w := range weird {
 		argv = append(argv, filepath.Join(dir, w))
 	}
-	changes, _, err := Exec{}.Apply(context.Background(), execRes("t", map[string]any{"command": argv}), false)
+	changes, _, err := Exec{}.Apply(context.Background(), raltest.ExecRes("t", map[string]any{"command": argv}), false)
 	if err != nil || len(changes) != 1 || changes[0].Err != nil || changes[0].Message != "executed successfully" {
 		t.Fatalf("Apply = %+v, %v", changes, err)
 	}
@@ -1026,7 +1024,7 @@ func TestExecArgvNeverUsesAShell(t *testing.T) {
 		t.Error("a redirection ran: a shell saw the argv")
 	}
 	out := filepath.Join(dir, "empty")
-	if _, _, err := (Exec{}).Apply(context.Background(), execRes("e", map[string]any{"command": []any{
+	if _, _, err := (Exec{}).Apply(context.Background(), raltest.ExecRes("e", map[string]any{"command": []any{
 		"/bin/sh", "-c", `printf '[%s]' "$1" > "$2"`, "sh", "", out}}), false); err != nil {
 		t.Fatal(err)
 	}
@@ -1048,7 +1046,7 @@ func TestExecArgvFailureRendersArrayInspect(t *testing.T) {
 		{[]any{"/bin/sh", []any{"-c", "exit 9"}},
 			`'["/bin/sh", ["-c", "exit 9"]]' returned 9 instead of one of [0]`},
 	} {
-		changes, _, err := Exec{}.Apply(context.Background(), execRes("f", map[string]any{"command": tt.command}), false)
+		changes, _, err := Exec{}.Apply(context.Background(), raltest.ExecRes("f", map[string]any{"command": tt.command}), false)
 		if err != nil || len(changes) != 1 || changes[0].Err == nil || changes[0].Err.Error() != tt.want {
 			t.Errorf("%v: %+v, %v; want Err %q", tt.command, changes, err, tt.want)
 		}
@@ -1084,7 +1082,7 @@ func TestExecArgvCheckExe(t *testing.T) {
 		{map[string]any{"command": []any{"/bin//true"}, "path": "/nowhere"}, ""},
 		{map[string]any{"command": []any{"//bin/true"}}, ""},
 	} {
-		changes, _, err := Exec{}.Apply(context.Background(), execRes("c", tt.params), false)
+		changes, _, err := Exec{}.Apply(context.Background(), raltest.ExecRes("c", tt.params), false)
 		if tt.want == "" {
 			if err != nil || len(changes) != 1 || changes[0].Err != nil {
 				t.Errorf("%v: %+v, %v; want success", tt.params, changes, err)
@@ -1102,7 +1100,7 @@ func TestExecArgvCheckExe(t *testing.T) {
 
 // A slash-less argv[0] is found through the resource's path.
 func TestExecArgvRelativeWithPath(t *testing.T) {
-	ch := execChange(t, execRes("r", map[string]any{"command": []any{"true"}, "path": "/usr/bin:/bin"}))
+	ch := execChange(t, raltest.ExecRes("r", map[string]any{"command": []any{"true"}, "path": "/usr/bin:/bin"}))
 	if ch.Err != nil || ch.Message != "executed successfully" {
 		t.Errorf("change = %+v, want executed successfully", ch)
 	}
@@ -1122,7 +1120,7 @@ func TestExecArgvRelativePathEntries(t *testing.T) {
 	}
 	elsewhere := t.TempDir()
 	apply := func(path string) Change {
-		return execChange(t, execRes("p", map[string]any{"command": []any{"run.sh"}, "cwd": resource, "path": path}))
+		return execChange(t, raltest.ExecRes("p", map[string]any{"command": []any{"run.sh"}, "cwd": resource, "path": path}))
 	}
 
 	t.Chdir(elsewhere)
@@ -1146,7 +1144,7 @@ func TestExecArgvRelativePathEntries(t *testing.T) {
 
 // Returns applies to an argv as to a string.
 func TestExecArgvReturnsList(t *testing.T) {
-	ch := execChange(t, execRes("r", map[string]any{
+	ch := execChange(t, raltest.ExecRes("r", map[string]any{
 		"command": []any{"/usr/bin/test", "-d", "/nonexist"}, "returns": []any{float64(0), float64(1)}}))
 	if ch.Err != nil || !slices.Equal(ch.Is.([]string), []string{"0", "1"}) {
 		t.Errorf("change = %+v, want success with Is [0 1]", ch)
@@ -1166,12 +1164,12 @@ func TestExecArgvGuards(t *testing.T) {
 		{"onlyif mixed", map[string]any{"onlyif": []any{[]any{"/usr/bin/test", "-d", "/tmp"}, "/usr/bin/test -d /nope"}}, 0},
 	} {
 		tt.params["command"] = []any{"/bin/true"}
-		changes, _, err := Exec{}.Apply(context.Background(), execRes("g", tt.params), false)
+		changes, _, err := Exec{}.Apply(context.Background(), raltest.ExecRes("g", tt.params), false)
 		if err != nil || len(changes) != tt.changes {
 			t.Errorf("%s: %+v, %v; want %d changes", tt.name, changes, err, tt.changes)
 		}
 	}
-	_, _, err := Exec{}.Apply(context.Background(), execRes("g", map[string]any{
+	_, _, err := Exec{}.Apply(context.Background(), raltest.ExecRes("g", map[string]any{
 		"command": []any{"/bin/true"}, "onlyif": []any{[]any{"/no/such"}}}), false)
 	if err == nil || err.Error() != `guard '["/no/such"]': Could not find command '/no/such'` {
 		t.Errorf("unexecutable argv guard: %v", err)
@@ -1180,7 +1178,7 @@ func TestExecArgvGuards(t *testing.T) {
 
 // A failing refreshonly argv fails the refresh with the inspect rendering.
 func TestExecArgvRefreshFailure(t *testing.T) {
-	_, err := Exec{}.Refresh(context.Background(), execRes("rf", map[string]any{
+	_, err := Exec{}.Refresh(context.Background(), raltest.ExecRes("rf", map[string]any{
 		"command": []any{"/bin/sh", "-c", "exit 4"}, "refreshonly": true}), false)
 	if err == nil || err.Error() != `'["/bin/sh", "-c", "exit 4"]' returned 4 instead of one of [0]` {
 		t.Errorf("Refresh error = %v", err)
@@ -1188,7 +1186,7 @@ func TestExecArgvRefreshFailure(t *testing.T) {
 }
 
 func TestExecArgvNoopMessage(t *testing.T) {
-	changes, _, err := Exec{}.Apply(context.Background(), execRes("n", map[string]any{"command": []any{"/bin/echo", "n"}}), true)
+	changes, _, err := Exec{}.Apply(context.Background(), raltest.ExecRes("n", map[string]any{"command": []any{"/bin/echo", "n"}}), true)
 	if err != nil || len(changes) != 1 || changes[0].Message != "executed successfully (noop)" {
 		t.Errorf("noop = %+v, %v", changes, err)
 	}
@@ -1204,17 +1202,17 @@ func TestExecArgvStartFailures(t *testing.T) {
 	if err := os.WriteFile(script, []byte("touch \"$1\"\n"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if ch := execChange(t, execRes("s", map[string]any{"command": []any{script, marker}})); ch.Err != nil {
+	if ch := execChange(t, raltest.ExecRes("s", map[string]any{"command": []any{script, marker}})); ch.Err != nil {
 		t.Fatalf("no #! line: %+v", ch)
 	}
 	if _, err := os.Stat(marker); err != nil {
 		t.Errorf("the #!-less script did not run as a shell script: %v", err)
 	}
-	ch := execChange(t, execRes("c", map[string]any{"command": []any{"/bin/true"}, "cwd": filepath.Join(dir, "gone")}))
+	ch := execChange(t, raltest.ExecRes("c", map[string]any{"command": []any{"/bin/true"}, "cwd": filepath.Join(dir, "gone")}))
 	if ch.Err == nil || ch.Err.Error() != `'["/bin/true"]' returned 1 instead of one of [0]` {
 		t.Errorf("missing cwd: %+v, want returned 1", ch)
 	}
-	ch = execChange(t, execRes("e", map[string]any{"command": []any{}, "path": "/bin/true"}))
+	ch = execChange(t, raltest.ExecRes("e", map[string]any{"command": []any{}, "path": "/bin/true"}))
 	if ch.Err == nil || ch.Err.Error() != `'[]' returned 1 instead of one of [0]` {
 		t.Errorf("empty argv: %+v, want returned 1", ch)
 	}
@@ -1251,7 +1249,7 @@ func TestExecValidateCommandType(t *testing.T) {
 			"Exec[v]: onlyif => an argv whose first element is of class TrueClass is not implemented"},
 		{map[string]any{"command": []any{"/bin/echo", float64(1), true, nil, []any{"x"}}}, ""},
 	} {
-		err := Exec{}.Validate(execRes("v", tt.params))
+		err := Exec{}.Validate(raltest.ExecRes("v", tt.params))
 		got := ""
 		if err != nil {
 			got = err.Error()
@@ -1275,7 +1273,7 @@ func TestExecAutoRequiresFollowPuppet(t *testing.T) {
 		{map[string]any{"command": "make", "unless": []any{[]any{"/opt/check", "-q"}}}, []string{"File[/opt/check]"}},
 		{map[string]any{"command": "make", "onlyif": []any{"/opt/a x", "/opt/b"}}, []string{"File[/opt/a]", "File[/opt/b]"}},
 	} {
-		got := Exec{}.AutoRequires(execRes("a", tt.params), managed)
+		got := Exec{}.AutoRequires(raltest.ExecRes("a", tt.params), managed)
 		if !slices.Equal(got, tt.want) {
 			t.Errorf("%v: AutoRequires = %v, want %v", tt.params, got, tt.want)
 		}
@@ -1287,7 +1285,7 @@ func TestExecAutoRequiresFollowPuppet(t *testing.T) {
 func TestExecAutorequiresUser(t *testing.T) {
 	managed := map[string]bool{"File[/usr/bin/touch]": true, "User[app]": true}
 	got := Exec{}.AutoRequires(
-		execRes("a", map[string]any{"command": "/usr/bin/touch /opt/x", "user": "app"}),
+		raltest.ExecRes("a", map[string]any{"command": "/usr/bin/touch /opt/x", "user": "app"}),
 		func(ref string) bool { return managed[ref] },
 	)
 	want := []string{"File[/usr/bin/touch]", "User[app]"}
@@ -1302,7 +1300,7 @@ func TestExecNoAutorequireNumericUser(t *testing.T) {
 	managed := func(string) bool { return true }
 	for _, user := range []any{"1000", int64(1000), float64(1000)} {
 		got := Exec{}.AutoRequires(
-			execRes("a", map[string]any{"command": "make", "user": user}),
+			raltest.ExecRes("a", map[string]any{"command": "make", "user": user}),
 			managed,
 		)
 		if len(got) != 0 {
@@ -1314,7 +1312,7 @@ func TestExecNoAutorequireNumericUser(t *testing.T) {
 // An unmanaged user is no edge: autorequire is soft.
 func TestExecNoAutorequireUnmanagedUser(t *testing.T) {
 	got := Exec{}.AutoRequires(
-		execRes("a", map[string]any{"command": "make", "user": "app"}),
+		raltest.ExecRes("a", map[string]any{"command": "make", "user": "app"}),
 		func(string) bool { return false },
 	)
 	if len(got) != 0 {
@@ -1334,7 +1332,7 @@ func TestExecReturnsIsReadAfterAStringRunsAndBeforeAnArgv(t *testing.T) {
 		{"/usr/bin/touch " + filepath.Join(dir, "string"), filepath.Join(dir, "string"), true},
 		{[]any{"/usr/bin/touch", filepath.Join(dir, "argv")}, filepath.Join(dir, "argv"), false},
 	} {
-		changes, _, err := Exec{}.Apply(context.Background(), execRes("r", map[string]any{
+		changes, _, err := Exec{}.Apply(context.Background(), raltest.ExecRes("r", map[string]any{
 			"command": tt.command, "returns": "abc"}), false)
 		if err == nil || changes != nil {
 			t.Errorf("%v: %+v, %v; want a bare returns error", tt.command, changes, err)
@@ -1347,7 +1345,7 @@ func TestExecReturnsIsReadAfterAStringRunsAndBeforeAnArgv(t *testing.T) {
 
 // markedExec marks the named parameters sensitive on an Exec resource.
 func markedExec(params map[string]any, marked ...string) catalog.Resource {
-	r := execRes("m", params)
+	r := raltest.ExecRes("m", params)
 	r.SensitiveParameters = marked
 	return r
 }
@@ -1537,7 +1535,7 @@ func TestExecLogoutputValues(t *testing.T) {
 			if !tc.absent {
 				params["logoutput"] = tc.logoutput
 			}
-			ch := execChange(t, execRes("lo", params))
+			ch := execChange(t, raltest.ExecRes("lo", params))
 			logged := tc.onSuccess
 			if exit != 0 {
 				logged = tc.onFailure
@@ -1605,7 +1603,7 @@ func TestExecLogoutputEncoding(t *testing.T) {
 			if tc.logoutput != nil {
 				params["logoutput"] = tc.logoutput
 			}
-			ch := execChange(t, execRes("enc", params))
+			ch := execChange(t, raltest.ExecRes("enc", params))
 			gotErr := ""
 			if ch.Err != nil {
 				gotErr = ch.Err.Error()
@@ -1636,7 +1634,7 @@ func TestExecLogoutputInvalid(t *testing.T) {
 		{float64(1), nil, `Parameter logoutput failed on Exec[bad]: Invalid value 1. Valid values are true, false, on_failure.`},
 		{"True", nil, `Parameter logoutput failed on Exec[bad]: Invalid value "True". Valid values are true, false, on_failure.`},
 	} {
-		r := execRes("bad", map[string]any{"command": "/bin/true", "logoutput": tc.value})
+		r := raltest.ExecRes("bad", map[string]any{"command": "/bin/true", "logoutput": tc.value})
 		r.SensitiveParameters = tc.marked
 		err := Exec{}.Validate(r)
 		if err == nil || err.Error() != tc.want {
@@ -1644,14 +1642,14 @@ func TestExecLogoutputInvalid(t *testing.T) {
 		}
 	}
 	for _, v := range []any{true, false, "true", "false", "on_failure"} {
-		if err := (Exec{}).Validate(execRes("ok", map[string]any{"command": "/bin/true", "logoutput": v})); err != nil {
+		if err := (Exec{}).Validate(raltest.ExecRes("ok", map[string]any{"command": "/bin/true", "logoutput": v})); err != nil {
 			t.Errorf("Validate(logoutput %v) = %v, want nil", v, err)
 		}
 	}
 	// A caller that skipped Validate still runs nothing.
 	marker := filepath.Join(t.TempDir(), "ran")
 	_, _, err := Exec{}.Apply(context.Background(),
-		execRes("bad", map[string]any{"command": "touch " + marker, "logoutput": "maybe"}), false)
+		raltest.ExecRes("bad", map[string]any{"command": "touch " + marker, "logoutput": "maybe"}), false)
 	if err == nil {
 		t.Error("Apply with an invalid logoutput: no error")
 	}
@@ -1665,7 +1663,7 @@ func TestExecLogoutputInvalid(t *testing.T) {
 func TestExecRefreshLogoutput(t *testing.T) {
 	setLocale(t, "C")
 	out, err := Exec{}.RefreshLogged(context.Background(),
-		execRes("rt", map[string]any{"command": "echo refreshed", "refreshonly": true, "logoutput": true}), false)
+		raltest.ExecRes("rt", map[string]any{"command": "echo refreshed", "refreshonly": true, "logoutput": true}), false)
 	if err != nil || !out.Refreshed {
 		t.Fatalf("RefreshLogged = %+v, %v; want refreshed", out, err)
 	}
@@ -1674,7 +1672,7 @@ func TestExecRefreshLogoutput(t *testing.T) {
 	}
 
 	out, err = Exec{}.RefreshLogged(context.Background(),
-		execRes("rf", map[string]any{"command": "echo refresh-broke; exit 4", "refreshonly": true}), false)
+		raltest.ExecRes("rf", map[string]any{"command": "echo refresh-broke; exit 4", "refreshonly": true}), false)
 	if err == nil || err.Error() != "'echo refresh-broke; exit 4' returned 4 instead of one of [0]" || out.Refreshed {
 		t.Errorf("RefreshLogged = %+v, %v; want the status error", out, err)
 	}
@@ -1684,7 +1682,7 @@ func TestExecRefreshLogoutput(t *testing.T) {
 
 	marker := filepath.Join(t.TempDir(), "ran")
 	out, err = Exec{}.RefreshLogged(context.Background(),
-		execRes("rn", map[string]any{"command": "echo x; touch " + marker, "logoutput": true}), true)
+		raltest.ExecRes("rn", map[string]any{"command": "echo x; touch " + marker, "logoutput": true}), true)
 	if err != nil || len(out.PropertyNotices) != 0 {
 		t.Errorf("noop RefreshLogged = %+v, %v; want no output", out, err)
 	}
@@ -1695,18 +1693,18 @@ func TestExecRefreshLogoutput(t *testing.T) {
 
 // debugSources are the sources the transaction puts on the context for the exec
 // the debug-line tests run.
-var debugSources = Sources{
+var debugSources = sources.Sources{
 	Resource: "/Stage[main]/Main/Exec[x]",
 	Provider: "Exec[x](provider=posix)",
 	Ref:      "Exec[x]",
 }
 
 // execDebugLines applies r (or refreshes it) at level and returns the run-log
-// entries it kept, as {level, source, message} for assertWarnings.
+// entries it kept, as {level, source, message} for raltest.AssertWarnings.
 func execDebugLines(t *testing.T, level string, r catalog.Resource) []report.LogEntry {
 	t.Helper()
-	ctx, got := debugContext(level)
-	ctx = WithSources(ctx, debugSources)
+	ctx, got := raltest.DebugContext(level)
+	ctx = sources.WithSources(ctx, debugSources)
 	if _, _, err := (Exec{}).Apply(ctx, r, false); err != nil {
 		t.Fatalf("Apply: %v", err)
 	}
@@ -1720,8 +1718,8 @@ func dbg(source, message string) report.LogEntry {
 // provider/exec.rb:48 (Executing '<cmd>') and util/execution.rb:181
 // (Executing: '<cmd>'): the first at the provider form, the second at Puppet.
 func TestExecDebugLinesForARun(t *testing.T) {
-	got := execDebugLines(t, "debug", execRes("x", map[string]any{"command": "echo hi"}))
-	assertWarnings(t, got, []report.LogEntry{
+	got := execDebugLines(t, "debug", raltest.ExecRes("x", map[string]any{"command": "echo hi"}))
+	raltest.AssertWarnings(t, got, []report.LogEntry{
 		dbg("Exec[x](provider=posix)", "Executing 'echo hi'"),
 		dbg("Puppet", "Executing: 'echo hi'"),
 	})
@@ -1730,9 +1728,9 @@ func TestExecDebugLinesForARun(t *testing.T) {
 // An argv shows as Array#inspect in the provider's line (it interpolates the
 // original value) and as the words joined by a space in execution.rb's.
 func TestExecDebugLinesForAnArgvRun(t *testing.T) {
-	got := execDebugLines(t, "debug", execRes("x", map[string]any{
+	got := execDebugLines(t, "debug", raltest.ExecRes("x", map[string]any{
 		"command": []any{"/bin/echo", "hi"}}))
-	assertWarnings(t, got, []report.LogEntry{
+	raltest.AssertWarnings(t, got, []report.LogEntry{
 		dbg("Exec[x](provider=posix)", `Executing '["/bin/echo", "hi"]'`),
 		dbg("Puppet", "Executing: '/bin/echo hi'"),
 	})
@@ -1740,7 +1738,7 @@ func TestExecDebugLinesForAnArgvRun(t *testing.T) {
 
 func TestExecDebugLinesAreRedactedWhenMarked(t *testing.T) {
 	got := execDebugLines(t, "debug", markedExec(map[string]any{"command": "echo SECRET"}, "command"))
-	assertWarnings(t, got, []report.LogEntry{
+	raltest.AssertWarnings(t, got, []report.LogEntry{
 		dbg("Exec[x](provider=posix)", "Executing '[redacted]'"),
 		dbg("Puppet", "Executing: '[redacted]'"),
 	})
@@ -1770,12 +1768,12 @@ func TestExecDebugLineNamesIdentity(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			tc.params["command"] = tc.command
 			r := markedExec(tc.params, tc.marked...)
-			ctx, got := debugContext("debug")
-			changes, _, err := (Exec{}).Apply(WithSources(ctx, debugSources), r, false)
+			ctx, got := raltest.DebugContext("debug")
+			changes, _, err := (Exec{}).Apply(sources.WithSources(ctx, debugSources), r, false)
 			if err != nil || len(changes) != 1 || changes[0].Err == nil {
 				t.Fatalf("Apply = (%+v, %v), want one failed change", changes, err)
 			}
-			if lines := linesAt(*got, "Puppet"); !slices.Equal(lines, []string{tc.want}) {
+			if lines := raltest.LinesAt(*got, "Puppet"); !slices.Equal(lines, []string{tc.want}) {
 				t.Errorf("Puppet debug lines = %q, want %q", lines, []string{tc.want})
 			}
 			wantOutput := "Error: Could not execute posix command: Invalid "
@@ -1802,8 +1800,8 @@ func TestExecDebugLineNamesAgentUser(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	got := execDebugLines(t, "debug", execRes("x", map[string]any{"command": "/bin/true", "user": self.Username}))
-	if lines, want := linesAt(got, "Puppet"), []string{"Executing with uid=" + self.Username + ": '/bin/true'"}; !slices.Equal(lines, want) {
+	got := execDebugLines(t, "debug", raltest.ExecRes("x", map[string]any{"command": "/bin/true", "user": self.Username}))
+	if lines, want := raltest.LinesAt(got, "Puppet"), []string{"Executing with uid=" + self.Username + ": '/bin/true'"}; !slices.Equal(lines, want) {
 		t.Errorf("Puppet debug lines = %q, want %q", lines, want)
 	}
 }
@@ -1811,9 +1809,9 @@ func TestExecDebugLineNamesAgentUser(t *testing.T) {
 // type/exec.rb:511-514: one debug line per output line of the guard, at the
 // guard parameter's path; the check form of the provider line.
 func TestExecDebugLinesForAnUnlessGuard(t *testing.T) {
-	got := execDebugLines(t, "debug", execRes("x", map[string]any{
+	got := execDebugLines(t, "debug", raltest.ExecRes("x", map[string]any{
 		"command": "true", "unless": "printf 'one\\ntwo\\n'; exit 1"}))
-	assertWarnings(t, got, []report.LogEntry{
+	raltest.AssertWarnings(t, got, []report.LogEntry{
 		dbg("Exec[x](provider=posix)", "Executing check 'printf 'one\\ntwo\\n'; exit 1'"),
 		dbg("Puppet", "Executing: 'printf 'one\\ntwo\\n'; exit 1'"),
 		dbg("/Stage[main]/Main/Exec[x]/unless", "one"),
@@ -1824,9 +1822,9 @@ func TestExecDebugLinesForAnUnlessGuard(t *testing.T) {
 }
 
 func TestExecDebugLinesForAnOnlyifGuard(t *testing.T) {
-	got := execDebugLines(t, "debug", execRes("x", map[string]any{
+	got := execDebugLines(t, "debug", raltest.ExecRes("x", map[string]any{
 		"command": "true", "onlyif": "echo yes"}))
-	assertWarnings(t, got, []report.LogEntry{
+	raltest.AssertWarnings(t, got, []report.LogEntry{
 		dbg("Exec[x](provider=posix)", "Executing check 'echo yes'"),
 		dbg("Puppet", "Executing: 'echo yes'"),
 		dbg("/Stage[main]/Main/Exec[x]/onlyif", "yes"),
@@ -1848,7 +1846,7 @@ func TestExecGuardOutputLineCounts(t *testing.T) {
 		{"no output", "exit 1", nil},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			got := execDebugLines(t, "debug", execRes("x", map[string]any{"command": "true", "unless": tc.guard}))
+			got := execDebugLines(t, "debug", raltest.ExecRes("x", map[string]any{"command": "true", "unless": tc.guard}))
 			var lines []string
 			for _, e := range got {
 				if e.Source == "/Stage[main]/Main/Exec[x]/unless" {
@@ -1865,7 +1863,7 @@ func TestExecGuardOutputLineCounts(t *testing.T) {
 func TestExecGuardOutputIsOneRedactedLineWhenMarked(t *testing.T) {
 	got := execDebugLines(t, "debug", markedExec(map[string]any{
 		"command": "true", "unless": "echo SECRET1; echo SECRET2; exit 1"}, "unless"))
-	assertWarnings(t, got, []report.LogEntry{
+	raltest.AssertWarnings(t, got, []report.LogEntry{
 		dbg("Exec[x](provider=posix)", "Executing check '[redacted]'"),
 		dbg("Puppet", "Executing: '[redacted]'"),
 		dbg("/Stage[main]/Main/Exec[x]/unless", "[output redacted]"),
@@ -1881,7 +1879,7 @@ func TestExecMarkedGuardWithNoOutputStillLogsRedactedLine(t *testing.T) {
 	if len(got) < 3 {
 		t.Fatalf("entries = %+v, want at least three", got)
 	}
-	assertWarnings(t, got[2:3], []report.LogEntry{dbg("/Stage[main]/Main/Exec[x]/unless", "[output redacted]")})
+	raltest.AssertWarnings(t, got[2:3], []report.LogEntry{dbg("/Stage[main]/Main/Exec[x]/unless", "[output redacted]")})
 }
 
 // type/exec.rb:672 and :454: the failed-check line at the resource, the
@@ -1894,20 +1892,20 @@ func TestExecDebugLinesForFailedChecks(t *testing.T) {
 		r    catalog.Resource
 		want []report.LogEntry
 	}{
-		{"creates", execRes("x", map[string]any{"command": "/bin/true", "creates": tmp}), []report.LogEntry{
+		{"creates", raltest.ExecRes("x", map[string]any{"command": "/bin/true", "creates": tmp}), []report.LogEntry{
 			dbg(res+"/creates", "Checking that 'creates' path '"+tmp+"' exists"),
 			dbg(res, "'/bin/true' won't be executed because of failed check 'creates'"),
 		}},
-		{"onlyif", execRes("x", map[string]any{"command": "/bin/true", "onlyif": "exit 1"}), []report.LogEntry{
+		{"onlyif", raltest.ExecRes("x", map[string]any{"command": "/bin/true", "onlyif": "exit 1"}), []report.LogEntry{
 			dbg(res, "'/bin/true' won't be executed because of failed check 'onlyif'"),
 		}},
-		{"unless", execRes("x", map[string]any{"command": "/bin/true", "unless": "exit 0"}), []report.LogEntry{
+		{"unless", raltest.ExecRes("x", map[string]any{"command": "/bin/true", "unless": "exit 0"}), []report.LogEntry{
 			dbg(res, "'/bin/true' won't be executed because of failed check 'unless'"),
 		}},
-		{"refreshonly", execRes("x", map[string]any{"command": "/bin/true", "refreshonly": true}), []report.LogEntry{
+		{"refreshonly", raltest.ExecRes("x", map[string]any{"command": "/bin/true", "refreshonly": true}), []report.LogEntry{
 			dbg(res, "'/bin/true' won't be executed because of failed check 'refreshonly'"),
 		}},
-		{"argv command shows as inspect", execRes("x", map[string]any{
+		{"argv command shows as inspect", raltest.ExecRes("x", map[string]any{
 			"command": []any{"/bin/true", "a"}, "refreshonly": true}), []report.LogEntry{
 			dbg(res, `'["/bin/true", "a"]' won't be executed because of failed check 'refreshonly'`),
 		}},
@@ -1925,14 +1923,14 @@ func TestExecDebugLinesForFailedChecks(t *testing.T) {
 					about = append(about, e)
 				}
 			}
-			assertWarnings(t, about, tc.want)
+			raltest.AssertWarnings(t, about, tc.want)
 		})
 	}
 }
 
 // A blocked command never reaches its own Executing lines.
 func TestExecBlockedCommandLogsNoExecutingLine(t *testing.T) {
-	for _, e := range execDebugLines(t, "debug", execRes("x", map[string]any{
+	for _, e := range execDebugLines(t, "debug", raltest.ExecRes("x", map[string]any{
 		"command": "/bin/true", "creates": t.TempDir()})) {
 		if strings.HasPrefix(e.Message, "Executing") {
 			t.Errorf("unexpected %+v", e)
@@ -1943,13 +1941,13 @@ func TestExecBlockedCommandLogsNoExecutingLine(t *testing.T) {
 // Under refresh the refreshonly check is skipped (check_all_attributes(true)),
 // so a refreshonly exec runs and logs no refreshonly line.
 func TestExecRefreshOfARefreshonlyLogsNoRefreshonlyLine(t *testing.T) {
-	ctx, got := debugContext("debug")
-	ctx = WithSources(ctx, debugSources)
-	r := execRes("x", map[string]any{"command": "true", "refreshonly": true})
+	ctx, got := raltest.DebugContext("debug")
+	ctx = sources.WithSources(ctx, debugSources)
+	r := raltest.ExecRes("x", map[string]any{"command": "true", "refreshonly": true})
 	if _, err := (Exec{}).Refresh(ctx, r, false); err != nil {
 		t.Fatal(err)
 	}
-	assertWarnings(t, *got, []report.LogEntry{
+	raltest.AssertWarnings(t, *got, []report.LogEntry{
 		dbg("Exec[x](provider=posix)", "Executing 'true'"),
 		dbg("Puppet", "Executing: 'true'"),
 	})
@@ -1958,7 +1956,7 @@ func TestExecRefreshOfARefreshonlyLogsNoRefreshonlyLine(t *testing.T) {
 // Debug off: no records at all.
 func TestExecDebugLinesOffAtNotice(t *testing.T) {
 	for _, level := range []string{"notice", "info"} {
-		got := execDebugLines(t, level, execRes("x", map[string]any{
+		got := execDebugLines(t, level, raltest.ExecRes("x", map[string]any{
 			"command": "true", "unless": "echo out; exit 1", "creates": "/nonexistent/x"}))
 		if len(got) != 0 {
 			t.Errorf("level %s: entries = %+v, want none", level, got)
@@ -1973,7 +1971,7 @@ func TestExecENOEXECRetryLogsExecutingOnce(t *testing.T) {
 	if err := os.WriteFile(script, []byte("echo hi\n"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	got := execDebugLines(t, "debug", execRes("x", map[string]any{"command": []any{script}}))
+	got := execDebugLines(t, "debug", raltest.ExecRes("x", map[string]any{"command": []any{script}}))
 	var n int
 	for _, e := range got {
 		if e.Source == "Puppet" {
@@ -1988,9 +1986,9 @@ func TestExecENOEXECRetryLogsExecutingOnce(t *testing.T) {
 // triesCtx is a debug-logging context with the sources a resource at
 // /Stage[main]/Main/Exec[x] carries.
 func triesCtx() (context.Context, *[]report.LogEntry, string) {
-	ctx, entries := debugContext("debug")
+	ctx, entries := raltest.DebugContext("debug")
 	const resource = "/Stage[main]/Main/Exec[x]"
-	return WithSources(ctx, Sources{Resource: resource, Provider: "Exec[x](provider=posix)", Ref: "Exec[x]"}), entries, resource + "/returns"
+	return sources.WithSources(ctx, sources.Sources{Resource: resource, Provider: "Exec[x](provider=posix)", Ref: "Exec[x]"}), entries, resource + "/returns"
 }
 
 // countingCommand appends to a counter file and exits with the new count
@@ -2004,14 +2002,14 @@ func countingCommand(counter string, succeedAt int) string {
 func TestExecTriesSucceedsOnThird(t *testing.T) {
 	ctx, entries, returns := triesCtx()
 	counter := filepath.Join(t.TempDir(), "n")
-	changes, _, err := Exec{}.Apply(ctx, execRes("x", map[string]any{
+	changes, _, err := Exec{}.Apply(ctx, raltest.ExecRes("x", map[string]any{
 		"command": countingCommand(counter, 3), "tries": 3.0, "try_sleep": 0.1}), false)
 	if err != nil || len(changes) != 1 || changes[0].Err != nil {
 		t.Fatalf("Apply = %v, %v; want success", changes, err)
 	}
 	want := []string{"Exec try 1/3", "Sleeping for 0.1 seconds between tries",
 		"Exec try 2/3", "Sleeping for 0.1 seconds between tries", "Exec try 3/3"}
-	if got := linesAt(*entries, returns); !slices.Equal(got, want) {
+	if got := raltest.LinesAt(*entries, returns); !slices.Equal(got, want) {
 		t.Errorf("debug lines at %s = %q, want %q", returns, got, want)
 	}
 }
@@ -2021,7 +2019,7 @@ func TestExecTriesSucceedsOnThird(t *testing.T) {
 func TestExecTriesNeverSucceeds(t *testing.T) {
 	ctx, entries, returns := triesCtx()
 	counter := filepath.Join(t.TempDir(), "n")
-	changes, _, err := Exec{}.Apply(ctx, execRes("x", map[string]any{
+	changes, _, err := Exec{}.Apply(ctx, raltest.ExecRes("x", map[string]any{
 		"command": countingCommand(counter, 99), "tries": 2.0, "try_sleep": 0.1, "logoutput": "on_failure"}), false)
 	if err != nil || len(changes) != 1 {
 		t.Fatalf("Apply = %v, %v", changes, err)
@@ -2034,7 +2032,7 @@ func TestExecTriesNeverSucceeds(t *testing.T) {
 	}
 	want := []string{"Exec try 1/2", "Sleeping for 0.1 seconds between tries",
 		"Exec try 2/2", "Sleeping for 0.1 seconds between tries"}
-	if got := linesAt(*entries, returns); !slices.Equal(got, want) {
+	if got := raltest.LinesAt(*entries, returns); !slices.Equal(got, want) {
 		t.Errorf("debug lines = %q, want %q", got, want)
 	}
 }
@@ -2042,12 +2040,12 @@ func TestExecTriesNeverSucceeds(t *testing.T) {
 // tries 1 logs neither the try nor the sleep, whatever try_sleep says.
 func TestExecTriesNoDebugWhenOne(t *testing.T) {
 	ctx, entries, returns := triesCtx()
-	changes, _, err := Exec{}.Apply(ctx, execRes("x", map[string]any{
+	changes, _, err := Exec{}.Apply(ctx, raltest.ExecRes("x", map[string]any{
 		"command": "exit 3", "try_sleep": 0.1}), false)
 	if err != nil || len(changes) != 1 || changes[0].Err == nil {
 		t.Fatalf("Apply = %v, %v; want a returns failure", changes, err)
 	}
-	if got := linesAt(*entries, returns); len(got) != 0 {
+	if got := raltest.LinesAt(*entries, returns); len(got) != 0 {
 		t.Errorf("debug lines at %s = %q, want none", returns, got)
 	}
 }
@@ -2069,9 +2067,9 @@ func TestExecTrySleepIntegerShown(t *testing.T) {
 			cctx, cancel := context.WithCancel(ctx)
 			defer cancel()
 			time.AfterFunc(200*time.Millisecond, cancel)
-			Exec{}.Apply(cctx, execRes("x", map[string]any{
+			Exec{}.Apply(cctx, raltest.ExecRes("x", map[string]any{
 				"command": "exit 1", "tries": 2.0, "try_sleep": tc.sleep}), false)
-			got := linesAt(*entries, returns)
+			got := raltest.LinesAt(*entries, returns)
 			if len(got) < 2 || got[1] != tc.want {
 				t.Errorf("debug lines = %q, want second line %q", got, tc.want)
 			}
@@ -2082,7 +2080,7 @@ func TestExecTrySleepIntegerShown(t *testing.T) {
 // M19: a Float tries fails returns before anything runs.
 func TestExecTriesFloat(t *testing.T) {
 	marker := filepath.Join(t.TempDir(), "ran")
-	ch := execChange(t, execRes("x", map[string]any{"command": "touch " + marker, "tries": 2.5}))
+	ch := execChange(t, raltest.ExecRes("x", map[string]any{"command": "touch " + marker, "tries": 2.5}))
 	if ch.Err == nil || ch.Err.Error() != "undefined method `times' for 2.5:Float" {
 		t.Errorf("Err = %v, want the Ruby NoMethodError text", ch.Err)
 	}
@@ -2096,7 +2094,7 @@ func TestExecTrySleepCancelled(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	time.AfterFunc(200*time.Millisecond, cancel)
 	start := time.Now()
-	_, _, err := Exec{}.Apply(ctx, execRes("x", map[string]any{
+	_, _, err := Exec{}.Apply(ctx, raltest.ExecRes("x", map[string]any{
 		"command": "exit 1", "tries": 3.0, "try_sleep": 30.0}), false)
 	if !errors.Is(err, context.Canceled) {
 		t.Errorf("err = %v, want context.Canceled", err)
@@ -2110,7 +2108,7 @@ func TestExecTrySleepCancelled(t *testing.T) {
 func TestExecTimeoutEndsTries(t *testing.T) {
 	counter := filepath.Join(t.TempDir(), "n")
 	start := time.Now()
-	ch := execChange(t, execRes("x", map[string]any{
+	ch := execChange(t, raltest.ExecRes("x", map[string]any{
 		"command": "echo x >> " + counter + "; sleep 5", "tries": 3.0, "timeout": 0.3}))
 	if ch.Err == nil || ch.Err.Error() != "Command exceeded timeout" {
 		t.Errorf("Err = %v, want Command exceeded timeout", ch.Err)
@@ -2128,7 +2126,7 @@ func TestExecTimeoutEndsTries(t *testing.T) {
 func TestExecNoopGuardHonoursUserAndTimeout(t *testing.T) {
 	t.Run("timeout", func(t *testing.T) {
 		start := time.Now()
-		changes, _, err := Exec{}.Apply(context.Background(), execRes("x", map[string]any{
+		changes, _, err := Exec{}.Apply(context.Background(), raltest.ExecRes("x", map[string]any{
 			"command": "true", "onlyif": "sleep 5", "timeout": 0.3}), true)
 		if err != nil || len(changes) != 0 {
 			t.Errorf("Apply = %v, %v; want a blocked command and no change", changes, err)
@@ -2140,7 +2138,7 @@ func TestExecNoopGuardHonoursUserAndTimeout(t *testing.T) {
 	t.Run("user", func(t *testing.T) {
 		needRoot(t, "the guard runs as user nobody")
 		lookupNobody(t)
-		changes, _, err := Exec{}.Apply(context.Background(), execRes("x", map[string]any{
+		changes, _, err := Exec{}.Apply(context.Background(), raltest.ExecRes("x", map[string]any{
 			"command": "true", "user": "nobody", "onlyif": `test "$(id -un)" = nobody`}), true)
 		if err != nil || len(changes) != 1 {
 			t.Errorf("Apply = %v, %v; want the guard to pass as nobody and a noop change", changes, err)
@@ -2152,7 +2150,7 @@ func TestExecNoopGuardHonoursUserAndTimeout(t *testing.T) {
 // nothing for it, and tries does not repeat it.
 func TestExecRefreshCommandExit1Succeeds(t *testing.T) {
 	counter := filepath.Join(t.TempDir(), "n")
-	r := execRes("x", map[string]any{
+	r := raltest.ExecRes("x", map[string]any{
 		"command": "/bin/true", "tries": 3.0, "logoutput": true,
 		"refresh": fmt.Sprintf(`/bin/sh -c "echo r >> %s; echo refreshed-out; exit 1"`, counter)})
 	out, err := Exec{}.RefreshLogged(context.Background(), r, false)
@@ -2170,7 +2168,7 @@ func TestExecRefreshCommandExit1Succeeds(t *testing.T) {
 // M12, M20: a refresh that exits 127 fails with its output; the walk adds
 // "Failed to call refresh: ".
 func TestExecRefreshCommand127Fails(t *testing.T) {
-	r := execRes("x", map[string]any{"command": "/bin/true", "refresh": `/bin/sh -c "echo gone; exit 127"`})
+	r := raltest.ExecRes("x", map[string]any{"command": "/bin/true", "refresh": `/bin/sh -c "echo gone; exit 127"`})
 	out, err := Exec{}.RefreshLogged(context.Background(), r, false)
 	if err == nil || err.Error() != "gone\n" || out.Refreshed {
 		t.Errorf("RefreshLogged = %+v, %v; want error %q", out, err, "gone\n")
@@ -2180,9 +2178,9 @@ func TestExecRefreshCommand127Fails(t *testing.T) {
 // M12: the refresh command's executable is checked before it runs, with no
 // Executing line.
 func TestExecRefreshCommandMissingExe(t *testing.T) {
-	ctx, got := debugContext("debug")
-	ctx = WithSources(ctx, debugSources)
-	r := execRes("x", map[string]any{"command": "/bin/true", "refresh": "/no/such/refresh"})
+	ctx, got := raltest.DebugContext("debug")
+	ctx = sources.WithSources(ctx, debugSources)
+	r := raltest.ExecRes("x", map[string]any{"command": "/bin/true", "refresh": "/no/such/refresh"})
 	out, err := Exec{}.RefreshLogged(ctx, r, false)
 	if err == nil || err.Error() != "Could not find command '/no/such/refresh'" || out.Refreshed {
 		t.Errorf("RefreshLogged = %+v, %v; want Could not find command", out, err)
@@ -2193,7 +2191,7 @@ func TestExecRefreshCommandMissingExe(t *testing.T) {
 }
 
 func TestExecRefreshCommandTimeout(t *testing.T) {
-	r := execRes("x", map[string]any{"command": "/bin/true", "refresh": "/bin/sleep 5", "timeout": 0.2})
+	r := raltest.ExecRes("x", map[string]any{"command": "/bin/true", "refresh": "/bin/sleep 5", "timeout": 0.2})
 	start := time.Now()
 	out, err := Exec{}.RefreshLogged(context.Background(), r, false)
 	if err == nil || err.Error() != "execution expired" || out.Refreshed {
@@ -2207,7 +2205,7 @@ func TestExecRefreshCommandTimeout(t *testing.T) {
 // M12: a blocking guard skips the refresh command, and the refresh still counts.
 func TestExecRefreshCommandGuardsBlock(t *testing.T) {
 	ran := filepath.Join(t.TempDir(), "ran")
-	r := execRes("x", map[string]any{"command": "/bin/true", "unless": "/bin/true", "refresh": "/bin/touch " + ran})
+	r := raltest.ExecRes("x", map[string]any{"command": "/bin/true", "unless": "/bin/true", "refresh": "/bin/touch " + ran})
 	out, err := Exec{}.RefreshLogged(context.Background(), r, false)
 	if err != nil || !out.Refreshed {
 		t.Fatalf("RefreshLogged = %+v, %v; want Refreshed", out, err)
@@ -2220,7 +2218,7 @@ func TestExecRefreshCommandGuardsBlock(t *testing.T) {
 // The refresh command replaces the main command during a refresh.
 func TestExecRefreshCommandReplacesMain(t *testing.T) {
 	dir := t.TempDir()
-	r := execRes("x", map[string]any{
+	r := raltest.ExecRes("x", map[string]any{
 		"command": "/bin/touch " + filepath.Join(dir, "main"), "refresh": "/bin/touch " + filepath.Join(dir, "refresh")})
 	if _, err := (Exec{}).RefreshLogged(context.Background(), r, false); err != nil {
 		t.Fatal(err)
@@ -2236,7 +2234,7 @@ func TestExecRefreshCommandReplacesMain(t *testing.T) {
 // Under noop the guards run and the refresh command does not.
 func TestExecRefreshCommandNoop(t *testing.T) {
 	ran := filepath.Join(t.TempDir(), "ran")
-	r := execRes("x", map[string]any{"command": "/bin/true", "refresh": "/bin/touch " + ran})
+	r := raltest.ExecRes("x", map[string]any{"command": "/bin/true", "refresh": "/bin/touch " + ran})
 	out, err := Exec{}.RefreshLogged(context.Background(), r, true)
 	if err != nil || !out.Refreshed {
 		t.Fatalf("RefreshLogged = %+v, %v; want Refreshed", out, err)
@@ -2249,8 +2247,8 @@ func TestExecRefreshCommandNoop(t *testing.T) {
 // M12: the debug line names the refresh command, [redacted] when command is marked.
 func TestExecRefreshCommandDebugLine(t *testing.T) {
 	for _, marked := range []bool{false, true} {
-		ctx, got := debugContext("debug")
-		ctx = WithSources(ctx, debugSources)
+		ctx, got := raltest.DebugContext("debug")
+		ctx = sources.WithSources(ctx, debugSources)
 		params := map[string]any{"command": "/bin/true", "refresh": "/bin/echo hi"}
 		var r catalog.Resource
 		want := "Executing '/bin/echo hi'"
@@ -2259,12 +2257,12 @@ func TestExecRefreshCommandDebugLine(t *testing.T) {
 			r = markedExec(params, "command")
 			want, wantRun = "Executing '[redacted]'", "Executing: '[redacted]'"
 		} else {
-			r = execRes("x", params)
+			r = raltest.ExecRes("x", params)
 		}
 		if _, err := (Exec{}).RefreshLogged(ctx, r, false); err != nil {
 			t.Fatal(err)
 		}
-		assertWarnings(t, *got, []report.LogEntry{
+		raltest.AssertWarnings(t, *got, []report.LogEntry{
 			dbg("Exec[x](provider=posix)", want),
 			dbg("Puppet", wantRun),
 		})
@@ -2274,7 +2272,7 @@ func TestExecRefreshCommandDebugLine(t *testing.T) {
 // Without a refresh command, a refresh runs the main command with tries.
 func TestExecRefreshWithoutRefreshUsesTries(t *testing.T) {
 	counter := filepath.Join(t.TempDir(), "n")
-	r := execRes("x", map[string]any{"command": countingCommand(counter, 3), "tries": 3.0})
+	r := raltest.ExecRes("x", map[string]any{"command": countingCommand(counter, 3), "tries": 3.0})
 	out, err := Exec{}.RefreshLogged(context.Background(), r, false)
 	if err != nil || !out.Refreshed {
 		t.Fatalf("RefreshLogged = %+v, %v; want Refreshed", out, err)
@@ -2287,13 +2285,13 @@ func TestExecRefreshWithoutRefreshUsesTries(t *testing.T) {
 // D-78: a catalog that marks only refresh redacts it in the Executing lines and
 // in the missing-executable failure.
 func TestExecRefreshMarkedOnlyIsRedacted(t *testing.T) {
-	ctx, got := debugContext("debug")
-	ctx = WithSources(ctx, debugSources)
+	ctx, got := raltest.DebugContext("debug")
+	ctx = sources.WithSources(ctx, debugSources)
 	r := markedExec(map[string]any{"command": "/bin/true", "refresh": "/bin/echo D8SECRET-refresh"}, "refresh")
 	if _, err := (Exec{}).RefreshLogged(ctx, r, false); err != nil {
 		t.Fatal(err)
 	}
-	assertWarnings(t, *got, []report.LogEntry{
+	raltest.AssertWarnings(t, *got, []report.LogEntry{
 		dbg("Exec[x](provider=posix)", "Executing '[redacted]'"),
 		dbg("Puppet", "Executing: '[redacted]'"),
 	})

@@ -12,6 +12,8 @@ import (
 	"time"
 
 	"github.com/voxagent/voxagent/internal/catalog"
+	"github.com/voxagent/voxagent/internal/lib/raltest"
+	"github.com/voxagent/voxagent/internal/lib/sources"
 )
 
 // The cases are those measured against openvox 8.29.0, whose code on this path
@@ -126,7 +128,7 @@ func TestFileValidateCmdSuccessReplacesTheFile(t *testing.T) {
 	path := filepath.Join(fx.dir, "f")
 	seedOld(t, path, 0o640)
 
-	changes := applyValidated(t, fileRes(path, map[string]any{
+	changes := applyValidated(t, raltest.FileRes(path, map[string]any{
 		"content": "new\n", "validate_cmd": fx.rec + " %"}), false)
 
 	if len(changes) != 1 || changes[0].Property != "content" || changes[0].Err != nil {
@@ -170,7 +172,7 @@ func TestFileValidateCmdFailureLeavesTheTarget(t *testing.T) {
 	path := filepath.Join(fx.dir, "f")
 	seedOld(t, path, 0o644)
 
-	changes := applyValidated(t, fileRes(path, map[string]any{
+	changes := applyValidated(t, raltest.FileRes(path, map[string]any{
 		"content": "new\n", "mode": "0600", "validate_cmd": fx.fail + " %"}), false)
 
 	if len(changes) != 2 {
@@ -205,7 +207,7 @@ func TestFileValidateCmdFailureLeavesTheTarget(t *testing.T) {
 func TestFileValidateCmdFailureOnANewFileFailsEnsure(t *testing.T) {
 	fx := newValidateFixture(t)
 	path := filepath.Join(fx.dir, "f")
-	r := fileRes(path, map[string]any{"content": "new\n", "validate_cmd": fx.fail + " %"})
+	r := raltest.FileRes(path, map[string]any{"content": "new\n", "validate_cmd": fx.fail + " %"})
 	r.File, r.Line = "/etc/site.pp", 3
 
 	changes := applyValidated(t, r, false)
@@ -233,7 +235,7 @@ func TestFileValidateCmdNewFileTempHasTheDesiredMode(t *testing.T) {
 	fx := newValidateFixture(t)
 	path := filepath.Join(fx.dir, "f")
 
-	changes := applyValidated(t, fileRes(path, map[string]any{
+	changes := applyValidated(t, raltest.FileRes(path, map[string]any{
 		"content": "new\n", "mode": "0750", "validate_cmd": fx.rec + " %"}), false)
 
 	if len(changes) != 1 || changes[0].Name != "file_created" || changes[0].Err != nil {
@@ -258,7 +260,7 @@ func TestFileValidateCmdWithoutTheTokenRunsVerbatim(t *testing.T) {
 	path := filepath.Join(fx.dir, "f")
 	seedOld(t, path, 0o644)
 
-	changes := applyValidated(t, fileRes(path, map[string]any{"content": "new\n", "validate_cmd": fx.rec}), false)
+	changes := applyValidated(t, raltest.FileRes(path, map[string]any{"content": "new\n", "validate_cmd": fx.rec}), false)
 	if len(changes) != 1 || changes[0].Err != nil {
 		t.Fatalf("changes = %+v, want one successful content change", changes)
 	}
@@ -270,7 +272,7 @@ func TestFileValidateCmdWithoutTheTokenRunsVerbatim(t *testing.T) {
 	}
 
 	seedOld(t, path, 0o644)
-	changes = applyValidated(t, fileRes(path, map[string]any{"content": "new\n", "validate_cmd": fx.fail}), false)
+	changes = applyValidated(t, raltest.FileRes(path, map[string]any{"content": "new\n", "validate_cmd": fx.fail}), false)
 	want := "Execution of '" + fx.fail + "' returned 1: stdout line one\nstderr line two\nstdout line three"
 	if len(changes) != 1 || changes[0].Err == nil || changes[0].Err.Error() != want {
 		t.Fatalf("changes = %+v, want content failing with %q", changes, want)
@@ -295,7 +297,7 @@ func TestFileValidateReplacementReplacesEveryOccurrence(t *testing.T) {
 			if tc.replacement != "" {
 				params["validate_replacement"] = tc.replacement
 			}
-			if changes := applyValidated(t, fileRes(path, params), false); len(changes) != 1 || changes[0].Err != nil {
+			if changes := applyValidated(t, raltest.FileRes(path, params), false); len(changes) != 1 || changes[0].Err != nil {
 				t.Fatalf("changes = %+v, want one successful content change", changes)
 			}
 			rec, _ := fx.record(t)
@@ -322,7 +324,7 @@ func TestFileValidateEmptyReplacementInsertsThePathEverywhere(t *testing.T) {
 	path := filepath.Join(fx.dir, "f")
 	seedOld(t, path, 0o644)
 
-	changes := applyValidated(t, fileRes(path, map[string]any{
+	changes := applyValidated(t, raltest.FileRes(path, map[string]any{
 		"content": "new\n", "validate_cmd": "ab", "validate_replacement": ""}), false)
 
 	if len(changes) != 1 || changes[0].Err == nil {
@@ -344,7 +346,7 @@ func TestFileValidateSubstitutesThePathLiterally(t *testing.T) {
 	fx := newValidateFixture(t)
 	path := filepath.Join(fx.dir, `x\0y`)
 
-	changes := applyValidated(t, fileRes(path, map[string]any{
+	changes := applyValidated(t, raltest.FileRes(path, map[string]any{
 		"content": "new\n", "validate_cmd": fx.rec + " '%'"}), false)
 
 	if len(changes) != 1 || changes[0].Err != nil {
@@ -384,7 +386,7 @@ func TestFileValidateCmdDoesNotRunWithoutAWrite(t *testing.T) {
 			for k, v := range tc.params {
 				params[k] = v
 			}
-			changes := applyValidated(t, fileRes(path, params), tc.noop)
+			changes := applyValidated(t, raltest.FileRes(path, params), tc.noop)
 			var got []string
 			for _, ch := range changes {
 				if ch.Err != nil {
@@ -408,7 +410,7 @@ func TestFileValidateCmdRunsForEmptyContentAndForASource(t *testing.T) {
 		fx := newValidateFixture(t)
 		path := filepath.Join(fx.dir, "f")
 		seedOld(t, path, 0o644)
-		changes := applyValidated(t, fileRes(path, map[string]any{"content": "", "validate_cmd": fx.fail + " %"}), false)
+		changes := applyValidated(t, raltest.FileRes(path, map[string]any{"content": "", "validate_cmd": fx.fail + " %"}), false)
 		if len(changes) != 1 || changes[0].Property != "content" || changes[0].Err == nil || !fx.failRan() {
 			t.Fatalf("changes = %+v (ran %v), want content failing in the validator", changes, fx.failRan())
 		}
@@ -422,7 +424,7 @@ func TestFileValidateCmdRunsForEmptyContentAndForASource(t *testing.T) {
 		mustWrite(t, src, "from source\n")
 		path := filepath.Join(fx.dir, "f")
 		seedOld(t, path, 0o644)
-		changes := applyValidated(t, fileRes(path, map[string]any{"source": src, "validate_cmd": fx.rec + " %"}), false)
+		changes := applyValidated(t, raltest.FileRes(path, map[string]any{"source": src, "validate_cmd": fx.rec + " %"}), false)
 		if len(changes) != 1 || changes[0].Property != "content" || changes[0].Err != nil {
 			t.Fatalf("changes = %+v, want one successful content change", changes)
 		}
@@ -444,7 +446,7 @@ func TestFileValidateCmdExecFailureReturnsOne(t *testing.T) {
 			fx := newValidateFixture(t)
 			path := filepath.Join(fx.dir, "f")
 			seedOld(t, path, 0o644)
-			changes := applyValidated(t, fileRes(path, map[string]any{"content": "new\n", "validate_cmd": cmd + " %"}), false)
+			changes := applyValidated(t, raltest.FileRes(path, map[string]any{"content": "new\n", "validate_cmd": cmd + " %"}), false)
 			if len(changes) != 1 || changes[0].Err == nil {
 				t.Fatalf("changes = %+v, want a failed content change", changes)
 			}
@@ -474,7 +476,7 @@ func TestFileValidateCmdEnvironment(t *testing.T) {
 	}
 	fx := newValidateFixture(t)
 	path := filepath.Join(fx.dir, "f")
-	applyValidated(t, fileRes(path, map[string]any{"content": "new\n", "validate_cmd": fx.rec + " %"}), false)
+	applyValidated(t, raltest.FileRes(path, map[string]any{"content": "new\n", "validate_cmd": fx.rec + " %"}), false)
 	rec, _ := fx.record(t)
 	var env []string
 	for k, v := range rec {
@@ -508,7 +510,7 @@ func TestFileValidateCmdFindsACommandThroughADotPathEntry(t *testing.T) {
 			t.Setenv("PATH", pathEnv)
 			t.Chdir(cwd)
 			path := filepath.Join(fx.dir, "f")
-			changes := applyValidated(t, fileRes(path, map[string]any{"content": "new\n", "validate_cmd": "vox-dot-validator %"}), false)
+			changes := applyValidated(t, raltest.FileRes(path, map[string]any{"content": "new\n", "validate_cmd": "vox-dot-validator %"}), false)
 			if len(changes) != 1 || changes[0].Err != nil {
 				t.Fatalf("changes = %+v, want a successful create", changes)
 			}
@@ -529,7 +531,7 @@ func TestFileValidateCmdRunsAScriptWithoutAShebangThroughSh(t *testing.T) {
 		t.Fatal(err)
 	}
 	path := filepath.Join(fx.dir, "f")
-	changes := applyValidated(t, fileRes(path, map[string]any{"content": "new\n", "validate_cmd": script + " %"}), false)
+	changes := applyValidated(t, raltest.FileRes(path, map[string]any{"content": "new\n", "validate_cmd": script + " %"}), false)
 	if len(changes) != 1 || changes[0].Err != nil {
 		t.Fatalf("changes = %+v, want a successful create", changes)
 	}
@@ -548,7 +550,7 @@ func TestFileValidateCmdKilledBySignalHasNoStatus(t *testing.T) {
 	}
 	path := filepath.Join(fx.dir, "f")
 	seedOld(t, path, 0o644)
-	changes := applyValidated(t, fileRes(path, map[string]any{"content": "new\n", "validate_cmd": script}), false)
+	changes := applyValidated(t, raltest.FileRes(path, map[string]any{"content": "new\n", "validate_cmd": script}), false)
 	want := "Execution of '" + script + "' returned : "
 	if len(changes) != 1 || changes[0].Err == nil || changes[0].Err.Error() != want {
 		t.Fatalf("changes = %+v, want content failing with %q", changes, want)
@@ -565,7 +567,7 @@ func TestFileValidateCmdStripsTheOutput(t *testing.T) {
 	}
 	path := filepath.Join(fx.dir, "f")
 	seedOld(t, path, 0o644)
-	changes := applyValidated(t, fileRes(path, map[string]any{"content": "new\n", "validate_cmd": script}), false)
+	changes := applyValidated(t, raltest.FileRes(path, map[string]any{"content": "new\n", "validate_cmd": script}), false)
 	want := "Execution of '" + script + "' returned 2: a b"
 	if len(changes) != 1 || changes[0].Err == nil || changes[0].Err.Error() != want {
 		t.Fatalf("changes = %+v, want content failing with %q", changes, want)
@@ -650,12 +652,12 @@ func TestFileValidateRefusesValidateParameters(t *testing.T) {
 		{map[string]any{"validate_cmd": "/bin/true %", "recurse": true, "source": "/src"},
 			"File[/x]: validate_cmd with recurse => true is not implemented: each generated file's name would be substituted into the command"},
 	} {
-		err := File{}.Validate(fileRes("/x", tc.params))
+		err := File{}.Validate(raltest.FileRes("/x", tc.params))
 		if err == nil || err.Error() != tc.want {
 			t.Errorf("Validate(%v) = %v, want %q", tc.params, err, tc.want)
 		}
 	}
-	if err := (File{}).Validate(fileRes("/x", map[string]any{"validate_cmd": "/bin/true %", "validate_replacement": "@"})); err != nil {
+	if err := (File{}).Validate(raltest.FileRes("/x", map[string]any{"validate_cmd": "/bin/true %", "validate_replacement": "@"})); err != nil {
 		t.Errorf("Validate refused string parameters: %v", err)
 	}
 }
@@ -678,14 +680,14 @@ func TestFileValidateCmdOutputIsLoggedLineByLine(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			dir := t.TempDir()
 			path := filepath.Join(dir, "target")
-			r := fileRes(path, map[string]any{"content": "secret\n", "validate_cmd": tc.cmd})
+			r := raltest.FileRes(path, map[string]any{"content": "secret\n", "validate_cmd": tc.cmd})
 			src := fileSources(path)
 
-			ctx, got := debugContext("debug")
-			if _, _, err := (File{}).Apply(WithSources(ctx, src), r, false); err != nil {
+			ctx, got := raltest.DebugContext("debug")
+			if _, _, err := (File{}).Apply(sources.WithSources(ctx, src), r, false); err != nil {
 				t.Fatalf("Apply returned error: %v", err)
 			}
-			if lines := linesAt(*got, src.Resource); !slices.Equal(lines, tc.want) {
+			if lines := raltest.LinesAt(*got, src.Resource); !slices.Equal(lines, tc.want) {
 				t.Errorf("debug lines at %s = %q, want %q", src.Resource, lines, tc.want)
 			}
 		})
@@ -695,22 +697,22 @@ func TestFileValidateCmdOutputIsLoggedLineByLine(t *testing.T) {
 		fx := newValidateFixture(t)
 		path := filepath.Join(fx.dir, "target")
 		src := fileSources(path)
-		ctx, got := debugContext("debug")
-		changes, _, err := File{}.Apply(WithSources(ctx, src),
-			fileRes(path, map[string]any{"content": "x\n", "validate_cmd": fx.fail + " %"}), false)
+		ctx, got := raltest.DebugContext("debug")
+		changes, _, err := File{}.Apply(sources.WithSources(ctx, src),
+			raltest.FileRes(path, map[string]any{"content": "x\n", "validate_cmd": fx.fail + " %"}), false)
 		if err != nil || len(changes) == 0 || changes[0].Err == nil {
 			t.Fatalf("Apply = %+v, %v; want a failed ensure", changes, err)
 		}
-		if lines := linesAt(*got, src.Resource); len(lines) != 0 {
+		if lines := raltest.LinesAt(*got, src.Resource); len(lines) != 0 {
 			t.Errorf("debug lines = %q, want none", lines)
 		}
 	})
 
 	t.Run("notice drops them", func(t *testing.T) {
 		path := filepath.Join(t.TempDir(), "target")
-		ctx, got := debugContext("notice")
-		r := fileRes(path, map[string]any{"content": "x\n", "validate_cmd": `/bin/sh -c 'echo one' %`})
-		if _, _, err := (File{}).Apply(WithSources(ctx, fileSources(path)), r, false); err != nil {
+		ctx, got := raltest.DebugContext("notice")
+		r := raltest.FileRes(path, map[string]any{"content": "x\n", "validate_cmd": `/bin/sh -c 'echo one' %`})
+		if _, _, err := (File{}).Apply(sources.WithSources(ctx, fileSources(path)), r, false); err != nil {
 			t.Fatalf("Apply returned error: %v", err)
 		}
 		if len(*got) != 0 {
@@ -732,7 +734,7 @@ func TestValidateCmdOutputRedactedWhenContentMarked(t *testing.T) {
 	for name, mark := range marks {
 		t.Run(name+" failure", func(t *testing.T) {
 			path := filepath.Join(t.TempDir(), "target")
-			r := fileRes(path, map[string]any{"content": "x\n", "validate_cmd": failCmd})
+			r := raltest.FileRes(path, map[string]any{"content": "x\n", "validate_cmd": failCmd})
 			mark(&r)
 			changes := applyValidated(t, r, false)
 			if len(changes) == 0 || changes[0].Err == nil {
@@ -747,13 +749,13 @@ func TestValidateCmdOutputRedactedWhenContentMarked(t *testing.T) {
 		t.Run(name+" success logs no output", func(t *testing.T) {
 			path := filepath.Join(t.TempDir(), "target")
 			src := fileSources(path)
-			r := fileRes(path, map[string]any{"content": "x\n", "validate_cmd": `/bin/sh -c 'echo s3cret-token' %`})
+			r := raltest.FileRes(path, map[string]any{"content": "x\n", "validate_cmd": `/bin/sh -c 'echo s3cret-token' %`})
 			mark(&r)
-			ctx, got := debugContext("debug")
-			if _, _, err := (File{}).Apply(WithSources(ctx, src), r, false); err != nil {
+			ctx, got := raltest.DebugContext("debug")
+			if _, _, err := (File{}).Apply(sources.WithSources(ctx, src), r, false); err != nil {
 				t.Fatalf("Apply returned error: %v", err)
 			}
-			if lines := linesAt(*got, src.Resource); len(lines) != 0 {
+			if lines := raltest.LinesAt(*got, src.Resource); len(lines) != 0 {
 				t.Errorf("debug lines = %q, want none", lines)
 			}
 		})
@@ -761,7 +763,7 @@ func TestValidateCmdOutputRedactedWhenContentMarked(t *testing.T) {
 
 	t.Run("unmarked failure keeps the output", func(t *testing.T) {
 		path := filepath.Join(t.TempDir(), "target")
-		changes := applyValidated(t, fileRes(path, map[string]any{"content": "x\n", "validate_cmd": failCmd}), false)
+		changes := applyValidated(t, raltest.FileRes(path, map[string]any{"content": "x\n", "validate_cmd": failCmd}), false)
 		if len(changes) == 0 || changes[0].Err == nil || !strings.HasSuffix(changes[0].Err.Error(), "returned 3: s3cret-token") {
 			t.Fatalf("changes = %+v, want a failure ending returned 3: s3cret-token", changes)
 		}
@@ -769,11 +771,26 @@ func TestValidateCmdOutputRedactedWhenContentMarked(t *testing.T) {
 
 	t.Run("another marked attribute does not redact", func(t *testing.T) {
 		path := filepath.Join(t.TempDir(), "target")
-		r := fileRes(path, map[string]any{"content": "x\n", "mode": "0600", "validate_cmd": failCmd})
+		r := raltest.FileRes(path, map[string]any{"content": "x\n", "mode": "0600", "validate_cmd": failCmd})
 		r.SensitiveParameters = []string{"mode"}
 		changes := applyValidated(t, r, false)
 		if len(changes) == 0 || changes[0].Err == nil || !strings.HasSuffix(changes[0].Err.Error(), "returned 3: s3cret-token") {
 			t.Fatalf("changes = %+v, want the output kept", changes)
 		}
 	})
+}
+
+func TestValidateCmdTruncationWarns(t *testing.T) {
+	raltest.WithOutputCap(t, 4)
+	ctx, got := raltest.DebugContext("notice")
+	ctx = sources.WithSources(ctx, sources.Sources{Ref: "File[/x]"})
+	path := filepath.Join(t.TempDir(), "f")
+	r := raltest.FileRes(path, map[string]any{"content": "new\n", "validate_cmd": "printf abcdefgh; true"})
+	if _, _, err := (File{}).Apply(ctx, r, false); err != nil {
+		t.Fatal(err)
+	}
+	if len(*got) != 1 || (*got)[0].Level != "warning" || !strings.HasPrefix((*got)[0].Message, "File[/x]: output of ") ||
+		!strings.HasSuffix((*got)[0].Message, " truncated at 64 MiB") {
+		t.Errorf("entries = %+v, want one truncation warning", *got)
+	}
 }

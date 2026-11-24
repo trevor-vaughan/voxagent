@@ -1,6 +1,8 @@
-package ral
+package rubyvalue
 
-import "testing"
+import (
+	"testing"
+)
 
 // Expected values were measured with ruby 3.4.9, e.g.
 //
@@ -26,8 +28,8 @@ func TestRubyInspect(t *testing.T) {
 		{"\xff", `"\xFF"`},
 		{"", `""`},
 	} {
-		if got := rubyInspect(tt.in); got != tt.want {
-			t.Errorf("rubyInspect(%q) = %s, want %s", tt.in, got, tt.want)
+		if got := Inspect(tt.in); got != tt.want {
+			t.Errorf("Inspect(%q) = %s, want %s", tt.in, got, tt.want)
 		}
 	}
 }
@@ -49,8 +51,8 @@ func TestRubyInspectValue(t *testing.T) {
 		{[]any{}, "[]"},
 		{nil, "nil"},
 	} {
-		if got := rubyInspectValue(tt.in); got != tt.want {
-			t.Errorf("rubyInspectValue(%v) = %s, want %s", tt.in, got, tt.want)
+		if got := InspectValue(tt.in); got != tt.want {
+			t.Errorf("InspectValue(%v) = %s, want %s", tt.in, got, tt.want)
 		}
 	}
 }

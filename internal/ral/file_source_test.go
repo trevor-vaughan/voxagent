@@ -13,6 +13,7 @@ import (
 	"testing"
 
 	"github.com/voxagent/voxagent/internal/catalog"
+	"github.com/voxagent/voxagent/internal/lib/raltest"
 )
 
 // source is read locally: a path or a file: URI. puppet:, http: and https:
@@ -132,7 +133,7 @@ func TestResolveSourceTakesTheFirstThatExists(t *testing.T) {
 	if err := os.Symlink(filepath.Join(dir, "nowhere"), dangling); err != nil {
 		t.Fatal(err)
 	}
-	r := fileRes("/dst", map[string]any{"source": []any{filepath.Join(dir, "missing"), dangling, real}})
+	r := raltest.FileRes("/dst", map[string]any{"source": []any{filepath.Join(dir, "missing"), dangling, real}})
 	src, err := resolveSource(osFS{}, r, "production", nil)
 	if err != nil {
 		t.Fatalf("resolveSource: %v", err)
@@ -149,7 +150,7 @@ func TestResolveSourceMissingEverywhereNamesEveryCandidate(t *testing.T) {
 	if err := os.Symlink(filepath.Join(dir, "nowhere"), dangling); err != nil {
 		t.Fatal(err)
 	}
-	r := fileRes("/dst", map[string]any{"source": []any{filepath.Join(dir, "missing") + "/", dangling}})
+	r := raltest.FileRes("/dst", map[string]any{"source": []any{filepath.Join(dir, "missing") + "/", dangling}})
 	_, err := resolveSource(osFS{}, r, "production", nil)
 	want := "Could not retrieve information from environment production source(s) file://" +
 		filepath.Join(dir, "missing") + ", file://" + dangling
@@ -160,7 +161,7 @@ func TestResolveSourceMissingEverywhereNamesEveryCandidate(t *testing.T) {
 
 func TestResolveSourceDirectory(t *testing.T) {
 	dir := t.TempDir()
-	src, err := resolveSource(osFS{}, fileRes("/dst", map[string]any{"source": dir}), "production", nil)
+	src, err := resolveSource(osFS{}, raltest.FileRes("/dst", map[string]any{"source": dir}), "production", nil)
 	if err != nil || !src.isDir || src.sum != "" {
 		t.Errorf("resolveSource = %+v, %v; want a directory with no checksum", src, err)
 	}
@@ -177,7 +178,7 @@ func TestResolveSourceRefusesASpecialFile(t *testing.T) {
 	for source, want := range map[string]string{
 		fifo: "source file://" + fifo + " is not a regular file or a directory; only those can be a source",
 	} {
-		_, err := resolveSource(osFS{}, fileRes("/dst", map[string]any{"source": source}), "production", nil)
+		_, err := resolveSource(osFS{}, raltest.FileRes("/dst", map[string]any{"source": source}), "production", nil)
 		if err == nil || err.Error() != want {
 			t.Errorf("%s: err = %v, want %q", source, err, want)
 		}
@@ -196,7 +197,7 @@ func TestResolveSourceUnreadableFileIsAMetadataError(t *testing.T) {
 	if err := os.Chmod(path, 0o200); err != nil {
 		t.Fatal(err)
 	}
-	_, err := resolveSource(osFS{}, fileRes("/dst", map[string]any{"source": path}), "production", nil)
+	_, err := resolveSource(osFS{}, raltest.FileRes("/dst", map[string]any{"source": path}), "production", nil)
 	if err == nil || !strings.HasPrefix(err.Error(), "Could not retrieve file metadata for file://"+path+": ") ||
 		!strings.Contains(err.Error(), "permission denied") {
 		t.Errorf("err = %v, want a metadata error naming the source", err)
@@ -217,7 +218,7 @@ func TestFileSourceCreatesAFileWithTheSourcesContent(t *testing.T) {
 		t.Fatal(err)
 	}
 	dst := filepath.Join(dir, "dst")
-	changes, _, err := File{}.Apply(context.Background(), fileRes(dst, map[string]any{"source": src}), false)
+	changes, _, err := File{}.Apply(context.Background(), raltest.FileRes(dst, map[string]any{"source": src}), false)
 	if err != nil || len(changes) != 1 {
 		t.Fatalf("Apply = %+v, %v; want one change", changes, err)
 	}
@@ -253,7 +254,7 @@ func TestFileSourceReplacesChangedContent(t *testing.T) {
 	if err := os.Chmod(dst, 0o640); err != nil {
 		t.Fatal(err)
 	}
-	r := fileRes(dst, map[string]any{"source": src})
+	r := raltest.FileRes(dst, map[string]any{"source": src})
 	changes, _, err := File{}.Apply(context.Background(), r, false)
 	wantMsg := "content changed '" + checksum([]byte("old\n")) + "' to '" + checksum([]byte("new\n")) + "'"
 	if err != nil || len(changes) != 1 || changes[0].Property != "content" || changes[0].Message != wantMsg {
@@ -281,7 +282,7 @@ func TestFileDirectorySourceOverridesEnsure(t *testing.T) {
 		srcDir := t.TempDir()
 		dst := filepath.Join(t.TempDir(), "d")
 		changes, _, err := File{}.Apply(context.Background(),
-			fileRes(dst, map[string]any{"ensure": ensure, "source": srcDir}), false)
+			raltest.FileRes(dst, map[string]any{"ensure": ensure, "source": srcDir}), false)
 		if err != nil || len(changes) != 1 || changes[0].Name != "directory_created" {
 			t.Errorf("ensure => %s: Apply = %+v, %v; want directory_created", ensure, changes, err)
 		}
@@ -302,7 +303,7 @@ func TestFileMissingSourceFailsEvenEnsureAbsent(t *testing.T) {
 	}
 	missing := filepath.Join(dir, "missing")
 	_, _, err := File{Environment: "production"}.Apply(context.Background(),
-		fileRes(dst, map[string]any{"ensure": "absent", "source": missing}), false)
+		raltest.FileRes(dst, map[string]any{"ensure": "absent", "source": missing}), false)
 	want := "Could not retrieve information from environment production source(s) file://" + missing
 	if err == nil || err.Error() != want {
 		t.Errorf("err = %v, want %q", err, want)
@@ -319,7 +320,7 @@ func TestFileSourceUnderNoopWritesNothing(t *testing.T) {
 		t.Fatal(err)
 	}
 	dst := filepath.Join(dir, "dst")
-	changes, _, err := File{}.Apply(context.Background(), fileRes(dst, map[string]any{"source": src}), true)
+	changes, _, err := File{}.Apply(context.Background(), raltest.FileRes(dst, map[string]any{"source": src}), true)
 	if err != nil || len(changes) != 1 {
 		t.Fatalf("Apply = %+v, %v; want the one would-be create", changes, err)
 	}
@@ -327,7 +328,7 @@ func TestFileSourceUnderNoopWritesNothing(t *testing.T) {
 		t.Errorf("noop created the destination: %v", err)
 	}
 	if _, _, err := (File{}).Apply(context.Background(),
-		fileRes(dst, map[string]any{"source": filepath.Join(dir, "missing")}), true); err == nil {
+		raltest.FileRes(dst, map[string]any{"source": filepath.Join(dir, "missing")}), true); err == nil {
 		t.Error("a missing source passed under noop; Puppet fails it")
 	}
 }
@@ -384,7 +385,7 @@ func TestCreateFileDiscardsAMismatchedWrite(t *testing.T) {
 func TestFileSourceMismatchOnCreateIsAttributedToEnsureUnwrapped(t *testing.T) {
 	dst := filepath.Join(t.TempDir(), "new")
 	c := mismatched("new\n", "changed\n")
-	r := fileRes(dst, nil)
+	r := raltest.FileRes(dst, nil)
 	r.File, r.Line = "/etc/site.pp", 3
 	changes, _, err := applyFile(context.Background(), osFS{}, dst, r, false, false, &c, nil, nil)
 	if err != nil || len(changes) != 1 || changes[0].Property != "ensure" || changes[0].Err == nil {
@@ -407,7 +408,7 @@ func TestFileSourceChangedAfterResolutionIsDiscarded(t *testing.T) {
 	if err := os.WriteFile(dst, []byte("old\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	resolved, err := resolveSource(osFS{}, fileRes(dst, map[string]any{"source": src}), "production", nil)
+	resolved, err := resolveSource(osFS{}, raltest.FileRes(dst, map[string]any{"source": src}), "production", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -465,7 +466,7 @@ func TestFileEmptySourceListIsASourceThatIsMissingEverywhere(t *testing.T) {
 		{"source": []any{}},
 		{"ensure": "absent", "source": []any{}},
 	} {
-		_, _, err := File{Environment: "production"}.Apply(context.Background(), fileRes(dst, params), false)
+		_, _, err := File{Environment: "production"}.Apply(context.Background(), raltest.FileRes(dst, params), false)
 		want := "Could not retrieve information from environment production source(s) "
 		if err == nil || err.Error() != want {
 			t.Errorf("%v: err = %v, want %q", params, err, want)
@@ -474,7 +475,7 @@ func TestFileEmptySourceListIsASourceThatIsMissingEverywhere(t *testing.T) {
 	if _, err := os.Lstat(dst); !os.IsNotExist(err) {
 		t.Errorf("the destination was created: %v", err)
 	}
-	if err := (File{}).Validate(fileRes(dst, map[string]any{"content": "x", "source": []any{}})); err == nil {
+	if err := (File{}).Validate(raltest.FileRes(dst, map[string]any{"content": "x", "source": []any{}})); err == nil {
 		t.Error("content with source => [] passed Validate; Puppet counts it as two creators")
 	}
 }
@@ -492,7 +493,7 @@ func TestResolveSourceReadsAFileURIPathLiterally(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	src, err := resolveSource(osFS{}, fileRes("/dst", map[string]any{"source": "file://" + dir + "/a%20b/f"}), "production", nil)
+	src, err := resolveSource(osFS{}, raltest.FileRes("/dst", map[string]any{"source": "file://" + dir + "/a%20b/f"}), "production", nil)
 	if err != nil || src.sum != checksum([]byte("percent\n")) {
 		t.Errorf("resolveSource = %+v, %v; want the literal a%%20b/f", src, err)
 	}
@@ -507,7 +508,7 @@ func TestFileSourceVanishingBeforeCreateLeavesNothing(t *testing.T) {
 	if err := os.WriteFile(src, []byte("x"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	resolved, err := resolveSource(osFS{}, fileRes("/dst", map[string]any{"source": src}), "production", nil)
+	resolved, err := resolveSource(osFS{}, raltest.FileRes("/dst", map[string]any{"source": src}), "production", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -516,7 +517,7 @@ func TestFileSourceVanishingBeforeCreateLeavesNothing(t *testing.T) {
 	}
 	dst := filepath.Join(dir, "dst")
 	c := sourceContent(resolved)
-	changes, _, err := applyFile(context.Background(), osFS{}, dst, fileRes(dst, nil), false, false, &c, nil, nil)
+	changes, _, err := applyFile(context.Background(), osFS{}, dst, raltest.FileRes(dst, nil), false, false, &c, nil, nil)
 	if err != nil || len(changes) != 1 || changes[0].Property != "ensure" || changes[0].Err == nil {
 		t.Fatalf("applyFile = %+v, %v; want one failed ensure change", changes, err)
 	}
@@ -564,7 +565,7 @@ func TestFileSymlinkSourceUnderManageMakesALink(t *testing.T) {
 	dir := symlinkSource(t)
 	d := filepath.Join(dir, "d")
 	changes, _, err := (File{}).Apply(context.Background(),
-		fileRes(d, map[string]any{"source": filepath.Join(dir, "lnk")}), false)
+		raltest.FileRes(d, map[string]any{"source": filepath.Join(dir, "lnk")}), false)
 	if err != nil || len(changes) != 1 || changes[0].Name != "link_created" || changes[0].Message != "created" {
 		t.Fatalf("Apply = %+v, %v", changes, err)
 	}
@@ -578,7 +579,7 @@ func TestFileSymlinkSourceUnderManageReplacesAFile(t *testing.T) {
 	d := filepath.Join(dir, "d")
 	mustWrite(t, d, "old\n")
 	changes, _, err := (File{}).Apply(context.Background(),
-		fileRes(d, map[string]any{"source": filepath.Join(dir, "lnk")}), false)
+		raltest.FileRes(d, map[string]any{"source": filepath.Join(dir, "lnk")}), false)
 	if err != nil || len(changes) != 1 || changes[0].Name != "link_created" ||
 		changes[0].Message != "ensure changed 'file' to 'link'" {
 		t.Fatalf("Apply = %+v, %v", changes, err)
@@ -591,7 +592,7 @@ func TestFileSymlinkSourceUnderManageReplacesAFile(t *testing.T) {
 // A second run finds the link in place: nothing to do.
 func TestFileSymlinkSourceUnderManageIsIdempotent(t *testing.T) {
 	dir := symlinkSource(t)
-	r := fileRes(filepath.Join(dir, "d"), map[string]any{"source": filepath.Join(dir, "lnk")})
+	r := raltest.FileRes(filepath.Join(dir, "d"), map[string]any{"source": filepath.Join(dir, "lnk")})
 	if _, _, err := (File{}).Apply(context.Background(), r, false); err != nil {
 		t.Fatal(err)
 	}
@@ -606,7 +607,7 @@ func TestFileSymlinkSourceUnderManageNoopCreatesNothing(t *testing.T) {
 	dir := symlinkSource(t)
 	d := filepath.Join(dir, "d")
 	changes, _, err := (File{}).Apply(context.Background(),
-		fileRes(d, map[string]any{"source": filepath.Join(dir, "lnk")}), true)
+		raltest.FileRes(d, map[string]any{"source": filepath.Join(dir, "lnk")}), true)
 	if err != nil || len(changes) != 1 || changes[0].Name != "link_created" {
 		t.Fatalf("Apply = %+v, %v", changes, err)
 	}
@@ -623,7 +624,7 @@ func TestFileDanglingSymlinkSourceIsMissing(t *testing.T) {
 		t.Fatal(err)
 	}
 	_, _, err := (File{}).Apply(context.Background(),
-		fileRes(filepath.Join(dir, "d"), map[string]any{"source": filepath.Join(dir, "lnk")}), false)
+		raltest.FileRes(filepath.Join(dir, "d"), map[string]any{"source": filepath.Join(dir, "lnk")}), false)
 	if err == nil || !strings.Contains(err.Error(), "Could not retrieve information from environment") {
 		t.Fatalf("err = %v; want the missing-source failure", err)
 	}
@@ -633,7 +634,7 @@ func TestFileSymlinkSourceUnderFollowCopiesTheTarget(t *testing.T) {
 	dir := symlinkSource(t)
 	d := filepath.Join(dir, "d")
 	changes, _, err := (File{}).Apply(context.Background(),
-		fileRes(d, map[string]any{"source": "file://" + filepath.Join(dir, "lnk"), "links": "follow"}), false)
+		raltest.FileRes(d, map[string]any{"source": "file://" + filepath.Join(dir, "lnk"), "links": "follow"}), false)
 	if err != nil || len(changes) != 1 || changes[0].Name != "file_created" ||
 		changes[0].Message != "defined content as '"+checksum([]byte("z\n"))+"'" {
 		t.Fatalf("Apply = %+v, %v", changes, err)
@@ -648,7 +649,7 @@ func TestFileSymlinkSourceWithEnsureAbsentCreatesNoLink(t *testing.T) {
 	dir := symlinkSource(t)
 	d := filepath.Join(dir, "d")
 	if _, _, err := (File{}).Apply(context.Background(),
-		fileRes(d, map[string]any{"source": filepath.Join(dir, "lnk"), "ensure": "absent"}), false); err != nil {
+		raltest.FileRes(d, map[string]any{"source": filepath.Join(dir, "lnk"), "ensure": "absent"}), false); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := os.Lstat(d); !os.IsNotExist(err) {
@@ -676,7 +677,7 @@ func TestOpenSourceFollowRefusesANonRegularDescriptor(t *testing.T) {
 	if err == nil || !strings.Contains(err.Error(), "no longer a regular file") {
 		t.Errorf("openSource = %v; want a refusal", err)
 	}
-	r := fileRes(filepath.Join(dir, "d"), map[string]any{"source": filepath.Join(dir, "lnk"), "links": "follow"})
+	r := raltest.FileRes(filepath.Join(dir, "d"), map[string]any{"source": filepath.Join(dir, "lnk"), "links": "follow"})
 	if _, err := resolveSource(fsys, r, "production", nil); err == nil {
 		t.Error("resolveSource accepted a source whose descriptor is not a regular file")
 	}
@@ -695,12 +696,12 @@ func TestFileSupportsMappedPuppetSource(t *testing.T) {
 		if !f.SupportsValue("source", v) {
 			t.Errorf("SupportsValue(source, %q) = false, want true", v)
 		}
-		if err := f.Validate(fileRes("/dst", map[string]any{"source": v})); err != nil {
+		if err := f.Validate(raltest.FileRes("/dst", map[string]any{"source": v})); err != nil {
 			t.Errorf("Validate(source => %q) = %v", v, err)
 		}
 	}
 	gaps := Preflight(NewRegistry(f), &catalog.Catalog{Resources: []catalog.Resource{
-		fileRes("/dst", map[string]any{"source": []any{"puppet:///modules/m/f", "/srv/a"}}),
+		raltest.FileRes("/dst", map[string]any{"source": []any{"puppet:///modules/m/f", "/srv/a"}}),
 	}})
 	if len(gaps) != 0 {
 		t.Errorf("gaps = %v, want none", gaps)
@@ -726,7 +727,7 @@ func TestFileRefusesUnmappedPuppetSource(t *testing.T) {
 			t.Errorf("Sources %v: SupportsValue(source, %q) = true, want false", tc.f.Sources, tc.value)
 		}
 		gaps := Preflight(NewRegistry(tc.f), &catalog.Catalog{Resources: []catalog.Resource{
-			fileRes("/dst", map[string]any{"source": tc.value}),
+			raltest.FileRes("/dst", map[string]any{"source": tc.value}),
 		}})
 		want := `File[/dst]: source => "` + tc.value + `" is not implemented`
 		if len(gaps) != 1 || !strings.HasPrefix(gaps[0].String(), want) {
@@ -756,7 +757,7 @@ func TestSourceShownKeepsPuppetURI(t *testing.T) {
 	}
 	dst := filepath.Join(t.TempDir(), "f")
 	f := File{Environment: "production", Sources: map[string]string{"puppet:///modules/m/f": dl}}
-	if _, _, err := f.Apply(context.Background(), fileRes(dst, map[string]any{"source": "puppet:///modules/m/f"}), false); err != nil {
+	if _, _, err := f.Apply(context.Background(), raltest.FileRes(dst, map[string]any{"source": "puppet:///modules/m/f"}), false); err != nil {
 		t.Fatalf("Apply: %v", err)
 	}
 	if b, err := os.ReadFile(dst); err != nil || string(b) != "served\n" {
@@ -776,7 +777,7 @@ func TestMappedSourceErrorNamesURINotDownload(t *testing.T) {
 	}
 	const uri = "puppet:///modules/m/f"
 	sources := map[string]string{uri: dl}
-	r := fileRes(filepath.Join(t.TempDir(), "d"), map[string]any{"source": uri})
+	r := raltest.FileRes(filepath.Join(t.TempDir(), "d"), map[string]any{"source": uri})
 	swapped := swappedOpenFS{dir: t.TempDir()}
 	check := func(what string, err error) {
 		t.Helper()
@@ -816,7 +817,7 @@ func TestMappedPuppetSourceRecurseChildShown(t *testing.T) {
 	}
 	const uri = "puppet:///modules/m/tree/"
 	f := File{Environment: "production", Sources: map[string]string{uri: dl}}
-	parent := fileRes(dst, map[string]any{"recurse": true, "source": uri})
+	parent := raltest.FileRes(dst, map[string]any{"recurse": true, "source": uri})
 	children, _, err := f.Generate(context.Background(), parent, noneManaged)
 	if err != nil {
 		t.Fatal(err)
@@ -868,7 +869,7 @@ func TestMappedMissingPuppetSourceMessage(t *testing.T) {
 	absent := filepath.Join(t.TempDir(), "absent")
 	f := File{Environment: "production", Sources: map[string]string{"puppet:///modules/m/missing": absent}}
 	_, _, err := f.Apply(context.Background(),
-		fileRes(filepath.Join(t.TempDir(), "f"), map[string]any{"source": []any{"puppet:///modules/m/missing", absent + "/"}}), false)
+		raltest.FileRes(filepath.Join(t.TempDir(), "f"), map[string]any{"source": []any{"puppet:///modules/m/missing", absent + "/"}}), false)
 	want := "Could not retrieve information from environment production source(s) puppet:///modules/m/missing, file://" + absent
 	if err == nil || err.Error() != want {
 		t.Errorf("err = %v\nwant %q", err, want)

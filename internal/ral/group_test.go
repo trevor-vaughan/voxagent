@@ -10,6 +10,10 @@ import (
 	"testing"
 
 	"github.com/voxagent/voxagent/internal/catalog"
+	"github.com/voxagent/voxagent/internal/lib/command"
+	"github.com/voxagent/voxagent/internal/lib/nameservice"
+	"github.com/voxagent/voxagent/internal/lib/raltest"
+	"github.com/voxagent/voxagent/internal/lib/sources"
 )
 
 // runResult is what recordingRunner answers for one command.
@@ -28,29 +32,29 @@ type recordingRunner struct {
 	results map[string]runResult
 }
 
-func (r *recordingRunner) run(_ context.Context, _ argvOpts, name string, args ...string) (int, string, error) {
+func (r *recordingRunner) Run(_ context.Context, _ command.ArgvOpts, name string, args ...string) (int, string, error) {
 	r.calls = append(r.calls, strings.Join(append([]string{name}, args...), " "))
 	res := r.results[strings.Join(append([]string{filepath.Base(name)}, args...), " ")]
 	return res.code, res.out, res.err
 }
 
-// groupNSS is fakeNSS plus what the recording runner has done: a group that
+// groupNSS is raltest.FakeNSS plus what the recording runner has done: a group that
 // groupadd created reads back as added[name], so getgrnam_r after the command
 // sees it. It counts user lookups, which noop must not make.
 type groupNSS struct {
-	fakeNSS
+	raltest.FakeNSS
 	runner    *recordingRunner
-	added     map[string]groupEntry
+	added     map[string]nameservice.GroupEntry
 	userReads int
 }
 
-func (n *groupNSS) user(name string) (passwdEntry, bool, error) {
+func (n *groupNSS) User(name string) (nameservice.PasswdEntry, bool, error) {
 	n.userReads++
-	return n.fakeNSS.user(name)
+	return n.FakeNSS.User(name)
 }
 
-func (n *groupNSS) group(name string) (groupEntry, bool, error) {
-	if g, ok, err := n.fakeNSS.group(name); ok || err != nil {
+func (n *groupNSS) Group(name string) (nameservice.GroupEntry, bool, error) {
+	if g, ok, err := n.FakeNSS.Group(name); ok || err != nil {
 		return g, ok, err
 	}
 	for _, c := range n.runner.calls {
@@ -58,13 +62,13 @@ func (n *groupNSS) group(name string) (groupEntry, bool, error) {
 			if g, ok := n.added[name]; ok {
 				return g, true, nil
 			}
-			return groupEntry{Name: name, GID: 5000}, true, nil
+			return nameservice.GroupEntry{Name: name, GID: 5000}, true, nil
 		}
 	}
-	return groupEntry{}, false, nil
+	return nameservice.GroupEntry{}, false, nil
 }
 
-// withShadowBin points shadowCommand at a directory holding executable
+// withShadowBin points nameservice.ShadowCommand at a directory holding executable
 // stand-ins for the shadow-utils commands and returns it.
 func withShadowBin(t *testing.T) string {
 	t.Helper()
@@ -74,13 +78,13 @@ func withShadowBin(t *testing.T) string {
 			t.Fatal(err)
 		}
 	}
-	saved := shadowPath
-	shadowPath = []string{dir}
-	t.Cleanup(func() { shadowPath = saved })
+	saved := nameservice.ShadowPath
+	nameservice.ShadowPath = []string{dir}
+	t.Cleanup(func() { nameservice.ShadowPath = saved })
 	return dir
 }
 
-var hostUsers = map[string]passwdEntry{
+var hostUsers = map[string]nameservice.PasswdEntry{
 	"root": {Name: "root"}, "bin": {Name: "bin", UID: 1}, "daemon": {Name: "daemon", UID: 2},
 	"a": {Name: "a", UID: 1001}, "b": {Name: "b", UID: 1002},
 }
@@ -91,11 +95,11 @@ func groupRes(title string, params map[string]any) catalog.Resource {
 
 // applyGroup runs Group.Apply against groups with a recording runner and
 // returns the changes, the commands run (with dir stripped to "/") and the NSS.
-func applyGroup(t *testing.T, r catalog.Resource, noop bool, groups []groupEntry, results map[string]runResult) ([]Change, []string, *groupNSS) {
+func applyGroup(t *testing.T, r catalog.Resource, noop bool, groups []nameservice.GroupEntry, results map[string]runResult) ([]Change, []string, *groupNSS) {
 	t.Helper()
 	dir := withShadowBin(t)
 	runner := &recordingRunner{results: results}
-	ns := &groupNSS{fakeNSS: fakeNSS{users: hostUsers, groups: groups}, runner: runner}
+	ns := &groupNSS{FakeNSS: raltest.FakeNSS{Users: hostUsers, Groups: groups}, runner: runner}
 	changes, warnings, err := Group{ns: ns, runner: runner}.Apply(context.Background(), r, noop)
 	if err != nil {
 		t.Fatalf("Apply: %v", err)
@@ -108,13 +112,6 @@ func applyGroup(t *testing.T, r catalog.Resource, noop bool, groups []groupEntry
 		calls[i] = strings.TrimPrefix(c, dir+"/")
 	}
 	return changes, calls, ns
-}
-
-func errText(err error) string {
-	if err == nil {
-		return ""
-	}
-	return err.Error()
 }
 
 func TestGroupValidate(t *testing.T) {
@@ -141,7 +138,7 @@ func TestGroupValidate(t *testing.T) {
 		{"g", map[string]any{"gid": 3000.5}, "Group[g]: gid => 3000.5 is not implemented"},
 		{"g", map[string]any{"members": []any{"a", 1.0}}, `Group[g]: members => ["a", 1] is not implemented`},
 	} {
-		got := errText(Group{}.Validate(groupRes(tc.title, tc.params)))
+		got := raltest.ErrText(Group{}.Validate(groupRes(tc.title, tc.params)))
 		if got != tc.want {
 			t.Errorf("%v:\n got %q\nwant %q", tc.params, got, tc.want)
 		}
@@ -210,7 +207,7 @@ func TestGroupCreateUnknownMemberFailsEnsure(t *testing.T) {
 	if want := []string{"groupadd g"}; !reflect.DeepEqual(calls, want) {
 		t.Errorf("commands = %q, want %q", calls, want)
 	}
-	if len(changes) != 1 || errText(changes[0].Err) != "Could not set 'present' on ensure: can't find user for x (file: /etc/site.pp, line: 3)" {
+	if len(changes) != 1 || raltest.ErrText(changes[0].Err) != "Could not set 'present' on ensure: can't find user for x (file: /etc/site.pp, line: 3)" {
 		t.Errorf("changes = %+v", changes)
 	}
 }
@@ -220,8 +217,8 @@ func TestGroupCreateUnknownMemberFailsEnsure(t *testing.T) {
 func TestGroupCreatePurgesReadBackMembers(t *testing.T) {
 	dir := withShadowBin(t)
 	runner := &recordingRunner{}
-	ns := &groupNSS{fakeNSS: fakeNSS{users: hostUsers}, runner: runner,
-		added: map[string]groupEntry{"g": {Name: "g", GID: 5000, Members: []string{"bin"}}}}
+	ns := &groupNSS{FakeNSS: raltest.FakeNSS{Users: hostUsers}, runner: runner,
+		added: map[string]nameservice.GroupEntry{"g": {Name: "g", GID: 5000, Members: []string{"bin"}}}}
 	r := groupRes("g", map[string]any{"members": []any{"daemon"}, "auth_membership": true})
 	if _, _, err := (Group{ns: ns, runner: runner}).Apply(context.Background(), r, false); err != nil {
 		t.Fatal(err)
@@ -235,13 +232,13 @@ func TestGroupCreatePurgesReadBackMembers(t *testing.T) {
 func TestGroupCreateFailure(t *testing.T) {
 	dir := withShadowBin(t)
 	runner := &recordingRunner{results: map[string]runResult{"groupadd g": {code: 9, out: "groupadd: group 'g' already exists\n"}}}
-	ns := &groupNSS{fakeNSS: fakeNSS{users: hostUsers}, runner: runner}
+	ns := &groupNSS{FakeNSS: raltest.FakeNSS{Users: hostUsers}, runner: runner}
 	changes, _, err := Group{ns: ns, runner: runner}.Apply(context.Background(), groupRes("g", map[string]any{"members": []any{"bin"}}), false)
 	if err != nil {
 		t.Fatal(err)
 	}
 	want := "Could not create group g: Execution of '" + dir + "/groupadd g' returned 9: groupadd: group 'g' already exists"
-	if len(changes) != 1 || errText(changes[0].Err) != want {
+	if len(changes) != 1 || raltest.ErrText(changes[0].Err) != want {
 		t.Errorf("changes = %+v, want Err %q", changes, want)
 	}
 	if len(runner.calls) != 1 {
@@ -252,7 +249,7 @@ func TestGroupCreateFailure(t *testing.T) {
 // M37: gid then members; minimum membership adds, inclusive purges first.
 func TestGroupModify(t *testing.T) {
 	t.Run("minimum", func(t *testing.T) {
-		groups := []groupEntry{{Name: "g14a", GID: 3000, Members: []string{"bin"}}}
+		groups := []nameservice.GroupEntry{{Name: "g14a", GID: 3000, Members: []string{"bin"}}}
 		r := groupRes("g14a", map[string]any{"gid": 3001.0, "members": []any{"daemon"}, "auth_membership": false})
 		changes, calls, _ := applyGroup(t, r, false, groups, nil)
 		if want := []string{"groupmod -g 3001 g14a", "groupmod -aU daemon g14a"}; !reflect.DeepEqual(calls, want) {
@@ -268,7 +265,7 @@ func TestGroupModify(t *testing.T) {
 		}
 	})
 	t.Run("inclusive", func(t *testing.T) {
-		groups := []groupEntry{{Name: "g14b", GID: 3002, Members: []string{"bin"}}}
+		groups := []nameservice.GroupEntry{{Name: "g14b", GID: 3002, Members: []string{"bin"}}}
 		r := groupRes("g14b", map[string]any{"gid": "3003", "members": []any{"daemon"}, "auth_membership": true, "allowdupe": true})
 		changes, calls, _ := applyGroup(t, r, false, groups, nil)
 		want := []string{"groupmod -g 3003 -o g14b", "usermod -rG g14b bin", "groupmod -aU daemon g14b"}
@@ -285,14 +282,14 @@ func TestGroupModify(t *testing.T) {
 func TestGroupMembersContract(t *testing.T) {
 	t.Run("unknown user", func(t *testing.T) {
 		changes, calls, _ := applyGroup(t, groupRes("g15a", map[string]any{"members": []any{"nosuchuser"}}), false,
-			[]groupEntry{{Name: "g15a", GID: 1}}, nil)
+			[]nameservice.GroupEntry{{Name: "g15a", GID: 1}}, nil)
 		if len(calls) != 0 {
 			t.Errorf("commands ran: %q", calls)
 		}
 		want := []Change{{Property: "members", Was: []string{}, Is: []string{"nosuchuser"},
 			Message: "members changed  to nosuchuser", WasDisplay: "", IsDisplay: "nosuchuser", DisplayVerbatim: true,
 			Err: errors.New("can't find user for nosuchuser")}}
-		if len(changes) != 1 || errText(changes[0].Err) != "can't find user for nosuchuser" {
+		if len(changes) != 1 || raltest.ErrText(changes[0].Err) != "can't find user for nosuchuser" {
 			t.Fatalf("changes = %+v", changes)
 		}
 		changes[0].Err = want[0].Err
@@ -302,7 +299,7 @@ func TestGroupMembersContract(t *testing.T) {
 	})
 	t.Run("comma string never in sync", func(t *testing.T) {
 		changes, calls, _ := applyGroup(t, groupRes("g15b", map[string]any{"members": "a,b"}), false,
-			[]groupEntry{{Name: "g15b", GID: 1, Members: []string{"a", "b"}}}, nil)
+			[]nameservice.GroupEntry{{Name: "g15b", GID: 1, Members: []string{"a", "b"}}}, nil)
 		if want := []string{"groupmod -aU a,b g15b"}; !reflect.DeepEqual(calls, want) {
 			t.Errorf("commands = %q, want %q", calls, want)
 		}
@@ -312,7 +309,7 @@ func TestGroupMembersContract(t *testing.T) {
 	})
 	t.Run("empty inclusive", func(t *testing.T) {
 		changes, calls, _ := applyGroup(t, groupRes("g15c", map[string]any{"members": []any{}, "auth_membership": true}), false,
-			[]groupEntry{{Name: "g15c", GID: 1, Members: []string{"bin", "daemon"}}}, nil)
+			[]nameservice.GroupEntry{{Name: "g15c", GID: 1, Members: []string{"bin", "daemon"}}}, nil)
 		want := []string{"usermod -rG g15c bin", "usermod -rG g15c daemon", "groupmod -aU  g15c"}
 		if !reflect.DeepEqual(calls, want) {
 			t.Errorf("commands = %q, want %q", calls, want)
@@ -323,7 +320,7 @@ func TestGroupMembersContract(t *testing.T) {
 	})
 	t.Run("csv string adds", func(t *testing.T) {
 		changes, _, _ := applyGroup(t, groupRes("g15d", map[string]any{"members": "bin,daemon"}), false,
-			[]groupEntry{{Name: "g15d", GID: 1}}, nil)
+			[]nameservice.GroupEntry{{Name: "g15d", GID: 1}}, nil)
 		if len(changes) != 1 || changes[0].Message != "members changed  to bin,daemon" {
 			t.Errorf("changes = %+v", changes)
 		}
@@ -333,9 +330,9 @@ func TestGroupMembersContract(t *testing.T) {
 func TestGroupMembersFailures(t *testing.T) {
 	t.Run("groupmod", func(t *testing.T) {
 		changes, _, _ := applyGroup(t, groupRes("g", map[string]any{"members": []any{"bin"}}), false,
-			[]groupEntry{{Name: "g", GID: 1}}, map[string]runResult{"groupmod -aU bin g": {code: 6, out: "groupmod: bad\n"}})
-		if len(changes) != 1 || !strings.Contains(errText(changes[0].Err), "Could not set members on group[g]: Execution of '") ||
-			!strings.Contains(errText(changes[0].Err), "/groupmod -aU bin g' returned 6: groupmod: bad") {
+			[]nameservice.GroupEntry{{Name: "g", GID: 1}}, map[string]runResult{"groupmod -aU bin g": {code: 6, out: "groupmod: bad\n"}})
+		if len(changes) != 1 || !strings.Contains(raltest.ErrText(changes[0].Err), "Could not set members on group[g]: Execution of '") ||
+			!strings.Contains(raltest.ErrText(changes[0].Err), "/groupmod -aU bin g' returned 6: groupmod: bad") {
 			t.Errorf("changes = %+v", changes)
 		}
 		if changes[0].WasDisplay != "" || changes[0].IsDisplay != "bin" {
@@ -344,25 +341,25 @@ func TestGroupMembersFailures(t *testing.T) {
 	})
 	t.Run("purge stops at the first failure, unwrapped", func(t *testing.T) {
 		changes, calls, _ := applyGroup(t, groupRes("g", map[string]any{"members": []any{"bin"}, "auth_membership": true}), false,
-			[]groupEntry{{Name: "g", GID: 1, Members: []string{"a", "b"}}}, map[string]runResult{"usermod -rG g a": {code: 1, out: "usermod: no\n"}})
+			[]nameservice.GroupEntry{{Name: "g", GID: 1, Members: []string{"a", "b"}}}, map[string]runResult{"usermod -rG g a": {code: 1, out: "usermod: no\n"}})
 		if want := []string{"usermod -rG g a"}; !reflect.DeepEqual(calls, want) {
 			t.Errorf("commands = %q, want %q", calls, want)
 		}
-		if len(changes) != 1 || !strings.HasPrefix(errText(changes[0].Err), "Execution of '") {
+		if len(changes) != 1 || !strings.HasPrefix(raltest.ErrText(changes[0].Err), "Execution of '") {
 			t.Errorf("changes = %+v", changes)
 		}
 	})
 	t.Run("gid", func(t *testing.T) {
 		changes, _, _ := applyGroup(t, groupRes("g", map[string]any{"gid": 7.0}), false,
-			[]groupEntry{{Name: "g", GID: 1}}, map[string]runResult{"groupmod -g 7 g": {code: 4, out: "groupmod: GID '7' already exists\n"}})
-		if len(changes) != 1 || !strings.HasPrefix(errText(changes[0].Err), "Could not set gid on group[g]: Execution of '") {
+			[]nameservice.GroupEntry{{Name: "g", GID: 1}}, map[string]runResult{"groupmod -g 7 g": {code: 4, out: "groupmod: GID '7' already exists\n"}})
+		if len(changes) != 1 || !strings.HasPrefix(raltest.ErrText(changes[0].Err), "Could not set gid on group[g]: Execution of '") {
 			t.Errorf("changes = %+v", changes)
 		}
 	})
 	t.Run("start failure", func(t *testing.T) {
 		changes, _, _ := applyGroup(t, groupRes("g", map[string]any{"gid": 7.0}), false,
-			[]groupEntry{{Name: "g", GID: 1}}, map[string]runResult{"groupmod -g 7 g": {err: errors.New("fork/exec: no such file")}})
-		if len(changes) != 1 || errText(changes[0].Err) != "Could not set gid on group[g]: fork/exec: no such file" {
+			[]nameservice.GroupEntry{{Name: "g", GID: 1}}, map[string]runResult{"groupmod -g 7 g": {err: errors.New("fork/exec: no such file")}})
+		if len(changes) != 1 || raltest.ErrText(changes[0].Err) != "Could not set gid on group[g]: fork/exec: no such file" {
 			t.Errorf("changes = %+v", changes)
 		}
 	})
@@ -371,7 +368,7 @@ func TestGroupMembersFailures(t *testing.T) {
 // SIMP's Group[root]: inclusive membership already as wanted.
 func TestGroupMembersAuthInSyncRunsNothing(t *testing.T) {
 	changes, calls, ns := applyGroup(t, groupRes("root", map[string]any{"members": []any{"root"}, "auth_membership": true, "gid": 0.0}), false,
-		[]groupEntry{{Name: "root", GID: 0, Members: []string{"root"}}}, nil)
+		[]nameservice.GroupEntry{{Name: "root", GID: 0, Members: []string{"root"}}}, nil)
 	if len(changes) != 0 || len(calls) != 0 || ns.userReads != 0 {
 		t.Errorf("changes = %+v, commands = %q, user lookups = %d", changes, calls, ns.userReads)
 	}
@@ -382,7 +379,7 @@ func TestGroupDelete(t *testing.T) {
 	dir := withShadowBin(t)
 	runner := &recordingRunner{results: map[string]runResult{
 		"groupdel g16c": {code: 8, out: "groupdel: cannot remove the primary group of user 'u16c'\n"}}}
-	ns := &groupNSS{fakeNSS: fakeNSS{groups: []groupEntry{{Name: "g16b", GID: 3016}, {Name: "g16c", GID: 3017}}}, runner: runner}
+	ns := &groupNSS{FakeNSS: raltest.FakeNSS{Groups: []nameservice.GroupEntry{{Name: "g16b", GID: 3016}, {Name: "g16c", GID: 3017}}}, runner: runner}
 	g := Group{ns: ns, runner: runner}
 
 	changes, _, err := g.Apply(context.Background(), groupRes("g16b", map[string]any{"ensure": "absent"}), false)
@@ -393,13 +390,13 @@ func TestGroupDelete(t *testing.T) {
 
 	changes, _, _ = g.Apply(context.Background(), groupRes("g16c", map[string]any{"ensure": "absent"}), false)
 	wantErr := "Could not delete group g16c: Execution of '" + dir + "/groupdel g16c' returned 8: groupdel: cannot remove the primary group of user 'u16c'"
-	if len(changes) != 1 || errText(changes[0].Err) != wantErr {
+	if len(changes) != 1 || raltest.ErrText(changes[0].Err) != wantErr {
 		t.Errorf("g16c: %+v, want Err %q", changes, wantErr)
 	}
 
-	src := Sources{Resource: "/Stage[main]/Main/Group[g16d]"}
-	ctx, logs := debugContext("debug")
-	changes, _, err = g.Apply(WithSources(ctx, src), groupRes("g16d", map[string]any{"ensure": "absent"}), false)
+	src := sources.Sources{Resource: "/Stage[main]/Main/Group[g16d]"}
+	ctx, logs := raltest.DebugContext("debug")
+	changes, _, err = g.Apply(sources.WithSources(ctx, src), groupRes("g16d", map[string]any{"ensure": "absent"}), false)
 	if err != nil || len(changes) != 0 {
 		t.Errorf("g16d: %+v, %v", changes, err)
 	}
@@ -422,7 +419,7 @@ func TestGroupNoop(t *testing.T) {
 	}
 
 	changes, calls, ns = applyGroup(t, groupRes("g15a", map[string]any{"gid": 3001.0, "members": []any{"nosuchuser"}}), true,
-		[]groupEntry{{Name: "g15a", GID: 3000}}, nil)
+		[]nameservice.GroupEntry{{Name: "g15a", GID: 3000}}, nil)
 	if len(changes) != 2 || changes[0].Message != "gid changed 3000 to 3001 (noop)" ||
 		changes[1].Message != "members changed  to nosuchuser (noop)" || changes[1].Err != nil {
 		t.Errorf("modify: %+v", changes)
@@ -431,7 +428,7 @@ func TestGroupNoop(t *testing.T) {
 		t.Errorf("modify: commands %q, user lookups %d", calls, ns.userReads)
 	}
 
-	changes, calls, _ = applyGroup(t, groupRes("g16b", map[string]any{"ensure": "absent"}), true, []groupEntry{{Name: "g16b", GID: 1}}, nil)
+	changes, calls, _ = applyGroup(t, groupRes("g16b", map[string]any{"ensure": "absent"}), true, []nameservice.GroupEntry{{Name: "g16b", GID: 1}}, nil)
 	if len(changes) != 1 || changes[0].Message != "removed (noop)" || len(calls) != 0 {
 		t.Errorf("delete: %+v, %q", changes, calls)
 	}
@@ -440,12 +437,12 @@ func TestGroupNoop(t *testing.T) {
 // Ruby confines groupadd on its three commands; without them the provider is
 // unsuitable and transaction.rb:130 fails the resource.
 func TestGroupMissingCommandFailsTheResource(t *testing.T) {
-	saved := shadowPath
-	shadowPath = []string{t.TempDir()}
-	t.Cleanup(func() { shadowPath = saved })
+	saved := nameservice.ShadowPath
+	nameservice.ShadowPath = []string{t.TempDir()}
+	t.Cleanup(func() { nameservice.ShadowPath = saved })
 	runner := &recordingRunner{}
 	_, _, err := Group{ns: &groupNSS{runner: runner}, runner: runner}.Apply(context.Background(), groupRes("g", nil), true)
-	if errText(err) != "Provider groupadd is not functional on this host" {
+	if raltest.ErrText(err) != "Provider groupadd is not functional on this host" {
 		t.Errorf("err = %v", err)
 	}
 }
@@ -456,27 +453,11 @@ func TestGroupPurgeWithoutUsermod(t *testing.T) {
 		t.Fatal(err)
 	}
 	runner := &recordingRunner{}
-	ns := &groupNSS{fakeNSS: fakeNSS{users: hostUsers, groups: []groupEntry{{Name: "g", GID: 1, Members: []string{"a"}}}}, runner: runner}
+	ns := &groupNSS{FakeNSS: raltest.FakeNSS{Users: hostUsers, Groups: []nameservice.GroupEntry{{Name: "g", GID: 1, Members: []string{"a"}}}}, runner: runner}
 	changes, _, err := Group{ns: ns, runner: runner}.Apply(context.Background(),
 		groupRes("g", map[string]any{"members": []any{"bin"}, "auth_membership": true}), false)
-	if err != nil || len(changes) != 1 || errText(changes[0].Err) != "Command purgemember is missing" {
+	if err != nil || len(changes) != 1 || raltest.ErrText(changes[0].Err) != "Command purgemember is missing" {
 		t.Errorf("changes = %+v, err = %v", changes, err)
-	}
-}
-
-func TestRubyBool(t *testing.T) {
-	for _, tc := range []struct {
-		in   any
-		want bool
-	}{{true, true}, {false, false}, {"true", true}, {"Yes", true}, {"FALSE", false}, {"no", false}} {
-		if got, err := rubyBool(tc.in); err != nil || got != tc.want {
-			t.Errorf("rubyBool(%#v) = %v, %v", tc.in, got, err)
-		}
-	}
-	for _, in := range []any{"maybe", "", "y", 1.0, nil, []any{"true"}} {
-		if _, err := rubyBool(in); errText(err) != "expected a boolean value" {
-			t.Errorf("rubyBool(%#v) err = %v", in, err)
-		}
 	}
 }
 
@@ -493,15 +474,15 @@ func TestShadowCommandSearchesRubysPathInOrder(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	saved := shadowPath
-	shadowPath = []string{first, second}
-	t.Cleanup(func() { shadowPath = saved })
+	saved := nameservice.ShadowPath
+	nameservice.ShadowPath = []string{first, second}
+	t.Cleanup(func() { nameservice.ShadowPath = saved })
 	for _, c := range []string{"groupadd", "groupmod"} {
-		if got, err := shadowCommand(c); err != nil || got != filepath.Join(second, c) {
-			t.Errorf("shadowCommand(%s) = %q, %v; want the executable file in %s", c, got, err, second)
+		if got, err := nameservice.ShadowCommand(c); err != nil || got != filepath.Join(second, c) {
+			t.Errorf("nameservice.ShadowCommand(%s) = %q, %v; want the executable file in %s", c, got, err, second)
 		}
 	}
-	if _, err := shadowCommand("groupdel"); err == nil {
+	if _, err := nameservice.ShadowCommand("groupdel"); err == nil {
 		t.Error("missing command resolved")
 	}
 	if !reflect.DeepEqual(saved, []string{"/usr/sbin", "/usr/bin", "/sbin", "/bin"}) {

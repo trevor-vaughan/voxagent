@@ -124,12 +124,3 @@ func isMarked(p Provider, r catalog.Resource, attr string) bool {
 	_, ok := marked[attr]
 	return ok
 }
-
-// redactIf renders a value as format would, or as [redacted] when marked. The
-// replacement takes the format's quotes with it: 'x' becomes [redacted].
-func redactIf(marked bool, format string, a ...any) string {
-	if marked {
-		return "[redacted]"
-	}
-	return fmt.Sprintf(format, a...)
-}

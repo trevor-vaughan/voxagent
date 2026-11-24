@@ -13,6 +13,7 @@ import (
 	"syscall"
 
 	"github.com/voxagent/voxagent/internal/catalog"
+	"github.com/voxagent/voxagent/internal/lib/rubyvalue"
 )
 
 // softMaxFiles is Fileset's soft limit (file_serving/fileset.rb:64): a walk
@@ -49,7 +50,7 @@ var childExcluded = map[string]struct{}{
 // in batches, rather than one process per child in Apply
 // (prefetchChildDefaults).
 func (f File) Generate(ctx context.Context, r catalog.Resource, managed func(string) bool) ([]catalog.Resource, []Warning, error) {
-	if paramString(r, "recurse", "false") != "true" {
+	if rubyvalue.ParamString(r, "recurse", "false") != "true" {
 		return nil, nil, nil
 	}
 	parent := FilePath(r)
@@ -85,7 +86,7 @@ func (f File) Generate(ctx context.Context, r catalog.Resource, managed func(str
 	for rel := range sources {
 		all[rel] = struct{}{}
 	}
-	purge := paramString(r, "purge", "false") == "true"
+	purge := rubyvalue.ParamString(r, "purge", "false") == "true"
 	from := r
 	children := make([]catalog.Resource, 0, len(all))
 	for rel := range all {
@@ -204,7 +205,7 @@ func walkTree(dir string, redact bool) ([]string, []Warning, error) {
 		// once per walk; entries does not count the walk's own ".".
 		warnings = append(warnings, Warning{Source: "Puppet", Message: fmt.Sprintf(
 			"The directory %s contains %d entries, which exceeds the default soft limit %d and may cause excessive resource consumption and degraded performance. To remove this warning set a value for `max_files` parameter or consider using an alternate method to manage large directory trees",
-			redactIf(redact, "'%s'", dir), len(rels), softMaxFiles)})
+			rubyvalue.RedactIf(redact, "'%s'", dir), len(rels), softMaxFiles)})
 	}
 	return rels, warnings, nil
 }
@@ -264,7 +265,7 @@ func childSourceFS(r catalog.Resource, sources map[string]string) (rootFS, map[s
 	redact := sourceMarked(r)
 	if err != nil || !found || !filepath.IsAbs(dir) {
 		return rootFS{}, nil, fmt.Errorf("%s: source %s does not name %s inside a source directory",
-			r.Ref(), redactIf(redact, "%v", r.Parameters["source"]), rel)
+			r.Ref(), rubyvalue.RedactIf(redact, "%v", r.Parameters["source"]), rel)
 	}
 	root, err := openDirNoFollow(dir)
 	if err != nil {
@@ -277,7 +278,7 @@ func childSourceFS(r catalog.Resource, sources map[string]string) (rootFS, map[s
 		if childSources != nil {
 			shown = src
 		}
-		return rootFS{}, nil, fmt.Errorf("source %s is a symlink; ensure => link is not implemented", redactIf(redact, "%s", shown))
+		return rootFS{}, nil, fmt.Errorf("source %s is a symlink; ensure => link is not implemented", rubyvalue.RedactIf(redact, "%s", shown))
 	}
 	return rfs, childSources, nil
 }

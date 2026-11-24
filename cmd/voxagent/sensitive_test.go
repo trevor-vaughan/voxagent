@@ -287,7 +287,7 @@ func pid1IsNotSystemd() bool {
 }
 
 // fakeShadowBinary builds voxagent with its shadow-utils search path linked
-// to a directory of fakes (ral.shadowDirs), so a native User never runs the
+// to a directory of fakes (nameservice.shadowDirs), so a native User never runs the
 // host's useradd, usermod or chpasswd, as root or not. The fake useradd
 // refuses the names starting voxagent-leak-fail and the fake usermod refuses
 // nobody; both accept every other name. No fake prints its arguments or its
@@ -309,7 +309,7 @@ if [ "$name" = nobody ]; then echo "usermod: fake refusal of $name" >&2; exit 6;
 		}
 	}
 	bin := filepath.Join(t.TempDir(), "voxagent")
-	cmd := exec.Command("go", "build", "-ldflags", "-X github.com/voxagent/voxagent/internal/ral.shadowDirs="+fakes, "-o", bin, ".")
+	cmd := exec.Command("go", "build", "-ldflags", "-X github.com/voxagent/voxagent/internal/lib/nameservice.shadowDirs="+fakes, "-o", bin, ".")
 	if out, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("build failed: %v\n%s", err, out)
 	}

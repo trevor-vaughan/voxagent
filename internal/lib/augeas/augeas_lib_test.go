@@ -4,7 +4,7 @@
 // /opt/puppetlabs/puppet: `task dev:augeas-lib` builds them on the host and
 // runs them as root inside localhost/augeas-measure-el (spec §10). They fail,
 // never skip, when the library is missing.
-package ral
+package augeas
 
 import (
 	"os"
@@ -17,7 +17,7 @@ import (
 // openvoxRubyRoot is where openvox 8.33.0 installs ruby-augeas (spec §0 row 1).
 const openvoxRubyRoot = "/opt/puppetlabs/puppet/lib/ruby"
 
-func realLib(t *testing.T) augLib {
+func realLib(t *testing.T) Lib {
 	t.Helper()
 	if _, err := os.Stat(augeasLibPath); err != nil {
 		t.Fatalf("libaugeas is required here: %v", err)
@@ -31,9 +31,9 @@ func realLib(t *testing.T) augLib {
 
 // openReal opens a handle as ruby-augeas does for parsed_as? and the version
 // check: aug_init(NULL, NULL, AUG_NO_MODL_AUTOLOAD).
-func openReal(t *testing.T, lib augLib) augHandle {
+func openReal(t *testing.T, lib Lib) Handle {
 	t.Helper()
-	h, ok := lib.Init(nil, nil, augNoModlAutoload)
+	h, ok := lib.Init(nil, nil, NoModlAutoload)
 	if !ok {
 		t.Fatal("aug_init returned NULL")
 	}
@@ -43,7 +43,7 @@ func openReal(t *testing.T, lib augLib) augHandle {
 
 // loadSysctl loads file through the stock Sysctl lens, as augopen does for
 // the first resource of the class (spec §4.2 step 2).
-func loadSysctl(t *testing.T, lib augLib, h augHandle, file string) {
+func loadSysctl(t *testing.T, lib Lib, h Handle, file string) {
 	t.Helper()
 	lens, incl := "Sysctl.lns", file
 	if rc := lib.Set(h, "/augeas/load/Sysctl/lens", &lens); rc != 0 {
@@ -185,7 +185,7 @@ func TestRealMatchFreesZeroAndMany(t *testing.T) {
 }
 
 // parsedAs is CORE:571-593 over the raw binding (spec §4.3).
-func parsedAs(t *testing.T, lib augLib, lens, label string) bool {
+func parsedAs(t *testing.T, lib Lib, lens, label string) bool {
 	t.Helper()
 	h := openReal(t, lib)
 	in := label + " FOO\n"
@@ -280,7 +280,7 @@ func TestRealRefusesEmbeddedNUL(t *testing.T) {
 		t.Fatalf("/a = %v, %d after refused calls", got, rc)
 	}
 	nulLoadpath := "/tmp\x00/x"
-	if h2, ok := lib.Init(nil, &nulLoadpath, augNoModlAutoload); ok || h2 != 0 {
+	if h2, ok := lib.Init(nil, &nulLoadpath, NoModlAutoload); ok || h2 != 0 {
 		t.Errorf("init NUL loadpath = %v, %v; want 0, false", h2, ok)
 	}
 }

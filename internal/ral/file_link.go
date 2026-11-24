@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/voxagent/voxagent/internal/catalog"
+	"github.com/voxagent/voxagent/internal/lib/rubyvalue"
 )
 
 // linkTarget is the resource's link target after Puppet's munging: an
@@ -154,7 +155,7 @@ func mklink(ctx context.Context, fsys fileSystem, path string, r catalog.Resourc
 	// us and target's own value otherwise (type/file/target.rb:43).
 	wanted := wantedType(r, "link")
 	if !ensureSet {
-		wanted = redactIf(isMarked(File{}, r, "target"), "%s", target)
+		wanted = rubyvalue.RedactIf(isMarked(File{}, r, "target"), "%s", target)
 	}
 	if fi, err := statFor(fsys, path, linksFollow(r)); err == nil {
 		pathWarnings, err := bk.existing(fsys, path, fi)

@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/voxagent/voxagent/internal/catalog"
+	"github.com/voxagent/voxagent/internal/lib/raltest"
 )
 
 // The cases are those measured against Puppet 8.10.0.
@@ -122,7 +123,7 @@ func TestFileBackupFalseWritesNothing(t *testing.T) {
 			if v != nil {
 				params["backup"] = v
 			}
-			applyContentChange(t, vardir, fileRes(path, params))
+			applyContentChange(t, vardir, raltest.FileRes(path, params))
 			if got := siblings(t, dir, "f"); len(got) != 0 {
 				t.Errorf("siblings = %v, want none", got)
 			}
@@ -139,7 +140,7 @@ func TestFileBackupSuffixOnContentChange(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "f")
 	seedOld(t, path, 0o640)
-	applyContentChange(t, t.TempDir(), fileRes(path, map[string]any{"content": "new\n", "backup": ".bak"}))
+	applyContentChange(t, t.TempDir(), raltest.FileRes(path, map[string]any{"content": "new\n", "backup": ".bak"}))
 	if got := readString(t, path); got != "new\n" {
 		t.Errorf("f = %q", got)
 	}
@@ -164,7 +165,7 @@ func TestFileBackupSuffixReplacesAStaleBackup(t *testing.T) {
 		path := filepath.Join(dir, "f")
 		seedOld(t, path, 0o644)
 		mustWrite(t, path+".bak", "prev\n")
-		applyContentChange(t, t.TempDir(), fileRes(path, map[string]any{"content": "new\n", "backup": ".bak"}))
+		applyContentChange(t, t.TempDir(), raltest.FileRes(path, map[string]any{"content": "new\n", "backup": ".bak"}))
 		if got := readString(t, path+".bak"); got != "old\n" {
 			t.Errorf("f.bak = %q, want old", got)
 		}
@@ -177,7 +178,7 @@ func TestFileBackupSuffixReplacesAStaleBackup(t *testing.T) {
 		if err := os.Symlink(victim, path+".bak"); err != nil {
 			t.Fatal(err)
 		}
-		applyContentChange(t, t.TempDir(), fileRes(path, map[string]any{"content": "new\n", "backup": ".bak"}))
+		applyContentChange(t, t.TempDir(), raltest.FileRes(path, map[string]any{"content": "new\n", "backup": ".bak"}))
 		if got := readString(t, victim); got != "untouched\n" {
 			t.Errorf("the link's target = %q; the backup was written through the link", got)
 		}
@@ -194,7 +195,7 @@ func TestFileBackupSuffixReplacesAStaleBackup(t *testing.T) {
 		path := filepath.Join(dir, "f")
 		seedOld(t, path, 0o644)
 		mustMkdir(t, path+".bak")
-		changes, _ := applyBackup(t, t.TempDir(), fileRes(path, map[string]any{"content": "new\n", "backup": ".bak"}), false)
+		changes, _ := applyBackup(t, t.TempDir(), raltest.FileRes(path, map[string]any{"content": "new\n", "backup": ".bak"}), false)
 		want := "Will not remove directory backup " + path + ".bak; use a filebucket"
 		if len(changes) != 1 || changes[0].Property != "content" || changes[0].Err == nil || changes[0].Err.Error() != want {
 			t.Fatalf("changes = %+v, want content failing with %q", changes, want)
@@ -210,7 +211,7 @@ func TestFileBackupSuffixOnAbsent(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "f")
 	seedOld(t, path, 0o644)
-	changes, _ := applyBackup(t, t.TempDir(), fileRes(path, map[string]any{"ensure": "absent", "backup": ".bak"}), false)
+	changes, _ := applyBackup(t, t.TempDir(), raltest.FileRes(path, map[string]any{"ensure": "absent", "backup": ".bak"}), false)
 	if len(changes) != 1 || changes[0].Property != "ensure" || changes[0].Err != nil || changes[0].Message != "removed" {
 		t.Fatalf("changes = %+v", changes)
 	}
@@ -228,7 +229,7 @@ func TestFileBackupNotOnModeOnlyOrCreate(t *testing.T) {
 		dir := t.TempDir()
 		path := filepath.Join(dir, "f")
 		seedOld(t, path, 0o600)
-		changes, _ := applyBackup(t, t.TempDir(), fileRes(path, map[string]any{"content": "old\n", "mode": "0644", "backup": ".bak"}), false)
+		changes, _ := applyBackup(t, t.TempDir(), raltest.FileRes(path, map[string]any{"content": "old\n", "mode": "0644", "backup": ".bak"}), false)
 		if len(changes) != 1 || changes[0].Property != "mode" {
 			t.Fatalf("changes = %+v, want one mode change", changes)
 		}
@@ -240,7 +241,7 @@ func TestFileBackupNotOnModeOnlyOrCreate(t *testing.T) {
 		dir, vardir := t.TempDir(), t.TempDir()
 		path := filepath.Join(dir, "f")
 		for _, b := range []string{".bak", "puppet"} {
-			applyBackup(t, vardir, fileRes(path, map[string]any{"content": "new\n", "backup": b}), false)
+			applyBackup(t, vardir, raltest.FileRes(path, map[string]any{"content": "new\n", "backup": b}), false)
 			if err := os.Remove(path); err != nil {
 				t.Fatal(err)
 			}
@@ -261,7 +262,7 @@ func TestFileBackupTrueIsPuppetBak(t *testing.T) {
 			dir := t.TempDir()
 			path := filepath.Join(dir, "f")
 			seedOld(t, path, 0o644)
-			applyContentChange(t, t.TempDir(), fileRes(path, map[string]any{"content": "new\n", "backup": v}))
+			applyContentChange(t, t.TempDir(), raltest.FileRes(path, map[string]any{"content": "new\n", "backup": v}))
 			if got := readString(t, path+".puppet-bak"); got != "old\n" {
 				t.Errorf("f.puppet-bak = %q, want old", got)
 			}
@@ -276,7 +277,7 @@ func TestFileBackupBucketOnContentChange(t *testing.T) {
 	dir, vardir := t.TempDir(), t.TempDir()
 	path := filepath.Join(dir, "f")
 	seedOld(t, path, 0o644)
-	applyContentChange(t, vardir, fileRes(path, map[string]any{"content": "new\n", "backup": "puppet"}))
+	applyContentChange(t, vardir, raltest.FileRes(path, map[string]any{"content": "new\n", "backup": "puppet"}))
 	if got := readString(t, path); got != "new\n" {
 		t.Errorf("f = %q", got)
 	}
@@ -312,7 +313,7 @@ func TestFileBackupBucketRepeats(t *testing.T) {
 	dir, vardir := t.TempDir(), t.TempDir()
 	f, g := filepath.Join(dir, "f"), filepath.Join(dir, "g")
 	seedOld(t, f, 0o644)
-	applyBackup(t, vardir, fileRes(f, map[string]any{"content": "new\n", "backup": "puppet"}), false)
+	applyBackup(t, vardir, raltest.FileRes(f, map[string]any{"content": "new\n", "backup": "puppet"}), false)
 	shard := shardDir(vardir, sha("old\n"))
 	contents := filepath.Join(shard, "contents")
 	if err := os.Chtimes(contents, backupEpoch, backupEpoch); err != nil {
@@ -320,7 +321,7 @@ func TestFileBackupBucketRepeats(t *testing.T) {
 	}
 
 	seedOld(t, f, 0o644)
-	applyBackup(t, vardir, fileRes(f, map[string]any{"content": "new\n", "backup": "puppet"}), false)
+	applyBackup(t, vardir, raltest.FileRes(f, map[string]any{"content": "new\n", "backup": "puppet"}), false)
 	if got := readString(t, filepath.Join(shard, "paths")); got != realPath(t, f)+"\n" {
 		t.Errorf("same path: paths = %q", got)
 	}
@@ -329,7 +330,7 @@ func TestFileBackupBucketRepeats(t *testing.T) {
 	}
 
 	seedOld(t, g, 0o644)
-	applyBackup(t, vardir, fileRes(g, map[string]any{"content": "new\n", "backup": "puppet"}), false)
+	applyBackup(t, vardir, raltest.FileRes(g, map[string]any{"content": "new\n", "backup": "puppet"}), false)
 	if got, want := readString(t, filepath.Join(shard, "paths")), realPath(t, f)+"\n"+realPath(t, g)+"\n"; got != want {
 		t.Errorf("new path: paths = %q, want %q", got, want)
 	}
@@ -346,7 +347,7 @@ func TestFileBackupBucketOnAbsent(t *testing.T) {
 	dir, vardir := t.TempDir(), t.TempDir()
 	path := filepath.Join(dir, "f")
 	seedOld(t, path, 0o644)
-	changes, _ := applyBackup(t, vardir, fileRes(path, map[string]any{"ensure": "absent", "backup": "puppet"}), false)
+	changes, _ := applyBackup(t, vardir, raltest.FileRes(path, map[string]any{"ensure": "absent", "backup": "puppet"}), false)
 	if len(changes) != 1 || changes[0].Err != nil || changes[0].Message != "removed" {
 		t.Fatalf("changes = %+v", changes)
 	}
@@ -371,7 +372,7 @@ func TestFileBackupUnknownBucketFails(t *testing.T) {
 		dir := t.TempDir()
 		path := filepath.Join(dir, "f")
 		seedOld(t, path, 0o644)
-		changes, _ := applyBackup(t, t.TempDir(), fileRes(path, map[string]any{"content": "new\n", "backup": "nosuchbucket"}), false)
+		changes, _ := applyBackup(t, t.TempDir(), raltest.FileRes(path, map[string]any{"content": "new\n", "backup": "nosuchbucket"}), false)
 		if len(changes) != 1 || changes[0].Property != "content" || changes[0].Err == nil || changes[0].Err.Error() != want {
 			t.Fatalf("changes = %+v, want content failing with %q", changes, want)
 		}
@@ -388,7 +389,7 @@ func TestFileBackupUnknownBucketFails(t *testing.T) {
 	t.Run("absent", func(t *testing.T) {
 		path := filepath.Join(t.TempDir(), "f")
 		seedOld(t, path, 0o644)
-		changes, _ := applyBackup(t, t.TempDir(), fileRes(path, map[string]any{"ensure": "absent", "backup": "nosuchbucket"}), false)
+		changes, _ := applyBackup(t, t.TempDir(), raltest.FileRes(path, map[string]any{"ensure": "absent", "backup": "nosuchbucket"}), false)
 		if len(changes) != 1 || changes[0].Property != "ensure" || changes[0].Err == nil || changes[0].Err.Error() != want {
 			t.Fatalf("changes = %+v, want ensure failing with %q", changes, want)
 		}
@@ -424,7 +425,7 @@ func TestFileBackupSuffixCopiesADirectoryTree(t *testing.T) {
 	dir := t.TempDir()
 	d, outside := filepath.Join(dir, "d"), filepath.Join(t.TempDir(), "other")
 	seedTree(t, d, outside)
-	changes, _ := applyBackup(t, t.TempDir(), fileRes(d, map[string]any{
+	changes, _ := applyBackup(t, t.TempDir(), raltest.FileRes(d, map[string]any{
 		"ensure": "file", "content": "new\n", "force": true, "backup": ".bak"}), false)
 	if len(changes) != 1 || changes[0].Property != "ensure" || changes[0].Err != nil {
 		t.Fatalf("changes = %+v", changes)
@@ -465,7 +466,7 @@ func TestFileBackupBucketBacksUpEachFileOfADirectory(t *testing.T) {
 		"a\n": realPath(t, filepath.Join(d, "y")), "b\n": realPath(t, filepath.Join(d, "sub", "x")),
 		"c\n": realPath(t, outside),
 	}
-	changes, _ := applyBackup(t, vardir, fileRes(d, map[string]any{
+	changes, _ := applyBackup(t, vardir, raltest.FileRes(d, map[string]any{
 		"ensure": "file", "content": "new\n", "force": true, "backup": "puppet"}), false)
 	if len(changes) != 1 || changes[0].Err != nil {
 		t.Fatalf("changes = %+v", changes)
@@ -503,7 +504,7 @@ func TestFileBackupSuffixOfALinkCopiesItsTarget(t *testing.T) {
 	if err := os.Symlink(target, path); err != nil {
 		t.Fatal(err)
 	}
-	applyBackup(t, t.TempDir(), fileRes(path, map[string]any{"ensure": "file", "content": "new\n", "backup": ".bak"}), false)
+	applyBackup(t, t.TempDir(), raltest.FileRes(path, map[string]any{"ensure": "file", "content": "new\n", "backup": ".bak"}), false)
 	fi, err := os.Lstat(path + ".bak")
 	if err != nil || !fi.Mode().IsRegular() || fi.Mode().Perm() != 0o600 {
 		t.Fatalf("l.bak = %v, %v; want a regular 0600 file", fi, err)
@@ -521,7 +522,7 @@ func TestFileBackupSuffixOfALinkCopiesItsTarget(t *testing.T) {
 func TestFileBackupWarnsForADirectoryWithoutForce(t *testing.T) {
 	d := filepath.Join(t.TempDir(), "d")
 	mustMkdir(t, d)
-	changes, _ := applyBackup(t, t.TempDir(), fileRes(d, map[string]any{"ensure": "file", "content": "new\n", "backup": ".bak"}), false)
+	changes, _ := applyBackup(t, t.TempDir(), raltest.FileRes(d, map[string]any{"ensure": "file", "content": "new\n", "backup": ".bak"}), false)
 	want := []string{"Could not back up file of type directory", "Could not back up file of type directory"}
 	if len(changes) != 1 || !slices.Equal(changes[0].PathWarnings, want) || changes[0].Err == nil {
 		t.Fatalf("changes = %+v, want a failed ensure with path warnings %q", changes, want)
@@ -539,7 +540,7 @@ func TestFileBackupNoopWritesNothing(t *testing.T) {
 				dir, vardir := t.TempDir(), t.TempDir()
 				path := filepath.Join(dir, "f")
 				seedOld(t, path, 0o644)
-				applyBackup(t, vardir, fileRes(path, map[string]any{"ensure": ensure, "content": "new\n", "backup": b}), true)
+				applyBackup(t, vardir, raltest.FileRes(path, map[string]any{"ensure": ensure, "content": "new\n", "backup": b}), true)
 				if got := siblings(t, dir, "f"); len(got) != 0 {
 					t.Errorf("siblings = %v", got)
 				}
@@ -567,7 +568,7 @@ func TestFileValidateBackup(t *testing.T) {
 		{[]any{".bak", "x"}, ""},
 		{".bak", ""}, {"puppet", ""}, {"main", ""}, {true, ""}, {false, ""},
 	} {
-		err := (File{}).Validate(fileRes(path, map[string]any{"backup": tc.value}))
+		err := (File{}).Validate(raltest.FileRes(path, map[string]any{"backup": tc.value}))
 		switch {
 		case tc.want == "" && err != nil:
 			t.Errorf("backup => %v: %v, want accepted", tc.value, err)
@@ -606,7 +607,7 @@ func TestFileBackupBucketRefusesSymlinks(t *testing.T) {
 			if err := os.Symlink(elsewhere, link); err != nil {
 				t.Fatal(err)
 			}
-			changes, _ := applyBackup(t, vardir, fileRes(path, map[string]any{"content": "new\n", "backup": "puppet"}), false)
+			changes, _ := applyBackup(t, vardir, raltest.FileRes(path, map[string]any{"content": "new\n", "backup": "puppet"}), false)
 			if len(changes) != 1 || changes[0].Err == nil ||
 				!strings.HasPrefix(changes[0].Err.Error(), "Could not back up "+path+": ") ||
 				!strings.Contains(changes[0].Err.Error(), "symlink") {
@@ -633,7 +634,7 @@ func TestFileBackupBucketOverwritesACorruptedBackup(t *testing.T) {
 		t.Fatal(err)
 	}
 	mustWrite(t, filepath.Join(shard, "contents"), "corrupt")
-	_, warnings := applyBackup(t, vardir, fileRes(path, map[string]any{"content": "new\n", "backup": "puppet"}), false)
+	_, warnings := applyBackup(t, vardir, raltest.FileRes(path, map[string]any{"content": "new\n", "backup": "puppet"}), false)
 	want := Warning{Source: "Puppet", Message: "Existing backup does not match its expected sum, {sha256}" + sha("old\n") + ". Overwriting corrupted backup."}
 	if len(warnings) != 1 || warnings[0] != want {
 		t.Errorf("warnings = %+v, want %+v", warnings, want)
@@ -652,8 +653,8 @@ func TestFileBackupOfAGeneratedChild(t *testing.T) {
 	dir := t.TempDir()
 	child := filepath.Join(dir, "c")
 	seedOld(t, child, 0o644)
-	parent := fileRes(dir, map[string]any{"ensure": "directory", "recurse": true, "purge": true, "backup": ".bak"})
-	r := fileRes(child, map[string]any{"ensure": "absent", "backup": ".bak"})
+	parent := raltest.FileRes(dir, map[string]any{"ensure": "directory", "recurse": true, "purge": true, "backup": ".bak"})
+	r := raltest.FileRes(child, map[string]any{"ensure": "absent", "backup": ".bak"})
 	r.GeneratedFrom = &parent
 	changes, _ := applyBackup(t, t.TempDir(), r, false)
 	if len(changes) != 1 || changes[0].Err != nil {
@@ -682,7 +683,7 @@ func TestFileBackupOfAGeneratedChild(t *testing.T) {
 			} else {
 				seedOld(t, c, 0o644)
 			}
-			r := fileRes(c, map[string]any{"ensure": "absent", "backup": tc.suffix})
+			r := raltest.FileRes(c, map[string]any{"ensure": "absent", "backup": tc.suffix})
 			r.GeneratedFrom = &parent
 			changes, _ := applyBackup(t, t.TempDir(), r, false)
 			if len(changes) != 1 || changes[0].Err == nil {
@@ -755,7 +756,7 @@ func TestFileBackupSuffixRemovesAPartialTreeCopy(t *testing.T) {
 	if err := syscall.Mkfifo(filepath.Join(d, "p"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	r := fileRes(d, map[string]any{"ensure": "file", "content": "new\n", "force": true, "backup": ".bak"})
+	r := raltest.FileRes(d, map[string]any{"ensure": "file", "content": "new\n", "force": true, "backup": ".bak"})
 	for run := 1; run <= 2; run++ {
 		changes, _ := applyBackup(t, t.TempDir(), r, false)
 		want := "Could not back " + d + " up: cannot copy " + filepath.Join(d, "p") + " of type fifo"
@@ -806,7 +807,7 @@ func TestLockExclusiveWaitsNoLongerThanTheTimeout(t *testing.T) {
 // which Ruby's Hash#inspect prints in (D-46). It is refused all the same.
 func TestFileValidateBackupRefusesAMap(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "f")
-	err := (File{}).Validate(fileRes(path, map[string]any{"backup": map[string]any{"k": "v"}}))
+	err := (File{}).Validate(raltest.FileRes(path, map[string]any{"backup": map[string]any{"k": "v"}}))
 	want := "Parameter backup failed on File[" + path + "]: Invalid backup type map[k:v]"
 	if err == nil || err.Error() != want {
 		t.Errorf("Validate = %v, want %q", err, want)
@@ -831,7 +832,7 @@ func TestFileBackupBucketWalksATreeInSortedOrder(t *testing.T) {
 	for _, name := range []string{"r1", "s2", "t3", "u4", "v5", "w6", "x7", "y8", "z9"} {
 		want += realPath(t, filepath.Join(d, name)) + "\n"
 	}
-	applyBackup(t, vardir, fileRes(d, map[string]any{"ensure": "absent", "force": true, "backup": "puppet"}), false)
+	applyBackup(t, vardir, raltest.FileRes(d, map[string]any{"ensure": "absent", "force": true, "backup": "puppet"}), false)
 	if got := readString(t, filepath.Join(shardDir(vardir, sha("a\n")), "paths")); got != want {
 		t.Errorf("paths = %q, want %q", got, want)
 	}
@@ -869,7 +870,7 @@ func TestFileBackupSuffixNeverCopiesASwappedInSubdirectory(t *testing.T) {
 					}
 				}
 				t.Cleanup(func() { backupSwapWindow = nil })
-				applyBackup(t, t.TempDir(), fileRes(d, map[string]any{
+				applyBackup(t, t.TempDir(), raltest.FileRes(d, map[string]any{
 					"ensure": "file", "content": "new\n", "force": true, "backup": ".bak"}), false)
 				if err := filepath.WalkDir(d+".bak", func(p string, e os.DirEntry, err error) error {
 					if err != nil {
@@ -903,8 +904,8 @@ func TestFileBackupBucketOfAGeneratedChildLinkingOut(t *testing.T) {
 	if err := os.Symlink(secret, c); err != nil {
 		t.Fatal(err)
 	}
-	parent := fileRes(dir, map[string]any{"ensure": "directory", "recurse": true, "purge": true, "backup": "puppet"})
-	r := fileRes(c, map[string]any{"ensure": "absent", "backup": "puppet"})
+	parent := raltest.FileRes(dir, map[string]any{"ensure": "directory", "recurse": true, "purge": true, "backup": "puppet"})
+	r := raltest.FileRes(c, map[string]any{"ensure": "absent", "backup": "puppet"})
 	r.GeneratedFrom = &parent
 	changes, _ := applyBackup(t, vardir, r, false)
 	if len(changes) != 1 || changes[0].Err != nil || changes[0].Message != "removed" {
@@ -948,7 +949,7 @@ func TestFileBackupBucketNeverStoresASwappedInSubdirectory(t *testing.T) {
 					}
 				}
 				t.Cleanup(func() { backupSwapWindow = nil })
-				applyBackup(t, vardir, fileRes(d, map[string]any{
+				applyBackup(t, vardir, raltest.FileRes(d, map[string]any{
 					"ensure": "file", "content": "new\n", "force": true, "backup": "puppet"}), false)
 				secretShard := shardDir(vardir, sha("secret\n"))
 				if inside {
@@ -1006,7 +1007,7 @@ func TestFileBackupBucketOpensALinkEntryInTheCheckedDirectory(t *testing.T) {
 				}
 			}
 			t.Cleanup(func() { backupSwapWindow = nil })
-			applyBackup(t, vardir, fileRes(d, map[string]any{
+			applyBackup(t, vardir, raltest.FileRes(d, map[string]any{
 				"ensure": "file", "content": "new\n", "force": true, "backup": "puppet"}), false)
 			if _, err := os.Lstat(shardDir(vardir, sha("secret\n"))); !os.IsNotExist(err) {
 				t.Errorf("the swapped-in link's target was bucketed (%v)", err)
@@ -1123,7 +1124,7 @@ func TestFileBackupBucketNeverOpensALinkedNonRegularFile(t *testing.T) {
 	if _, err := syscall.InotifyAddWatch(in, fifo, syscall.IN_OPEN); err != nil {
 		t.Fatal(err)
 	}
-	applyBackup(t, vardir, fileRes(d, map[string]any{
+	applyBackup(t, vardir, raltest.FileRes(d, map[string]any{
 		"ensure": "file", "content": "new\n", "force": true, "backup": "puppet"}), false)
 	if _, err := os.Lstat(shardDir(vardir, sha("x\n"))); err != nil {
 		t.Errorf("x was not bucketed: %v", err)

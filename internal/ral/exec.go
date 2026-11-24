@@ -16,6 +16,9 @@ import (
 	"time"
 
 	"github.com/voxagent/voxagent/internal/catalog"
+	"github.com/voxagent/voxagent/internal/lib/command"
+	"github.com/voxagent/voxagent/internal/lib/rubyvalue"
+	"github.com/voxagent/voxagent/internal/lib/sources"
 	"github.com/voxagent/voxagent/internal/runlog"
 )
 
@@ -290,7 +293,7 @@ func hasHashElement(argv []any) bool {
 // A marked command or guard is shown as [command redacted], quotes included
 // (D-78: Ruby leaks it).
 func unqualifiedMessage(exe string, redact bool) string {
-	return quoteOrRedact(exe, redact) + " is not qualified and no path was specified. Please qualify the command or specify a path."
+	return command.QuoteOrRedact(exe, redact) + " is not qualified and no path was specified. Please qualify the command or specify a path."
 }
 
 // unqualifiedExe is validatecmd's test (provider/exec.rb:102): the executable
@@ -450,7 +453,7 @@ func (e Exec) Prefetch(context.Context, []catalog.Resource) (Provider, error) { 
 // The first failing entry stops evaluation -- the command does not run, and
 // no later entry is checked.
 func (e Exec) run(ctx context.Context, r catalog.Resource, noop bool) ([]Change, error) {
-	command, hasCommand := r.Parameters["command"]
+	commandValue, hasCommand := r.Parameters["command"]
 	if !hasCommand {
 		return nil, fmt.Errorf("exec has no command")
 	}
@@ -458,14 +461,14 @@ func (e Exec) run(ctx context.Context, r catalog.Resource, noop bool) ([]Change,
 	// with no shell. Validate
 	// refuses any other class with Puppet's text; this is the same check for
 	// a caller that did not validate.
-	switch c := command.(type) {
+	switch c := commandValue.(type) {
 	case string:
 		if c == "" {
 			return nil, fmt.Errorf("exec has no command")
 		}
 	case []any:
 	default:
-		return nil, fmt.Errorf("Command must be a String or Array<String>, got value of class %s", catalog.RubyClassName(command))
+		return nil, fmt.Errorf("Command must be a String or Array<String>, got value of class %s", catalog.RubyClassName(commandValue))
 	}
 
 	// A marked command, unless or onlyif is shown as [command redacted] in
@@ -478,7 +481,7 @@ func (e Exec) run(ctx context.Context, r catalog.Resource, noop bool) ([]Change,
 		return nil, err
 	}
 
-	if passed, err := e.guardsPass(ctx, r, command, redact); err != nil || !passed {
+	if passed, err := e.guardsPass(ctx, r, commandValue, redact); err != nil || !passed {
 		return nil, err
 	}
 
@@ -524,7 +527,7 @@ func (e Exec) run(ctx context.Context, r catalog.Resource, noop bool) ([]Change,
 		return list, nil
 	}
 	var exeErr error
-	argv, isArgv := command.([]any)
+	argv, isArgv := commandValue.([]any)
 	if isArgv {
 		if accepted, err = acceptable(); err != nil {
 			return nil, err
@@ -557,15 +560,15 @@ func (e Exec) run(ctx context.Context, r catalog.Resource, noop bool) ([]Change,
 	// Tries (type/exec.rb:123-164) loops `tries.times`, which a Float does not
 	// have (M19): returns fails before anything runs.
 	if p.Tries != math.Trunc(p.Tries) {
-		exeErr = fmt.Errorf("undefined method `times' for %s:Float", rubyFloat(p.Tries))
+		exeErr = fmt.Errorf("undefined method `times' for %s:Float", rubyvalue.Float(p.Tries))
 	}
 	var code int
 	var output string
 	for try := 1.0; exeErr == nil && try <= p.Tries; try++ {
 		if p.Tries > 1 {
-			runlog.Debugf(ctx, SourcesFrom(ctx).Resource+"/returns", "Exec try %.0f/%.0f", try, p.Tries)
+			runlog.Debugf(ctx, sources.SourcesFrom(ctx).Resource+"/returns", "Exec try %.0f/%.0f", try, p.Tries)
 		}
-		code, output, err = e.execute(ctx, r, command, redact, false)
+		code, output, err = e.execute(ctx, r, commandValue, redact, false)
 		var e127 exit127Error
 		switch {
 		case errors.Is(err, errExecTimeout):
@@ -587,7 +590,7 @@ func (e Exec) run(ctx context.Context, r catalog.Resource, noop bool) ([]Change,
 		}
 		// The sleep follows the last failed try too (M6, I-32).
 		if p.TrySleep > 0 && p.Tries > 1 {
-			runlog.Debugf(ctx, SourcesFrom(ctx).Resource+"/returns", "Sleeping for %s seconds between tries", p.TrySleepShown)
+			runlog.Debugf(ctx, sources.SourcesFrom(ctx).Resource+"/returns", "Sleeping for %s seconds between tries", p.TrySleepShown)
 			select {
 			case <-ctx.Done():
 				return nil, ctx.Err()
@@ -651,7 +654,7 @@ func (e Exec) run(ctx context.Context, r catalog.Resource, noop bool) ([]Change,
 	// of desired_value, while this detail is `should.join(",")` -- measured
 	// `change from 'notrun' to ['0', '3'] failed: ... instead of one of [0,3]`.
 	change.Err = fmt.Errorf("%s returned %d instead of one of [%s]",
-		quoteOrRedact(commandDisplay(command), redact), code, strings.Join(desired, ","))
+		command.QuoteOrRedact(commandDisplay(commandValue), redact), code, strings.Join(desired, ","))
 	return []Change{change}, nil
 }
 
@@ -667,7 +670,7 @@ func (e Exec) guardsPass(ctx context.Context, r catalog.Resource, command any, r
 	for _, path := range creates {
 		// type/exec.rb:454, source <resource>/creates. creates is a parameter,
 		// which Sensitive cannot mark (MarkSensitive), so the path shows as is.
-		runlog.Debugf(ctx, SourcesFrom(ctx).Resource+"/creates", "Checking that 'creates' path '%s' exists", path)
+		runlog.Debugf(ctx, sources.SourcesFrom(ctx).Resource+"/creates", "Checking that 'creates' path '%s' exists", path)
 		if _, err := os.Stat(path); err == nil {
 			debugBlocked(ctx, command, redact, "creates")
 			return false, nil
@@ -719,7 +722,7 @@ func debugBlocked(ctx context.Context, command any, redact bool, check string) {
 	if redact {
 		shown = "[command redacted]"
 	}
-	runlog.Debugf(ctx, SourcesFrom(ctx).Resource, "'%s' won't be executed because of failed check '%s'", shown, check)
+	runlog.Debugf(ctx, sources.SourcesFrom(ctx).Resource, "'%s' won't be executed because of failed check '%s'", shown, check)
 }
 
 // guardPasses runs the named onlyif or unless command and reports whether it
@@ -733,23 +736,23 @@ func debugBlocked(ctx context.Context, command any, redact bool, check string) {
 // Its output is logged at debug, one line per line of output at
 // <resource>/<name>, or one "[output redacted]" when the command is marked
 // (type/exec.rb:511-514, :568-571). The output is split only when debug is on.
-func (e Exec) guardPasses(ctx context.Context, r catalog.Resource, name string, command any, redact bool) (bool, error) {
-	if argv, ok := command.([]any); ok {
+func (e Exec) guardPasses(ctx context.Context, r catalog.Resource, name string, commandValue any, redact bool) (bool, error) {
+	if argv, ok := commandValue.([]any); ok {
 		path, err := pathParam(r)
 		if err != nil {
 			return false, err
 		}
 		if err := checkExe(argvExe(argv), path, redact); err != nil {
-			return false, fmt.Errorf("guard %s: %w", quoteOrRedact(commandDisplay(command), redact), err)
+			return false, fmt.Errorf("guard %s: %w", command.QuoteOrRedact(commandDisplay(commandValue), redact), err)
 		}
 	}
-	code, out, err := e.execute(ctx, r, command, redact, true)
+	code, out, err := e.execute(ctx, r, commandValue, redact, true)
 	// A timed-out guard blocks the command, whichever guard it is: type/exec.rb
 	// check rescues Timeout::Error, logs it at the guard and returns false (M1,
 	// M4). An exit of 127 fails the resource with the output alone (M20).
 	if errors.Is(err, errExecTimeout) {
-		runlog.From(ctx).Log("err", SourcesFrom(ctx).Resource+"/"+name,
-			"Check "+redactIf(redact, "%s", rubyInspectValue(command))+" exceeded timeout")
+		runlog.From(ctx).Log("err", sources.SourcesFrom(ctx).Resource+"/"+name,
+			"Check "+rubyvalue.RedactIf(redact, "%s", rubyvalue.InspectValue(commandValue))+" exceeded timeout")
 		return false, nil
 	}
 	var e127 exit127Error
@@ -757,14 +760,14 @@ func (e Exec) guardPasses(ctx context.Context, r catalog.Resource, name string, 
 		return false, err
 	}
 	if err != nil {
-		return false, fmt.Errorf("guard %s: %w", quoteOrRedact(commandDisplay(command), redact), err)
+		return false, fmt.Errorf("guard %s: %w", command.QuoteOrRedact(commandDisplay(commandValue), redact), err)
 	}
 	if l := runlog.From(ctx); l.Enabled("debug") {
-		source := SourcesFrom(ctx).Resource + "/" + name
+		source := sources.SourcesFrom(ctx).Resource + "/" + name
 		if redact {
 			l.Log("debug", source, "[output redacted]")
 		} else {
-			for _, line := range splitOutput(out) {
+			for _, line := range command.SplitOutput(out) {
 				l.Log("debug", source, line)
 			}
 		}
@@ -790,12 +793,12 @@ func (e Exec) guardPasses(ctx context.Context, r catalog.Resource, name string, 
 // check says the command is a guard: Ruby's provider names it in its debug line
 // (provider/exec.rb:48), source the provider form, "Executing check '<cmd>'" or
 // "Executing '<cmd>'", [redacted] for a marked command.
-func (e Exec) execute(ctx context.Context, r catalog.Resource, command any, redact, check bool) (int, string, error) {
+func (e Exec) execute(ctx context.Context, r catalog.Resource, commandValue any, redact, check bool) (int, string, error) {
 	kind := "Executing"
 	if check {
 		kind = "Executing check"
 	}
-	runlog.Debugf(ctx, SourcesFrom(ctx).Provider, "%s '%s'", kind, redactIf(redact, "%s", commandDisplay(command)))
+	runlog.Debugf(ctx, sources.SourcesFrom(ctx).Provider, "%s '%s'", kind, rubyvalue.RedactIf(redact, "%s", commandDisplay(commandValue)))
 	var cwd string
 	if cwdVal, ok := r.Parameters["cwd"]; ok {
 		s, ok := cwdVal.(string)
@@ -814,9 +817,9 @@ func (e Exec) execute(ctx context.Context, r catalog.Resource, command any, reda
 	}
 	env := execEnv(ctx, r, p, path, slices.Contains(r.SensitiveParameters, "environment"))
 	marked := func(kind string) bool { return slices.Contains(r.SensitiveParameters, kind) }
-	argv, isArgv := command.([]any)
+	argv, isArgv := commandValue.([]any)
 	var words []string
-	display, _ := command.(string)
+	display, _ := commandValue.(string)
 	if isArgv {
 		words = argvOf(argv)
 		display = strings.Join(words, " ")
@@ -833,14 +836,14 @@ func (e Exec) execute(ctx context.Context, r catalog.Resource, command any, reda
 		}
 		s, ok := xid.value.(string)
 		if !ok {
-			s = rubyInspectValue(xid.value)
+			s = rubyvalue.InspectValue(xid.value)
 		}
-		as += " " + xid.field + "=" + redactIf(marked(xid.kind), "%s", s)
+		as += " " + xid.field + "=" + rubyvalue.RedactIf(marked(xid.kind), "%s", s)
 	}
 	if as != "" {
 		as = " with" + as
 	}
-	runlog.Debugf(ctx, "Puppet", "Executing%s: '%s'", as, redactIf(redact, "%s", display))
+	runlog.Debugf(ctx, "Puppet", "Executing%s: '%s'", as, rubyvalue.RedactIf(redact, "%s", display))
 	id, err := resolveIdentity(p.User, p.Group, marked)
 	var invalid invalidIdentityError
 	if errors.As(err, &invalid) {
@@ -879,10 +882,10 @@ func (e Exec) execute(ctx context.Context, r catalog.Resource, command any, reda
 		return code, out, err
 	}
 	if !isArgv {
-		return run(child("/bin/sh", "-c", display), quoteOrRedact(display, redact))
+		return run(child("/bin/sh", "-c", display), command.QuoteOrRedact(display, redact))
 	}
 
-	line := quoteOrRedact(commandDisplay(command), redact)
+	line := command.QuoteOrRedact(commandDisplay(commandValue), redact)
 	if len(words) == 0 {
 		return 1, "", nil
 	}
@@ -1042,7 +1045,7 @@ func toInt(v any, redact bool) (int, error) {
 	case string:
 		i, err := strconv.Atoi(n)
 		if err != nil {
-			return 0, fmt.Errorf("returns value %s is not an integer", redactIf(redact, "%q", n))
+			return 0, fmt.Errorf("returns value %s is not an integer", rubyvalue.RedactIf(redact, "%q", n))
 		}
 		return i, nil
 	default:

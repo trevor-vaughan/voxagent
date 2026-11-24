@@ -6,6 +6,9 @@ import (
 	"strings"
 
 	"github.com/voxagent/voxagent/internal/catalog"
+	"github.com/voxagent/voxagent/internal/lib/augeas"
+	"github.com/voxagent/voxagent/internal/lib/rubyvalue"
+	"github.com/voxagent/voxagent/internal/lib/sources"
 	"github.com/voxagent/voxagent/internal/runlog"
 )
 
@@ -52,7 +55,7 @@ func (s SshConfig) Apply(ctx context.Context, r catalog.Resource, noop bool) ([]
 	if err != nil {
 		return nil, nil, err
 	}
-	found, err := aug.match("$resource")
+	found, err := aug.Match("$resource")
 	if err != nil {
 		return nil, nil, err
 	}
@@ -87,11 +90,11 @@ func (s SshConfig) Apply(ctx context.Context, r catalog.Resource, noop bool) ([]
 			if aug, err := s.run.augopen(sshConfigLens, target, resourcePath); err != nil {
 				ch.Err = err
 			} else {
-				aug.rm("$resource")
+				aug.Rm("$resource")
 			}
 		}
 	case !exists:
-		runlog.Debugf(ctx, SourcesFrom(ctx).Resource, "Nothing to manage: no ensure and the resource doesn't exist")
+		runlog.Debugf(ctx, sources.SourcesFrom(ctx).Resource, "Nothing to manage: no ensure and the resource doesn't exist")
 		return nil, nil, nil
 	default:
 		should := rubyStrings(p.Value)
@@ -124,13 +127,13 @@ func (s SshConfig) create(p sshConfigParams, target, base, resourcePath string, 
 	if err != nil {
 		return err
 	}
-	aug.set(base, p.Host)
+	aug.Set(base, p.Host)
 	return s.setValue(aug, base, base+"/"+p.Key, p.Key, should)
 }
 
 // setValue is set_value (SCP:64-70): an array entry when the stock lens
 // parses "<label> FOO" with a numbered child, else one entry per value.
-func (s SshConfig) setValue(aug *rubyAug, base, path, label string, values []any) error {
+func (s SshConfig) setValue(aug *augeas.Aug, base, path, label string, values []any) error {
 	array, err := s.run.parsedAs(sshConfigLens.lens(), label)
 	if err != nil {
 		return err
@@ -156,7 +159,7 @@ func rubyArrayToS(vals []any) string {
 	parts := make([]string, len(vals))
 	for i, v := range vals {
 		if s, ok := v.(string); ok {
-			parts[i] = puppetQuote(s)
+			parts[i] = rubyvalue.PuppetQuote(s)
 		} else {
 			parts[i] = "undef"
 		}

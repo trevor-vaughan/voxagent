@@ -12,6 +12,9 @@ import (
 	"testing"
 
 	"github.com/voxagent/voxagent/internal/catalog"
+	"github.com/voxagent/voxagent/internal/lib/augeas"
+	"github.com/voxagent/voxagent/internal/lib/plugintree"
+	"github.com/voxagent/voxagent/internal/lib/raltest"
 )
 
 // augeasFixtures and augeasCoreFixtures are the committed copies of the
@@ -36,7 +39,7 @@ func TestAugeasFixturesMatchFingerprints(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if got := sha256Hex(b); got != want {
+		if got := raltest.SHA256Hex(b); got != want {
 			t.Errorf("%s: sha256 %s, want %s", rel, got, want)
 		}
 	}
@@ -82,26 +85,26 @@ type augeasProbeFake struct {
 	calls  int
 }
 
-func (p *augeasProbeFake) Probe() (augLib, string, bool) {
+func (p *augeasProbeFake) Probe() (augeas.Lib, string, bool) {
 	p.calls++
 	if p.reason != "" {
 		return nil, p.reason, false
 	}
-	return newScriptLib(p.t, nil), "", true
+	return raltest.NewScriptLib(p.t, nil), "", true
 }
 
 func envOf(vars map[string]string) Environ { return func(k string) string { return vars[k] } }
 
 // sysctlHost is the measured platform with sysctl in /usr/sbin.
-var sysctlHost = fakePlatform{exec: map[string]bool{"/usr/sbin/sysctl": true}, release: centos10}
+var sysctlHost = raltest.FakePlatform{Exec: map[string]bool{"/usr/sbin/sysctl": true}, Release: raltest.CentOS10}
 
 // augeasFour holds one resource of each type, in a shape that stays native.
 func augeasFour() []catalog.Resource {
 	return []catalog.Resource{
-		augRes("Sysctl", "net.ipv4.ip_forward", map[string]any{"value": "1"}),
-		augRes("Ssh_config", "Ciphers", map[string]any{"value": "aes256-ctr"}),
-		augRes("Sshd_config", "X11Forwarding", map[string]any{"value": "no"}),
-		augRes("Sshd_config_subsystem", "sftp", map[string]any{"command": "/usr/libexec/openssh/sftp-server"}),
+		raltest.AugRes("Sysctl", "net.ipv4.ip_forward", map[string]any{"value": "1"}),
+		raltest.AugRes("Ssh_config", "Ciphers", map[string]any{"value": "aes256-ctr"}),
+		raltest.AugRes("Sshd_config", "X11Forwarding", map[string]any{"value": "no"}),
+		raltest.AugRes("Sshd_config_subsystem", "sftp", map[string]any{"command": "/usr/libexec/openssh/sftp-server"}),
 	}
 }
 
@@ -109,7 +112,7 @@ func augeasFour() []catalog.Resource {
 // successful probe.
 func augeasRoute(t *testing.T, libdir string, rs ...catalog.Resource) AugeasTypes {
 	t.Helper()
-	return NativeAugeas(LibdirTree(libdir), sysctlHost, &augeasProbeFake{t: t}, envOf(nil), libdir, "apply", &catalog.Catalog{Resources: rs})
+	return NativeAugeas(plugintree.LibdirTree(libdir), sysctlHost, &augeasProbeFake{t: t}, envOf(nil), libdir, "apply", &catalog.Catalog{Resources: rs})
 }
 
 // nativeSet is a's answer as the set of native type names.
@@ -256,12 +259,12 @@ func TestNativeAugeasFingerprints(t *testing.T) {
 func TestNativeAugeasOnlyTypesPresent(t *testing.T) {
 	dir := augeasTree(t)
 	probe := &augeasProbeFake{t: t}
-	a := NativeAugeas(LibdirTree(dir), sysctlHost, probe, envOf(nil), dir, "apply",
-		&catalog.Catalog{Resources: []catalog.Resource{augRes("Notify", "n", nil)}})
+	a := NativeAugeas(plugintree.LibdirTree(dir), sysctlHost, probe, envOf(nil), dir, "apply",
+		&catalog.Catalog{Resources: []catalog.Resource{raltest.AugRes("Notify", "n", nil)}})
 	if got := nativeSet(a); got != nil || len(a.Reasons) != 0 || probe.calls != 0 {
 		t.Errorf("no augeas type: native %q, reasons %q, probe calls %d", got, a.Reasons, probe.calls)
 	}
-	a = NativeAugeas(LibdirTree(dir), sysctlHost, probe, envOf(nil), dir, "apply",
+	a = NativeAugeas(plugintree.LibdirTree(dir), sysctlHost, probe, envOf(nil), dir, "apply",
 		&catalog.Catalog{Resources: augeasFour()[1:2]})
 	if got := nativeSet(a); !slices.Equal(got, []string{"ssh_config"}) || len(a.Reasons) != 0 || probe.calls != 1 {
 		t.Errorf("ssh_config only: native %q, reasons %q, probe calls %d", got, a.Reasons, probe.calls)
@@ -273,7 +276,7 @@ func TestNativeAugeasEnvironment(t *testing.T) {
 		t.Run(v, func(t *testing.T) {
 			dir := augeasTree(t)
 			probe := &augeasProbeFake{t: t}
-			a := NativeAugeas(LibdirTree(dir), sysctlHost, probe, envOf(map[string]string{v: "x"}), dir, "apply",
+			a := NativeAugeas(plugintree.LibdirTree(dir), sysctlHost, probe, envOf(map[string]string{v: "x"}), dir, "apply",
 				&catalog.Catalog{Resources: augeasFour()})
 			checkRoute(t, a, nil)
 			if probe.calls != 0 {
@@ -283,7 +286,7 @@ func TestNativeAugeasEnvironment(t *testing.T) {
 				t.Errorf("reason %q does not name %s", a.Reasons["sysctl"], v)
 			}
 			probe = &augeasProbeFake{t: t}
-			a = NativeAugeas(LibdirTree(dir), sysctlHost, probe, envOf(map[string]string{v: ""}), dir, "apply",
+			a = NativeAugeas(plugintree.LibdirTree(dir), sysctlHost, probe, envOf(map[string]string{v: ""}), dir, "apply",
 				&catalog.Catalog{Resources: augeasFour()})
 			checkRoute(t, a, allAugeasTypes)
 			if probe.calls != 1 {
@@ -294,7 +297,7 @@ func TestNativeAugeasEnvironment(t *testing.T) {
 }
 
 func TestNativeAugeasLibdirClean(t *testing.T) {
-	tree := LibdirTree(augeasTree(t))
+	tree := plugintree.LibdirTree(augeasTree(t))
 	for _, libdir := range []string{"/x/", "/x//y", "/x/./y", "/x/../y", "/", "x/y", "", "./x"} {
 		t.Run(libdir, func(t *testing.T) {
 			probe := &augeasProbeFake{t: t}
@@ -311,7 +314,7 @@ func TestNativeAugeasProbe(t *testing.T) {
 	dir := augeasTree(t)
 	const why = "libaugeas: dlopen: no such file"
 	probe := &augeasProbeFake{t: t, reason: why}
-	a := NativeAugeas(LibdirTree(dir), sysctlHost, probe, envOf(nil), dir, "apply", &catalog.Catalog{Resources: augeasFour()})
+	a := NativeAugeas(plugintree.LibdirTree(dir), sysctlHost, probe, envOf(nil), dir, "apply", &catalog.Catalog{Resources: augeasFour()})
 	checkRoute(t, a, nil)
 	for _, typ := range allAugeasTypes {
 		if a.Reasons[typ] != why {
@@ -322,7 +325,7 @@ func TestNativeAugeasProbe(t *testing.T) {
 	// No type left after the fingerprints: the library is not probed.
 	probe = &augeasProbeFake{t: t}
 	empty := t.TempDir()
-	NativeAugeas(LibdirTree(empty), sysctlHost, probe, envOf(nil), empty, "apply", &catalog.Catalog{Resources: augeasFour()})
+	NativeAugeas(plugintree.LibdirTree(empty), sysctlHost, probe, envOf(nil), empty, "apply", &catalog.Catalog{Resources: augeasFour()})
 	if probe.calls != 0 {
 		t.Errorf("probe called %d time(s) with no fingerprint matching", probe.calls)
 	}
@@ -371,66 +374,66 @@ func TestNativeAugeasNameShapes(t *testing.T) {
 	sv := map[string]any{"value": "yes"}
 	cmd := map[string]any{"command": "/bin/x"}
 	runShapes(t, []shapeCase{
-		{"sysctl 1x.y", augRes("Sysctl", "1x.y", v), false},
-		{"sysctl .a", augRes("Sysctl", ".a", v), false},
-		{"sysctl -a", augRes("Sysctl", "-a", v), false},
-		{"sysctl a..b", augRes("Sysctl", "a..b", v), false},
-		{"sysctl net.ipv4.ip_forward", augRes("Sysctl", "net.ipv4.ip_forward", v), true},
-		{"sysctl kernel.core_pattern", augRes("Sysctl", "kernel.core_pattern", v), true},
-		{"ssh_config Ciphers", augRes("Ssh_config", "Ciphers", sv), true},
-		{"ssh_config Foo-Bar", augRes("Ssh_config", "Foo-Bar", sv), false},
-		{"ssh_config key Foo-Bar", augRes("Ssh_config", "x", map[string]any{"value": "yes", "key": "Foo-Bar"}), false},
-		{"sshd_config Foo-Bar", augRes("Sshd_config", "Foo-Bar", sv), false},
-		{"ssh_config host *", augRes("Ssh_config", "Ciphers", map[string]any{"value": "yes", "host": "*"}), true},
-		{"ssh_config host a'b", augRes("Ssh_config", "Ciphers", map[string]any{"value": "yes", "host": "a'b"}), false},
-		{"subsystem sftp", augRes("Sshd_config_subsystem", "sftp", cmd), true},
-		{"subsystem _x", augRes("Sshd_config_subsystem", "_x", cmd), true},
-		{"subsystem x-y", augRes("Sshd_config_subsystem", "x-y", cmd), true},
-		{"subsystem .", augRes("Sshd_config_subsystem", ".", cmd), false},
-		{"subsystem ..", augRes("Sshd_config_subsystem", "..", cmd), false},
-		{"subsystem 1", augRes("Sshd_config_subsystem", "1", cmd), false},
-		{"subsystem 1x", augRes("Sshd_config_subsystem", "1x", cmd), false},
-		{"subsystem a.b", augRes("Sshd_config_subsystem", "a.b", cmd), false},
-		{"condition pairs", augRes("Sshd_config", "PermitRootLogin", map[string]any{"value": "no", "condition": "Host example.net User root"}), true},
-		{"condition odd", augRes("Sshd_config", "PermitRootLogin", map[string]any{"value": "no", "condition": "Host"}), false},
-		{"condition Hash", augRes("Sshd_config", "PermitRootLogin", map[string]any{"value": "no", "condition": map[string]any{"Host": "x"}}), false},
-		{"target clean", augRes("Sysctl", "vm.swappiness", map[string]any{"value": "1", "target": "/etc/sysctl.d/99-x.conf"}), true},
-		{"target trailing /", augRes("Sysctl", "vm.swappiness", map[string]any{"value": "1", "target": "/etc/x/"}), false},
-		{"target //", augRes("Sysctl", "vm.swappiness", map[string]any{"value": "1", "target": "/etc//x"}), false},
-		{"target ..", augRes("Sysctl", "vm.swappiness", map[string]any{"value": "1", "target": "/etc/../x"}), false},
-		{"target space", augRes("Sysctl", "vm.swappiness", map[string]any{"value": "1", "target": "/etc/a b"}), false},
-		{"target quote", augRes("Sshd_config", "PermitRootLogin", map[string]any{"value": "no", "target": "/etc/a'b"}), false},
-		{"ssh_config relative target is Ruby's refusal", augRes("Ssh_config", "Ciphers", map[string]any{"value": "yes", "target": "etc/x"}), true},
-		{"value control character", augRes("Sysctl", "vm.swappiness", map[string]any{"value": "a\nb"}), false},
+		{"sysctl 1x.y", raltest.AugRes("Sysctl", "1x.y", v), false},
+		{"sysctl .a", raltest.AugRes("Sysctl", ".a", v), false},
+		{"sysctl -a", raltest.AugRes("Sysctl", "-a", v), false},
+		{"sysctl a..b", raltest.AugRes("Sysctl", "a..b", v), false},
+		{"sysctl net.ipv4.ip_forward", raltest.AugRes("Sysctl", "net.ipv4.ip_forward", v), true},
+		{"sysctl kernel.core_pattern", raltest.AugRes("Sysctl", "kernel.core_pattern", v), true},
+		{"ssh_config Ciphers", raltest.AugRes("Ssh_config", "Ciphers", sv), true},
+		{"ssh_config Foo-Bar", raltest.AugRes("Ssh_config", "Foo-Bar", sv), false},
+		{"ssh_config key Foo-Bar", raltest.AugRes("Ssh_config", "x", map[string]any{"value": "yes", "key": "Foo-Bar"}), false},
+		{"sshd_config Foo-Bar", raltest.AugRes("Sshd_config", "Foo-Bar", sv), false},
+		{"ssh_config host *", raltest.AugRes("Ssh_config", "Ciphers", map[string]any{"value": "yes", "host": "*"}), true},
+		{"ssh_config host a'b", raltest.AugRes("Ssh_config", "Ciphers", map[string]any{"value": "yes", "host": "a'b"}), false},
+		{"subsystem sftp", raltest.AugRes("Sshd_config_subsystem", "sftp", cmd), true},
+		{"subsystem _x", raltest.AugRes("Sshd_config_subsystem", "_x", cmd), true},
+		{"subsystem x-y", raltest.AugRes("Sshd_config_subsystem", "x-y", cmd), true},
+		{"subsystem .", raltest.AugRes("Sshd_config_subsystem", ".", cmd), false},
+		{"subsystem ..", raltest.AugRes("Sshd_config_subsystem", "..", cmd), false},
+		{"subsystem 1", raltest.AugRes("Sshd_config_subsystem", "1", cmd), false},
+		{"subsystem 1x", raltest.AugRes("Sshd_config_subsystem", "1x", cmd), false},
+		{"subsystem a.b", raltest.AugRes("Sshd_config_subsystem", "a.b", cmd), false},
+		{"condition pairs", raltest.AugRes("Sshd_config", "PermitRootLogin", map[string]any{"value": "no", "condition": "Host example.net User root"}), true},
+		{"condition odd", raltest.AugRes("Sshd_config", "PermitRootLogin", map[string]any{"value": "no", "condition": "Host"}), false},
+		{"condition Hash", raltest.AugRes("Sshd_config", "PermitRootLogin", map[string]any{"value": "no", "condition": map[string]any{"Host": "x"}}), false},
+		{"target clean", raltest.AugRes("Sysctl", "vm.swappiness", map[string]any{"value": "1", "target": "/etc/sysctl.d/99-x.conf"}), true},
+		{"target trailing /", raltest.AugRes("Sysctl", "vm.swappiness", map[string]any{"value": "1", "target": "/etc/x/"}), false},
+		{"target //", raltest.AugRes("Sysctl", "vm.swappiness", map[string]any{"value": "1", "target": "/etc//x"}), false},
+		{"target ..", raltest.AugRes("Sysctl", "vm.swappiness", map[string]any{"value": "1", "target": "/etc/../x"}), false},
+		{"target space", raltest.AugRes("Sysctl", "vm.swappiness", map[string]any{"value": "1", "target": "/etc/a b"}), false},
+		{"target quote", raltest.AugRes("Sshd_config", "PermitRootLogin", map[string]any{"value": "no", "target": "/etc/a'b"}), false},
+		{"ssh_config relative target is Ruby's refusal", raltest.AugRes("Ssh_config", "Ciphers", map[string]any{"value": "yes", "target": "etc/x"}), true},
+		{"value control character", raltest.AugRes("Sysctl", "vm.swappiness", map[string]any{"value": "a\nb"}), false},
 	})
 }
 
 func TestNativeAugeasShapes(t *testing.T) {
 	const max = float64(1<<53 - 1)
 	runShapes(t, []shapeCase{
-		{"comment", augRes("Sysctl", "vm.swappiness", map[string]any{"value": "1", "comment": "c"}), false},
-		{"ssh_config comment", augRes("Ssh_config", "Ciphers", map[string]any{"value": "x", "comment": "c"}), false},
-		{"val", augRes("Sysctl", "vm.swappiness", map[string]any{"val": "1"}), false},
-		{"persist => false", augRes("Sysctl", "vm.swappiness", map[string]any{"value": "1", "persist": false}), false},
-		{"sysctl ensure => absent", augRes("Sysctl", "vm.swappiness", map[string]any{"ensure": "absent"}), false},
-		{"ssh_config ensure => absent stays", augRes("Ssh_config", "Ciphers", map[string]any{"ensure": "absent"}), true},
-		{"provider => parsed", augRes("Sysctl", "vm.swappiness", map[string]any{"value": "1", "provider": "parsed"}), false},
-		{"provider => augeas", augRes("Sysctl", "vm.swappiness", map[string]any{"value": "1", "provider": "augeas"}), true},
-		{"name differs from title", augRes("Sysctl", "vm.swappiness", map[string]any{"value": "1", "name": "vm.dirty_ratio"}), false},
-		{"Sensitive", augRes("Sshd_config", "PermitRootLogin", map[string]any{"value": "no"}, "value"), false},
-		{"ssh_config present without value", augRes("Ssh_config", "Ciphers", map[string]any{"ensure": "present"}), false},
-		{"sshd_config present without value", augRes("Sshd_config", "PermitRootLogin", map[string]any{"ensure": "present"}), false},
-		{"ssh_config Integer value", augRes("Ssh_config", "Port", map[string]any{"value": float64(22)}), false},
-		{"sshd_config Integer value", augRes("Sshd_config", "Port", map[string]any{"value": float64(22)}), true},
-		{"sysctl 2^53", augRes("Sysctl", "vm.swappiness", map[string]any{"value": max + 1}), false},
-		{"sysctl 2^53 - 1", augRes("Sysctl", "vm.swappiness", map[string]any{"value": max}), true},
-		{"ssh_config []", augRes("Ssh_config", "Ciphers", map[string]any{"value": []any{}}), false},
-		{"sshd_config []", augRes("Sshd_config", "PermitRootLogin", map[string]any{"value": []any{}}), false},
-		{"ssh_config array", augRes("Ssh_config", "Ciphers", map[string]any{"value": []any{"a", "b"}}), true},
-		{"subsystem Integer command", augRes("Sshd_config_subsystem", "sftp", map[string]any{"command": float64(1)}), false},
-		{"Hash value", augRes("Sshd_config", "PermitRootLogin", map[string]any{"value": map[string]any{"a": "b"}}), false},
+		{"comment", raltest.AugRes("Sysctl", "vm.swappiness", map[string]any{"value": "1", "comment": "c"}), false},
+		{"ssh_config comment", raltest.AugRes("Ssh_config", "Ciphers", map[string]any{"value": "x", "comment": "c"}), false},
+		{"val", raltest.AugRes("Sysctl", "vm.swappiness", map[string]any{"val": "1"}), false},
+		{"persist => false", raltest.AugRes("Sysctl", "vm.swappiness", map[string]any{"value": "1", "persist": false}), false},
+		{"sysctl ensure => absent", raltest.AugRes("Sysctl", "vm.swappiness", map[string]any{"ensure": "absent"}), false},
+		{"ssh_config ensure => absent stays", raltest.AugRes("Ssh_config", "Ciphers", map[string]any{"ensure": "absent"}), true},
+		{"provider => parsed", raltest.AugRes("Sysctl", "vm.swappiness", map[string]any{"value": "1", "provider": "parsed"}), false},
+		{"provider => augeas", raltest.AugRes("Sysctl", "vm.swappiness", map[string]any{"value": "1", "provider": "augeas"}), true},
+		{"name differs from title", raltest.AugRes("Sysctl", "vm.swappiness", map[string]any{"value": "1", "name": "vm.dirty_ratio"}), false},
+		{"Sensitive", raltest.AugRes("Sshd_config", "PermitRootLogin", map[string]any{"value": "no"}, "value"), false},
+		{"ssh_config present without value", raltest.AugRes("Ssh_config", "Ciphers", map[string]any{"ensure": "present"}), false},
+		{"sshd_config present without value", raltest.AugRes("Sshd_config", "PermitRootLogin", map[string]any{"ensure": "present"}), false},
+		{"ssh_config Integer value", raltest.AugRes("Ssh_config", "Port", map[string]any{"value": float64(22)}), false},
+		{"sshd_config Integer value", raltest.AugRes("Sshd_config", "Port", map[string]any{"value": float64(22)}), true},
+		{"sysctl 2^53", raltest.AugRes("Sysctl", "vm.swappiness", map[string]any{"value": max + 1}), false},
+		{"sysctl 2^53 - 1", raltest.AugRes("Sysctl", "vm.swappiness", map[string]any{"value": max}), true},
+		{"ssh_config []", raltest.AugRes("Ssh_config", "Ciphers", map[string]any{"value": []any{}}), false},
+		{"sshd_config []", raltest.AugRes("Sshd_config", "PermitRootLogin", map[string]any{"value": []any{}}), false},
+		{"ssh_config array", raltest.AugRes("Ssh_config", "Ciphers", map[string]any{"value": []any{"a", "b"}}), true},
+		{"subsystem Integer command", raltest.AugRes("Sshd_config_subsystem", "sftp", map[string]any{"command": float64(1)}), false},
+		{"Hash value", raltest.AugRes("Sshd_config", "PermitRootLogin", map[string]any{"value": map[string]any{"a": "b"}}), false},
 		// Ruby's refusals stay native: validation prints them.
-		{"apply => yes", augRes("Sysctl", "vm.swappiness", map[string]any{"value": "1", "apply": "yes"}), true},
+		{"apply => yes", raltest.AugRes("Sysctl", "vm.swappiness", map[string]any{"value": "1", "apply": "yes"}), true},
 	})
 }
 
@@ -439,25 +442,25 @@ func TestNativeAugeasSysctlPlatform(t *testing.T) {
 	exec := map[string]bool{"/usr/sbin/sysctl": true}
 	cases := []struct {
 		name    string
-		p       fakePlatform
+		p       raltest.FakePlatform
 		path    string
 		native  bool
 		command string
 	}{
 		{"CentOS Stream 10", sysctlHost, "", true, "/usr/sbin/sysctl"},
-		{"libuser is not a condition", fakePlatform{exec: map[string]bool{"/usr/sbin/sysctl": true,
-			"/usr/sbin/luseradd": true, "/usr/sbin/lgroupadd": true}, release: centos10}, "", true, "/usr/sbin/sysctl"},
-		{"PATH first", fakePlatform{exec: map[string]bool{"/usr/sbin/sysctl": true, "/opt/x/sysctl": true},
-			release: centos10}, "/opt/x:/usr/bin", true, "/opt/x/sysctl"},
-		{"/sbin appended", fakePlatform{exec: map[string]bool{"/sbin/sysctl": true}, release: centos10}, "/usr/bin", true, "/sbin/sysctl"},
-		{"Fedora", fakePlatform{exec: exec, release: "ID=fedora\nID_LIKE=\"rhel\"\nVERSION_ID=41\n"}, "", false, ""},
-		{"RHEL 9", fakePlatform{exec: exec, release: "ID=rhel\nVERSION_ID=\"9.4\"\n"}, "", false, ""},
-		{"os-release unreadable", fakePlatform{exec: exec, err: os.ErrNotExist}, "", false, ""},
-		{"no sysctl", fakePlatform{release: centos10}, "/usr/bin", false, ""},
+		{"libuser is not a condition", raltest.FakePlatform{Exec: map[string]bool{"/usr/sbin/sysctl": true,
+			"/usr/sbin/luseradd": true, "/usr/sbin/lgroupadd": true}, Release: raltest.CentOS10}, "", true, "/usr/sbin/sysctl"},
+		{"PATH first", raltest.FakePlatform{Exec: map[string]bool{"/usr/sbin/sysctl": true, "/opt/x/sysctl": true},
+			Release: raltest.CentOS10}, "/opt/x:/usr/bin", true, "/opt/x/sysctl"},
+		{"/sbin appended", raltest.FakePlatform{Exec: map[string]bool{"/sbin/sysctl": true}, Release: raltest.CentOS10}, "/usr/bin", true, "/sbin/sysctl"},
+		{"Fedora", raltest.FakePlatform{Exec: exec, Release: "ID=fedora\nID_LIKE=\"rhel\"\nVERSION_ID=41\n"}, "", false, ""},
+		{"RHEL 9", raltest.FakePlatform{Exec: exec, Release: "ID=rhel\nVERSION_ID=\"9.4\"\n"}, "", false, ""},
+		{"os-release unreadable", raltest.FakePlatform{Exec: exec, Err: os.ErrNotExist}, "", false, ""},
+		{"no sysctl", raltest.FakePlatform{Release: raltest.CentOS10}, "/usr/bin", false, ""},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			a := NativeAugeas(LibdirTree(dir), c.p, &augeasProbeFake{t: t}, envOf(map[string]string{"PATH": c.path}), dir, "apply",
+			a := NativeAugeas(plugintree.LibdirTree(dir), c.p, &augeasProbeFake{t: t}, envOf(map[string]string{"PATH": c.path}), dir, "apply",
 				&catalog.Catalog{Resources: augeasFour()})
 			want := allAugeasTypes
 			if !c.native {
@@ -520,7 +523,7 @@ func TestAugeasTypesProviders(t *testing.T) {
 
 // EndRun on any of the providers closes every handle the run opened, once.
 func TestAugeasProvidersEndRun(t *testing.T) {
-	lib := newScriptLib(t, parseTrace(t, "end", strings.Join([]string{
+	lib := raltest.NewScriptLib(t, raltest.ParseTrace(t, "end", strings.Join([]string{
 		`h1 aug_init NULL NULL 64`,
 		`h1 aug_close`,
 	}, "\n")+"\n"))
@@ -546,7 +549,7 @@ func TestArgvSysctlRunsWithRubyLocale(t *testing.T) {
 
 func TestLibdirTreeList(t *testing.T) {
 	dir := augeasTree(t)
-	got, err := LibdirTree(dir).List("puppet/provider")
+	got, err := plugintree.LibdirTree(dir).List("puppet/provider")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -554,7 +557,7 @@ func TestLibdirTreeList(t *testing.T) {
 	if w := []string{"augeas", "augeasprovider", "ssh_config", "sshd_config", "sshd_config_subsystem", "sysctl"}; !slices.Equal(got, w) {
 		t.Errorf("List = %q, want %q", got, w)
 	}
-	if _, err := LibdirTree(dir).List("puppet/none"); err == nil {
+	if _, err := plugintree.LibdirTree(dir).List("puppet/none"); err == nil {
 		t.Error("missing directory listed without an error")
 	}
 }

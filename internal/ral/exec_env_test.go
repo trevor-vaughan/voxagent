@@ -9,6 +9,9 @@ import (
 	"testing"
 
 	"github.com/voxagent/voxagent/internal/catalog"
+	"github.com/voxagent/voxagent/internal/lib/command"
+	"github.com/voxagent/voxagent/internal/lib/raltest"
+	"github.com/voxagent/voxagent/internal/lib/sources"
 )
 
 // envWarnings runs execEnv on an Exec[env] resource carrying environment and
@@ -24,8 +27,8 @@ func envWarnings(t *testing.T, environment any, path string, marked bool) ([]str
 	case []string:
 		p.Environment = v
 	}
-	ctx, entries := debugContext("warning")
-	ctx = WithSources(WithUniqueWarnings(ctx), Sources{Provider: "Exec[env](provider=posix)"})
+	ctx, entries := raltest.DebugContext("warning")
+	ctx = sources.WithSources(WithUniqueWarnings(ctx), sources.Sources{Provider: "Exec[env](provider=posix)"})
 	env := execEnv(ctx, r, p, path, marked)
 	var got []string
 	for _, e := range *entries {
@@ -98,13 +101,13 @@ func TestExecEnvironmentEmptyValueWarnsOncePerVariable(t *testing.T) {
 // guard, the command and a second exec that all set E empty warn once. The
 // next run's set is fresh.
 func TestExecEmptyEnvironmentWarnsOncePerRun(t *testing.T) {
-	ctx, entries := debugContext("warning")
+	ctx, entries := raltest.DebugContext("warning")
 	run := WithUniqueWarnings(ctx)
 	apply := func(ctx context.Context, title string) {
 		t.Helper()
 		r := catalog.Resource{Type: "Exec", Title: title, File: "/site.pp", Line: 3,
 			Parameters: map[string]any{"command": "/bin/true", "onlyif": "/bin/true", "environment": []any{"E="}}}
-		changes, _, err := Exec{}.Apply(WithSources(ctx, Sources{Provider: "Exec[" + title + "](provider=posix)"}), r, false)
+		changes, _, err := Exec{}.Apply(sources.WithSources(ctx, sources.Sources{Provider: "Exec[" + title + "](provider=posix)"}), r, false)
 		if err != nil || len(changes) != 1 || changes[0].Err != nil {
 			t.Fatalf("Apply %s = (%+v, %v)", title, changes, err)
 		}
@@ -134,7 +137,7 @@ func TestExecEmptyEnvironmentWarnsOncePerRun(t *testing.T) {
 
 // util/logging.rb:193-194: with neither file nor line, warn_once says so.
 func TestExecEmptyEnvironmentWarningWithoutLocation(t *testing.T) {
-	ctx, entries := debugContext("warning")
+	ctx, entries := raltest.DebugContext("warning")
 	r := catalog.Resource{Type: "Exec", Title: "env", Parameters: map[string]any{"command": "true"}}
 	execEnv(WithUniqueWarnings(ctx), r, execParams{Environment: []string{"E="}}, "", false)
 	if len(*entries) != 1 {
@@ -203,7 +206,7 @@ func TestExecEnvironmentWithoutPathLeavesAgentPath(t *testing.T) {
 func hasUserEnv(env []string) bool {
 	for _, kv := range env {
 		name, _, _ := strings.Cut(kv, "=")
-		if slices.Contains(userEnvVars, name) {
+		if slices.Contains(command.UserEnvVars, name) {
 			return true
 		}
 	}
@@ -211,7 +214,7 @@ func hasUserEnv(env []string) bool {
 }
 
 func TestWithoutUserEnv(t *testing.T) {
-	got := withoutUserEnv([]string{"HOME=/h", "A=1", "USER=u", "LOGNAME=l", "HOMEX=2", "B=HOME=3"})
+	got := command.WithoutUserEnv([]string{"HOME=/h", "A=1", "USER=u", "LOGNAME=l", "HOMEX=2", "B=HOME=3"})
 	if want := []string{"A=1", "HOMEX=2", "B=HOME=3"}; !slices.Equal(got, want) {
 		t.Errorf("withoutUserEnv = %q, want %q", got, want)
 	}
@@ -225,7 +228,7 @@ func TestExecChildHasNoUserEnv(t *testing.T) {
 	t.Setenv("LOGNAME", "someone")
 	guardOut := filepath.Join(t.TempDir(), "guard.env")
 
-	ch := execChange(t, execRes("env", map[string]any{
+	ch := execChange(t, raltest.ExecRes("env", map[string]any{
 		"command":   "env",
 		"path":      "/usr/bin:/bin",
 		"logoutput": true,
@@ -235,7 +238,7 @@ func TestExecChildHasNoUserEnv(t *testing.T) {
 		t.Fatalf("exec failed: %v", ch.Err)
 	}
 	if out := strings.Join(ch.PropertyNotices, "\n"); hasUserEnv(strings.Split(out, "\n")) || !strings.Contains(out, "PATH=") {
-		t.Errorf("command env = %q, want PATH and none of %v", out, userEnvVars)
+		t.Errorf("command env = %q, want PATH and none of %v", out, command.UserEnvVars)
 	}
 	guard, err := os.ReadFile(guardOut)
 	if err != nil {
@@ -245,11 +248,11 @@ func TestExecChildHasNoUserEnv(t *testing.T) {
 		t.Errorf("guard env has a user variable: %q", guard)
 	}
 
-	_, out, err := fileOutputRunner{}.run(context.Background(), "env")
+	_, out, err := command.FileOutputRunner{}.Run(context.Background(), "env")
 	if err != nil {
 		t.Fatal(err)
 	}
 	if hasUserEnv(strings.Split(out, "\n")) || !strings.Contains(out, "PATH=") {
-		t.Errorf("runArgv env = %q, want PATH and none of %v", out, userEnvVars)
+		t.Errorf("runArgv env = %q, want PATH and none of %v", out, command.UserEnvVars)
 	}
 }

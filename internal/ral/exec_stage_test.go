@@ -12,6 +12,8 @@ import (
 	"syscall"
 	"testing"
 	"time"
+
+	"github.com/voxagent/voxagent/internal/lib/raltest"
 )
 
 // stagedExec runs command through execute with the exec's other parameters.
@@ -21,7 +23,7 @@ func stagedExec(t *testing.T, params map[string]any, command any) (int, string, 
 	for k, v := range params {
 		all[k] = v
 	}
-	return Exec{}.execute(context.Background(), execRes("s", all), command, false, false)
+	return Exec{}.execute(context.Background(), raltest.ExecRes("s", all), command, false, false)
 }
 
 func needRoot(t *testing.T, reason string) {
@@ -212,7 +214,7 @@ func TestExecUnknownIdentity(t *testing.T) {
 // D-78: a Sensitive user is not printed.
 func TestExecUnknownSensitiveUserIsRedacted(t *testing.T) {
 	setAgentRoot(t, true)
-	r := execRes("s", map[string]any{"command": "/bin/true", "user": "secretname"})
+	r := raltest.ExecRes("s", map[string]any{"command": "/bin/true", "user": "secretname"})
 	r.SensitiveParameters = []string{"user"}
 	code, out, err := Exec{}.execute(context.Background(), r, "/bin/true", false, false)
 	if want := "Error: Could not execute posix command: Invalid user: [redacted]\n"; err != nil || code != 1 || out != want {
@@ -249,7 +251,7 @@ func TestExecUmaskSeen(t *testing.T) {
 	if got := mustOutput(t, params, "umask"); got != "0027" {
 		t.Errorf("command umask = %q, want 0027", got)
 	}
-	r := execRes("s", map[string]any{"command": "umask", "umask": "027"})
+	r := raltest.ExecRes("s", map[string]any{"command": "umask", "umask": "027"})
 	code, out, err := Exec{}.execute(context.Background(), r, "umask", false, true)
 	if err != nil || code != 0 || strings.TrimSpace(out) != "0027" {
 		t.Errorf("guard: (%d, %q, %v), want umask 0027", code, out, err)
@@ -420,7 +422,7 @@ func TestExecRestoreFailureIsStagingBroken(t *testing.T) {
 			t.Errorf("%v: error %v, want ErrStagingBroken wrapping EACCES", command, err)
 		}
 	}
-	r := execRes("s", map[string]any{"command": "/bin/true", "cwd": t.TempDir()})
+	r := raltest.ExecRes("s", map[string]any{"command": "/bin/true", "cwd": t.TempDir()})
 	if _, _, err := (Exec{}).Apply(context.Background(), r, false); !errors.Is(err, ErrStagingBroken) {
 		t.Errorf("Apply: error %v, want ErrStagingBroken", err)
 	}

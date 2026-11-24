@@ -10,11 +10,12 @@ import (
 	"testing"
 
 	"github.com/voxagent/voxagent/internal/catalog"
+	"github.com/voxagent/voxagent/internal/lib/raltest"
 )
 
 // markedFile is a File resource that marks the named parameters sensitive.
 func markedFile(path string, params map[string]any, marked ...string) catalog.Resource {
-	r := fileRes(path, params)
+	r := raltest.FileRes(path, params)
 	r.SensitiveParameters = marked
 	return r
 }
@@ -190,7 +191,7 @@ func TestFileMarkedSourceMissing(t *testing.T) {
 // not redacted in events), but its error text must not name the source.
 func TestFileMarkedChildSourceError(t *testing.T) {
 	parent := markedFile("/p/par", map[string]any{"source": "/srv/other-secret", "recurse": true}, "source")
-	child := fileRes("/p/par/a", map[string]any{"source": "/nowhere-secret/zzz"})
+	child := raltest.FileRes("/p/par/a", map[string]any{"source": "/nowhere-secret/zzz"})
 	child.GeneratedFrom = &parent
 	_, _, err := childSourceFS(child, nil)
 	if err == nil {
@@ -217,7 +218,7 @@ func TestFileMarkedEnsureWrap(t *testing.T) {
 // its soft-limit warning (D-78).
 func TestFileMarkedSourceWalk(t *testing.T) {
 	gen := func(src string, marked bool) ([]Warning, error) {
-		parent := fileRes(t.TempDir(), map[string]any{"recurse": true, "source": src})
+		parent := raltest.FileRes(t.TempDir(), map[string]any{"recurse": true, "source": src})
 		if marked {
 			parent.SensitiveParameters = []string{"source"}
 		}

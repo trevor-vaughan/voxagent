@@ -1,18 +1,19 @@
-package ral
+package raltest
 
 import (
 	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
-	"slices"
 	"strconv"
 	"strings"
 	"testing"
+
+	"github.com/voxagent/voxagent/internal/lib/augeas"
 )
 
 // Ruby's libaugeas calls, recorded per measured case by the LD_PRELOAD
-// interposer aug-trace.c (testdata/augeas/traces/README), and a fake augLib
+// interposer aug-trace.c (testdata/augeas/traces/README), and a fake augeas.Lib
 // that replays them: the native providers must make the same calls, in the
 // same order, with the same arguments and handles (spec §0, §10).
 //
@@ -37,18 +38,18 @@ import (
 //	aug_defnode    name expr value NULL|created => rc
 //	aug_text_store lens node path  => rc
 
-// traceCall is one recorded libaugeas call and its results.
-type traceCall struct {
-	src     string // "<file>:<line>", for failure messages
-	handle  augHandle
-	fn      string
-	args    []*string // the string arguments in order
-	flags   uint      // aug_init
-	before  bool      // aug_insert
-	created bool      // aug_defnode: the created pointer was non-NULL
-	rc      int
-	value   *string  // aug_get
-	matches []string // aug_match
+// TraceCall is one recorded libaugeas call and its results.
+type TraceCall struct {
+	Src     string // "<file>:<line>", for failure messages
+	Handle  augeas.Handle
+	Fn      string
+	Args    []*string // the string arguments in order
+	Flags   uint      // aug_init
+	Before  bool      // aug_insert
+	Created bool      // aug_defnode: the created pointer was non-NULL
+	RC      int
+	Value   *string  // aug_get
+	Matches []string // aug_match
 }
 
 // traceArgs is each function's argument shape: s a string or NULL, u an
@@ -72,8 +73,8 @@ var traceArgs = map[string]struct {
 	"aug_text_store": {"sss", true},
 }
 
-// quoteTrace writes s as aug-trace.c's q() does.
-func quoteTrace(s *string) string {
+// QuoteTrace writes s as aug-trace.c's q() does.
+func QuoteTrace(s *string) string {
 	if s == nil {
 		return "NULL"
 	}
@@ -95,38 +96,38 @@ func quoteTrace(s *string) string {
 }
 
 // call renders the call without its results, as the interposer writes it.
-func (c traceCall) call() string {
-	parts := []string{fmt.Sprintf("h%d", c.handle), c.fn}
-	shape := traceArgs[c.fn].shape
+func (c TraceCall) call() string {
+	parts := []string{fmt.Sprintf("h%d", c.Handle), c.Fn}
+	shape := traceArgs[c.Fn].shape
 	si := 0
 	for _, k := range shape {
 		switch k {
 		case 's':
-			parts = append(parts, quoteTrace(c.args[si]))
+			parts = append(parts, QuoteTrace(c.Args[si]))
 			si++
 		case 'u':
-			parts = append(parts, strconv.FormatUint(uint64(c.flags), 10))
+			parts = append(parts, strconv.FormatUint(uint64(c.Flags), 10))
 		case 'b':
-			parts = append(parts, map[bool]string{false: "0", true: "1"}[c.before])
+			parts = append(parts, map[bool]string{false: "0", true: "1"}[c.Before])
 		case 'c':
-			parts = append(parts, map[bool]string{false: "NULL", true: "created"}[c.created])
+			parts = append(parts, map[bool]string{false: "NULL", true: "created"}[c.Created])
 		}
 	}
 	return strings.Join(parts, " ")
 }
 
 // String renders the whole trace line.
-func (c traceCall) String() string {
-	if !traceArgs[c.fn].hasRC {
+func (c TraceCall) String() string {
+	if !traceArgs[c.Fn].hasRC {
 		return c.call()
 	}
-	s := c.call() + " => " + strconv.Itoa(c.rc)
-	switch c.fn {
+	s := c.call() + " => " + strconv.Itoa(c.RC)
+	switch c.Fn {
 	case "aug_get":
-		s += " " + quoteTrace(c.value)
+		s += " " + QuoteTrace(c.Value)
 	case "aug_match":
-		for _, m := range c.matches {
-			s += " " + quoteTrace(&m)
+		for _, m := range c.Matches {
+			s += " " + QuoteTrace(&m)
 		}
 	}
 	return s
@@ -204,15 +205,15 @@ func traceInt(s string, unsigned bool) (int64, error) {
 	return n, nil
 }
 
-// parseTraceLine parses one trace line strictly: an unknown function (the
+// ParseTraceLine parses one trace line strictly: an unknown function (the
 // interposer's UNEXPECTED lines included), a wrong argument count or kind, a
 // missing or extra result is an error.
-func parseTraceLine(line string) (traceCall, error) {
+func ParseTraceLine(line string) (TraceCall, error) {
 	toks, quoted, err := splitTraceTokens(line)
 	if err != nil {
-		return traceCall{}, err
+		return TraceCall{}, err
 	}
-	var c traceCall
+	var c TraceCall
 	if len(toks) < 2 || quoted[0] || quoted[1] || !strings.HasPrefix(toks[0], "h") {
 		return c, errors.New("want h<N> <function>")
 	}
@@ -220,10 +221,10 @@ func parseTraceLine(line string) (traceCall, error) {
 	if err != nil {
 		return c, fmt.Errorf("handle: %v", err)
 	}
-	c.handle, c.fn = augHandle(h), toks[1]
-	spec, ok := traceArgs[c.fn]
+	c.Handle, c.Fn = augeas.Handle(h), toks[1]
+	spec, ok := traceArgs[c.Fn]
 	if !ok {
-		return c, fmt.Errorf("unknown function %q", c.fn)
+		return c, fmt.Errorf("unknown function %q", c.Fn)
 	}
 	i := 2
 	word := func() (string, error) {
@@ -257,7 +258,7 @@ func parseTraceLine(line string) (traceCall, error) {
 			if err != nil {
 				return c, err
 			}
-			c.args = append(c.args, s)
+			c.Args = append(c.Args, s)
 		case 'u':
 			w, err := word()
 			if err != nil {
@@ -267,7 +268,7 @@ func parseTraceLine(line string) (traceCall, error) {
 			if err != nil {
 				return c, err
 			}
-			c.flags = uint(n)
+			c.Flags = uint(n)
 		case 'b', 'c':
 			w, err := word()
 			if err != nil {
@@ -280,7 +281,7 @@ func parseTraceLine(line string) (traceCall, error) {
 			if w != no && w != yes {
 				return c, fmt.Errorf("field %d: want %s or %s", i, no, yes)
 			}
-			c.before, c.created = k == 'b' && w == yes, k == 'c' && w == yes
+			c.Before, c.Created = k == 'b' && w == yes, k == 'c' && w == yes
 		}
 	}
 	if spec.hasRC {
@@ -295,14 +296,14 @@ func parseTraceLine(line string) (traceCall, error) {
 		if err != nil {
 			return c, err
 		}
-		c.rc = int(rc)
-		switch c.fn {
+		c.RC = int(rc)
+		switch c.Fn {
 		case "aug_get":
-			if c.value, err = str(); err != nil {
+			if c.Value, err = str(); err != nil {
 				return c, err
 			}
 		case "aug_match":
-			for n := 0; n < c.rc; n++ {
+			for n := 0; n < c.RC; n++ {
 				m, err := str()
 				if err != nil {
 					return c, err
@@ -310,7 +311,7 @@ func parseTraceLine(line string) (traceCall, error) {
 				if m == nil {
 					return c, errors.New("NULL match")
 				}
-				c.matches = append(c.matches, *m)
+				c.Matches = append(c.Matches, *m)
 			}
 		}
 	}
@@ -320,20 +321,20 @@ func parseTraceLine(line string) (traceCall, error) {
 	return c, nil
 }
 
-// parseTrace parses a whole trace; name labels each call's src. Any bad line
+// ParseTrace parses a whole trace; name labels each call's src. Any bad line
 // fails the test.
-func parseTrace(t testing.TB, name, text string) []traceCall {
+func ParseTrace(t testing.TB, name, text string) []TraceCall {
 	t.Helper()
 	if !strings.HasSuffix(text, "\n") {
 		t.Fatalf("%s: trace does not end in a newline", name)
 	}
-	var calls []traceCall
+	var calls []TraceCall
 	for n, line := range strings.Split(strings.TrimSuffix(text, "\n"), "\n") {
-		c, err := parseTraceLine(line)
+		c, err := ParseTraceLine(line)
 		if err != nil {
 			t.Fatalf("%s:%d: %v: %q", name, n+1, err, line)
 		}
-		c.src = fmt.Sprintf("%s:%d", name, n+1)
+		c.Src = fmt.Sprintf("%s:%d", name, n+1)
 		calls = append(calls, c)
 	}
 	return calls
@@ -341,9 +342,9 @@ func parseTrace(t testing.TB, name, text string) []traceCall {
 
 const traceDir = "testdata/augeas/traces"
 
-// traceCases lists the case names ("01a-sysctl-new-file-absent") of the
+// TraceCases lists the case names ("01a-sysctl-new-file-absent") of the
 // committed traces; traceFile also takes the short id ("01a").
-func traceCases(t testing.TB) []string {
+func TraceCases(t testing.TB) []string {
 	t.Helper()
 	names, err := filepath.Glob(filepath.Join(traceDir, "*.txt"))
 	if err != nil || len(names) == 0 {
@@ -370,8 +371,8 @@ func traceFile(t testing.TB, id string) string {
 	return names[0]
 }
 
-// readTraceFile is the raw text of case id's trace.
-func readTraceFile(t testing.TB, id string) string {
+// ReadTraceFile is the raw text of case id's trace.
+func ReadTraceFile(t testing.TB, id string) string {
 	t.Helper()
 	raw, err := os.ReadFile(traceFile(t, id))
 	if err != nil {
@@ -380,180 +381,39 @@ func readTraceFile(t testing.TB, id string) string {
 	return string(raw)
 }
 
-// factsHandle is the three lines every recorded apply starts with: facts
+// FactsHandle is the three lines every recorded apply starts with: facts
 // resolution's own handle, not a provider's (spec §0). The provider handle
 // that follows is numbered h1 again.
-var factsHandle = []string{
+var FactsHandle = []string{
 	"h1 aug_init NULL NULL 68",
 	`h1 aug_get "/augeas/version" => 1 "1.15.0"`,
 	"h1 aug_close",
 }
 
-// loadTrace is case id's recorded trace (e.g. "01a") without the facts handle.
-func loadTrace(t *testing.T, id string) []traceCall {
+// LoadTrace is case id's recorded trace (e.g. "01a") without the facts handle.
+func LoadTrace(t *testing.T, id string) []TraceCall {
 	t.Helper()
-	calls := parseTrace(t, filepath.Base(traceFile(t, id)), readTraceFile(t, id))
-	for i, want := range factsHandle {
+	calls := ParseTrace(t, filepath.Base(traceFile(t, id)), ReadTraceFile(t, id))
+	for i, want := range FactsHandle {
 		if i >= len(calls) || calls[i].String() != want {
 			t.Fatalf("trace %s: line %d is not the facts handle's %q", id, i+1, want)
 		}
 	}
-	return calls[len(factsHandle):]
+	return calls[len(FactsHandle):]
 }
 
-// replayLib is an augLib answering each call with the next recorded call's
-// results. The first call whose function, handle or arguments differ from the
-// recording fails the test (Fatalf) with both lines; after that every call
-// returns failure without reporting again, so deferred cleanup during the
-// test's unwinding adds no noise. If recorded calls remain when the test ends
-// (or at an explicit done), the test fails: a replay of a prefix slices calls.
-type replayLib struct {
-	t        testing.TB
-	calls    []traceCall
-	next     int
-	diverged bool
-}
-
-// newScriptLib replays calls, recorded (loadTrace) or hand-written
-// (parseTrace), and checks at the test's end that every call was made.
-func newScriptLib(t testing.TB, calls []traceCall) *replayLib {
-	r := &replayLib{t: t, calls: calls}
-	t.Cleanup(func() {
-		if !t.Failed() {
-			r.done()
+// TraceLines is case id's recorded calls at the given trace file lines
+// (1-based, inclusive spans, facts handle included in the numbering), in order.
+func TraceLines(t *testing.T, id string, spans ...[2]int) []TraceCall {
+	t.Helper()
+	calls := LoadTrace(t, id)
+	var out []TraceCall
+	for _, s := range spans {
+		from, to := s[0]-len(FactsHandle)-1, s[1]-len(FactsHandle)
+		if from < 0 || to > len(calls) || from >= to {
+			t.Fatalf("trace %s: bad span %v", id, s)
 		}
-	})
-	return r
-}
-
-// step matches got against the next recorded call; nil after a divergence.
-func (r *replayLib) step(got traceCall) *traceCall {
-	r.t.Helper()
-	if r.diverged {
-		return nil
+		out = append(out, calls[from:to]...)
 	}
-	if r.next == len(r.calls) {
-		r.diverged = true
-		r.t.Fatalf("augeas replay: call %d is past the end of the %d recorded calls\n  got:  %s",
-			r.next+1, len(r.calls), got.call())
-		return nil
-	}
-	want := &r.calls[r.next]
-	if got.fn == "aug_init" {
-		got.handle = want.handle // aug_init's handle is its result, not an argument
-	}
-	if got.call() != want.call() {
-		r.diverged = true
-		r.t.Fatalf("augeas replay: call %d (%s) differs from Ruby's\n  want: %s\n  got:  %s",
-			r.next+1, want.src, want, got.call())
-		return nil
-	}
-	r.next++
-	return want
-}
-
-// done fails the test (Errorf: it also runs as a cleanup) if recorded calls
-// remain. It reports once.
-func (r *replayLib) done() {
-	r.t.Helper()
-	if !r.diverged && r.next < len(r.calls) {
-		r.diverged = true
-		w := r.calls[r.next]
-		r.t.Errorf("augeas replay: %d recorded call(s) not made; next is call %d (%s): %s",
-			len(r.calls)-r.next, r.next+1, w.src, w)
-	}
-}
-
-func (r *replayLib) Init(root, loadpath *string, flags uint) (augHandle, bool) {
-	r.t.Helper()
-	w := r.step(traceCall{fn: "aug_init", args: []*string{root, loadpath}, flags: flags})
-	if w == nil || w.handle == 0 {
-		return 0, false
-	}
-	return w.handle, true
-}
-
-func (r *replayLib) Close(h augHandle) {
-	r.t.Helper()
-	r.step(traceCall{handle: h, fn: "aug_close"})
-}
-
-func (r *replayLib) Get(h augHandle, path string) (*string, int) {
-	r.t.Helper()
-	w := r.step(traceCall{handle: h, fn: "aug_get", args: []*string{&path}})
-	if w == nil {
-		return nil, -1
-	}
-	if w.value == nil {
-		return nil, w.rc
-	}
-	v := *w.value
-	return &v, w.rc
-}
-
-// rc replays a call whose only result is its return code.
-func (r *replayLib) rc(got traceCall) int {
-	r.t.Helper()
-	w := r.step(got)
-	if w == nil {
-		return -1
-	}
-	return w.rc
-}
-
-func (r *replayLib) Set(h augHandle, path string, value *string) int {
-	r.t.Helper()
-	return r.rc(traceCall{handle: h, fn: "aug_set", args: []*string{&path, value}})
-}
-
-func (r *replayLib) Rm(h augHandle, path string) int {
-	r.t.Helper()
-	return r.rc(traceCall{handle: h, fn: "aug_rm", args: []*string{&path}})
-}
-
-func (r *replayLib) Insert(h augHandle, path, label string, before bool) int {
-	r.t.Helper()
-	return r.rc(traceCall{handle: h, fn: "aug_insert", args: []*string{&path, &label}, before: before})
-}
-
-func (r *replayLib) Mv(h augHandle, src, dst string) int {
-	r.t.Helper()
-	return r.rc(traceCall{handle: h, fn: "aug_mv", args: []*string{&src, &dst}})
-}
-
-func (r *replayLib) Match(h augHandle, path string) ([]string, int) {
-	r.t.Helper()
-	w := r.step(traceCall{handle: h, fn: "aug_match", args: []*string{&path}})
-	if w == nil {
-		return nil, -1
-	}
-	if w.rc < 0 {
-		return nil, w.rc
-	}
-	return slices.Clone(w.matches), w.rc
-}
-
-func (r *replayLib) Load(h augHandle) int {
-	r.t.Helper()
-	return r.rc(traceCall{handle: h, fn: "aug_load"})
-}
-
-func (r *replayLib) Save(h augHandle) int {
-	r.t.Helper()
-	return r.rc(traceCall{handle: h, fn: "aug_save"})
-}
-
-func (r *replayLib) Defvar(h augHandle, name, expr string) int {
-	r.t.Helper()
-	return r.rc(traceCall{handle: h, fn: "aug_defvar", args: []*string{&name, &expr}})
-}
-
-func (r *replayLib) Defnode(h augHandle, name, expr string, value *string) int {
-	r.t.Helper()
-	return r.rc(traceCall{handle: h, fn: "aug_defnode", args: []*string{&name, &expr, value}})
-}
-
-func (r *replayLib) TextStore(h augHandle, lens, node, path string) int {
-	r.t.Helper()
-	return r.rc(traceCall{handle: h, fn: "aug_text_store", args: []*string{&lens, &node, &path}})
+	return out
 }

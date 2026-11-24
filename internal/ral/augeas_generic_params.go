@@ -8,6 +8,8 @@ import (
 	"unicode/utf8"
 
 	"github.com/voxagent/voxagent/internal/catalog"
+	"github.com/voxagent/voxagent/internal/lib/augeas"
+	"github.com/voxagent/voxagent/internal/lib/rubyvalue"
 )
 
 // The generic augeas type (augeas_core 2.1.0): its changes parser, a port of
@@ -268,7 +270,7 @@ func flattenChanges(changes any) ([]string, error) {
 	}
 	array, isArray := changes.([]any)
 	if !isArray {
-		return nil, fmt.Errorf("changes %s is not a string or an array", rubyInspectValue(changes))
+		return nil, fmt.Errorf("changes %s is not a string or an array", rubyvalue.InspectValue(changes))
 	}
 	var out []string
 	for _, e := range array {
@@ -283,7 +285,7 @@ func flattenChanges(changes any) ([]string, error) {
 			}
 			out = append(out, sub...)
 		default:
-			return nil, fmt.Errorf("changes member %s is not a string", rubyInspectValue(e))
+			return nil, fmt.Errorf("changes member %s is not a string", rubyvalue.InspectValue(e))
 		}
 	}
 	return out, nil
@@ -305,7 +307,7 @@ func parseAugeasChanges(changes any, context string) ([]augeasCommand, error) {
 	}
 	var cmds []augeasCommand
 	for _, line := range lines {
-		line = rubyStrip(line)
+		line = rubyvalue.Strip(line)
 		if line == "" {
 			continue
 		}
@@ -335,18 +337,18 @@ func augeasASCII(r catalog.Resource, name string) (s string, present bool, err e
 	}
 	s, isString := v.(string)
 	if !isString || !printableASCII(s) {
-		return "", false, augeasUnimplemented(r, name)
+		return "", false, augeas.Unimplemented(r, name)
 	}
 	return s, true, nil
 }
 
 // parseAugeas settles an Augeas resource (spec §3) or refuses it (§0 row 6)
-// with an *unimplementedValue naming the attribute. force, onlyif, root,
+// with an *rubyvalue.UnimplementedValue naming the attribute. force, onlyif, root,
 // load_path, type_check, returns and show_diff keep no native value: only the
 // shapes native reproduces pass.
 func parseAugeas(r catalog.Resource) (augeasParams, error) {
 	p := augeasParams{Title: r.Title}
-	if err := augeasPrelude(r); err != nil {
+	if err := augeas.Prelude(r); err != nil {
 		return p, err
 	}
 	var hasLens bool
@@ -360,9 +362,9 @@ func parseAugeas(r catalog.Resource) (augeasParams, error) {
 	if hasLens != p.HasIncl {
 		// T:162-166: lens XOR incl; name the one that is missing.
 		if hasLens {
-			return p, augeasUnimplemented(r, "incl")
+			return p, augeas.Unimplemented(r, "incl")
 		}
-		return p, augeasUnimplemented(r, "lens")
+		return p, augeas.Unimplemented(r, "lens")
 	}
 	// T:64-70: an explicit context stays as given, even ''.
 	var hasContext bool
@@ -383,21 +385,21 @@ func parseAugeas(r catalog.Resource) (augeasParams, error) {
 		{"force", func(v any) bool { return v == false }},
 		{"type_check", func(v any) bool { return v == false || v == "false" }},
 		{"returns", func(v any) bool { return v == float64(0) }},
-		{"show_diff", func(v any) bool { _, err := rubyBool(v); return err == nil }},
+		{"show_diff", func(v any) bool { _, err := rubyvalue.Bool(v); return err == nil }},
 	} {
 		if v := r.Parameters[c.name]; v != nil && !c.ok(v) {
-			return p, augeasUnimplemented(r, c.name)
+			return p, augeas.Unimplemented(r, c.name)
 		}
 	}
 	if r.Parameters["changes"] == nil {
-		return p, augeasUnimplemented(r, "changes")
+		return p, augeas.Unimplemented(r, "changes")
 	}
 	if p.Commands, err = parseAugeasChanges(r.Parameters["changes"], p.Context); err != nil || len(p.Commands) == 0 {
-		return p, augeasUnimplemented(r, "changes")
+		return p, augeas.Unimplemented(r, "changes")
 	}
 	for _, c := range p.Commands {
 		if !slices.Contains(augeasNative, c.Name) || slices.ContainsFunc(c.Args, func(a string) bool { return !printableASCII(a) }) {
-			return p, augeasUnimplemented(r, "changes")
+			return p, augeas.Unimplemented(r, "changes")
 		}
 	}
 	return p, nil

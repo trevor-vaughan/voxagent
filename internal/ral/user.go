@@ -7,6 +7,9 @@ import (
 	"strings"
 
 	"github.com/voxagent/voxagent/internal/catalog"
+	"github.com/voxagent/voxagent/internal/lib/command"
+	"github.com/voxagent/voxagent/internal/lib/nameservice"
+	"github.com/voxagent/voxagent/internal/lib/rubyvalue"
 )
 
 // User is the native provider for the user type (useradd, on the platform
@@ -21,8 +24,8 @@ type User struct {
 	// catalog order (GroupGIDs). AutoRequires maps a numeric gid through it.
 	CatalogGroups []GroupGID
 
-	ns     nameService
-	runner shadowRunner
+	ns     nameservice.NameService
+	runner command.ShadowRunner
 }
 
 // GroupGID is a catalog Group's reference and its munged gid.
@@ -78,7 +81,7 @@ func (u User) AutoRequires(r catalog.Resource, managed func(string) bool) []stri
 			add("Group[" + v + "]")
 			break
 		}
-		if n, err := rubyInteger(v); err == nil {
+		if n, err := rubyvalue.Integer(v); err == nil {
 			add(u.groupWithGID(n))
 		}
 	case float64:
@@ -91,7 +94,7 @@ func (u User) AutoRequires(r catalog.Resource, managed func(string) bool) []stri
 		if !p.Inclusive {
 			// A failed read leaves the should list alone: Ruby's retrieve has no
 			// error path.
-			if current, err := groupsOf(u.nss(), p.Name); err == nil {
+			if current, err := nameservice.GroupsOf(u.nss(), p.Name); err == nil {
 				names = append(names, current...)
 			}
 		}

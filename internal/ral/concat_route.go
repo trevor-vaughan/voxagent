@@ -4,71 +4,11 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
-	"fmt"
-	"io"
-	"os"
-	"path/filepath"
 	"strings"
-	"syscall"
 
 	"github.com/voxagent/voxagent/internal/catalog"
+	"github.com/voxagent/voxagent/internal/lib/rubyvalue"
 )
-
-// PluginTree is the plugin tree NativeConcat and NativeAugeas fingerprint:
-// the libdir the extension host would load types from. It is an interface so
-// tests do not depend on the machine they run on.
-type PluginTree interface {
-	// Read returns the file at rel, a slash-separated path under the tree,
-	// following symlinks; a file over maxPluginFile bytes is an error.
-	Read(rel string) ([]byte, error)
-	// List returns the names of the entries of the directory at rel, a
-	// slash-separated path under the tree, following symlinks.
-	List(rel string) ([]string, error)
-}
-
-// maxPluginFile bounds a fingerprinted file (spec §0 row 2).
-const maxPluginFile = 1 << 20
-
-// LibdirTree is the plugin tree at a libdir path.
-type LibdirTree string
-
-func (l LibdirTree) Read(rel string) ([]byte, error) {
-	at := filepath.Join(string(l), filepath.FromSlash(rel))
-	// O_NONBLOCK: opening a FIFO would otherwise block; the type is checked
-	// on the opened file, so nothing can be swapped in after the check.
-	f, err := os.OpenFile(at, os.O_RDONLY|syscall.O_NONBLOCK, 0)
-	if err != nil {
-		return nil, err
-	}
-	defer f.Close()
-	fi, err := f.Stat()
-	if err != nil {
-		return nil, err
-	}
-	if !fi.Mode().IsRegular() {
-		return nil, fmt.Errorf("%s is not a regular file", at)
-	}
-	b, err := io.ReadAll(io.LimitReader(f, maxPluginFile+1))
-	if err != nil {
-		return nil, err
-	}
-	if len(b) > maxPluginFile {
-		return nil, fmt.Errorf("%s is over %d bytes", at, maxPluginFile)
-	}
-	return b, nil
-}
-
-func (l LibdirTree) List(rel string) ([]string, error) {
-	entries, err := os.ReadDir(filepath.Join(string(l), filepath.FromSlash(rel)))
-	if err != nil {
-		return nil, err
-	}
-	names := make([]string, len(entries))
-	for i, e := range entries {
-		names[i] = e.Name()
-	}
-	return names, nil
-}
 
 // concatTypeFiles are the files whose digests identify a concat release, in
 // the order of concatFingerprints' entries.
@@ -90,7 +30,7 @@ var concatFingerprints = map[ConcatVersion][2]string{
 // Both type files in t must match the digests of the same measured release.
 // A missing, unreadable or oversized file, an unknown digest or a mixed pair
 // delegates. So does a Concat_file or Concat_fragment with a shape the
-// native parser does not implement (unimplementedValue), and two
+// native parser does not implement (rubyvalue.UnimplementedValue), and two
 // Concat_files sharing a path, which Ruby generates one File for. Ruby's own
 // refusals stay native.
 func NativeConcat(t PluginTree, cat *catalog.Catalog) (ConcatVersion, bool) {
@@ -112,7 +52,7 @@ func NativeConcat(t PluginTree, cat *catalog.Catalog) (ConcatVersion, bool) {
 	if v == 0 {
 		return 0, false
 	}
-	var uv *unimplementedValue
+	var uv *rubyvalue.UnimplementedValue
 	paths := map[string]bool{}
 	for _, r := range cat.Resources {
 		var err error

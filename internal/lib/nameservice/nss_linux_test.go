@@ -1,4 +1,4 @@
-package ral
+package nameservice
 
 import (
 	"fmt"
@@ -24,7 +24,7 @@ func TestCNSSAgainstRealEntries(t *testing.T) {
 	if os.Geteuid() != 0 {
 		// Without root getspnam_r normally fails with EACCES, which is absence,
 		// not an error; some hosts make /etc/shadow readable, so found may be true.
-		if _, _, err := ns.shadow("root"); err != nil {
+		if _, _, err := ns.Shadow("root"); err != nil {
 			t.Errorf("non-root shadow(root) error = %v; want nil", err)
 		}
 		t.Skip("needs root: groupadd/useradd edit the account databases")
@@ -48,20 +48,20 @@ func TestCNSSAgainstRealEntries(t *testing.T) {
 	run("usermod", "-p", hash, user)
 	run("chage", "-m", "3", "-M", "40", "-W", "5", user)
 
-	u, found, err := ns.user(user)
+	u, found, err := ns.User(user)
 	if err != nil || !found {
 		t.Fatalf("user: found %v, err %v", found, err)
 	}
-	g, found, err := ns.group(group)
+	g, found, err := ns.Group(group)
 	if err != nil || !found {
 		t.Fatalf("group: found %v, err %v", found, err)
 	}
-	want := passwdEntry{Name: user, UID: u.UID, GID: g.GID, Gecos: "A, B", Dir: "/home/" + user, Shell: "/bin/sh"}
+	want := PasswdEntry{Name: user, UID: u.UID, GID: g.GID, Gecos: "A, B", Dir: "/home/" + user, Shell: "/bin/sh"}
 	if u != want {
 		t.Errorf("user = %+v; want %+v", u, want)
 	}
 
-	sp, found, err := ns.shadow(user)
+	sp, found, err := ns.Shadow(user)
 	if err != nil || !found {
 		t.Fatalf("shadow: found %v, err %v", found, err)
 	}
@@ -69,38 +69,38 @@ func TestCNSSAgainstRealEntries(t *testing.T) {
 	if sp.Hash != hash || sp.Min != 3 || sp.Max != 40 || sp.Warn != 5 || sp.Expire != 21916 {
 		t.Errorf("shadow fields = min %d max %d warn %d expire %d, hash match %v", sp.Min, sp.Max, sp.Warn, sp.Expire, sp.Hash == hash)
 	}
-	if _, found, err := ns.shadow("voxnsstest-missing"); found || err != nil {
+	if _, found, err := ns.Shadow("voxnsstest-missing"); found || err != nil {
 		t.Errorf("shadow(missing) = %v, %v", found, err)
 	}
 
-	byID, found, err := ns.groupByID(g.GID)
+	byID, found, err := ns.GroupByID(g.GID)
 	if err != nil || !found || byID.Name != group {
 		t.Errorf("groupByID = %+v, %v, %v", byID, found, err)
 	}
-	ex, _, _ := ns.group(extra)
+	ex, _, _ := ns.Group(extra)
 	if !slices.Contains(ex.Members, user) {
 		t.Errorf("extra group members = %v; want %s", ex.Members, user)
 	}
-	ids, err := ns.groupList(user, u.GID)
+	ids, err := ns.GroupList(user, u.GID)
 	if err != nil || !slices.Contains(ids, g.GID) || !slices.Contains(ids, ex.GID) {
 		t.Errorf("groupList = %v, %v; want %d and %d", ids, err, g.GID, ex.GID)
 	}
-	all, err := ns.allGroups()
+	all, err := ns.AllGroups()
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !slices.ContainsFunc(all, func(e groupEntry) bool { return e.Name == extra && e.GID == ex.GID && slices.Contains(e.Members, user) }) {
+	if !slices.ContainsFunc(all, func(e GroupEntry) bool { return e.Name == extra && e.GID == ex.GID && slices.Contains(e.Members, user) }) {
 		t.Errorf("allGroups lacks %s with member %s", extra, user)
 	}
-	names, err := groupsOf(ns, user)
+	names, err := GroupsOf(ns, user)
 	if err != nil || !slices.Equal(names, []string{extra}) {
-		t.Errorf("groupsOf = %v, %v; want [%s]", names, err, extra)
+		t.Errorf("GroupsOf = %v, %v; want [%s]", names, err, extra)
 	}
 
-	if _, found, err := ns.user("voxnsstest-missing"); found || err != nil {
+	if _, found, err := ns.User("voxnsstest-missing"); found || err != nil {
 		t.Errorf("user(missing) = %v, %v", found, err)
 	}
-	if _, found, err := ns.groupByID(1 << 40); found || err != nil {
+	if _, found, err := ns.GroupByID(1 << 40); found || err != nil {
 		t.Errorf("groupByID(huge) = %v, %v", found, err)
 	}
 }
@@ -137,19 +137,19 @@ func TestCNSSGroupLargerThanInitialBuffer(t *testing.T) {
 	appendGroupLines(t, fmt.Sprintf("%s:x:61900:%s\n%safter:x:61901:\n", group, strings.Join(members, ","), group))
 
 	ns := cNSS{}
-	byName, found, err := ns.group(group)
+	byName, found, err := ns.Group(group)
 	if err != nil || !found || !slices.Equal(byName.Members, members) {
 		t.Fatalf("group: found %v, err %v, %d members", found, err, len(byName.Members))
 	}
-	byID, found, err := ns.groupByID(byName.GID)
+	byID, found, err := ns.GroupByID(byName.GID)
 	if err != nil || !found || !slices.Equal(byID.Members, members) {
 		t.Fatalf("groupByID: found %v, err %v, %d members", found, err, len(byID.Members))
 	}
-	all, err := ns.allGroups()
+	all, err := ns.AllGroups()
 	if err != nil {
 		t.Fatal(err)
 	}
-	i := slices.IndexFunc(all, func(e groupEntry) bool { return e.Name == group })
+	i := slices.IndexFunc(all, func(e GroupEntry) bool { return e.Name == group })
 	if i < 0 || !slices.Equal(all[i].Members, members) {
 		t.Fatalf("allGroups lost the large group (index %d)", i)
 	}
@@ -182,17 +182,17 @@ func TestCNSSUserInMoreThan256Groups(t *testing.T) {
 	mustRun(t, "useradd", "-M", "-N", user)
 
 	ns := cNSS{}
-	u, found, err := ns.user(user)
+	u, found, err := ns.User(user)
 	if err != nil || !found {
 		t.Fatalf("user: %v %v", found, err)
 	}
-	ids, err := ns.groupList(user, u.GID)
+	ids, err := ns.GroupList(user, u.GID)
 	if err != nil || len(ids) < count {
 		t.Fatalf("groupList returned %d ids, err %v; want at least %d", len(ids), err, count)
 	}
-	got, err := groupsOf(ns, user)
+	got, err := GroupsOf(ns, user)
 	if err != nil || !slices.Equal(got, names) {
-		t.Errorf("groupsOf: %d names, err %v", len(got), err)
+		t.Errorf("GroupsOf: %d names, err %v", len(got), err)
 	}
 }
 

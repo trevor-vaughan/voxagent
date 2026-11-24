@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/voxagent/voxagent/internal/catalog"
+	"github.com/voxagent/voxagent/internal/lib/sources"
 	"github.com/voxagent/voxagent/internal/ral"
 	"github.com/voxagent/voxagent/internal/report"
 )
@@ -20,7 +21,7 @@ type evalGenStub struct {
 	gens    map[string]ral.EvalGeneration
 	genErrs map[string]error
 	// sources, when set, records the Sources each EvalGenerate call carried.
-	sources *[]ral.Sources
+	sources *[]sources.Sources
 }
 
 func (e evalGenStub) EvalGenerates(r catalog.Resource) bool {
@@ -32,7 +33,7 @@ func (e evalGenStub) EvalGenerates(r catalog.Resource) bool {
 func (e evalGenStub) EvalGenerate(ctx context.Context, r catalog.Resource) (ral.EvalGeneration, error) {
 	*e.calls = append(*e.calls, "eval_generate "+r.Ref())
 	if e.sources != nil {
-		*e.sources = append(*e.sources, ral.SourcesFrom(ctx))
+		*e.sources = append(*e.sources, sources.SourcesFrom(ctx))
 	}
 	if err := e.genErrs[r.Ref()]; err != nil {
 		return ral.EvalGeneration{}, err
@@ -182,7 +183,7 @@ func TestEvalGenerateHostErrorIsLogged(t *testing.T) {
 // call carries the resource's Sources as Apply's does.
 func TestEvalGenerateCarriesTheResourcesSources(t *testing.T) {
 	var f evalGenFixture
-	var seen []ral.Sources
+	var seen []sources.Sources
 	stub := evalGenStub{gens: map[string]ral.EvalGeneration{"Vox_evalgen[p]": {}}, sources: &seen}
 	c := &catalog.Catalog{
 		Resources: []catalog.Resource{res("Stage", "main", nil), res("Class", "main", nil), res("Vox_evalgen", "p", nil)},
@@ -190,8 +191,8 @@ func TestEvalGenerateCarriesTheResourcesSources(t *testing.T) {
 			{Source: "Class[main]", Target: "Vox_evalgen[p]"}},
 	}
 	runCatalog(t, f.tx(stub, nil), c)
-	want := ral.Sources{Resource: "/Stage[main]/Main/Vox_evalgen[p]", Provider: "Vox_evalgen[p](provider=prov-p)", Ref: "Vox_evalgen[p]"}
-	if !slices.Equal(seen, []ral.Sources{want}) {
+	want := sources.Sources{Resource: "/Stage[main]/Main/Vox_evalgen[p]", Provider: "Vox_evalgen[p](provider=prov-p)", Ref: "Vox_evalgen[p]"}
+	if !slices.Equal(seen, []sources.Sources{want}) {
 		t.Errorf("sources = %+v, want %+v", seen, want)
 	}
 }

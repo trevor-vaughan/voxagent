@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/voxagent/voxagent/internal/catalog"
+	"github.com/voxagent/voxagent/internal/lib/rubyvalue"
 )
 
 // ValueBounded is implemented by a provider that bounds not just WHICH
@@ -72,7 +73,7 @@ func (g Gap) String() string {
 	case g.Attribute == "":
 		return fmt.Sprintf("%s: resource type %s is not implemented", g.Ref, g.Type)
 	case g.Value != "":
-		return fmt.Sprintf("%s: %s => %s is not implemented", g.Ref, g.Attribute, redactIf(g.Marked, "%q", g.Value))
+		return fmt.Sprintf("%s: %s => %s is not implemented", g.Ref, g.Attribute, rubyvalue.RedactIf(g.Marked, "%q", g.Value))
 	default:
 		return fmt.Sprintf("%s: attribute %q is not implemented", g.Ref, g.Attribute)
 	}
@@ -110,7 +111,7 @@ func Preflight(reg *Registry, c *catalog.Catalog) []Gap {
 // valuesToBound returns the strings SupportsValue judges for one parameter.
 //
 // A non-string is judged as the string the provider will act on. Providers
-// read parameters through fmt's %v (paramString), so a JSON false reaches
+// read parameters through fmt's %v (rubyvalue.ParamString), so a JSON false reaches
 // Apply as "false"; fmt.Sprint renders a bool exactly as strconv.FormatBool
 // does. Skipping non-strings was measured to half-apply a catalog: {"ensure":
 // false} on one file passed pre-flight, the rest of the catalog was written,

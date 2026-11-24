@@ -9,6 +9,9 @@ import (
 	"strings"
 
 	"github.com/voxagent/voxagent/internal/catalog"
+	"github.com/voxagent/voxagent/internal/lib/command"
+	"github.com/voxagent/voxagent/internal/lib/rubyvalue"
+	"github.com/voxagent/voxagent/internal/lib/sources"
 	"github.com/voxagent/voxagent/internal/runlog"
 )
 
@@ -44,7 +47,7 @@ const notRootMessage = "The yum provider can only be used as root"
 // pre-flight asks, and Prefetch turns it into the value that can apply.
 type Package struct {
 	// run is the command seam. The zero value uses the real one.
-	run commandRunner
+	run command.Runner
 
 	// dnfPath and rpmPath are the two commands Ruby's dnf provider declares
 	// (dnf.rb:16, `commands :cmd => "dnf", :rpm => "rpm"`), resolved to
@@ -156,7 +159,7 @@ func ensureIsVersion(ensure string) bool {
 	case "", "present", "installed", "absent", "purged", "disabled", "latest", "held":
 		return false
 	case "true", "false":
-		// A JSON boolean, rendered by paramString. Read as a version it would
+		// A JSON boolean, rendered by rubyvalue.ParamString. Read as a version it would
 		// install `nano-false`; it names no version, so it is refused.
 		return false
 	}
@@ -246,9 +249,9 @@ func (Package) Refresh(context.Context, catalog.Resource, bool) (bool, error) {
 }
 
 // runner returns the seam, defaulting to the real one.
-func (p Package) runner() commandRunner {
+func (p Package) runner() command.Runner {
 	if p.run == nil {
-		return execRunner{}
+		return command.ExecRunner{}
 	}
 	return p.run
 }
@@ -314,8 +317,8 @@ func (p Package) Apply(ctx context.Context, r catalog.Resource, noop bool) ([]Ch
 	if p.state == nil {
 		return nil, nil, errors.New("the dnf provider was not prefetched, so no installed-package state is known")
 	}
-	name := paramString(r, "name", r.Title)
-	ensure := paramString(r, "ensure", "present")
+	name := rubyvalue.ParamString(r, "name", r.Title)
+	ensure := rubyvalue.ParamString(r, "ensure", "present")
 	// A marked ensure is shown as [redacted] in the errors that name it (D-78:
 	// Ruby leaks it).
 	ensureMarked := isMarked(p, r, "ensure")
@@ -446,7 +449,7 @@ func (p Package) Apply(ctx context.Context, r catalog.Resource, noop bool) ([]Ch
 			// through SupportsValue, so reaching here means a caller bypassed
 			// it: fail the resource rather than report a change nothing made
 			// -- or, worse, install a package named after the value.
-			return nil, nil, fmt.Errorf("ensure => %s is not implemented", redactIf(ensureMarked, "%q", ensure))
+			return nil, nil, fmt.Errorf("ensure => %s is not implemented", rubyvalue.RedactIf(ensureMarked, "%q", ensure))
 		}
 		if installed && versionInSync(current, ensure) {
 			return nil, nil, nil
@@ -473,8 +476,8 @@ func (p Package) Apply(ctx context.Context, r catalog.Resource, noop bool) ([]Ch
 // declared version, Ruby's upgrade and downgrade lines follow versionOperation.
 // The lines naming no value are Ruby's, whatever ensure is marked.
 func logInstall(ctx context.Context, name, ensure string, marked, installed bool, current, operation string) {
-	source := SourcesFrom(ctx).Provider
-	should := redactIf(marked, "%s", ensure)
+	source := sources.SourcesFrom(ctx).Provider
+	should := rubyvalue.RedactIf(marked, "%s", ensure)
 	runlog.Debugf(ctx, source, "Ensuring => %s", should)
 	switch {
 	case ensure == "latest" && !installed:
@@ -633,7 +636,7 @@ func (p Package) syncUpdate(ctx context.Context, ch Change, noop bool, operation
 	}
 	syncCtx := ctx
 	if redact && should != "" {
-		syncCtx = withRedactedCommands(ctx)
+		syncCtx = command.WithRedactedCommands(ctx)
 	}
 	changes := p.sync(syncCtx, ch, noop, p.dnfPath, "-y", operation, target)
 	if redact && should != "" && changes[0].Err != nil {
@@ -667,7 +670,7 @@ func (p Package) verifyVersion(ctx context.Context, name, should string, redact 
 		return fmt.Errorf("Could not find package %s", name)
 	}
 	if !providerInSync(version, should) {
-		return fmt.Errorf("Failed to update to version %s, got version %s instead", redactIf(redact, "%s", should), version)
+		return fmt.Errorf("Failed to update to version %s, got version %s instead", rubyvalue.RedactIf(redact, "%s", should), version)
 	}
 	return nil
 }
@@ -685,9 +688,9 @@ func (p Package) verifyVersion(ctx context.Context, name, should string, redact 
 // so a virtual name reads as its provider's version.
 func (p Package) query(ctx context.Context, name string) (version string, found bool, err error) {
 	args := []string{"-q", name, "--qf", rpmQueryFormat}
-	exit, out, err := p.runner().run(ctx, p.rpmPath, args...)
+	exit, out, err := p.runner().Run(ctx, p.rpmPath, args...)
 	if err == nil && exit != 0 {
-		exit, out, err = p.runner().run(ctx, p.rpmPath, append(args, "--whatprovides")...)
+		exit, out, err = p.runner().Run(ctx, p.rpmPath, append(args, "--whatprovides")...)
 		if err == nil && exit != 0 {
 			return "", false, nil
 		}
@@ -733,10 +736,10 @@ func (p Package) query(ctx context.Context, name string) (version string, found 
 func (p Package) resolveUpdates(ctx context.Context, rs []catalog.Resource) (map[string]string, string, error) {
 	asked := false
 	for _, r := range rs {
-		if paramString(r, "ensure", "present") != "latest" {
+		if rubyvalue.ParamString(r, "ensure", "present") != "latest" {
 			continue
 		}
-		if _, installed := p.state[paramString(r, "name", r.Title)]; installed {
+		if _, installed := p.state[rubyvalue.ParamString(r, "name", r.Title)]; installed {
 			asked = true
 			break
 		}
@@ -749,7 +752,7 @@ func (p Package) resolveUpdates(ctx context.Context, rs []catalog.Resource) (map
 	// dnf write repo progress to stdout, which Ruby tolerates rather than
 	// suppresses; parseCheckUpdate reproduces the filter that makes it
 	// harmless.
-	exit, out, err := p.runner().run(ctx, p.dnfPath, "-y", "check-update")
+	exit, out, err := p.runner().Run(ctx, p.dnfPath, "-y", "check-update")
 	if err != nil {
 		// dnf could not be started at all, moments after exec.LookPath found
 		// it. Ruby's behaviour here is UNMEASURED, so this fails the prefetch
@@ -783,7 +786,7 @@ func (p Package) resolveUpdates(ctx context.Context, rs []catalog.Resource) (map
 // CONTRACT, not a diagnostic: the command line, its flags, its absolute path
 // and the stripped combined output are all part of a reported value.
 func (p Package) execute(ctx context.Context, path string, args ...string) (string, error) {
-	exit, out, err := p.runner().run(ctx, path, args...)
+	exit, out, err := p.runner().Run(ctx, path, args...)
 	if err != nil {
 		// The command could not be run at all. Ruby raises a different
 		// exception here, unmeasured, so this keeps the seam's own wording

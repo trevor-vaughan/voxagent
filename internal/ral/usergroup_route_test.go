@@ -5,22 +5,12 @@ import (
 	"testing"
 
 	"github.com/voxagent/voxagent/internal/catalog"
+	"github.com/voxagent/voxagent/internal/lib/raltest"
+	"github.com/voxagent/voxagent/internal/lib/rubyvalue"
 )
 
-type fakePlatform struct {
-	exec    map[string]bool
-	release string
-	err     error
-}
-
-func (f fakePlatform) Executable(path string) bool { return f.exec[path] }
-func (f fakePlatform) OSRelease() ([]byte, error) {
-	return []byte(f.release), f.err
-}
-
 const (
-	centos10 = "NAME=\"CentOS Stream\"\nID=\"centos\"\nID_LIKE=\"rhel fedora\"\nVERSION_ID=\"10\"\n"
-	libuser  = "/usr/sbin/luseradd"
+	libuser = "/usr/sbin/luseradd"
 )
 
 func ugRes(typ string, params map[string]any) catalog.Resource {
@@ -36,7 +26,7 @@ func TestNativeUserGroupPlatform(t *testing.T) {
 		name, osr string
 		want      bool
 	}{
-		{"centos stream 10", centos10, true},
+		{"centos stream 10", raltest.CentOS10, true},
 		{"rhel 10.1", "ID=rhel\nVERSION_ID=\"10.1\"\n", true},
 		{"rhel 9.4", "ID=rhel\nVERSION_ID=\"9.4\"\n", false},
 		{"rhel 11", "ID=rhel\nVERSION_ID=11\n", true},
@@ -54,7 +44,7 @@ func TestNativeUserGroupPlatform(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			u, g := route(fakePlatform{release: c.osr}, ugRes("User", nil), ugRes("Group", nil))
+			u, g := route(raltest.FakePlatform{Release: c.osr}, ugRes("User", nil), ugRes("Group", nil))
 			if u != c.want || g != c.want {
 				t.Fatalf("got user=%v group=%v, want both %v", u, g, c.want)
 			}
@@ -63,7 +53,7 @@ func TestNativeUserGroupPlatform(t *testing.T) {
 }
 
 func TestNativeUserGroupOSReleaseUnreadable(t *testing.T) {
-	u, g := route(fakePlatform{err: errors.New("no such file")})
+	u, g := route(raltest.FakePlatform{Err: errors.New("no such file")})
 	if u || g {
 		t.Fatalf("got %v %v, want false false", u, g)
 	}
@@ -82,7 +72,7 @@ func TestNativeUserGroupLibuser(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			u, g := route(fakePlatform{exec: c.exec, release: centos10})
+			u, g := route(raltest.FakePlatform{Exec: c.exec, Release: raltest.CentOS10})
 			if u != c.want || g != c.want {
 				t.Fatalf("got %v %v, want %v", u, g, c.want)
 			}
@@ -91,7 +81,7 @@ func TestNativeUserGroupLibuser(t *testing.T) {
 }
 
 func TestNativeUserGroupProvider(t *testing.T) {
-	p := fakePlatform{release: centos10}
+	p := raltest.FakePlatform{Release: raltest.CentOS10}
 	cases := []struct {
 		name         string
 		rs           []catalog.Resource
@@ -117,7 +107,7 @@ func TestNativeUserGroupProvider(t *testing.T) {
 }
 
 func TestNativeUserGroupPurgeDelegatesUserOnly(t *testing.T) {
-	p := fakePlatform{release: centos10}
+	p := raltest.FakePlatform{Release: raltest.CentOS10}
 	cases := []struct {
 		name   string
 		v      any
@@ -147,7 +137,7 @@ func TestNativeUserGroupPurgeDelegatesUserOnly(t *testing.T) {
 // host, which applied it before user and group were native; a value Ruby
 // itself refuses stays native, refused with Ruby's message.
 func TestNativeUserGroupUnimplementedValuesDelegate(t *testing.T) {
-	p := fakePlatform{release: centos10}
+	p := raltest.FakePlatform{Release: raltest.CentOS10}
 	cases := []struct {
 		name         string
 		r            catalog.Resource
@@ -191,7 +181,7 @@ func TestNativeUserGroupUnimplementedValuesDelegate(t *testing.T) {
 
 // errors.As tells an unimplemented value from a Ruby validation failure.
 func TestUnimplementedValueIsTyped(t *testing.T) {
-	var uv *unimplementedValue
+	var uv *rubyvalue.UnimplementedValue
 	_, err := parseUserParams(ugRes("User", map[string]any{"gid": []any{"a"}}))
 	if !errors.As(err, &uv) || err.Error() != `User[x]: gid => ["a"] is not implemented` {
 		t.Errorf("user gid array: %v", err)
@@ -211,7 +201,7 @@ func TestUnimplementedValueIsTyped(t *testing.T) {
 }
 
 func TestNativeUserGroupIgnoresOtherTypes(t *testing.T) {
-	u, g := route(fakePlatform{release: centos10}, ugRes("File", map[string]any{"provider": "x", "purge_ssh_keys": true}))
+	u, g := route(raltest.FakePlatform{Release: raltest.CentOS10}, ugRes("File", map[string]any{"provider": "x", "purge_ssh_keys": true}))
 	if !u || !g {
 		t.Fatalf("got %v %v, want true true", u, g)
 	}

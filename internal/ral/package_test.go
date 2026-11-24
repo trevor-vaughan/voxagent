@@ -11,70 +11,14 @@ import (
 	"testing"
 
 	"github.com/voxagent/voxagent/internal/catalog"
+	"github.com/voxagent/voxagent/internal/lib/command"
+	"github.com/voxagent/voxagent/internal/lib/raltest"
+	"github.com/voxagent/voxagent/internal/lib/sources"
 	"github.com/voxagent/voxagent/internal/report"
 )
 
-// fakeRunner replays scripted responses and records what it was asked to run.
-//
-// A command with no scripted reply succeeds silently, so a test that cares
-// about a failure has to say so -- the reverse would make every unasserted
-// command look like a failure and hide which one the provider actually ran.
-//
-// sequences answers a command differently each time it runs -- rpm -q before
-// and after an install -- and takes precedence over replies until exhausted.
-type fakeRunner struct {
-	replies   map[string]fakeReply
-	sequences map[string][]fakeReply
-	calls     [][]string
-}
-
-type fakeReply struct {
-	exit int
-	out  string
-	err  error
-}
-
-// run implements commandRunner. Note the result order -- status, output, error
-// -- which is the seam's (dnf.go) and Exec.execute's.
-func (f *fakeRunner) run(_ context.Context, name string, args ...string) (int, string, error) {
-	f.calls = append(f.calls, append([]string{name}, args...))
-	key := strings.Join(append([]string{name}, args...), " ")
-	if seq := f.sequences[key]; len(seq) > 0 {
-		f.sequences[key] = seq[1:]
-		return seq[0].exit, seq[0].out, seq[0].err
-	}
-	r, ok := f.replies[key]
-	if !ok {
-		return 0, "", nil
-	}
-	return r.exit, r.out, r.err
-}
-
-// onlyCall returns the single command the provider ran, failing the test when
-// it ran a different number of them.
-func (f *fakeRunner) onlyCall(t *testing.T) []string {
-	t.Helper()
-	if len(f.calls) != 1 {
-		t.Fatalf("ran %v, want exactly one command", f.calls)
-	}
-	return f.calls[0]
-}
-
-// ranExactly fails the test unless the provider ran exactly want, in order.
-func (f *fakeRunner) ranExactly(t *testing.T, want ...[]string) {
-	t.Helper()
-	if len(f.calls) != len(want) {
-		t.Fatalf("ran %v, want %v", f.calls, want)
-	}
-	for i := range want {
-		if !equalArgv(f.calls[i], want[i]) {
-			t.Errorf("command %d: ran %v, want %v", i, f.calls[i], want[i])
-		}
-	}
-}
-
 // requery is the argv of the re-query a versioned install runs after dnf
-// returns (see verifyVersion), as a fakeRunner reply key and as an argv.
+// returns (see verifyVersion), as a raltest.FakeRunner reply key and as an argv.
 func requery(name string, virtual bool) []string {
 	argv := []string{"/usr/bin/rpm", "-q", name, "--qf", rpmQueryFormat}
 	if virtual {
@@ -90,10 +34,10 @@ func requeryKey(name string, virtual bool) string {
 // absentFirst answers the FIRST run of each query for name as not installed,
 // leaving replies to answer later runs: a package absent before dnf runs and
 // present for the post-install check.
-func absentFirst(name string) map[string][]fakeReply {
-	seq := map[string][]fakeReply{}
+func absentFirst(name string) map[string][]raltest.FakeReply {
+	seq := map[string][]raltest.FakeReply{}
 	for key, reply := range notInstalled(nil, name) {
-		seq[key] = []fakeReply{reply}
+		seq[key] = []raltest.FakeReply{reply}
 	}
 	return seq
 }
@@ -101,13 +45,13 @@ func absentFirst(name string) map[string][]fakeReply {
 // notInstalled scripts both queries failing for each name, as real rpm does for
 // a package that neither exists nor is provided: the answer every name absent
 // from the prefetched set gets before it is treated as purged.
-func notInstalled(replies map[string]fakeReply, names ...string) map[string]fakeReply {
+func notInstalled(replies map[string]raltest.FakeReply, names ...string) map[string]raltest.FakeReply {
 	if replies == nil {
-		replies = map[string]fakeReply{}
+		replies = map[string]raltest.FakeReply{}
 	}
 	for _, name := range names {
-		replies[requeryKey(name, false)] = fakeReply{exit: 1, out: "package " + name + " is not installed\n"}
-		replies[requeryKey(name, true)] = fakeReply{exit: 1, out: "no package provides " + name + "\n"}
+		replies[requeryKey(name, false)] = raltest.FakeReply{Exit: 1, Out: "package " + name + " is not installed\n"}
+		replies[requeryKey(name, true)] = raltest.FakeReply{Exit: 1, Out: "no package provides " + name + "\n"}
 	}
 	return replies
 }
@@ -117,7 +61,7 @@ func notInstalled(replies map[string]fakeReply, names ...string) map[string]fake
 // them with exec.LookPath -- Ruby's `commands :cmd => "dnf"` resolves the same
 // way, and the absolute path is quoted verbatim in the failure message the
 // report carries (see the measured string in TestPackageInstallFailure...).
-func prefetched(run commandRunner, state map[string]string) Package {
+func prefetched(run command.Runner, state map[string]string) Package {
 	return Package{run: run, dnfPath: "/usr/bin/dnf", rpmPath: "/usr/bin/rpm", state: state}
 }
 
@@ -126,7 +70,7 @@ func pkgRes(title string, params map[string]any) catalog.Resource {
 }
 
 func TestPackageInstallsAnAbsentPackage(t *testing.T) {
-	f := &fakeRunner{replies: notInstalled(nil, "tree")}
+	f := &raltest.FakeRunner{Replies: notInstalled(nil, "tree")}
 	p := prefetched(f, map[string]string{})
 
 	changes, warnings, err := p.Apply(context.Background(), pkgRes("tree", map[string]any{"ensure": "present"}), false)
@@ -155,13 +99,13 @@ func TestPackageInstallsAnAbsentPackage(t *testing.T) {
 	if c.Err != nil {
 		t.Errorf("Err = %v, want nil", c.Err)
 	}
-	f.ranExactly(t, requery("tree", false), requery("tree", true), []string{"/usr/bin/dnf", "-y", "install", "tree"})
+	f.RanExactly(t, requery("tree", false), requery("tree", true), []string{"/usr/bin/dnf", "-y", "install", "tree"})
 }
 
 // ensure => installed is the same sync as present, and its desired_value
 // normalises to "present" (AMENDMENT A2's table).
 func TestPackageEnsureInstalledNormalisesToPresent(t *testing.T) {
-	f := &fakeRunner{replies: notInstalled(nil, "tree")}
+	f := &raltest.FakeRunner{Replies: notInstalled(nil, "tree")}
 	p := prefetched(f, map[string]string{})
 
 	changes, _, err := p.Apply(context.Background(), pkgRes("tree", map[string]any{"ensure": "installed"}), false)
@@ -177,7 +121,7 @@ func TestPackageEnsureInstalledNormalisesToPresent(t *testing.T) {
 }
 
 func TestPackageAlreadyInstalledIsANoChange(t *testing.T) {
-	f := &fakeRunner{}
+	f := &raltest.FakeRunner{}
 	p := prefetched(f, map[string]string{"tree": "2.1.1-1.el10"})
 
 	changes, _, err := p.Apply(context.Background(), pkgRes("tree", map[string]any{"ensure": "present"}), false)
@@ -187,13 +131,13 @@ func TestPackageAlreadyInstalledIsANoChange(t *testing.T) {
 	if len(changes) != 0 {
 		t.Errorf("got %+v, want no changes", changes)
 	}
-	if len(f.calls) != 0 {
-		t.Errorf("ran %v, want nothing -- an in-sync package must not be touched", f.calls)
+	if len(f.Calls) != 0 {
+		t.Errorf("ran %v, want nothing -- an in-sync package must not be touched", f.Calls)
 	}
 }
 
 func TestPackageRemovesAnInstalledPackage(t *testing.T) {
-	f := &fakeRunner{}
+	f := &raltest.FakeRunner{}
 	p := prefetched(f, map[string]string{"zsh": "5.9-15.el10"})
 
 	changes, _, err := p.Apply(context.Background(), pkgRes("zsh", map[string]any{"ensure": "absent"}), false)
@@ -218,13 +162,13 @@ func TestPackageRemovesAnInstalledPackage(t *testing.T) {
 	}
 	// rpm -e, not dnf remove: the dnf provider defines no uninstall and
 	// inherits rpm.rb:141-174 (AMENDMENT A8).
-	if got, want := f.onlyCall(t), []string{"/usr/bin/rpm", "-e", "zsh"}; !equalArgv(got, want) {
+	if got, want := f.OnlyCall(t), []string{"/usr/bin/rpm", "-e", "zsh"}; !raltest.EqualArgv(got, want) {
 		t.Errorf("ran %v, want %v", got, want)
 	}
 }
 
 func TestPackageAbsentAndNotInstalledIsANoChange(t *testing.T) {
-	f := &fakeRunner{replies: notInstalled(nil, "zsh")}
+	f := &raltest.FakeRunner{Replies: notInstalled(nil, "zsh")}
 	p := prefetched(f, map[string]string{"tree": "2.1.1-1.el10"})
 
 	changes, _, err := p.Apply(context.Background(), pkgRes("zsh", map[string]any{"ensure": "absent"}), false)
@@ -235,8 +179,8 @@ func TestPackageAbsentAndNotInstalledIsANoChange(t *testing.T) {
 		t.Errorf("got %+v, want no changes -- an absent package is already absent", changes)
 	}
 	// Only the reads that establish zsh is absent; nothing that changes it.
-	if len(f.calls) != 2 || f.calls[0][0] != "/usr/bin/rpm" || f.calls[1][0] != "/usr/bin/rpm" {
-		t.Errorf("ran %v, want only the two queries", f.calls)
+	if len(f.Calls) != 2 || f.Calls[0][0] != "/usr/bin/rpm" || f.Calls[1][0] != "/usr/bin/rpm" {
+		t.Errorf("ran %v, want only the two queries", f.Calls)
 	}
 }
 
@@ -258,8 +202,8 @@ func TestPackageInstallFailureIsAttributedToEnsure(t *testing.T) {
 		"No match for argument: definitely-not-a-real-package\n" +
 		"Error: Unable to find a match: definitely-not-a-real-package"
 
-	f := &fakeRunner{replies: notInstalled(map[string]fakeReply{
-		"/usr/bin/dnf -y install definitely-not-a-real-package": {exit: 1, out: dnfOutput},
+	f := &raltest.FakeRunner{Replies: notInstalled(map[string]raltest.FakeReply{
+		"/usr/bin/dnf -y install definitely-not-a-real-package": {Exit: 1, Out: dnfOutput},
 	}, "definitely-not-a-real-package")}
 	p := prefetched(f, map[string]string{})
 
@@ -295,8 +239,8 @@ func TestPackageInstallFailureIsAttributedToEnsure(t *testing.T) {
 // failure -- the seam reports that as an error rather than as an exit status.
 func TestPackageInstallThatCannotRunIsAttributedToEnsure(t *testing.T) {
 	boom := errors.New("fork/exec /usr/bin/dnf: permission denied")
-	f := &fakeRunner{replies: notInstalled(map[string]fakeReply{
-		"/usr/bin/dnf -y install tree": {err: boom},
+	f := &raltest.FakeRunner{Replies: notInstalled(map[string]raltest.FakeReply{
+		"/usr/bin/dnf -y install tree": {Err: boom},
 	}, "tree")}
 	p := prefetched(f, map[string]string{})
 
@@ -313,7 +257,7 @@ func TestPackageInstallThatCannotRunIsAttributedToEnsure(t *testing.T) {
 }
 
 func TestPackageNoopReportsTheChangeAndRunsNothing(t *testing.T) {
-	f := &fakeRunner{replies: notInstalled(nil, "tree")}
+	f := &raltest.FakeRunner{Replies: notInstalled(nil, "tree")}
 	p := prefetched(f, map[string]string{})
 
 	changes, _, err := p.Apply(context.Background(), pkgRes("tree", map[string]any{"ensure": "present"}), true)
@@ -327,13 +271,13 @@ func TestPackageNoopReportsTheChangeAndRunsNothing(t *testing.T) {
 		t.Errorf("Err = %v, want nil -- noop attempted nothing, so nothing failed", changes[0].Err)
 	}
 	// The queries are reads and run under noop; dnf does not.
-	if len(f.calls) != 2 || f.calls[0][0] != "/usr/bin/rpm" || f.calls[1][0] != "/usr/bin/rpm" {
-		t.Errorf("noop ran %v, want only the two queries", f.calls)
+	if len(f.Calls) != 2 || f.Calls[0][0] != "/usr/bin/rpm" || f.Calls[1][0] != "/usr/bin/rpm" {
+		t.Errorf("noop ran %v, want only the two queries", f.Calls)
 	}
 }
 
 func TestPackageNoopRemovalRunsNothing(t *testing.T) {
-	f := &fakeRunner{}
+	f := &raltest.FakeRunner{}
 	p := prefetched(f, map[string]string{"zsh": "5.9-15.el10"})
 
 	changes, _, err := p.Apply(context.Background(), pkgRes("zsh", map[string]any{"ensure": "absent"}), true)
@@ -343,8 +287,8 @@ func TestPackageNoopRemovalRunsNothing(t *testing.T) {
 	if len(changes) != 1 {
 		t.Fatalf("got %d changes, want 1: %+v", len(changes), changes)
 	}
-	if len(f.calls) != 0 {
-		t.Errorf("noop ran %v, want nothing", f.calls)
+	if len(f.Calls) != 0 {
+		t.Errorf("noop ran %v, want nothing", f.Calls)
 	}
 }
 
@@ -354,9 +298,9 @@ func TestPackageNoopRemovalRunsNothing(t *testing.T) {
 // only the literal present/installed newvalue declares that event
 // (AMENDMENT A2, type/package.rb:99 against :136's catch-all newvalue(/./)).
 func TestPackageInstallsADeclaredVersionOntoAPurgedPackage(t *testing.T) {
-	f := &fakeRunner{replies: map[string]fakeReply{
-		requeryKey("lsof", false): {out: "lsof 0 4.98.0 7.el10 x86_64\n"},
-	}, sequences: absentFirst("lsof")}
+	f := &raltest.FakeRunner{Replies: map[string]raltest.FakeReply{
+		requeryKey("lsof", false): {Out: "lsof 0 4.98.0 7.el10 x86_64\n"},
+	}, Sequences: absentFirst("lsof")}
 	p := prefetched(f, map[string]string{})
 
 	changes, warnings, err := p.Apply(context.Background(),
@@ -391,7 +335,7 @@ func TestPackageInstallsADeclaredVersionOntoAPurgedPackage(t *testing.T) {
 	// installed, so `current_package = query` is nil (yum.rb:290) and the
 	// operation stays :install. yum.rb:313-321 then re-queries, because a
 	// version was declared.
-	f.ranExactly(t, requery("lsof", false), requery("lsof", true), []string{"/usr/bin/dnf", "-y", "install", "lsof-4.98.0-7.el10"}, requery("lsof", false))
+	f.RanExactly(t, requery("lsof", false), requery("lsof", true), []string{"/usr/bin/dnf", "-y", "install", "lsof-4.98.0-7.el10"}, requery("lsof", false))
 }
 
 // Measured, report-root.json Package[nano]: previous_value "8.1-1.el10",
@@ -403,8 +347,8 @@ func TestPackageInstallsADeclaredVersionOntoAPurgedPackage(t *testing.T) {
 // 'upgrade'. Run against the container's own util/rpm_compare.rb,
 // rpm_compare_evr("8.1-3.el10", "8.1-1.el10") == 1.
 func TestPackageUpgradesToANewerDeclaredVersion(t *testing.T) {
-	f := &fakeRunner{replies: map[string]fakeReply{
-		requeryKey("nano", false): {out: "nano 0 8.1 3.el10 x86_64\n"},
+	f := &raltest.FakeRunner{Replies: map[string]raltest.FakeReply{
+		requeryKey("nano", false): {Out: "nano 0 8.1 3.el10 x86_64\n"},
 	}}
 	p := prefetched(f, map[string]string{"nano": "8.1-1.el10"})
 
@@ -429,7 +373,7 @@ func TestPackageUpgradesToANewerDeclaredVersion(t *testing.T) {
 	if c.Err != nil {
 		t.Errorf("Err = %v, want nil", c.Err)
 	}
-	f.ranExactly(t, []string{"/usr/bin/dnf", "-y", "upgrade", "nano-8.1-3.el10"}, requery("nano", false))
+	f.RanExactly(t, []string{"/usr/bin/dnf", "-y", "upgrade", "nano-8.1-3.el10"}, requery("nano", false))
 }
 
 // The mirror image, and the reason the operation is not cosmetic: `dnf -y
@@ -438,8 +382,8 @@ func TestPackageUpgradesToANewerDeclaredVersion(t *testing.T) {
 // rpm_compare_evr("8.1-1.el10", "8.1-3.el10") == -1 in the container's Ruby,
 // which is yum.rb:295's :downgrade.
 func TestPackageDowngradesToAnOlderDeclaredVersion(t *testing.T) {
-	f := &fakeRunner{replies: map[string]fakeReply{
-		requeryKey("nano", false): {out: "nano 0 8.1 1.el10 x86_64\n"},
+	f := &raltest.FakeRunner{Replies: map[string]raltest.FakeReply{
+		requeryKey("nano", false): {Out: "nano 0 8.1 1.el10 x86_64\n"},
 	}}
 	p := prefetched(f, map[string]string{"nano": "8.1-3.el10"})
 
@@ -461,13 +405,13 @@ func TestPackageDowngradesToAnOlderDeclaredVersion(t *testing.T) {
 	if c.Err != nil {
 		t.Errorf("Err = %v, want nil", c.Err)
 	}
-	f.ranExactly(t, []string{"/usr/bin/dnf", "-y", "downgrade", "nano-8.1-1.el10"}, requery("nano", false))
+	f.RanExactly(t, []string{"/usr/bin/dnf", "-y", "downgrade", "nano-8.1-1.el10"}, requery("nano", false))
 }
 
 // type/package.rb:199's `when *Array(is)` compares the declared string to the
 // stored value before the provider is consulted at all.
 func TestPackageAtTheDeclaredVersionIsANoChange(t *testing.T) {
-	f := &fakeRunner{}
+	f := &raltest.FakeRunner{}
 	p := prefetched(f, map[string]string{"nano": "8.1-3.el10"})
 
 	changes, _, err := p.Apply(context.Background(),
@@ -475,8 +419,8 @@ func TestPackageAtTheDeclaredVersionIsANoChange(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Apply returned %v", err)
 	}
-	if len(changes) != 0 || len(f.calls) != 0 {
-		t.Errorf("changes = %+v, calls = %v, want neither", changes, f.calls)
+	if len(changes) != 0 || len(f.Calls) != 0 {
+		t.Errorf("changes = %+v, calls = %v, want neither", changes, f.Calls)
 	}
 }
 
@@ -486,7 +430,7 @@ func TestPackageAtTheDeclaredVersionIsANoChange(t *testing.T) {
 // against the container's util/rpm_compare.rb: rpm_compare_evr("8.1",
 // "8.1-3.el10") == 0.
 func TestPackageDeclaredVersionWithoutAReleaseIsInSync(t *testing.T) {
-	f := &fakeRunner{}
+	f := &raltest.FakeRunner{}
 	p := prefetched(f, map[string]string{"nano": "8.1-3.el10"})
 
 	changes, _, err := p.Apply(context.Background(),
@@ -494,8 +438,8 @@ func TestPackageDeclaredVersionWithoutAReleaseIsInSync(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Apply returned %v", err)
 	}
-	if len(changes) != 0 || len(f.calls) != 0 {
-		t.Errorf("changes = %+v, calls = %v, want neither -- PUP-1244 makes 8.1 in sync with 8.1-3.el10", changes, f.calls)
+	if len(changes) != 0 || len(f.Calls) != 0 {
+		t.Errorf("changes = %+v, calls = %v, want neither -- PUP-1244 makes 8.1 in sync with 8.1-3.el10", changes, f.Calls)
 	}
 }
 
@@ -509,8 +453,8 @@ func TestPackageDeclaredVersionWithoutAReleaseIsInSync(t *testing.T) {
 // "the wanted version is already installed, so do nothing" is exactly the
 // improvement Ruby declines to make.
 func TestPackageMultiversionWithADeclaredVersionAlwaysSyncs(t *testing.T) {
-	f := &fakeRunner{replies: map[string]fakeReply{
-		requeryKey("kernel", false): {out: "kernel 0 6.12.0 1.el10 x86_64\nkernel 0 6.12.0 2.el10 x86_64\n"},
+	f := &raltest.FakeRunner{Replies: map[string]raltest.FakeReply{
+		requeryKey("kernel", false): {Out: "kernel 0 6.12.0 1.el10 x86_64\nkernel 0 6.12.0 2.el10 x86_64\n"},
 	}}
 	p := prefetched(f, map[string]string{"kernel": "6.12.0-1.el10; 6.12.0-2.el10"})
 
@@ -538,7 +482,7 @@ func TestPackageMultiversionWithADeclaredVersionAlwaysSyncs(t *testing.T) {
 	// rpm_compare_evr("6.12.0-2.el10", "6.12.0-1.el10; 6.12.0-2.el10") == 1
 	// -- rpm_parse_evr reads the release as "1.el10; 6.12.0-2.el10", and
 	// "2.el10" sorts above it -- so the operation is upgrade.
-	f.ranExactly(t, []string{"/usr/bin/dnf", "-y", "upgrade", "kernel-6.12.0-2.el10"}, requery("kernel", false))
+	f.RanExactly(t, []string{"/usr/bin/dnf", "-y", "upgrade", "kernel-6.12.0-2.el10"}, requery("kernel", false))
 
 	// And it FAILS, every run (D-14): the re-query still finds both versions,
 	// which the same rule refuses. Measured, out/rerun-ruby.json under
@@ -556,7 +500,7 @@ func TestPackageMultiversionWithADeclaredVersionAlwaysSyncs(t *testing.T) {
 // thing that distinguishes the type's equality test from the provider's
 // version comparison -- without it that step could be deleted unnoticed.
 func TestPackageMultiversionMatchedExactlyIsANoChange(t *testing.T) {
-	f := &fakeRunner{}
+	f := &raltest.FakeRunner{}
 	p := prefetched(f, map[string]string{"kernel": "6.12.0-1.el10; 6.12.0-2.el10"})
 
 	changes, _, err := p.Apply(context.Background(),
@@ -564,8 +508,8 @@ func TestPackageMultiversionMatchedExactlyIsANoChange(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Apply returned %v", err)
 	}
-	if len(changes) != 0 || len(f.calls) != 0 {
-		t.Errorf("changes = %+v, calls = %v, want neither", changes, f.calls)
+	if len(changes) != 0 || len(f.Calls) != 0 {
+		t.Errorf("changes = %+v, calls = %v, want neither", changes, f.Calls)
 	}
 }
 
@@ -576,8 +520,8 @@ func TestPackageMultiversionMatchedExactlyIsANoChange(t *testing.T) {
 // joined value -- so Ruby reports a FAILED resource on a machine it did change.
 // voxagent reported a successful change until this test.
 func TestPackageVersionInstallLeavingTwoVersionsFails(t *testing.T) {
-	f := &fakeRunner{replies: map[string]fakeReply{
-		requeryKey("kernel-core", false): {out: "kernel-core 0 6.12.0 266.el10 x86_64\nkernel-core 0 6.12.0 267.el10 x86_64\n"},
+	f := &raltest.FakeRunner{Replies: map[string]raltest.FakeReply{
+		requeryKey("kernel-core", false): {Out: "kernel-core 0 6.12.0 266.el10 x86_64\nkernel-core 0 6.12.0 267.el10 x86_64\n"},
 	}}
 	p := prefetched(f, map[string]string{"kernel-core": "6.12.0-266.el10"})
 
@@ -598,7 +542,7 @@ func TestPackageVersionInstallLeavingTwoVersionsFails(t *testing.T) {
 	if c.Err == nil || c.Err.Error() != want {
 		t.Errorf("Err = %v, want %q", c.Err, want)
 	}
-	f.ranExactly(t, []string{"/usr/bin/dnf", "-y", "upgrade", "kernel-core-6.12.0-267.el10"}, requery("kernel-core", false))
+	f.RanExactly(t, []string{"/usr/bin/dnf", "-y", "upgrade", "kernel-core-6.12.0-267.el10"}, requery("kernel-core", false))
 }
 
 // The re-query asks the PROVIDER's insync? (yum.rb:320), not the type's: it
@@ -610,8 +554,8 @@ func TestPackageVersionInstallLeavingTwoVersionsFails(t *testing.T) {
 // is here to pin which insync? the check calls, not as a likely input.
 func TestPackageVersionCheckSkipsTheTypesEqualityStep(t *testing.T) {
 	const joined = "6.12.0-1.el10; 6.12.0-2.el10"
-	f := &fakeRunner{replies: map[string]fakeReply{
-		requeryKey("kernel", false): {out: "kernel 0 6.12.0 1.el10 x86_64\nkernel 0 6.12.0 2.el10 x86_64\n"},
+	f := &raltest.FakeRunner{Replies: map[string]raltest.FakeReply{
+		requeryKey("kernel", false): {Out: "kernel 0 6.12.0 1.el10 x86_64\nkernel 0 6.12.0 2.el10 x86_64\n"},
 	}}
 	p := prefetched(f, map[string]string{"kernel": "6.12.0-1.el10"})
 
@@ -632,9 +576,9 @@ func TestPackageVersionCheckSkipsTheTypesEqualityStep(t *testing.T) {
 // A release-less declaration is verified the way it is synced: PUP-1244 makes
 // rpm_compare_evr("8.1", "8.1-3.el10") == 0, so the check accepts it.
 func TestPackageVersionCheckAcceptsAReleaseLessDeclaration(t *testing.T) {
-	f := &fakeRunner{replies: map[string]fakeReply{
-		requeryKey("nano", false): {out: "nano 0 8.1 3.el10 x86_64\n"},
-	}, sequences: absentFirst("nano")}
+	f := &raltest.FakeRunner{Replies: map[string]raltest.FakeReply{
+		requeryKey("nano", false): {Out: "nano 0 8.1 3.el10 x86_64\n"},
+	}, Sequences: absentFirst("nano")}
 	p := prefetched(f, map[string]string{})
 
 	changes, _, err := p.Apply(context.Background(),
@@ -647,7 +591,7 @@ func TestPackageVersionCheckAcceptsAReleaseLessDeclaration(t *testing.T) {
 	}
 	// The check RAN and accepted it, rather than being skipped for a
 	// release-less value.
-	f.ranExactly(t, requery("nano", false), requery("nano", true), []string{"/usr/bin/dnf", "-y", "install", "nano-8.1"}, requery("nano", false))
+	f.RanExactly(t, requery("nano", false), requery("nano", true), []string{"/usr/bin/dnf", "-y", "install", "nano-8.1"}, requery("nano", false))
 }
 
 // An rpm that cannot be run at all fails the resource with the seam's own error
@@ -656,22 +600,22 @@ func TestPackageVersionCheckAcceptsAReleaseLessDeclaration(t *testing.T) {
 func TestPackageVersionCheckThatCannotRunFails(t *testing.T) {
 	for _, tc := range []struct {
 		name    string
-		replies func(boom error) map[string]fakeReply
+		replies func(boom error) map[string]raltest.FakeReply
 		want    [][]string
 	}{
-		{"the first query", func(boom error) map[string]fakeReply {
-			return map[string]fakeReply{requeryKey("nano", false): {err: boom}}
+		{"the first query", func(boom error) map[string]raltest.FakeReply {
+			return map[string]raltest.FakeReply{requeryKey("nano", false): {Err: boom}}
 		}, [][]string{requery("nano", false)}},
-		{"the --whatprovides retry", func(boom error) map[string]fakeReply {
-			return map[string]fakeReply{
-				requeryKey("nano", false): {exit: 1, out: "package nano is not installed\n"},
-				requeryKey("nano", true):  {err: boom},
+		{"the --whatprovides retry", func(boom error) map[string]raltest.FakeReply {
+			return map[string]raltest.FakeReply{
+				requeryKey("nano", false): {Exit: 1, Out: "package nano is not installed\n"},
+				requeryKey("nano", true):  {Err: boom},
 			}
 		}, [][]string{requery("nano", false), requery("nano", true)}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			boom := errors.New("fork/exec /usr/bin/rpm: permission denied")
-			f := &fakeRunner{replies: tc.replies(boom), sequences: absentFirst("nano")}
+			f := &raltest.FakeRunner{Replies: tc.replies(boom), Sequences: absentFirst("nano")}
 			p := prefetched(f, map[string]string{})
 
 			changes, _, err := p.Apply(context.Background(),
@@ -685,7 +629,7 @@ func TestPackageVersionCheckThatCannotRunFails(t *testing.T) {
 			if c := changes[0]; !errors.Is(c.Err, boom) || !strings.HasPrefix(c.Err.Error(), couldNotUpdate) {
 				t.Errorf("Err = %v, want the seam's error behind %q", c.Err, couldNotUpdate)
 			}
-			f.ranExactly(t, append([][]string{requery("nano", false), requery("nano", true), {"/usr/bin/dnf", "-y", "install", "nano-8.1-3.el10"}}, tc.want...)...)
+			f.RanExactly(t, append([][]string{requery("nano", false), requery("nano", true), {"/usr/bin/dnf", "-y", "install", "nano-8.1-3.el10"}}, tc.want...)...)
 		})
 	}
 }
@@ -693,8 +637,8 @@ func TestPackageVersionCheckThatCannotRunFails(t *testing.T) {
 // dnf can exit 0 having installed something other than what was asked, and the
 // check is what catches it -- the case D-14 named beyond multiversion.
 func TestPackageVersionInstallLandingOnAnotherVersionFails(t *testing.T) {
-	f := &fakeRunner{replies: map[string]fakeReply{
-		requeryKey("nano", false): {out: "nano 0 8.1 1.el10 x86_64\n"},
+	f := &raltest.FakeRunner{Replies: map[string]raltest.FakeReply{
+		requeryKey("nano", false): {Out: "nano 0 8.1 1.el10 x86_64\n"},
 	}}
 	p := prefetched(f, map[string]string{})
 
@@ -714,10 +658,10 @@ func TestPackageVersionInstallLandingOnAnotherVersionFails(t *testing.T) {
 // retries with --whatprovides, and the version checked is the one the
 // PROVIDING package carries.
 func TestPackageVersionCheckFallsBackToWhatProvides(t *testing.T) {
-	f := &fakeRunner{replies: map[string]fakeReply{
-		requeryKey("vim", false): {exit: 1, out: "package vim is not installed\n"},
-		requeryKey("vim", true):  {out: "vim-enhanced 2 9.1.083 5.el10 x86_64\n"},
-	}, sequences: absentFirst("vim")}
+	f := &raltest.FakeRunner{Replies: map[string]raltest.FakeReply{
+		requeryKey("vim", false): {Exit: 1, Out: "package vim is not installed\n"},
+		requeryKey("vim", true):  {Out: "vim-enhanced 2 9.1.083 5.el10 x86_64\n"},
+	}, Sequences: absentFirst("vim")}
 	p := prefetched(f, map[string]string{})
 
 	changes, _, err := p.Apply(context.Background(),
@@ -728,16 +672,16 @@ func TestPackageVersionCheckFallsBackToWhatProvides(t *testing.T) {
 	if len(changes) != 1 || changes[0].Err != nil {
 		t.Errorf("changes = %+v, want one with no Err", changes)
 	}
-	f.ranExactly(t, requery("vim", false), requery("vim", true), []string{"/usr/bin/dnf", "-y", "install", "vim-2:9.1.083-5.el10"},
+	f.RanExactly(t, requery("vim", false), requery("vim", true), []string{"/usr/bin/dnf", "-y", "install", "vim-2:9.1.083-5.el10"},
 		requery("vim", false), requery("vim", true))
 }
 
 // Both queries failing is yum.rb:315's `Could not find package`, raised inside
 // newvalue(/./) and so carrying its "Could not update: " prefix.
 func TestPackageVersionCheckFindingNothingFails(t *testing.T) {
-	f := &fakeRunner{replies: map[string]fakeReply{
-		requeryKey("lsof", false): {exit: 1, out: "package lsof is not installed\n"},
-		requeryKey("lsof", true):  {exit: 1, out: "no package provides lsof\n"},
+	f := &raltest.FakeRunner{Replies: map[string]raltest.FakeReply{
+		requeryKey("lsof", false): {Exit: 1, Out: "package lsof is not installed\n"},
+		requeryKey("lsof", true):  {Exit: 1, Out: "no package provides lsof\n"},
 	}}
 	p := prefetched(f, map[string]string{})
 
@@ -758,10 +702,10 @@ func TestPackageVersionCheckFindingNothingFails(t *testing.T) {
 // image's own Ruby: {}.update([{a: 1}, {b: 2}]) raises
 // "no implicit conversion of Array into Hash".
 func TestPackageVersionCheckWithSeveralProvidersFails(t *testing.T) {
-	f := &fakeRunner{replies: map[string]fakeReply{
-		requeryKey("mta", false): {exit: 1, out: "package mta is not installed\n"},
-		requeryKey("mta", true):  {out: "postfix 2 3.8.5 1.el10 x86_64\nsendmail 0 8.18.1 1.el10 x86_64\n"},
-	}, sequences: absentFirst("mta")}
+	f := &raltest.FakeRunner{Replies: map[string]raltest.FakeReply{
+		requeryKey("mta", false): {Exit: 1, Out: "package mta is not installed\n"},
+		requeryKey("mta", true):  {Out: "postfix 2 3.8.5 1.el10 x86_64\nsendmail 0 8.18.1 1.el10 x86_64\n"},
+	}, Sequences: absentFirst("mta")}
 	p := prefetched(f, map[string]string{})
 
 	changes, _, err := p.Apply(context.Background(),
@@ -784,9 +728,9 @@ func TestPackageVersionCheckWithSeveralProvidersFails(t *testing.T) {
 // vim-minimal, with `ensure => present` is unchanged in Ruby. voxagent used to
 // run `dnf install vi`, which exits 0 doing nothing, and report "created".
 func TestPackageVirtualNameProvidedByAnInstalledPackageIsInSync(t *testing.T) {
-	f := &fakeRunner{replies: map[string]fakeReply{
-		requeryKey("vi", false): {exit: 1, out: "package vi is not installed\n"},
-		requeryKey("vi", true):  {out: "vim-minimal 2 9.1.083 23.el10 x86_64\n"},
+	f := &raltest.FakeRunner{Replies: map[string]raltest.FakeReply{
+		requeryKey("vi", false): {Exit: 1, Out: "package vi is not installed\n"},
+		requeryKey("vi", true):  {Out: "vim-minimal 2 9.1.083 23.el10 x86_64\n"},
 	}}
 	p := prefetched(f, map[string]string{"vim-minimal": "2:9.1.083-23.el10"})
 
@@ -797,7 +741,7 @@ func TestPackageVirtualNameProvidedByAnInstalledPackageIsInSync(t *testing.T) {
 	if len(changes) != 0 {
 		t.Errorf("changes = %+v, want none -- vi is provided, so present is in sync", changes)
 	}
-	f.ranExactly(t, requery("vi", false), requery("vi", true))
+	f.RanExactly(t, requery("vi", false), requery("vi", true))
 }
 
 // The same query supplies the CURRENT value a declared version is compared
@@ -805,9 +749,9 @@ func TestPackageVirtualNameProvidedByAnInstalledPackageIsInSync(t *testing.T) {
 // "2:9.1.083-23.el10" -- vim-minimal's -- and, the declared release being
 // older, runs `downgrade`. voxagent reported "purged" and ran `install`.
 func TestPackageVirtualNameWithAnOlderVersionDowngrades(t *testing.T) {
-	f := &fakeRunner{replies: map[string]fakeReply{
-		requeryKey("vi", false): {exit: 1, out: "package vi is not installed\n"},
-		requeryKey("vi", true):  {out: "vim-minimal 2 9.1.083 23.el10 x86_64\n"},
+	f := &raltest.FakeRunner{Replies: map[string]raltest.FakeReply{
+		requeryKey("vi", false): {Exit: 1, Out: "package vi is not installed\n"},
+		requeryKey("vi", true):  {Out: "vim-minimal 2 9.1.083 23.el10 x86_64\n"},
 	}}
 	p := prefetched(f, map[string]string{})
 
@@ -822,15 +766,15 @@ func TestPackageVirtualNameWithAnOlderVersionDowngrades(t *testing.T) {
 	if c := changes[0]; c.Was != "2:9.1.083-23.el10" || c.Message != "ensure changed '2:9.1.083-23.el10' to '2:9.1.083-22.el10'" {
 		t.Errorf("Was/Message = %v/%q, want the provider's version as the current value", c.Was, c.Message)
 	}
-	if len(f.calls) < 3 || !equalArgv(f.calls[2], []string{"/usr/bin/dnf", "-y", "downgrade", "vi-2:9.1.083-22.el10"}) {
-		t.Errorf("ran %v, want the two queries then a downgrade", f.calls)
+	if len(f.Calls) < 3 || !raltest.EqualArgv(f.Calls[2], []string{"/usr/bin/dnf", "-y", "downgrade", "vi-2:9.1.083-22.el10"}) {
+		t.Errorf("ran %v, want the two queries then a downgrade", f.Calls)
 	}
 }
 
 // A real absent package costs both queries -- Ruby pays the same, since query
 // only returns nil after --whatprovides has failed too -- and is then purged.
 func TestPackageAbsentNameIsQueriedThenPurged(t *testing.T) {
-	f := &fakeRunner{replies: notInstalled(nil, "tree")}
+	f := &raltest.FakeRunner{Replies: notInstalled(nil, "tree")}
 	p := prefetched(f, map[string]string{})
 
 	changes, _, err := p.Apply(context.Background(), pkgRes("tree", map[string]any{"ensure": "present"}), false)
@@ -840,22 +784,22 @@ func TestPackageAbsentNameIsQueriedThenPurged(t *testing.T) {
 	if len(changes) != 1 || changes[0].Was != "purged" {
 		t.Fatalf("changes = %+v, want one from purged", changes)
 	}
-	f.ranExactly(t, requery("tree", false), requery("tree", true), []string{"/usr/bin/dnf", "-y", "install", "tree"})
+	f.RanExactly(t, requery("tree", false), requery("tree", true), []string{"/usr/bin/dnf", "-y", "install", "tree"})
 }
 
 // A name the prefetched set DOES carry is not queried: prefetch handed Ruby's
 // resource a provider with a full @property_hash, so `properties` returns it
 // without calling query.
 func TestPackagePrefetchedNameIsNotQueried(t *testing.T) {
-	f := &fakeRunner{}
+	f := &raltest.FakeRunner{}
 	p := prefetched(f, map[string]string{"tree": "2.1.1-1.el10"})
 
 	changes, _, err := p.Apply(context.Background(), pkgRes("tree", map[string]any{"ensure": "present"}), false)
 	if err != nil {
 		t.Fatalf("Apply returned %v", err)
 	}
-	if len(changes) != 0 || len(f.calls) != 0 {
-		t.Errorf("changes = %+v, calls = %v, want neither", changes, f.calls)
+	if len(changes) != 0 || len(f.Calls) != 0 {
+		t.Errorf("changes = %+v, calls = %v, want neither", changes, f.Calls)
 	}
 }
 
@@ -863,9 +807,9 @@ func TestPackagePrefetchedNameIsNotQueried(t *testing.T) {
 // the sync does. Without it a noop run would report a would-be change for a
 // provided virtual name that a real run makes no change to.
 func TestPackageVirtualNameIsQueriedUnderNoop(t *testing.T) {
-	f := &fakeRunner{replies: map[string]fakeReply{
-		requeryKey("vi", false): {exit: 1, out: "package vi is not installed\n"},
-		requeryKey("vi", true):  {out: "vim-minimal 2 9.1.083 23.el10 x86_64\n"},
+	f := &raltest.FakeRunner{Replies: map[string]raltest.FakeReply{
+		requeryKey("vi", false): {Exit: 1, Out: "package vi is not installed\n"},
+		requeryKey("vi", true):  {Out: "vim-minimal 2 9.1.083 23.el10 x86_64\n"},
 	}}
 	p := prefetched(f, map[string]string{})
 
@@ -876,7 +820,7 @@ func TestPackageVirtualNameIsQueriedUnderNoop(t *testing.T) {
 	if len(changes) != 0 {
 		t.Errorf("changes = %+v, want none", changes)
 	}
-	f.ranExactly(t, requery("vi", false), requery("vi", true))
+	f.RanExactly(t, requery("vi", false), requery("vi", true))
 }
 
 // A query that fails outright is a RESOURCE-level failure, not an ensure one:
@@ -890,19 +834,19 @@ func TestPackageQueryFailureIsAResourceFailure(t *testing.T) {
 	boom := errors.New("fork/exec /usr/bin/rpm: permission denied")
 	for _, tc := range []struct {
 		name    string
-		replies map[string]fakeReply
+		replies map[string]raltest.FakeReply
 		want    string
 	}{
-		{"several providers", map[string]fakeReply{
-			requeryKey("mta", false): {exit: 1, out: "package mta is not installed\n"},
-			requeryKey("mta", true):  {out: "postfix 2 3.8.5 1.el10 x86_64\nsendmail 0 8.18.1 1.el10 x86_64\n"},
+		{"several providers", map[string]raltest.FakeReply{
+			requeryKey("mta", false): {Exit: 1, Out: "package mta is not installed\n"},
+			requeryKey("mta", true):  {Out: "postfix 2 3.8.5 1.el10 x86_64\nsendmail 0 8.18.1 1.el10 x86_64\n"},
 		}, "no implicit conversion of Array into Hash"},
-		{"rpm cannot run", map[string]fakeReply{
-			requeryKey("mta", false): {err: boom},
+		{"rpm cannot run", map[string]raltest.FakeReply{
+			requeryKey("mta", false): {Err: boom},
 		}, boom.Error()},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			f := &fakeRunner{replies: tc.replies}
+			f := &raltest.FakeRunner{Replies: tc.replies}
 			p := prefetched(f, map[string]string{})
 
 			changes, _, err := p.Apply(context.Background(), pkgRes("mta", map[string]any{"ensure": "present"}), false)
@@ -912,7 +856,7 @@ func TestPackageQueryFailureIsAResourceFailure(t *testing.T) {
 			if len(changes) != 0 {
 				t.Errorf("changes = %+v, want none -- no property was evaluated", changes)
 			}
-			for _, call := range f.calls {
+			for _, call := range f.Calls {
 				if call[0] == "/usr/bin/dnf" {
 					t.Errorf("ran %v after the query failed", call)
 				}
@@ -924,8 +868,8 @@ func TestPackageQueryFailureIsAResourceFailure(t *testing.T) {
 // A dnf that FAILS is not re-queried: execute raises at yum.rb:306, before the
 // check at :313 is reached.
 func TestPackageFailedVersionInstallIsNotRequeried(t *testing.T) {
-	f := &fakeRunner{replies: notInstalled(map[string]fakeReply{
-		"/usr/bin/dnf -y install lsof-999-1.el10": {exit: 1, out: "Error: Unable to find a match"},
+	f := &raltest.FakeRunner{Replies: notInstalled(map[string]raltest.FakeReply{
+		"/usr/bin/dnf -y install lsof-999-1.el10": {Exit: 1, Out: "Error: Unable to find a match"},
 	}, "lsof")}
 	p := prefetched(f, map[string]string{})
 
@@ -933,7 +877,7 @@ func TestPackageFailedVersionInstallIsNotRequeried(t *testing.T) {
 		pkgRes("lsof", map[string]any{"ensure": "999-1.el10"}), false); err != nil {
 		t.Fatalf("Apply returned %v", err)
 	}
-	f.ranExactly(t, requery("lsof", false), requery("lsof", true), []string{"/usr/bin/dnf", "-y", "install", "lsof-999-1.el10"})
+	f.RanExactly(t, requery("lsof", false), requery("lsof", true), []string{"/usr/bin/dnf", "-y", "install", "lsof-999-1.el10"})
 }
 
 // A failed version sync is attributed to ensure exactly as a failed install is,
@@ -951,8 +895,8 @@ func TestPackageVersionFailureIsAttributedToEnsure(t *testing.T) {
 		"Execution of '/usr/bin/dnf -y downgrade nano-8.1-1.el10' returned 1: " +
 		"Error: Packages for argument nano-8.1-1.el10 available, but not installed."
 
-	f := &fakeRunner{replies: map[string]fakeReply{
-		"/usr/bin/dnf -y downgrade nano-8.1-1.el10": {exit: 1, out: dnfOutput},
+	f := &raltest.FakeRunner{Replies: map[string]raltest.FakeReply{
+		"/usr/bin/dnf -y downgrade nano-8.1-1.el10": {Exit: 1, Out: dnfOutput},
 	}}
 	p := prefetched(f, map[string]string{"nano": "8.1-3.el10"})
 
@@ -982,7 +926,7 @@ func TestPackageVersionFailureIsAttributedToEnsure(t *testing.T) {
 }
 
 func TestPackageVersionNoopReportsTheChangeAndRunsNothing(t *testing.T) {
-	f := &fakeRunner{}
+	f := &raltest.FakeRunner{}
 	p := prefetched(f, map[string]string{"nano": "8.1-1.el10"})
 
 	changes, _, err := p.Apply(context.Background(),
@@ -996,15 +940,15 @@ func TestPackageVersionNoopReportsTheChangeAndRunsNothing(t *testing.T) {
 	if changes[0].Err != nil {
 		t.Errorf("Err = %v, want nil -- noop attempted nothing, so nothing failed", changes[0].Err)
 	}
-	if len(f.calls) != 0 {
-		t.Errorf("noop ran %v, want nothing", f.calls)
+	if len(f.Calls) != 0 {
+		t.Errorf("noop ran %v, want nothing", f.Calls)
 	}
 }
 
 // The namevar is the name parameter when set, the title otherwise: a resource
 // titled for readability must still act on the package it names.
 func TestPackageNameParameterOverridesTitle(t *testing.T) {
-	f := &fakeRunner{replies: notInstalled(nil, "nano")}
+	f := &raltest.FakeRunner{Replies: notInstalled(nil, "nano")}
 	p := prefetched(f, map[string]string{})
 
 	_, _, err := p.Apply(context.Background(),
@@ -1012,13 +956,13 @@ func TestPackageNameParameterOverridesTitle(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Apply returned %v", err)
 	}
-	f.ranExactly(t, requery("nano", false), requery("nano", true), []string{"/usr/bin/dnf", "-y", "install", "nano"})
+	f.RanExactly(t, requery("nano", false), requery("nano", true), []string{"/usr/bin/dnf", "-y", "install", "nano"})
 }
 
 // The name parameter also selects which prefetched entry answers "is it
 // installed?", so a titled resource whose package is present is a no-change.
 func TestPackageNameParameterSelectsTheInstalledEntry(t *testing.T) {
-	f := &fakeRunner{}
+	f := &raltest.FakeRunner{}
 	p := prefetched(f, map[string]string{"nano": "8.1-3.el10"})
 
 	changes, _, err := p.Apply(context.Background(),
@@ -1026,8 +970,8 @@ func TestPackageNameParameterSelectsTheInstalledEntry(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Apply returned %v", err)
 	}
-	if len(changes) != 0 || len(f.calls) != 0 {
-		t.Errorf("changes = %+v, calls = %v, want neither", changes, f.calls)
+	if len(changes) != 0 || len(f.Calls) != 0 {
+		t.Errorf("changes = %+v, calls = %v, want neither", changes, f.Calls)
 	}
 }
 
@@ -1035,7 +979,7 @@ func TestPackageNameParameterSelectsTheInstalledEntry(t *testing.T) {
 // package is installed" by inspection, and guessing the second would install
 // every package in the catalog, so it is a resource-level error.
 func TestPackageApplyWithoutPrefetchIsAResourceError(t *testing.T) {
-	f := &fakeRunner{}
+	f := &raltest.FakeRunner{}
 	p := Package{run: f}
 
 	changes, _, err := p.Apply(context.Background(), pkgRes("tree", map[string]any{"ensure": "present"}), false)
@@ -1048,8 +992,8 @@ func TestPackageApplyWithoutPrefetchIsAResourceError(t *testing.T) {
 	if len(changes) != 0 {
 		t.Errorf("changes = %+v, want none -- a bare error discards them", changes)
 	}
-	if len(f.calls) != 0 {
-		t.Errorf("ran %v, want nothing", f.calls)
+	if len(f.Calls) != 0 {
+		t.Errorf("ran %v, want nothing", f.Calls)
 	}
 }
 
@@ -1063,7 +1007,7 @@ func TestPackageApplyWithoutPrefetchIsAResourceError(t *testing.T) {
 // `dnf -y install nano-purged`.
 func TestPackageUnimplementedEnsureIsAResourceError(t *testing.T) {
 	for _, ensure := range []string{"purged", "held", "disabled", ""} {
-		f := &fakeRunner{replies: notInstalled(nil, "nano")}
+		f := &raltest.FakeRunner{Replies: notInstalled(nil, "nano")}
 		p := prefetched(f, map[string]string{})
 
 		changes, _, err := p.Apply(context.Background(), pkgRes("nano", map[string]any{"ensure": ensure}), false)
@@ -1072,8 +1016,8 @@ func TestPackageUnimplementedEnsureIsAResourceError(t *testing.T) {
 		}
 		// Only the reads that establish nano's current value run; the
 		// refusal comes after retrieve, as it does in Ruby.
-		if len(changes) != 0 || len(f.calls) != 2 || f.calls[0][0] != "/usr/bin/rpm" || f.calls[1][0] != "/usr/bin/rpm" {
-			t.Errorf("ensure => %q produced changes %+v and ran %v, want no change and only the two queries", ensure, changes, f.calls)
+		if len(changes) != 0 || len(f.Calls) != 2 || f.Calls[0][0] != "/usr/bin/rpm" || f.Calls[1][0] != "/usr/bin/rpm" {
+			t.Errorf("ensure => %q produced changes %+v and ran %v, want no change and only the two queries", ensure, changes, f.Calls)
 		}
 	}
 }
@@ -1119,7 +1063,7 @@ func TestPackageSupportsValue(t *testing.T) {
 		{"ensure", "purged", false},
 		{"ensure", "held", false},
 		{"ensure", "disabled", false},
-		// Empty is not a version. paramString's fallback means a resource with
+		// Empty is not a version. rubyvalue.ParamString's fallback means a resource with
 		// no ensure reads as "present", but an explicitly empty one is a
 		// catalog error, not an install of `nano-`.
 		{"ensure", "", false},
@@ -1145,7 +1089,7 @@ func TestPackagePrefetchIsRootOnly(t *testing.T) {
 	if os.Geteuid() == 0 {
 		t.Skip("running as root: the refusal branch is unreachable, and TestPackagePrefetchReadsTheInstalledSet covers the other one")
 	}
-	f := &fakeRunner{}
+	f := &raltest.FakeRunner{}
 
 	got, err := Package{run: f}.Prefetch(context.Background(), nil)
 	if err == nil {
@@ -1157,8 +1101,8 @@ func TestPackagePrefetchIsRootOnly(t *testing.T) {
 	if got != nil {
 		t.Errorf("provider = %+v, want nil alongside the error", got)
 	}
-	if len(f.calls) != 0 {
-		t.Errorf("ran %v, want nothing -- the root check precedes every command", f.calls)
+	if len(f.Calls) != 0 {
+		t.Errorf("ran %v, want nothing -- the root check precedes every command", f.Calls)
 	}
 }
 
@@ -1169,8 +1113,8 @@ func TestPackagePrefetchReadsTheInstalledSet(t *testing.T) {
 		t.Skip("not root: Prefetch refuses before it reads anything, which TestPackagePrefetchIsRootOnly covers")
 	}
 	rpmPath := lookPathOrSkip(t, "rpm")
-	f := &fakeRunner{replies: map[string]fakeReply{
-		rpmPath + " -qa --qf " + rpmQueryFormat: {out: "tree 0 2.1.1 1.el10 x86_64\ndbus 1 1.14.10 6.el10 x86_64\n"},
+	f := &raltest.FakeRunner{Replies: map[string]raltest.FakeReply{
+		rpmPath + " -qa --qf " + rpmQueryFormat: {Out: "tree 0 2.1.1 1.el10 x86_64\ndbus 1 1.14.10 6.el10 x86_64\n"},
 	}}
 
 	got, err := Package{run: f}.Prefetch(context.Background(), nil)
@@ -1186,7 +1130,7 @@ func TestPackagePrefetchReadsTheInstalledSet(t *testing.T) {
 	}
 	// The returned provider must carry the seams forward, or every Apply after
 	// it would shell out for real.
-	if p.run != commandRunner(f) {
+	if p.run != command.Runner(f) {
 		t.Errorf("run = %v, want the seam it was primed with", p.run)
 	}
 	if p.dnfPath == "" || p.rpmPath == "" {
@@ -1201,8 +1145,8 @@ func TestPackagePrefetchFailureIsAnError(t *testing.T) {
 		t.Skip("not root: Prefetch refuses before it reads anything")
 	}
 	rpmPath := lookPathOrSkip(t, "rpm")
-	f := &fakeRunner{replies: map[string]fakeReply{
-		rpmPath + " -qa --qf " + rpmQueryFormat: {exit: 1, out: "rpm: unknown option\n"},
+	f := &raltest.FakeRunner{Replies: map[string]raltest.FakeReply{
+		rpmPath + " -qa --qf " + rpmQueryFormat: {Exit: 1, Out: "rpm: unknown option\n"},
 	}}
 
 	got, err := Package{run: f}.Prefetch(context.Background(), nil)
@@ -1236,18 +1180,6 @@ func TestPackageIdentity(t *testing.T) {
 	if refreshed || err != nil {
 		t.Errorf("Refresh = %v, %v, want false, nil", refreshed, err)
 	}
-}
-
-func equalArgv(got, want []string) bool {
-	if len(got) != len(want) {
-		return false
-	}
-	for i := range got {
-		if got[i] != want[i] {
-			return false
-		}
-	}
-	return true
 }
 
 // lookPathOrSkip resolves a command the way Prefetch does. The root-only tests
@@ -1316,7 +1248,7 @@ func TestPackageRefusesAVersionRange(t *testing.T) {
 // Putting the resolved version in Is would fix the message by corrupting the
 // event field, which is exactly what the split exists to prevent.
 func TestPackageLatestKeepsLatestInTheEventAndTheVersionInTheMessage(t *testing.T) {
-	f := &fakeRunner{}
+	f := &raltest.FakeRunner{}
 	p := prefetched(f, map[string]string{"which": "2.21-42.el10"})
 	p.updates = map[string]string{"which": "0:2.21-44.el10"}
 
@@ -1356,7 +1288,7 @@ func TestPackageLatestKeepsLatestInTheEventAndTheVersionInTheMessage(t *testing.
 	}
 	// AMENDMENT A15, measured with --debug: an INSTALLED package upgrades.
 	// `install` would refuse to move a package dnf considers satisfied.
-	if got, want := f.onlyCall(t), []string{"/usr/bin/dnf", "-y", "upgrade", "which"}; !equalArgv(got, want) {
+	if got, want := f.OnlyCall(t), []string{"/usr/bin/dnf", "-y", "upgrade", "which"}; !raltest.EqualArgv(got, want) {
 		t.Errorf("ran %v, want %v", got, want)
 	}
 }
@@ -1367,7 +1299,7 @@ func TestPackageLatestKeepsLatestInTheEventAndTheVersionInTheMessage(t *testing.
 // Measured, report-root.json Package[lsof]: previous_value "purged",
 // desired_value "latest", message "created", name "package_changed".
 func TestPackageLatestOnAPurgedPackageIsCreated(t *testing.T) {
-	f := &fakeRunner{replies: notInstalled(nil, "lsof")}
+	f := &raltest.FakeRunner{Replies: notInstalled(nil, "lsof")}
 	p := prefetched(f, map[string]string{})
 	// A resolved update for the package exists and must NOT be used: the
 	// short-circuit is ahead of the lookup, not a consequence of a miss.
@@ -1390,14 +1322,14 @@ func TestPackageLatestOnAPurgedPackageIsCreated(t *testing.T) {
 	if c.Message != "created" || c.Name != "package_changed" {
 		t.Errorf("Message/Name = %q/%q, want created/package_changed", c.Message, c.Name)
 	}
-	f.ranExactly(t, requery("lsof", false), requery("lsof", true), []string{"/usr/bin/dnf", "-y", "install", "lsof"})
+	f.RanExactly(t, requery("lsof", false), requery("lsof", true), []string{"/usr/bin/dnf", "-y", "install", "lsof"})
 }
 
 // yum.rb's latest falls back to the installed version when dnf reported no
 // update for the package ("Yum didn't find updates, pretend the current version
 // is the latest"), so insync? compares the value against itself and succeeds.
 func TestPackageLatestWithNoUpdateAvailableIsANoChange(t *testing.T) {
-	f := &fakeRunner{}
+	f := &raltest.FakeRunner{}
 	p := prefetched(f, map[string]string{"tree": "2.1.1-1.el10"})
 	p.updates = map[string]string{"glibc": "0:2.39-141.el10"}
 
@@ -1408,8 +1340,8 @@ func TestPackageLatestWithNoUpdateAvailableIsANoChange(t *testing.T) {
 	if len(changes) != 0 || len(warnings) != 0 {
 		t.Errorf("got changes %+v and warnings %+v, want neither", changes, warnings)
 	}
-	if len(f.calls) != 0 {
-		t.Errorf("ran %v, want nothing", f.calls)
+	if len(f.Calls) != 0 {
+		t.Errorf("ran %v, want nothing", f.Calls)
 	}
 }
 
@@ -1428,7 +1360,7 @@ func TestPackageLatestWithNoUpdateAvailableIsANoChange(t *testing.T) {
 // Every other difference a real capture can produce happens to make the two
 // predicates agree, so a realistic pair would not detect the mistake at all.
 func TestPackageLatestComparesByEqualityNotByRpmVersion(t *testing.T) {
-	f := &fakeRunner{}
+	f := &raltest.FakeRunner{}
 	p := prefetched(f, map[string]string{"which": "0:2.21-044.el10"})
 	p.updates = map[string]string{"which": "0:2.21-44.el10"}
 	if rpmCompareEVR("0:2.21-44.el10", "0:2.21-044.el10") != 0 {
@@ -1454,8 +1386,8 @@ func TestPackageLatestComparesByEqualityNotByRpmVersion(t *testing.T) {
 //	change from 'purged' to 'latest' failed: Could not update: Execution of
 //	'/usr/bin/dnf -y install nano' returned 1: ...
 func TestPackageLatestFailureIsPrefixedAndAttributedToEnsure(t *testing.T) {
-	f := &fakeRunner{replies: map[string]fakeReply{
-		"/usr/bin/dnf -y upgrade which": {exit: 1, out: "Error: Failed to download metadata\n"},
+	f := &raltest.FakeRunner{Replies: map[string]raltest.FakeReply{
+		"/usr/bin/dnf -y upgrade which": {Exit: 1, Out: "Error: Failed to download metadata\n"},
 	}}
 	p := prefetched(f, map[string]string{"which": "2.21-42.el10"})
 	p.updates = map[string]string{"which": "0:2.21-44.el10"}
@@ -1483,7 +1415,7 @@ func TestPackageLatestFailureIsPrefixedAndAttributedToEnsure(t *testing.T) {
 }
 
 func TestPackageLatestNoopRunsNothing(t *testing.T) {
-	f := &fakeRunner{}
+	f := &raltest.FakeRunner{}
 	p := prefetched(f, map[string]string{"which": "2.21-42.el10"})
 	p.updates = map[string]string{"which": "0:2.21-44.el10"}
 
@@ -1497,8 +1429,8 @@ func TestPackageLatestNoopRunsNothing(t *testing.T) {
 	if changes[0].IsDisplay != "0:2.21-44.el10" || changes[0].Err != nil {
 		t.Errorf("change = %+v, want the would-be upgrade with no error", changes[0])
 	}
-	if len(f.calls) != 0 {
-		t.Errorf("noop ran %v, want nothing", f.calls)
+	if len(f.Calls) != 0 {
+		t.Errorf("noop ran %v, want nothing", f.Calls)
 	}
 }
 
@@ -1508,7 +1440,7 @@ func TestPackageLatestNoopRunsNothing(t *testing.T) {
 // status is "unchanged" with an EMPTY resource_statuses -- an in-sync resource
 // records no status at all.
 func TestPackageCheckUpdateFailureWarnsAndLeavesTheResourceInSync(t *testing.T) {
-	f := &fakeRunner{}
+	f := &raltest.FakeRunner{}
 	p := prefetched(f, map[string]string{"which": "2.21-42.el10"})
 	p.checkUpdateFailure = "Could not check for updates, '/usr/bin/dnf check-update' exited with 1"
 
@@ -1519,8 +1451,8 @@ func TestPackageCheckUpdateFailureWarnsAndLeavesTheResourceInSync(t *testing.T) 
 	if len(changes) != 0 {
 		t.Errorf("changes = %+v, want none -- the fallback compares the version against itself", changes)
 	}
-	if len(f.calls) != 0 {
-		t.Errorf("ran %v, want nothing", f.calls)
+	if len(f.Calls) != 0 {
+		t.Errorf("ran %v, want nothing", f.Calls)
 	}
 	if len(warnings) != 1 {
 		t.Fatalf("got %d warnings, want 1: %+v", len(warnings), warnings)
@@ -1547,7 +1479,7 @@ func TestPackageCheckUpdateFailureWarnsAndLeavesTheResourceInSync(t *testing.T) 
 // never reaches the code that raises it: type/package.rb:164 short-circuits
 // ahead of provider.latest.
 func TestPackageLatestOnAPurgedPackageRaisesNoCheckUpdateWarning(t *testing.T) {
-	f := &fakeRunner{replies: notInstalled(nil, "lsof")}
+	f := &raltest.FakeRunner{Replies: notInstalled(nil, "lsof")}
 	p := prefetched(f, map[string]string{})
 	p.checkUpdateFailure = "Could not check for updates, '/usr/bin/dnf check-update' exited with 1"
 
@@ -1565,8 +1497,8 @@ func TestPackageLatestOnAPurgedPackageRaisesNoCheckUpdateWarning(t *testing.T) {
 // through yum.rb's class-level @latest_versions memo; this reaches it by
 // resolving in Prefetch, which is the only place that sees the whole list.
 func TestPackageResolveUpdatesRunsOnceForTheWholeRun(t *testing.T) {
-	f := &fakeRunner{replies: map[string]fakeReply{
-		"/usr/bin/dnf -y check-update": {exit: 100, out: "\nwhich.x86_64  2.21-44.el10  baseos\n"},
+	f := &raltest.FakeRunner{Replies: map[string]raltest.FakeReply{
+		"/usr/bin/dnf -y check-update": {Exit: 100, Out: "\nwhich.x86_64  2.21-44.el10  baseos\n"},
 	}}
 	p := prefetched(f, map[string]string{"which": "2.21-42.el10", "nano": "8.1-3.el10", "lsof": "4.98.0-7.el10"})
 
@@ -1587,7 +1519,7 @@ func TestPackageResolveUpdatesRunsOnceForTheWholeRun(t *testing.T) {
 	// AMENDMENT A14, measured with --debug: Ruby's argv is `-y check-update`
 	// with NO package name -- it asks for every update at once and indexes the
 	// answer.
-	if got, want := f.onlyCall(t), []string{"/usr/bin/dnf", "-y", "check-update"}; !equalArgv(got, want) {
+	if got, want := f.OnlyCall(t), []string{"/usr/bin/dnf", "-y", "check-update"}; !raltest.EqualArgv(got, want) {
 		t.Errorf("ran %v, want %v", got, want)
 	}
 }
@@ -1611,8 +1543,8 @@ func TestPackageResolveUpdatesSkipsWhenNoInstalledResourceAsks(t *testing.T) {
 		}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			f := &fakeRunner{replies: map[string]fakeReply{
-				"/usr/bin/dnf -y check-update": {exit: 1, out: "boom"},
+			f := &raltest.FakeRunner{Replies: map[string]raltest.FakeReply{
+				"/usr/bin/dnf -y check-update": {Exit: 1, Out: "boom"},
 			}}
 			p := prefetched(f, tc.state)
 
@@ -1623,8 +1555,8 @@ func TestPackageResolveUpdatesSkipsWhenNoInstalledResourceAsks(t *testing.T) {
 			if len(updates) != 0 || failure != "" {
 				t.Errorf("updates/failure = %v/%q, want neither", updates, failure)
 			}
-			if len(f.calls) != 0 {
-				t.Errorf("ran %v, want nothing", f.calls)
+			if len(f.Calls) != 0 {
+				t.Errorf("ran %v, want nothing", f.Calls)
 			}
 		})
 	}
@@ -1637,19 +1569,19 @@ func TestPackageResolveUpdatesSkipsWhenNoInstalledResourceAsks(t *testing.T) {
 func TestPackageResolveUpdatesReadsTheExitStatus(t *testing.T) {
 	for _, tc := range []struct {
 		name        string
-		reply       fakeReply
+		reply       raltest.FakeReply
 		wantUpdates bool
 		wantFailure string
 	}{
-		{"100 names the updates", fakeReply{exit: 100, out: "\nwhich.x86_64  2.21-44.el10  baseos\n"}, true, ""},
-		{"0 means none are available", fakeReply{exit: 0}, false, ""},
-		{"1 warns", fakeReply{exit: 1, out: "Error: Failed to download metadata"}, false,
+		{"100 names the updates", raltest.FakeReply{Exit: 100, Out: "\nwhich.x86_64  2.21-44.el10  baseos\n"}, true, ""},
+		{"0 means none are available", raltest.FakeReply{Exit: 0}, false, ""},
+		{"1 warns", raltest.FakeReply{Exit: 1, Out: "Error: Failed to download metadata"}, false,
 			"Could not check for updates, '/usr/bin/dnf check-update' exited with 1"},
-		{"127 warns with its own status", fakeReply{exit: 127}, false,
+		{"127 warns with its own status", raltest.FakeReply{Exit: 127}, false,
 			"Could not check for updates, '/usr/bin/dnf check-update' exited with 127"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			f := &fakeRunner{replies: map[string]fakeReply{"/usr/bin/dnf -y check-update": tc.reply}}
+			f := &raltest.FakeRunner{Replies: map[string]raltest.FakeReply{"/usr/bin/dnf -y check-update": tc.reply}}
 			p := prefetched(f, map[string]string{"which": "2.21-42.el10"})
 
 			updates, failure, err := p.resolveUpdates(context.Background(),
@@ -1780,8 +1712,8 @@ func readCheckUpdateCapture(t *testing.T, path string) (string, int) {
 // Measured both ways against the oracle (AMENDMENT A16).
 func TestPackageVersionFailureCarriesTheCouldNotUpdatePrefix(t *testing.T) {
 	const argv = "/usr/bin/dnf -y install lsof-999-1.el10"
-	f := &fakeRunner{replies: notInstalled(map[string]fakeReply{
-		argv: {exit: 1, out: "Error: Unable to find a match: lsof-999-1.el10"},
+	f := &raltest.FakeRunner{Replies: notInstalled(map[string]raltest.FakeReply{
+		argv: {Exit: 1, Out: "Error: Unable to find a match: lsof-999-1.el10"},
 	}, "lsof")}
 	p := Package{run: f, dnfPath: "/usr/bin/dnf", rpmPath: "/usr/bin/rpm", state: map[string]string{}}
 
@@ -1805,8 +1737,8 @@ func TestPackageVersionFailureCarriesTheCouldNotUpdatePrefix(t *testing.T) {
 // ...and a failed `present` still does NOT carry it. Without this, the test
 // above passes against a provider that prefixes every failure.
 func TestPackagePresentFailureHasNoCouldNotUpdatePrefix(t *testing.T) {
-	f := &fakeRunner{replies: notInstalled(map[string]fakeReply{
-		"/usr/bin/dnf -y install nope": {exit: 1, out: "No match for argument: nope"},
+	f := &raltest.FakeRunner{Replies: notInstalled(map[string]raltest.FakeReply{
+		"/usr/bin/dnf -y install nope": {Exit: 1, Out: "No match for argument: nope"},
 	}, "nope")}
 	p := Package{run: f, dnfPath: "/usr/bin/dnf", rpmPath: "/usr/bin/rpm", state: map[string]string{}}
 
@@ -1845,7 +1777,7 @@ func TestPackageMarkedEnsureValueErrors(t *testing.T) {
 	}
 
 	t.Run("refused value", func(t *testing.T) {
-		p := prefetched(&fakeRunner{}, map[string]string{"kernel": "6.12.0-1.el10"})
+		p := prefetched(&raltest.FakeRunner{}, map[string]string{"kernel": "6.12.0-1.el10"})
 		_, _, err := p.Apply(context.Background(), marked(map[string]any{"ensure": "held"}), false)
 		if err == nil || err.Error() != "ensure => [redacted] is not implemented" {
 			t.Errorf("marked Err = %v, want ensure => [redacted] is not implemented", err)
@@ -1858,8 +1790,8 @@ func TestPackageMarkedEnsureValueErrors(t *testing.T) {
 
 	t.Run("version verification", func(t *testing.T) {
 		newPkg := func() Package {
-			f := &fakeRunner{replies: map[string]fakeReply{
-				requeryKey("kernel", false): {out: "kernel 0 6.12.0 1.el10 x86_64\nkernel 0 6.12.0 2.el10 x86_64\n"},
+			f := &raltest.FakeRunner{Replies: map[string]raltest.FakeReply{
+				requeryKey("kernel", false): {Out: "kernel 0 6.12.0 1.el10 x86_64\nkernel 0 6.12.0 2.el10 x86_64\n"},
 			}}
 			return prefetched(f, map[string]string{"kernel": "6.12.0-1.el10; 6.12.0-2.el10"})
 		}
@@ -1881,8 +1813,8 @@ func TestPackageMarkedEnsureValueErrors(t *testing.T) {
 
 	t.Run("failed install", func(t *testing.T) {
 		newPkg := func() Package {
-			f := &fakeRunner{replies: map[string]fakeReply{
-				"/usr/bin/dnf -y upgrade kernel-9.9.9-secret": {exit: 1, out: "No match for argument: kernel-9.9.9-secret\n"},
+			f := &raltest.FakeRunner{Replies: map[string]raltest.FakeReply{
+				"/usr/bin/dnf -y upgrade kernel-9.9.9-secret": {Exit: 1, Out: "No match for argument: kernel-9.9.9-secret\n"},
 			}}
 			return prefetched(f, map[string]string{"kernel": "6.12.0-1.el10"})
 		}
@@ -1906,8 +1838,8 @@ func TestPackageMarkedEnsureValueErrors(t *testing.T) {
 // transaction.rb:379 logs this at Puppet before it calls the provider's
 // prefetch, so a prefetch that then fails has still logged it.
 func TestPackagePrefetchLogsRubysDebugLine(t *testing.T) {
-	ctx, got := debugContext("debug")
-	_, _ = Package{run: &fakeRunner{}}.Prefetch(ctx, nil)
+	ctx, got := raltest.DebugContext("debug")
+	_, _ = Package{run: &raltest.FakeRunner{}}.Prefetch(ctx, nil)
 	want := report.LogEntry{Level: "debug", Source: "Puppet", Message: "Prefetching dnf resources for package"}
 	if len(*got) == 0 || (*got)[0].Level != want.Level || (*got)[0].Source != want.Source || (*got)[0].Message != want.Message {
 		t.Errorf("entries = %+v, want first %+v", *got, want)
@@ -1915,8 +1847,8 @@ func TestPackagePrefetchLogsRubysDebugLine(t *testing.T) {
 }
 
 func TestPackagePrefetchLogsNothingAtNotice(t *testing.T) {
-	ctx, got := debugContext("notice")
-	_, _ = Package{run: &fakeRunner{}}.Prefetch(ctx, nil)
+	ctx, got := raltest.DebugContext("notice")
+	_, _ = Package{run: &raltest.FakeRunner{}}.Prefetch(ctx, nil)
 	if len(*got) != 0 {
 		t.Errorf("entries = %+v, want none at notice", *got)
 	}
@@ -1924,9 +1856,9 @@ func TestPackagePrefetchLogsNothingAtNotice(t *testing.T) {
 
 // pkgSources is the identity the transaction puts on the context for a
 // Package resource named name.
-func pkgSources(name string) Sources {
+func pkgSources(name string) sources.Sources {
 	ref := "Package[" + name + "]"
-	return Sources{Resource: "/Stage[main]/Main/" + ref, Provider: ref + "(provider=dnf)", Ref: ref}
+	return sources.Sources{Resource: "/Stage[main]/Main/" + ref, Provider: ref + "(provider=dnf)", Ref: ref}
 }
 
 // provider/package/yum.rb:250-304: install says what it was asked for and which
@@ -1969,9 +1901,9 @@ func TestPackageInstallLogsRubysDebugLines(t *testing.T) {
 				replies := notInstalled(nil, "tree")
 				if tc.installed != "" {
 					state["tree"] = tc.installed
-					replies = map[string]fakeReply{}
+					replies = map[string]raltest.FakeReply{}
 				}
-				p := prefetched(&fakeRunner{replies: replies}, state)
+				p := prefetched(&raltest.FakeRunner{Replies: replies}, state)
 				p.updates = map[string]string{"tree": "0:1-2.el10"}
 				r := pkgRes("tree", map[string]any{"ensure": tc.ensure})
 				want := tc.want
@@ -1981,16 +1913,16 @@ func TestPackageInstallLogsRubysDebugLines(t *testing.T) {
 				}
 				src := pkgSources("tree")
 
-				ctx, got := debugContext("debug")
-				if _, _, err := p.Apply(WithSources(ctx, src), r, tc.noop); err != nil {
+				ctx, got := raltest.DebugContext("debug")
+				if _, _, err := p.Apply(sources.WithSources(ctx, src), r, tc.noop); err != nil {
 					t.Fatalf("marked=%v: Apply returned %v", marked, err)
 				}
-				if lines := linesAt(*got, src.Provider); !slices.Equal(lines, want) {
+				if lines := raltest.LinesAt(*got, src.Provider); !slices.Equal(lines, want) {
 					t.Errorf("marked=%v: debug lines at %s = %q, want %q", marked, src.Provider, lines, want)
 				}
 
-				ctx, got = debugContext("notice")
-				if _, _, err := p.Apply(WithSources(ctx, src), r, tc.noop); err != nil {
+				ctx, got = raltest.DebugContext("notice")
+				if _, _, err := p.Apply(sources.WithSources(ctx, src), r, tc.noop); err != nil {
 					t.Fatalf("marked=%v: Apply returned %v", marked, err)
 				}
 				if len(*got) != 0 {
@@ -2004,9 +1936,9 @@ func TestPackageInstallLogsRubysDebugLines(t *testing.T) {
 // A version already installed is in sync, so install never runs and says
 // nothing.
 func TestPackageInSyncVersionLogsNothing(t *testing.T) {
-	p := prefetched(&fakeRunner{}, map[string]string{"tree": "2-1.el10"})
-	ctx, got := debugContext("debug")
-	if _, _, err := p.Apply(WithSources(ctx, pkgSources("tree")), pkgRes("tree", map[string]any{"ensure": "2-1.el10"}), false); err != nil {
+	p := prefetched(&raltest.FakeRunner{}, map[string]string{"tree": "2-1.el10"})
+	ctx, got := raltest.DebugContext("debug")
+	if _, _, err := p.Apply(sources.WithSources(ctx, pkgSources("tree")), pkgRes("tree", map[string]any{"ensure": "2-1.el10"}), false); err != nil {
 		t.Fatalf("Apply returned %v", err)
 	}
 	if len(*got) != 0 {
@@ -2026,21 +1958,21 @@ func TestPackageCheckUpdateWithNoUpdatesLogsRubysDebugLine(t *testing.T) {
 		{100, nil},
 		{1, nil},
 	} {
-		f := &fakeRunner{replies: map[string]fakeReply{"/usr/bin/dnf -y check-update": {exit: tc.exit}}}
+		f := &raltest.FakeRunner{Replies: map[string]raltest.FakeReply{"/usr/bin/dnf -y check-update": {Exit: tc.exit}}}
 		p := prefetched(f, map[string]string{"tree": "1-1.el10"})
 
-		ctx, got := debugContext("debug")
+		ctx, got := raltest.DebugContext("debug")
 		_, _, err := p.resolveUpdates(ctx, []catalog.Resource{pkgRes("tree", map[string]any{"ensure": "latest"})})
 		if err != nil {
 			t.Fatalf("exit %d: resolveUpdates returned %v", tc.exit, err)
 		}
-		if lines := linesAt(*got, dnfProviderSource); !slices.Equal(lines, tc.want) {
+		if lines := raltest.LinesAt(*got, dnfProviderSource); !slices.Equal(lines, tc.want) {
 			t.Errorf("exit %d: debug lines at %s = %q, want %q", tc.exit, dnfProviderSource, lines, tc.want)
 		}
 	}
 
-	f := &fakeRunner{replies: map[string]fakeReply{"/usr/bin/dnf -y check-update": {exit: 0}}}
-	ctx, got := debugContext("notice")
+	f := &raltest.FakeRunner{Replies: map[string]raltest.FakeReply{"/usr/bin/dnf -y check-update": {Exit: 0}}}
+	ctx, got := raltest.DebugContext("notice")
 	if _, _, err := prefetched(f, map[string]string{"tree": "1-1.el10"}).resolveUpdates(ctx,
 		[]catalog.Resource{pkgRes("tree", map[string]any{"ensure": "latest"})}); err != nil {
 		t.Fatal(err)
@@ -2062,12 +1994,12 @@ func TestPackageMarkedVersionIsRedactedInTheExecutingLine(t *testing.T) {
 			r.SensitiveParameters = []string{"ensure"}
 			want = "Executing: '[redacted]'"
 		}
-		ctx, got := debugContext("debug")
-		if _, _, err := p.Apply(WithSources(ctx, pkgSources("tree")), r, false); err != nil {
+		ctx, got := raltest.DebugContext("debug")
+		if _, _, err := p.Apply(sources.WithSources(ctx, pkgSources("tree")), r, false); err != nil {
 			t.Fatalf("marked=%v: Apply returned %v", marked, err)
 		}
 		var installs []string
-		for _, line := range linesAt(*got, "Puppet") {
+		for _, line := range raltest.LinesAt(*got, "Puppet") {
 			if strings.Contains(line, "install") || strings.Contains(line, "redacted") {
 				installs = append(installs, line)
 			}

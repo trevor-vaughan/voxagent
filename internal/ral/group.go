@@ -11,6 +11,10 @@ import (
 	"strings"
 
 	"github.com/voxagent/voxagent/internal/catalog"
+	"github.com/voxagent/voxagent/internal/lib/command"
+	"github.com/voxagent/voxagent/internal/lib/nameservice"
+	"github.com/voxagent/voxagent/internal/lib/rubyvalue"
+	"github.com/voxagent/voxagent/internal/lib/sources"
 	"github.com/voxagent/voxagent/internal/runlog"
 )
 
@@ -19,8 +23,8 @@ import (
 // groupmod's -aU flag and system_groups (spec §6). The zero value reads the
 // host's NSS and runs the host's commands; tests set ns and runner.
 type Group struct {
-	ns     nameService
-	runner shadowRunner
+	ns     nameservice.NameService
+	runner command.ShadowRunner
 }
 
 var groupaddProvider = "groupadd"
@@ -59,10 +63,10 @@ func (Group) ConversionDebug(r catalog.Resource) []string {
 	var lines []string
 	for _, attr := range []string{"attributes", "ia_load_module"} {
 		if r.Parameters[attr] != nil {
-			lines = append(lines, fmt.Sprintf(featureMissing, groupaddProvider, "manages_aix_lam", attr))
+			lines = append(lines, fmt.Sprintf(nameservice.FeatureMissing, groupaddProvider, "manages_aix_lam", attr))
 		}
 	}
-	return append(lines, fmt.Sprintf(featureMissing, groupaddProvider, "manages_local_users_and_groups", "forcelocal"))
+	return append(lines, fmt.Sprintf(nameservice.FeatureMissing, groupaddProvider, "manages_local_users_and_groups", "forcelocal"))
 }
 
 // groupParams is a Group resource munged as type/group.rb munges it.
@@ -98,26 +102,26 @@ func parseGroup(r catalog.Resource) (groupParams, error) {
 	case "absent":
 		p.absent = true
 	default:
-		return p, paramFailure(r, "ensure", fmt.Sprintf("Invalid value %s. Valid values are present, absent.", rubyInspectValue(v)))
+		return p, rubyvalue.ParamFailure(r, "ensure", fmt.Sprintf("Invalid value %s. Valid values are present, absent.", rubyvalue.InspectValue(v)))
 	}
 	switch v := r.Parameters["gid"].(type) {
 	case nil:
 	case string:
 		if !gidPattern.MatchString(v) {
-			return p, paramFailure(r, "gid", "Invalid GID "+v)
+			return p, rubyvalue.ParamFailure(r, "gid", "Invalid GID "+v)
 		}
-		n, err := rubyInteger(v)
+		n, err := rubyvalue.Integer(v)
 		if err != nil {
-			return p, mungeFailure(r, "gid", v, err.Error())
+			return p, rubyvalue.MungeFailure(r, "gid", v, err.Error())
 		}
 		p.gid, p.hasGID = n, true
 	case float64:
 		if v != math.Trunc(v) || math.Abs(v) >= 1<<53 {
-			return p, &unimplementedValue{r.Ref(), "gid", rubyInspectValue(v)}
+			return p, &rubyvalue.UnimplementedValue{Ref: r.Ref(), Attr: "gid", Shown: rubyvalue.InspectValue(v)}
 		}
 		p.gid, p.hasGID = int64(v), true
 	default:
-		return p, &unimplementedValue{r.Ref(), "gid", rubyInspectValue(v)}
+		return p, &rubyvalue.UnimplementedValue{Ref: r.Ref(), Attr: "gid", Shown: rubyvalue.InspectValue(v)}
 	}
 	switch v := r.Parameters["members"].(type) {
 	case nil:
@@ -128,21 +132,21 @@ func parseGroup(r catalog.Resource) (groupParams, error) {
 		for i, e := range v {
 			s, ok := e.(string)
 			if !ok {
-				return p, &unimplementedValue{r.Ref(), "members", rubyInspectValue(v)}
+				return p, &rubyvalue.UnimplementedValue{Ref: r.Ref(), Attr: "members", Shown: rubyvalue.InspectValue(v)}
 			}
 			p.members[i] = s
 		}
 	default:
-		return p, &unimplementedValue{r.Ref(), "members", rubyInspectValue(v)}
+		return p, &rubyvalue.UnimplementedValue{Ref: r.Ref(), Attr: "members", Shown: rubyvalue.InspectValue(v)}
 	}
 	boolParam := func(name string, dst *bool) error {
 		v := r.Parameters[name]
 		if v == nil {
 			return nil
 		}
-		val, err := rubyBool(v)
+		val, err := rubyvalue.Bool(v)
 		if err != nil {
-			return mungeFailure(r, name, v, err.Error())
+			return rubyvalue.MungeFailure(r, name, v, err.Error())
 		}
 		*dst = val
 		return nil
@@ -154,7 +158,7 @@ func parseGroup(r catalog.Resource) (groupParams, error) {
 		return p, err
 	}
 	if v := r.Parameters["attribute_membership"]; v != nil && v != "inclusive" && v != "minimum" {
-		return p, paramFailure(r, "attribute_membership", fmt.Sprintf("Invalid value %s. Valid values are inclusive, minimum.", rubyInspectValue(v)))
+		return p, rubyvalue.ParamFailure(r, "attribute_membership", fmt.Sprintf("Invalid value %s. Valid values are inclusive, minimum.", rubyvalue.InspectValue(v)))
 	}
 	if err := boolParam("system", &p.system); err != nil {
 		return p, err
@@ -179,14 +183,14 @@ func (g Group) Apply(ctx context.Context, r catalog.Resource, noop bool) ([]Chan
 		name string
 		dst  *string
 	}{{"groupadd", &cmds.add}, {"groupdel", &cmds.del}, {"groupmod", &cmds.mod}} {
-		if *c.dst, err = shadowCommand(c.name); err != nil {
+		if *c.dst, err = nameservice.ShadowCommand(c.name); err != nil {
 			// The commands confine the provider; without one it is not
 			// suitable, which transaction.rb:130 reports in these words.
 			return nil, nil, errors.New("Provider groupadd is not functional on this host")
 		}
 	}
 	ns := g.nss()
-	cur, exists, err := ns.group(p.name)
+	cur, exists, err := ns.Group(p.name)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -197,7 +201,7 @@ func (g Group) Apply(ctx context.Context, r catalog.Resource, noop bool) ([]Chan
 
 	if p.absent {
 		if !exists {
-			runlog.Debugf(ctx, SourcesFrom(ctx).Resource, "Nothing to manage: no ensure and the resource doesn't exist")
+			runlog.Debugf(ctx, sources.SourcesFrom(ctx).Resource, "Nothing to manage: no ensure and the resource doesn't exist")
 			return nil, nil, nil
 		}
 		ch := Change{Property: "ensure", Was: "present", Is: "absent", Message: "removed" + suffix, Name: "group_removed"}
@@ -235,7 +239,7 @@ func (g Group) Apply(ctx context.Context, r catalog.Resource, noop bool) ([]Chan
 	if current == nil {
 		current = []string{}
 	}
-	if p.hasMembers && !slices.Equal(uniqSorted(current), actualShould(current, p.members, p.auth)) {
+	if p.hasMembers && !slices.Equal(rubyvalue.UniqSorted(current), actualShould(current, p.members, p.auth)) {
 		// change_to_s (type/group.rb:89-95) feeds the joined actual_should back
 		// through should_to_s, which splits it and applies actual_should again
 		// against retrieve -- the provider's cached read, so current.
@@ -247,7 +251,7 @@ func (g Group) Apply(ctx context.Context, r catalog.Resource, noop bool) ([]Chan
 			DisplayVerbatim: true,
 		}
 		ch.Message = fmt.Sprintf("members changed %s to %s%s", ch.WasDisplay,
-			strings.Join(actualShould(current, rubySplitComma(joined), p.auth), ","), suffix)
+			strings.Join(actualShould(current, rubyvalue.SplitComma(joined), p.auth), ","), suffix)
 		if !noop {
 			if err := g.validateMembers(p.members); err != nil {
 				ch.Err = err
@@ -282,16 +286,16 @@ func (g Group) create(ctx context.Context, r catalog.Resource, p groupParams, cm
 		return nil
 	}
 	if err := g.validateMembers(p.members); err != nil {
-		return fmt.Errorf("Could not set 'present' on ensure: %s%s", err, errorLocation(r.File, r.Line))
+		return fmt.Errorf("Could not set 'present' on ensure: %s%s", err, rubyvalue.ErrorLocation(r.File, r.Line))
 	}
 	// The provider's cache was emptied by exists? finding nothing, so the
 	// purge test reads the new group afresh (nameservice.rb:223-235); it is
 	// only made under auth_membership (groupadd.rb:119).
 	var current []string
 	if p.auth {
-		cur, _, err := g.nss().group(p.name)
+		cur, _, err := g.nss().Group(p.name)
 		if err != nil {
-			return fmt.Errorf("Could not set 'present' on ensure: %s%s", err, errorLocation(r.File, r.Line))
+			return fmt.Errorf("Could not set 'present' on ensure: %s%s", err, rubyvalue.ErrorLocation(r.File, r.Line))
 		}
 		current = cur.Members
 	}
@@ -303,9 +307,9 @@ func (g Group) create(ctx context.Context, r catalog.Resource, p groupParams, cm
 func (g Group) validateMembers(members []string) error {
 	ns := g.nss()
 	for _, m := range members {
-		for _, u := range rubySplitComma(m) {
+		for _, u := range rubyvalue.SplitComma(m) {
 			u = strings.TrimSpace(u)
-			_, ok, err := ns.user(u)
+			_, ok, err := ns.User(u)
 			if err != nil {
 				return err
 			}
@@ -323,7 +327,7 @@ func (g Group) validateMembers(members []string) error {
 // elements joined in manifest order.
 func (g Group) setMembers(ctx context.Context, p groupParams, current []string, cmds groupCommands) error {
 	if p.auth && len(current) > 0 {
-		usermod, err := shadowCommand("usermod")
+		usermod, err := nameservice.ShadowCommand("usermod")
 		if err != nil {
 			// usermod is an optional command (groupadd.rb:20), so it is
 			// looked up when called (provider/command.rb:24).
@@ -346,21 +350,21 @@ func (g Group) setMembers(ctx context.Context, p groupParams, current []string, 
 func (g Group) exec(ctx context.Context, name string, args ...string) error {
 	runner := g.runner
 	if runner == nil {
-		runner = hostShadowRunner{}
+		runner = command.HostShadowRunner{}
 	}
-	code, out, err := runner.run(ctx, argvOpts{}, name, args...)
+	code, out, err := runner.Run(ctx, command.ArgvOpts{}, name, args...)
 	if err != nil {
 		return err
 	}
 	if code != 0 {
-		return execFailure(append([]string{name}, args...), false, code, out)
+		return command.ExecFailure(append([]string{name}, args...), false, code, out)
 	}
 	return nil
 }
 
-func (g Group) nss() nameService {
+func (g Group) nss() nameservice.NameService {
 	if g.ns == nil {
-		return hostNSS
+		return nameservice.Host
 	}
 	return g.ns
 }
@@ -369,26 +373,7 @@ func (g Group) nss() nameService {
 // auth_membership, else current plus should; uniq'd and sorted either way.
 func actualShould(current, should []string, auth bool) []string {
 	if auth {
-		return uniqSorted(should)
+		return rubyvalue.UniqSorted(should)
 	}
-	return uniqSorted(append(slices.Clone(current), should...))
-}
-
-func uniqSorted(s []string) []string {
-	out := slices.Clone(s)
-	if out == nil {
-		out = []string{}
-	}
-	slices.Sort(out)
-	return slices.Compact(out)
-}
-
-// rubySplitComma is Ruby's String#split(','): trailing empty fields are
-// dropped, so "" splits to nothing and "a,,b," to a, "", b.
-func rubySplitComma(s string) []string {
-	parts := strings.Split(s, ",")
-	for len(parts) > 0 && parts[len(parts)-1] == "" {
-		parts = parts[:len(parts)-1]
-	}
-	return parts
+	return rubyvalue.UniqSorted(append(slices.Clone(current), should...))
 }

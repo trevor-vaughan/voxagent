@@ -3,6 +3,8 @@ package ral
 import (
 	"slices"
 	"testing"
+
+	"github.com/voxagent/voxagent/internal/lib/command"
 )
 
 // Ruby's split(/\n/): trailing empty strings go, interior ones and \r stay
@@ -19,7 +21,7 @@ func TestSplitOutput(t *testing.T) {
 		{"", nil},
 		{"\n\n\n", nil},
 	} {
-		if got := splitOutput(tc.in); !slices.Equal(got, tc.want) {
+		if got := command.SplitOutput(tc.in); !slices.Equal(got, tc.want) {
 			t.Errorf("splitOutput(%q) = %q, want %q", tc.in, got, tc.want)
 		}
 	}

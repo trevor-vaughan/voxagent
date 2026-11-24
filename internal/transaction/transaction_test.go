@@ -15,6 +15,7 @@ import (
 	"testing"
 
 	"github.com/voxagent/voxagent/internal/catalog"
+	"github.com/voxagent/voxagent/internal/lib/sources"
 	"github.com/voxagent/voxagent/internal/ral"
 	"github.com/voxagent/voxagent/internal/report"
 	"github.com/voxagent/voxagent/internal/runlog"
@@ -96,9 +97,9 @@ type recorder struct {
 	// suite while executing commands under --noop.
 	noopSeen *[]string
 
-	// sourcesSeen records the ral.Sources each Apply and Refresh call's context
+	// sourcesSeen records the sources.Sources each Apply and Refresh call's context
 	// carried, when the test cares.
-	sourcesSeen *[]ral.Sources
+	sourcesSeen *[]sources.Sources
 }
 
 func (p recorder) recordNoop(call, ref string, noop bool) {
@@ -124,7 +125,7 @@ func (p recorder) Attrs() ral.Attrs {
 func (p recorder) Apply(ctx context.Context, r catalog.Resource, noop bool) ([]ral.Change, []ral.Warning, error) {
 	*p.applied = append(*p.applied, r.Ref())
 	if p.sourcesSeen != nil {
-		*p.sourcesSeen = append(*p.sourcesSeen, ral.SourcesFrom(ctx))
+		*p.sourcesSeen = append(*p.sourcesSeen, sources.SourcesFrom(ctx))
 	}
 	p.recordNoop("Apply", r.Ref(), noop)
 	if p.primedSeen != nil {
@@ -252,7 +253,7 @@ func (p recorder) Apply(ctx context.Context, r catalog.Resource, noop bool) ([]r
 func (p recorder) Refresh(ctx context.Context, r catalog.Resource, noop bool) (bool, error) {
 	*p.refreshed = append(*p.refreshed, r.Ref())
 	if p.sourcesSeen != nil {
-		*p.sourcesSeen = append(*p.sourcesSeen, ral.SourcesFrom(ctx))
+		*p.sourcesSeen = append(*p.sourcesSeen, sources.SourcesFrom(ctx))
 	}
 	p.recordNoop("Refresh", r.Ref(), noop)
 	if p.refreshErr[r.Ref()] {
@@ -3514,14 +3515,14 @@ func TestTransactionLogsNothingBelowDebug(t *testing.T) {
 // into its provider, so a provider never rebuilds them.
 func TestWalkPutsSourcesOnTheProviderContext(t *testing.T) {
 	var applied, refreshed []string
-	var seen []ral.Sources
+	var seen []sources.Sources
 	mk := func(typ, name string) recorder {
 		return recorder{typ: typ, applied: &applied, refreshed: &refreshed, providerName: name,
 			changes: 1, sourcesSeen: &seen}
 	}
 	tx := &Transaction{Registry: ral.NewRegistry(mk("exec", "posix"), mk("notify", ""))}
 	runCatalog(t, tx, inMain(res("Notify", "n", map[string]any{"notify": "Exec[x]"}), res("Exec", "x", nil)))
-	want := []ral.Sources{
+	want := []sources.Sources{
 		{Resource: "/Stage[main]/Main/Notify[n]", Provider: "Notify[n]", Ref: "Notify[n]"},
 		{Resource: "/Stage[main]/Main/Exec[x]", Provider: "Exec[x](provider=posix)", Ref: "Exec[x]"},
 		{Resource: "/Stage[main]/Main/Exec[x]", Provider: "Exec[x](provider=posix)", Ref: "Exec[x]"},

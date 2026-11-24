@@ -15,6 +15,8 @@ import (
 	"github.com/voxagent/voxagent/internal/agent"
 	"github.com/voxagent/voxagent/internal/catalog"
 	"github.com/voxagent/voxagent/internal/extension"
+	"github.com/voxagent/voxagent/internal/lib/augeas"
+	"github.com/voxagent/voxagent/internal/lib/plugintree"
 	"github.com/voxagent/voxagent/internal/node"
 	"github.com/voxagent/voxagent/internal/ral"
 	"github.com/voxagent/voxagent/internal/report"
@@ -38,7 +40,7 @@ type applyOptions struct {
 	phases                          []agent.Phase         // an agent run's phases timed before applying
 	console                         func(report.LogEntry) // prints a Puppet console line; nil prints none
 	providers                       []ral.Provider        // joins the native providers; tests only
-	augeasProbe                     ral.AugeasProbe       // nil -> ral.HostAugeasProbe; tests only
+	augeasProbe                     augeas.Probe          // nil -> augeas.HostProbe; tests only
 	environ                         ral.Environ           // nil -> os.Getenv; tests only
 }
 
@@ -61,19 +63,19 @@ func nativeProviders(cat *catalog.Catalog, o applyOptions, p ral.Platform) (nati
 	}
 	// ConcatFile reads cat when it generates its content, after load-time
 	// generation has merged File[path] into this same catalog.
-	if v, ok := ral.NativeConcat(ral.LibdirTree(o.libdir), cat); ok {
+	if v, ok := ral.NativeConcat(plugintree.LibdirTree(o.libdir), cat); ok {
 		natives = append(natives, ral.ConcatFile{Version: v, Catalog: cat}, ral.ConcatFragment{Version: v})
 	}
 	probe, environ := o.augeasProbe, o.environ
 	if probe == nil {
-		probe = ral.HostAugeasProbe
+		probe = augeas.HostProbe
 	}
 	if environ == nil {
 		environ = os.Getenv
 	}
-	augeas := ral.NativeAugeas(ral.LibdirTree(o.libdir), p, probe, environ, o.libdir, o.command, cat)
-	natives = append(natives, augeas.Providers()...)
-	return append(natives, o.providers...), augeas.Reasons
+	augeasTypes := ral.NativeAugeas(plugintree.LibdirTree(o.libdir), p, probe, environ, o.libdir, o.command, cat)
+	natives = append(natives, augeasTypes.Providers()...)
+	return append(natives, o.providers...), augeasTypes.Reasons
 }
 
 // applyCatalog applies raw (exact catalog bytes) and returns the run's status

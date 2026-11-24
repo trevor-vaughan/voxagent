@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/voxagent/voxagent/internal/catalog"
+	"github.com/voxagent/voxagent/internal/lib/rubyvalue"
 )
 
 // execParams is the eight exec parameters beyond the original nine, parsed and
@@ -56,51 +57,22 @@ func parseExecParams(e Exec, r catalog.Resource) (execParams, error) {
 	return p, err
 }
 
-// param is the catalog value of a parameter, nil when absent or undef. A
-// decoded integer is a float64 throughout, so a value has one shape.
-func param(r catalog.Resource, name string) any {
-	switch v := r.Parameters[name].(type) {
-	case int:
-		return float64(v)
-	case int64:
-		return float64(v)
-	default:
-		return v
-	}
-}
-
-func paramFailure(r catalog.Resource, name, detail string) error {
-	return fmt.Errorf("Parameter %s failed on %s: %s", name, r.Ref(), detail)
-}
-
-// mungeFailure is Puppet::Parameter#munge's wrapper for a non-Puppet error
-// (parameter.rb:449): the value as inspect shows it, then the error.
-func mungeFailure(r catalog.Resource, name string, value any, detail string) error {
-	return paramFailure(r, name, fmt.Sprintf("Munging failed for value %s in class %s: %s", shownValue(r, name, value), name, detail))
-}
-
-// shownValue is a value as Ruby's inspect renders it, or [redacted] when the
-// catalog marks the parameter Sensitive (D-78: Ruby leaks it).
-func shownValue(r catalog.Resource, name string, value any) string {
-	return redactIf(slices.Contains(r.SensitiveParameters, name), "%s", rubyInspectValue(value))
-}
-
 // noMethod is Ruby's NoMethodError text for op sent to a value that lacks it,
 // in the form measured in M18.
 func noMethod(r catalog.Resource, name, op string, value any) string {
-	return fmt.Sprintf("undefined method `%s' for %s:%s", op, shownValue(r, name, value), catalog.RubyClassName(value))
+	return fmt.Sprintf("undefined method `%s' for %s:%s", op, rubyvalue.ShownValue(r, name, value), catalog.RubyClassName(value))
 }
 
 // parseIdentity is the user and group part of §2: user, then group (which is
 // resolved at run time and has nothing to refuse here).
 func (p *execParams) parseIdentity(r catalog.Resource) error {
-	p.User, p.Group = param(r, "user"), param(r, "group")
+	p.User, p.Group = rubyvalue.Param(r, "user"), rubyvalue.Param(r, "group")
 	// type/exec.rb:251: resource.current_username() != user, so a non-root
 	// agent naming its own uid number is refused.
 	if p.User != nil && !agentIsRoot() {
 		self, err := user.LookupId(strconv.Itoa(os.Getuid()))
 		if name, isString := p.User.(string); err != nil || !isString || name != self.Username {
-			return paramFailure(r, "user", "Only root can execute commands as other users")
+			return rubyvalue.ParamFailure(r, "user", "Only root can execute commands as other users")
 		}
 	}
 	return nil
@@ -110,36 +82,36 @@ func (p *execParams) parseIdentity(r catalog.Resource) error {
 func (p *execParams) parseRun(e Exec, r catalog.Resource) error {
 	p.Timeout, p.Tries, p.TrySleep, p.TrySleepShown = 300*time.Second, 1, 0, "0"
 
-	if v := param(r, "refresh"); v != nil {
+	if v := rubyvalue.Param(r, "refresh"); v != nil {
 		p.Refresh = v
-		if path := param(r, "path"); path == nil {
+		if path := rubyvalue.Param(r, "path"); path == nil {
 			if exe, bad := unqualifiedExe(v); bad {
 				redact := slices.Contains(r.SensitiveParameters, "refresh") || commandsMarked(e, r)
-				return paramFailure(r, "refresh", unqualifiedMessage(exe, redact))
+				return rubyvalue.ParamFailure(r, "refresh", unqualifiedMessage(exe, redact))
 			}
 		}
 	}
-	if v := param(r, "environment"); v != nil {
+	if v := rubyvalue.Param(r, "environment"); v != nil {
 		if err := p.parseEnvironment(r, v); err != nil {
 			return err
 		}
 	}
-	if v := param(r, "umask"); v != nil {
+	if v := rubyvalue.Param(r, "umask"); v != nil {
 		if err := p.parseUmask(r, v); err != nil {
 			return err
 		}
 	}
-	if v := param(r, "timeout"); v != nil {
+	if v := rubyvalue.Param(r, "timeout"); v != nil {
 		if err := p.parseTimeout(r, v); err != nil {
 			return err
 		}
 	}
-	if v := param(r, "tries"); v != nil {
+	if v := rubyvalue.Param(r, "tries"); v != nil {
 		if err := p.parseTries(r, v); err != nil {
 			return err
 		}
 	}
-	if v := param(r, "try_sleep"); v != nil {
+	if v := rubyvalue.Param(r, "try_sleep"); v != nil {
 		if err := p.parseTrySleep(r, v); err != nil {
 			return err
 		}
@@ -159,10 +131,10 @@ func (p *execParams) parseEnvironment(r catalog.Resource, v any) error {
 	for _, el := range list {
 		s, isString := el.(string)
 		if !isString && el != nil {
-			return paramFailure(r, "environment", "Validate method failed for class environment: "+noMethod(r, "environment", "=~", el))
+			return rubyvalue.ParamFailure(r, "environment", "Validate method failed for class environment: "+noMethod(r, "environment", "=~", el))
 		}
 		if !envSetting.MatchString(s) {
-			return paramFailure(r, "environment", "Invalid environment setting "+redactIf(slices.Contains(r.SensitiveParameters, "environment"), "'%s'", s))
+			return rubyvalue.ParamFailure(r, "environment", "Invalid environment setting "+rubyvalue.RedactIf(slices.Contains(r.SensitiveParameters, "environment"), "'%s'", s))
 		}
 		env = append(env, s)
 	}
@@ -175,10 +147,10 @@ func (p *execParams) parseEnvironment(r catalog.Resource, v any) error {
 func (p *execParams) parseUmask(r catalog.Resource, v any) error {
 	s, isString := v.(string)
 	if !isString {
-		return mungeFailure(r, "umask", v, noMethod(r, "umask", "=~", v))
+		return rubyvalue.MungeFailure(r, "umask", v, noMethod(r, "umask", "=~", v))
 	}
 	if !umaskSpec.MatchString(s) {
-		return paramFailure(r, "umask", "The umask specification is invalid: "+shownValue(r, "umask", s))
+		return rubyvalue.ParamFailure(r, "umask", "The umask specification is invalid: "+rubyvalue.ShownValue(r, "umask", s))
 	}
 	// String#to_i(8): leading whitespace, then the leading octal digits.
 	digits := strings.TrimLeft(s, " \t\n\v\f\r")
@@ -212,11 +184,11 @@ func (p *execParams) parseTimeout(r catalog.Resource, v any) error {
 	case string:
 		f, ok := rubyFloatParse(n)
 		if !ok {
-			return mungeFailure(r, "timeout", shown, "The timeout must be a number.")
+			return rubyvalue.MungeFailure(r, "timeout", shown, "The timeout must be a number.")
 		}
 		seconds = f
 	default:
-		return mungeFailure(r, "timeout", shown, fmt.Sprintf("can't convert %s into Float", rubyConversionName(value)))
+		return rubyvalue.MungeFailure(r, "timeout", shown, fmt.Sprintf("can't convert %s into Float", rubyConversionName(value)))
 	}
 	seconds = math.Max(seconds, 0)
 	if seconds >= float64(math.MaxInt64)/float64(time.Second) {
@@ -232,7 +204,7 @@ func (p *execParams) parseTimeout(r catalog.Resource, v any) error {
 func rubyConversionName(v any) string {
 	switch v.(type) {
 	case nil, bool:
-		return rubyInspectValue(v)
+		return rubyvalue.InspectValue(v)
 	default:
 		return catalog.RubyClassName(v)
 	}
@@ -264,7 +236,7 @@ func (p *execParams) parseTries(r catalog.Resource, v any) error {
 	n, isNumber := v.(float64)
 	if s, isString := v.(string); isString {
 		if !digitsLine.MatchString(s) {
-			return mungeFailure(r, "tries", v, "Tries must be an integer")
+			return rubyvalue.MungeFailure(r, "tries", v, "Tries must be an integer")
 		}
 		// Integer() reads a leading 0 as octal, as ParseInt's base 0 does.
 		i, err := strconv.ParseInt(strings.Trim(s, " \t\n\v\f\r"), 0, 64)
@@ -272,15 +244,15 @@ func (p *execParams) parseTries(r catalog.Resource, v any) error {
 		case errors.Is(err, strconv.ErrRange):
 			n, _ = strconv.ParseFloat(strings.TrimSpace(s), 64)
 		case err != nil:
-			return mungeFailure(r, "tries", v, "invalid value for Integer(): "+shownValue(r, "tries", s))
+			return rubyvalue.MungeFailure(r, "tries", v, "invalid value for Integer(): "+rubyvalue.ShownValue(r, "tries", s))
 		default:
 			n = float64(i)
 		}
 	} else if !isNumber {
-		return mungeFailure(r, "tries", v, noMethod(r, "tries", "<", v))
+		return rubyvalue.MungeFailure(r, "tries", v, noMethod(r, "tries", "<", v))
 	}
 	if n < 1 {
-		return mungeFailure(r, "tries", v, "Tries must be an integer >= 1")
+		return rubyvalue.MungeFailure(r, "tries", v, "Tries must be an integer >= 1")
 	}
 	p.Tries = n
 	return nil
@@ -293,21 +265,21 @@ func (p *execParams) parseTrySleep(r catalog.Resource, v any) error {
 	n, isNumber := v.(float64)
 	if s, isString := v.(string); isString {
 		if !numberChars.MatchString(s) {
-			return mungeFailure(r, "try_sleep", v, "try_sleep must be a number")
+			return rubyvalue.MungeFailure(r, "try_sleep", v, "try_sleep must be a number")
 		}
 		f, ok := rubyFloatParse(s)
 		if !ok {
-			return mungeFailure(r, "try_sleep", v, "invalid value for Float(): "+shownValue(r, "try_sleep", s))
+			return rubyvalue.MungeFailure(r, "try_sleep", v, "invalid value for Float(): "+rubyvalue.ShownValue(r, "try_sleep", s))
 		}
 		n = f
-		p.TrySleepShown = rubyFloat(f)
+		p.TrySleepShown = rubyvalue.Float(f)
 	} else if isNumber {
-		p.TrySleepShown = rubyInspectValue(n)
+		p.TrySleepShown = rubyvalue.InspectValue(n)
 	} else {
-		return mungeFailure(r, "try_sleep", v, noMethod(r, "try_sleep", "<", v))
+		return rubyvalue.MungeFailure(r, "try_sleep", v, noMethod(r, "try_sleep", "<", v))
 	}
 	if n < 0 {
-		return mungeFailure(r, "try_sleep", v, "try_sleep cannot be a negative number")
+		return rubyvalue.MungeFailure(r, "try_sleep", v, "try_sleep cannot be a negative number")
 	}
 	p.TrySleep = n
 	return nil

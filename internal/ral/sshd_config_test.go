@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/voxagent/voxagent/internal/catalog"
+	"github.com/voxagent/voxagent/internal/lib/raltest"
 )
 
 var _ Provider = SshdConfig{}
@@ -16,14 +17,14 @@ func sshdConfigOver(run *augeasRun) []Provider { return []Provider{SshdConfig{ru
 // sshdRes is a measured Sshd_config: the default target and the given
 // parameters.
 func sshdRes(title string, params map[string]any) catalog.Resource {
-	return augRes("Sshd_config", title, params)
+	return raltest.AugRes("Sshd_config", title, params)
 }
 
 // M18: three keys created (next to a commented-out line, or at the end) and
 // one changed.
 func TestSshdConfigReplays03a(t *testing.T) {
 	withAugVersionMemo(t, map[string]bool{})
-	got := runAugeasCase(t, loadTrace(t, "03a"), []string{sshdConfigFile}, sshdConfigOver, []catalog.Resource{
+	got := runAugeasCase(t, raltest.LoadTrace(t, "03a"), []string{sshdConfigFile}, sshdConfigOver, []catalog.Resource{
 		sshdRes("PermitRootLogin", map[string]any{"value": "no"}),
 		sshdRes("X11Forwarding", map[string]any{"value": "no"}),
 		sshdRes("ClientAliveInterval", map[string]any{"value": "300"}),
@@ -40,7 +41,7 @@ func TestSshdConfigReplays03a(t *testing.T) {
 // first insert fails (several nodes match "$target/*").
 func TestSshdConfigReplays03c(t *testing.T) {
 	withAugVersionMemo(t, map[string]bool{})
-	got := runAugeasCase(t, loadTrace(t, "03c"), []string{sshdConfigFile}, sshdConfigOver, []catalog.Resource{
+	got := runAugeasCase(t, raltest.LoadTrace(t, "03c"), []string{sshdConfigFile}, sshdConfigOver, []catalog.Resource{
 		sshdRes("AllowUsers", map[string]any{"value": []any{"alice", "bob"}}),
 		sshdRes("Ciphers", map[string]any{"value": []any{"aes256-ctr", "aes128-ctr"}}),
 		sshdRes("AcceptEnv", map[string]any{"value": []any{"LANG", "LC_*"}}),
@@ -54,7 +55,7 @@ func TestSshdConfigReplays03c(t *testing.T) {
 // M22: existing array keys are rewritten.
 func TestSshdConfigReplays03e(t *testing.T) {
 	withAugVersionMemo(t, map[string]bool{})
-	got := runAugeasCase(t, loadTrace(t, "03e"), []string{sshdConfigFile}, sshdConfigOver, []catalog.Resource{
+	got := runAugeasCase(t, raltest.LoadTrace(t, "03e"), []string{sshdConfigFile}, sshdConfigOver, []catalog.Resource{
 		sshdRes("AllowUsers", map[string]any{"value": []any{"alice", "bob"}}),
 		sshdRes("AuthorizedKeysFile", map[string]any{"value": []any{".ssh/authorized_keys", "/etc/ssh/authorized_keys/%u"}}),
 		sshdRes("Ciphers", map[string]any{"value": []any{"aes256-ctr", "aes128-ctr"}}),
@@ -76,7 +77,7 @@ func sshd03f() []catalog.Resource {
 // union retrieved after the sync while desired_value stays the should.
 func TestSshdConfigReplays03f(t *testing.T) {
 	withAugVersionMemo(t, map[string]bool{})
-	got := runAugeasCase(t, loadTrace(t, "03f"), []string{sshdConfigFile}, sshdConfigOver, sshd03f(), false)
+	got := runAugeasCase(t, raltest.LoadTrace(t, "03f"), []string{sshdConfigFile}, sshdConfigOver, sshd03f(), false)
 	wantNoErrors(t, got)
 	wantValueChange(t, got[0], []any{"root", "alice"}, []any{"alice", "bob"}, "value changed ['root', 'alice'] to ['root', 'alice', 'bob']")
 }
@@ -84,7 +85,7 @@ func TestSshdConfigReplays03f(t *testing.T) {
 // 03f under noop: exists?, the retrieve, and should_to_s's retrieve only.
 func TestSshdConfigReplays03fNoop(t *testing.T) {
 	withAugVersionMemo(t, map[string]bool{})
-	calls := traceLines(t, "03f", [2]int{4, 35}, [2]int{72, 72})
+	calls := raltest.TraceLines(t, "03f", [2]int{4, 35}, [2]int{72, 72})
 	got := runAugeasCase(t, calls, []string{sshdConfigFile}, sshdConfigOver, sshd03f(), true)
 	wantNoErrors(t, got)
 	wantValueChange(t, got[0], []any{"root", "alice"}, []any{"alice", "bob"}, "value changed ['root', 'alice'] to ['root', 'alice', 'bob'] (noop)")
@@ -93,7 +94,7 @@ func TestSshdConfigReplays03fNoop(t *testing.T) {
 // array_append in sync when every should is already there, nil included.
 func TestSshdConfigArrayAppendInSync(t *testing.T) {
 	withAugVersionMemo(t, map[string]bool{})
-	calls := append(traceLines(t, "03f", [2]int{4, 22}), parseTrace(t, "script", `h1 aug_get "/files/etc/ssh/sshd_config/AllowUsers/1" => 1 NULL
+	calls := append(raltest.TraceLines(t, "03f", [2]int{4, 22}), raltest.ParseTrace(t, "script", `h1 aug_get "/files/etc/ssh/sshd_config/AllowUsers/1" => 1 NULL
 h1 aug_get "/files/etc/ssh/sshd_config/AllowUsers/2" => 1 "alice"
 h1 aug_close
 `)...)
@@ -122,7 +123,7 @@ h1 aug_match "/files/etc/ssh/sshd_config/AllowUsers/*" => 2 "/files/etc/ssh/sshd
 h1 aug_get "/files/etc/ssh/sshd_config/AllowUsers/1" => 1 NULL
 h1 aug_get "/files/etc/ssh/sshd_config/AllowUsers/2" => 1 "root"
 `
-	calls := append(traceLines(t, "03f", [2]int{4, 13}), parseTrace(t, "script", retrieve+retrieve+`h1 aug_match "/augeas/load/Sshd" => 1 "/augeas/load/Sshd"
+	calls := append(raltest.TraceLines(t, "03f", [2]int{4, 13}), raltest.ParseTrace(t, "script", retrieve+retrieve+`h1 aug_match "/augeas/load/Sshd" => 1 "/augeas/load/Sshd"
 h1 aug_match "/augeas/load/Sshd/incl[.='/etc/ssh/sshd_config']" => 1 "/augeas/load/Sshd/incl"
 h1 aug_match "/files/etc/ssh/sshd_config" => 1 "/files/etc/ssh/sshd_config"
 h1 aug_set "/augeas/context" "/files/etc/ssh/sshd_config" => 0
@@ -158,7 +159,7 @@ h1 aug_close
 // condition entries, the key inside its Settings.
 func TestSshdConfigReplays03g(t *testing.T) {
 	withAugVersionMemo(t, map[string]bool{})
-	got := runAugeasCase(t, loadTrace(t, "03g"), []string{sshdConfigFile}, sshdConfigOver, []catalog.Resource{
+	got := runAugeasCase(t, raltest.LoadTrace(t, "03g"), []string{sshdConfigFile}, sshdConfigOver, []catalog.Resource{
 		sshdRes("PasswordAuthentication match", map[string]any{"key": "PasswordAuthentication", "value": "no", "condition": "Host example.net User root"}),
 		sshdRes("AllowUsers match", map[string]any{"key": "AllowUsers", "value": []any{"alice", "bob"}, "condition": "User carol"}),
 	}, false)
@@ -172,7 +173,7 @@ func TestSshdConfigReplays03g(t *testing.T) {
 // existing block (no new Match).
 func TestSshdConfigReplays03h(t *testing.T) {
 	withAugVersionMemo(t, map[string]bool{})
-	got := runAugeasCase(t, loadTrace(t, "03h"), []string{sshdConfigFile}, sshdConfigOver, []catalog.Resource{
+	got := runAugeasCase(t, raltest.LoadTrace(t, "03h"), []string{sshdConfigFile}, sshdConfigOver, []catalog.Resource{
 		sshdRes("PasswordAuthentication match", map[string]any{"key": "PasswordAuthentication", "value": "no", "condition": "Host example.net User root"}),
 		sshdRes("X11Forwarding match", map[string]any{"key": "X11Forwarding", "value": "yes", "condition": "User bob"}),
 		sshdRes("Banner match", map[string]any{"key": "Banner", "value": "/etc/issue", "condition": "User bob"}),
@@ -186,7 +187,7 @@ func TestSshdConfigReplays03h(t *testing.T) {
 // emptied Match); an absent key has nothing to manage.
 func TestSshdConfigReplays03k(t *testing.T) {
 	withAugVersionMemo(t, map[string]bool{})
-	got := runAugeasCase(t, loadTrace(t, "03k"), []string{sshdConfigFile}, sshdConfigOver, []catalog.Resource{
+	got := runAugeasCase(t, raltest.LoadTrace(t, "03k"), []string{sshdConfigFile}, sshdConfigOver, []catalog.Resource{
 		sshdRes("PermitRootLogin", map[string]any{"ensure": "absent"}),
 		sshdRes("Nothere", map[string]any{"ensure": "absent"}),
 		sshdRes("X11Forwarding match", map[string]any{"ensure": "absent", "key": "X11Forwarding", "condition": "User bob"}),
@@ -207,7 +208,7 @@ func TestSshdConfigReplays03k(t *testing.T) {
 // M29: no value and no ensure manages nothing; the next key is created.
 func TestSshdConfigReplays03l(t *testing.T) {
 	withAugVersionMemo(t, map[string]bool{})
-	got := runAugeasCase(t, loadTrace(t, "03l"), []string{sshdConfigFile}, sshdConfigOver, []catalog.Resource{
+	got := runAugeasCase(t, raltest.LoadTrace(t, "03l"), []string{sshdConfigFile}, sshdConfigOver, []catalog.Resource{
 		sshdRes("AllowUsers", nil),
 		sshdRes("PermitRootLogin", map[string]any{"value": "no"}),
 	}, false)
@@ -312,7 +313,7 @@ h1 aug_insert "$target/ListenAddress" "AddressFamily" 1 => 0
 `),
 		"h1 aug_close\n",
 	}, "")
-	got := runAugeasCase(t, parseTrace(t, "script", script), []string{sshdConfigFile}, sshdConfigOver, []catalog.Resource{
+	got := runAugeasCase(t, raltest.ParseTrace(t, "script", script), []string{sshdConfigFile}, sshdConfigOver, []catalog.Resource{
 		sshdRes("port", map[string]any{"value": "2222"}),
 		sshdRes("LISTENADDRESS", map[string]any{"value": "0.0.0.0"}),
 		sshdRes("AddressFamily", map[string]any{"value": "inet"}),
@@ -353,7 +354,7 @@ h1 aug_load => 0
 h1 aug_load => 0
 h1 aug_close
 `
-	got := runAugeasCase(t, parseTrace(t, "script", script), []string{sshdConfigFile}, sshdConfigOver, []catalog.Resource{
+	got := runAugeasCase(t, raltest.ParseTrace(t, "script", script), []string{sshdConfigFile}, sshdConfigOver, []catalog.Resource{
 		sshdRes("Port", map[string]any{"value": "2222"}),
 	}, false)
 	wantNoErrors(t, got)

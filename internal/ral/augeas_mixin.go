@@ -9,6 +9,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/voxagent/voxagent/internal/lib/augeas"
 	"github.com/voxagent/voxagent/internal/runlog"
 )
 
@@ -29,21 +30,21 @@ func (l augLens) lens() string { return l.Name + ".lns" }
 // its first use, and every handle the run opened, which EndRun closes.
 // Only the walk goroutine uses it.
 type augeasRun struct {
-	lib    augLib
+	lib    augeas.Lib
 	libdir string
 
 	// exists is Ruby's File.exist?: true for any file type, following
 	// symlinks.
 	exists func(path string) bool
 
-	class  map[string]*rubyAug // by augLens.Type
-	opened []*rubyAug          // every handle opened, in open order
+	class  map[string]*augeas.Aug // by augLens.Type
+	opened []*augeas.Aug          // every handle opened, in open order
 
 	// sysctl is Sysctl's prefetch table, by title (spec §5).
 	sysctl map[string]sysctlEntry
 }
 
-func newAugeasRun(lib augLib, libdir string) *augeasRun {
+func newAugeasRun(lib augeas.Lib, libdir string) *augeasRun {
 	return &augeasRun{
 		lib:    lib,
 		libdir: libdir,
@@ -51,7 +52,7 @@ func newAugeasRun(lib augLib, libdir string) *augeasRun {
 			_, err := os.Stat(p)
 			return err == nil
 		},
-		class: map[string]*rubyAug{},
+		class: map[string]*augeas.Aug{},
 	}
 }
 
@@ -60,7 +61,7 @@ func newAugeasRun(lib augLib, libdir string) *augeasRun {
 // often EndRun runs.
 func (r *augeasRun) EndRun() {
 	for _, a := range r.opened {
-		a.close()
+		a.Close()
 	}
 	clear(r.class)
 }
@@ -76,8 +77,8 @@ func (r *augeasRun) loadpath() *string {
 
 // open is Augeas.open(nil, loadpath, NO_MODL_AUTOLOAD), registering the handle
 // for EndRun before anything else can fail.
-func (r *augeasRun) open(loadpath *string) (*rubyAug, error) {
-	a, err := openRubyAug(r.lib, loadpath)
+func (r *augeasRun) open(loadpath *string) (*augeas.Aug, error) {
+	a, err := augeas.Open(r.lib, loadpath)
 	if err != nil {
 		return nil, err
 	}
@@ -88,7 +89,7 @@ func (r *augeasRun) open(loadpath *string) (*rubyAug, error) {
 // handle is aug_handler (CORE:64-66): the class's handle, opened on first use.
 // A failed open is not remembered, as `@aug_handler ||=` does not memoize a
 // raise.
-func (r *augeasRun) handle(l augLens) (*rubyAug, error) {
+func (r *augeasRun) handle(l augLens) (*augeas.Aug, error) {
 	if a, ok := r.class[l.Type]; ok {
 		return a, nil
 	}
@@ -103,40 +104,40 @@ func (r *augeasRun) handle(l augLens) (*rubyAug, error) {
 // augopen is CORE:633-676 with a block, so followed by setvars (:526-530) for
 // target and resourcePath. target is chomped of one trailing "/" as CORE's
 // target does (:548).
-func (r *augeasRun) augopen(l augLens, target, resourcePath string) (*rubyAug, error) {
+func (r *augeasRun) augopen(l augLens, target, resourcePath string) (*augeas.Aug, error) {
 	aug, err := r.handle(l)
 	if err != nil {
 		return nil, err
 	}
 	file := strings.TrimSuffix(target, "/")
 	load := "/augeas/load/" + l.Name
-	m, err := aug.match(load)
+	m, err := aug.Match(load)
 	if err != nil {
 		return nil, err
 	}
 	if len(m) == 0 {
 		// Augeas#transform (RA:177-191) with excl [].
-		aug.set(load+"/lens", l.lens())
-		aug.set(load+"/incl[last()+1]", file)
-		if err := aug.loadBang(); err != nil {
+		aug.Set(load+"/lens", l.lens())
+		aug.Set(load+"/incl[last()+1]", file)
+		if err := aug.LoadBang(); err != nil {
 			return nil, err
 		}
 	} else {
 		incl := load + "/incl[.='" + file + "']"
-		m, err := aug.match(incl)
+		m, err := aug.Match(incl)
 		if err != nil {
 			return nil, err
 		}
 		if len(m) == 0 {
-			aug.set(incl, file)
-			if err := aug.loadBang(); err != nil {
+			aug.Set(incl, file)
+			if err := aug.LoadBang(); err != nil {
 				return nil, err
 			}
 		}
 	}
 
 	if r.exists(file) {
-		m, err := aug.match("/files" + file)
+		m, err := aug.Match("/files" + file)
 		if err != nil {
 			return nil, err
 		}
@@ -145,17 +146,17 @@ func (r *augeasRun) augopen(l augLens, target, resourcePath string) (*rubyAug, e
 		}
 	}
 
-	aug.set("/augeas/context", "/files"+file)
-	aug.defnode("target", "/files"+file)
-	aug.defvar("resource", resourcePath)
+	aug.Set("/augeas/context", "/files"+file)
+	aug.Defnode("target", "/files"+file)
+	aug.Defvar("resource", resourcePath)
 	return aug, nil
 }
 
 // loadError is CORE:653-660's message for a file the lens did not load.
-func (r *augeasRun) loadError(aug *rubyAug, l augLens, file string) error {
+func (r *augeasRun) loadError(aug *augeas.Aug, l augLens, file string) error {
 	errPath := "/augeas/files" + file + "/error"
-	message, hasMessage := aug.get(errPath + "/message")
-	pos, err := aug.match(errPath + "/pos")
+	message, hasMessage := aug.Get(errPath + "/message")
+	pos, err := aug.Match(errPath + "/pos")
 	if err != nil {
 		return err
 	}
@@ -164,8 +165,8 @@ func (r *augeasRun) loadError(aug *rubyAug, l augLens, file string) error {
 			// `nil += "..."` under openvox's Ruby 3.2.
 			return errors.New("undefined method `+' for nil:NilClass")
 		}
-		line, _ := aug.get(errPath + "/line")
-		char, _ := aug.get(errPath + "/char")
+		line, _ := aug.Get(errPath + "/line")
+		char, _ := aug.Get(errPath + "/char")
 		message += fmt.Sprintf(" (line:%s, character:%s)", line, char)
 	}
 	from := ""
@@ -184,13 +185,13 @@ func (r *augeasRun) flush(ctx context.Context, l augLens) error {
 	}
 	saveErr := r.save(ctx, aug, l)
 	// Ruby's ensure clause: a failure here replaces the save error.
-	if err := aug.loadBang(); err != nil {
+	if err := aug.LoadBang(); err != nil {
 		return &FlushError{Err: err}
 	}
 	if err := r.checkVersion(l); err != nil {
 		return &FlushError{Err: err}
 	}
-	if err := aug.loadBang(); err != nil {
+	if err := aug.LoadBang(); err != nil {
 		return &FlushError{Err: err}
 	}
 	if saveErr != nil {
@@ -200,22 +201,22 @@ func (r *augeasRun) flush(ctx context.Context, l augLens) error {
 }
 
 // save is augsave!'s body and rescue clause (CORE:136-146).
-func (r *augeasRun) save(ctx context.Context, aug *rubyAug, l augLens) error {
-	if aug.saveBang() == nil {
+func (r *augeasRun) save(ctx context.Context, aug *augeas.Aug, l augLens) error {
+	if aug.SaveBang() == nil {
 		return nil
 	}
 	var lines []string
-	nodes, err := aug.match("/augeas//error")
+	nodes, err := aug.Match("/augeas//error")
 	if err != nil {
 		return err
 	}
 	for _, n := range nodes {
-		subs, err := aug.match(n + "/*")
+		subs, err := aug.Match(n + "/*")
 		if err != nil {
 			return err
 		}
 		for _, s := range subs {
-			v, _ := aug.get(s)
+			v, _ := aug.Get(s)
 			lines = append(lines, s+" = "+v)
 		}
 	}
@@ -245,8 +246,8 @@ func (r *augeasRun) checkVersion(l augLens) error {
 	if err != nil {
 		return err
 	}
-	_, ok := aug.get("/augeas/version")
-	aug.close()
+	_, ok := aug.Get("/augeas/version")
+	aug.Close()
 	if !ok {
 		// versioncmp(nil, ...) under openvox's Ruby 3.2; nil is not memoized.
 		return errors.New("undefined method `scan' for nil:NilClass")
@@ -267,12 +268,12 @@ func (r *augeasRun) parsedAs(lens, label string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	defer aug.close()
-	aug.set("/input", label+" FOO\n")
-	if !aug.textStore(lens, "/input", "/parsed") {
+	defer aug.Close()
+	aug.Set("/input", label+" FOO\n")
+	if !aug.TextStore(lens, "/input", "/parsed") {
 		return false, nil
 	}
-	m, err := aug.match("/parsed/" + label + "/1")
+	m, err := aug.Match("/parsed/" + label + "/1")
 	if err != nil {
 		return false, err
 	}

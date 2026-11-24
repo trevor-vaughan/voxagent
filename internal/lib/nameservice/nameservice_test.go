@@ -1,4 +1,4 @@
-package ral
+package nameservice
 
 import (
 	"context"
@@ -13,40 +13,40 @@ import (
 	"github.com/voxagent/voxagent/internal/runlog"
 )
 
-// fakeNSS is an in-memory nameService; groups keeps enumeration order.
+// fakeNSS is an in-memory NameService; groups keeps enumeration order.
 type fakeNSS struct {
-	users    map[string]passwdEntry
-	groups   []groupEntry
+	users    map[string]PasswdEntry
+	groups   []GroupEntry
 	grouplst map[string][]int64
 }
 
-func (f fakeNSS) user(name string) (passwdEntry, bool, error) {
+func (f fakeNSS) User(name string) (PasswdEntry, bool, error) {
 	u, ok := f.users[name]
 	return u, ok, nil
 }
 
-func (f fakeNSS) shadow(string) (shadowEntry, bool, error) { return shadowEntry{}, false, nil }
+func (f fakeNSS) Shadow(string) (ShadowEntry, bool, error) { return ShadowEntry{}, false, nil }
 
-func (f fakeNSS) group(name string) (groupEntry, bool, error) {
+func (f fakeNSS) Group(name string) (GroupEntry, bool, error) {
 	for _, g := range f.groups {
 		if g.Name == name {
 			return g, true, nil
 		}
 	}
-	return groupEntry{}, false, nil
+	return GroupEntry{}, false, nil
 }
 
-func (f fakeNSS) groupByID(gid int64) (groupEntry, bool, error) {
+func (f fakeNSS) GroupByID(gid int64) (GroupEntry, bool, error) {
 	for _, g := range f.groups {
 		if g.GID == gid {
 			return g, true, nil
 		}
 	}
-	return groupEntry{}, false, nil
+	return GroupEntry{}, false, nil
 }
 
-func (f fakeNSS) groupList(user string, _ int64) ([]int64, error) { return f.grouplst[user], nil }
-func (f fakeNSS) allGroups() ([]groupEntry, error)                { return f.groups, nil }
+func (f fakeNSS) GroupList(user string, _ int64) ([]int64, error) { return f.grouplst[user], nil }
+func (f fakeNSS) AllGroups() ([]GroupEntry, error)                { return f.groups, nil }
 
 func debugCtx() (context.Context, *[]string) {
 	var msgs []string
@@ -54,18 +54,18 @@ func debugCtx() (context.Context, *[]string) {
 	return runlog.WithLogger(context.Background(), l), &msgs
 }
 
-func mustGID(t *testing.T, ctx context.Context, ns nameService, v any) (int64, bool) {
+func mustGID(t *testing.T, ctx context.Context, ns NameService, v any) (int64, bool) {
 	t.Helper()
-	gid, ok, err := posixGID(ctx, ns, v)
+	gid, ok, err := PosixGID(ctx, ns, v)
 	if err != nil {
-		t.Fatalf("posixGID(%v): %v", v, err)
+		t.Fatalf("PosixGID(%v): %v", v, err)
 	}
 	return gid, ok
 }
 
 func TestPosixGIDName(t *testing.T) {
 	ctx, msgs := debugCtx()
-	ns := fakeNSS{groups: []groupEntry{{Name: "g4", GID: 4}}}
+	ns := fakeNSS{groups: []GroupEntry{{Name: "g4", GID: 4}}}
 	if gid, ok := mustGID(t, ctx, ns, "g4"); !ok || gid != 4 {
 		t.Fatalf("got %d, %v", gid, ok)
 	}
@@ -79,7 +79,7 @@ func TestPosixGIDName(t *testing.T) {
 
 func TestPosixGIDIntegerWithoutGroupIsUnresolved(t *testing.T) {
 	ctx, _ := debugCtx()
-	ns := fakeNSS{groups: []groupEntry{{Name: "g4", GID: 4}}}
+	ns := fakeNSS{groups: []GroupEntry{{Name: "g4", GID: 4}}}
 	for _, v := range []any{int64(1234), int64(-1), int64(1 << 40)} {
 		if gid, ok := mustGID(t, ctx, ns, v); ok {
 			t.Errorf("%v resolved to %d", v, gid)
@@ -92,7 +92,7 @@ func TestPosixGIDIntegerWithoutGroupIsUnresolved(t *testing.T) {
 
 func TestPosixGIDNumericStringIsInteger(t *testing.T) {
 	ctx, _ := debugCtx()
-	ns := fakeNSS{groups: []groupEntry{{Name: "g74", GID: 74}}}
+	ns := fakeNSS{groups: []GroupEntry{{Name: "g74", GID: 74}}}
 	if gid, ok := mustGID(t, ctx, ns, "74"); !ok || gid != 74 {
 		t.Fatalf("got %d, %v", gid, ok)
 	}
@@ -103,7 +103,7 @@ func TestPosixGIDNumericStringIsInteger(t *testing.T) {
 
 func TestPosixGIDHexNameIsNumber(t *testing.T) {
 	ctx, _ := debugCtx()
-	ns := fakeNSS{groups: []groupEntry{{Name: "g31", GID: 31}}}
+	ns := fakeNSS{groups: []GroupEntry{{Name: "g31", GID: 31}}}
 	if gid, ok := mustGID(t, ctx, ns, "0x1f"); !ok || gid != 31 {
 		t.Fatalf("got %d, %v", gid, ok)
 	}
@@ -111,7 +111,7 @@ func TestPosixGIDHexNameIsNumber(t *testing.T) {
 
 func TestPosixGIDMultipleEntries(t *testing.T) {
 	ctx, msgs := debugCtx()
-	ns := fakeNSS{groups: []groupEntry{{Name: "a", GID: 5}, {Name: "b", GID: 5}}}
+	ns := fakeNSS{groups: []GroupEntry{{Name: "a", GID: 5}, {Name: "b", GID: 5}}}
 	if gid, ok := mustGID(t, ctx, ns, "b"); !ok || gid != 5 {
 		t.Fatalf("got %d, %v", gid, ok)
 	}
@@ -124,7 +124,7 @@ func TestPosixGIDMultipleEntries(t *testing.T) {
 func TestPosixGIDSearchesAllEntries(t *testing.T) {
 	// "b" -> gid 5 -> getgrgid(5) is "a", whose own gid is 6, not 5.
 	ctx, msgs := debugCtx()
-	ns := byIDFirst{fakeNSS{groups: []groupEntry{{Name: "a", GID: 6}, {Name: "b", GID: 5}}}}
+	ns := byIDFirst{fakeNSS{groups: []GroupEntry{{Name: "a", GID: 6}, {Name: "b", GID: 5}}}}
 	gid, ok := mustGID(t, ctx, ns, "b")
 	if !ok || gid != 5 {
 		t.Fatalf("got %d, %v", gid, ok)
@@ -139,16 +139,16 @@ func TestPosixGIDSearchesAllEntries(t *testing.T) {
 // disagrees with getgrnam would.
 type byIDFirst struct{ fakeNSS }
 
-func (b byIDFirst) groupByID(gid int64) (groupEntry, bool, error) {
+func (b byIDFirst) GroupByID(gid int64) (GroupEntry, bool, error) {
 	if gid == 5 {
-		return groupEntry{Name: "a", GID: 6}, true, nil
+		return GroupEntry{Name: "a", GID: 6}, true, nil
 	}
-	return b.fakeNSS.groupByID(gid)
+	return b.fakeNSS.GroupByID(gid)
 }
 
 func TestPosixGIDSearchFindsNothing(t *testing.T) {
 	ctx, msgs := debugCtx()
-	ns := noEnum{byIDFirst{fakeNSS{groups: []groupEntry{{Name: "b", GID: 5}}}}}
+	ns := noEnum{byIDFirst{fakeNSS{groups: []GroupEntry{{Name: "b", GID: 5}}}}}
 	if gid, ok := mustGID(t, ctx, ns, "b"); ok {
 		t.Fatalf("resolved to %d", gid)
 	}
@@ -159,25 +159,25 @@ func TestPosixGIDSearchFindsNothing(t *testing.T) {
 
 type noEnum struct{ byIDFirst }
 
-func (noEnum) allGroups() ([]groupEntry, error) { return nil, nil }
+func (noEnum) AllGroups() ([]GroupEntry, error) { return nil, nil }
 
 func TestPosixGIDPropagatesErrors(t *testing.T) {
 	ctx, _ := debugCtx()
-	if _, _, err := posixGID(ctx, failingNSS{}, "x"); err == nil {
+	if _, _, err := PosixGID(ctx, failingNSS{}, "x"); err == nil {
 		t.Error("error swallowed")
 	}
 }
 
 type failingNSS struct{ fakeNSS }
 
-func (failingNSS) group(string) (groupEntry, bool, error) {
-	return groupEntry{}, false, fmt.Errorf("boom")
+func (failingNSS) Group(string) (GroupEntry, bool, error) {
+	return GroupEntry{}, false, fmt.Errorf("boom")
 }
 
 func TestGroupsOfKeepsGrouplistOrder(t *testing.T) {
 	ns := fakeNSS{
-		users: map[string]passwdEntry{"u": {Name: "u", GID: 100}},
-		groups: []groupEntry{
+		users: map[string]PasswdEntry{"u": {Name: "u", GID: 100}},
+		groups: []GroupEntry{
 			{Name: "adm", GID: 4, Members: []string{"u"}},
 			{Name: "wheel", GID: 10, Members: []string{"u", "x"}},
 			{Name: "users", GID: 100},
@@ -185,25 +185,25 @@ func TestGroupsOfKeepsGrouplistOrder(t *testing.T) {
 		},
 		grouplst: map[string][]int64{"u": {100, 10, 4, 10, 7}},
 	}
-	got, err := groupsOf(ns, "u")
+	got, err := GroupsOf(ns, "u")
 	if err != nil || !slices.Equal(got, []string{"wheel", "adm"}) {
 		t.Fatalf("got %v, %v", got, err)
 	}
 	ns.groups[2].Members = []string{"u"}
-	got, _ = groupsOf(ns, "u")
+	got, _ = GroupsOf(ns, "u")
 	if !slices.Equal(got, []string{"users", "wheel", "adm"}) {
 		t.Errorf("primary listing the user: got %v", got)
 	}
 }
 
 func TestGroupsOfFallbackScanForMissingUser(t *testing.T) {
-	ns := fakeNSS{groups: []groupEntry{
+	ns := fakeNSS{groups: []GroupEntry{
 		{Name: "b", GID: 2, Members: []string{"ghost"}},
 		{Name: "a", GID: 1, Members: []string{"ghost", "x"}},
 		{Name: "c", GID: 3, Members: []string{"x"}},
 		{Name: "b", GID: 9, Members: []string{"ghost"}},
 	}}
-	got, err := groupsOf(ns, "ghost")
+	got, err := GroupsOf(ns, "ghost")
 	if err != nil || !slices.Equal(got, []string{"b", "a"}) {
 		t.Fatalf("got %v, %v", got, err)
 	}

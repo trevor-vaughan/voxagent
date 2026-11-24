@@ -10,6 +10,8 @@ import (
 	"strings"
 
 	"github.com/voxagent/voxagent/internal/catalog"
+	"github.com/voxagent/voxagent/internal/lib/puppetpath"
+	"github.com/voxagent/voxagent/internal/lib/rubyvalue"
 )
 
 // ConcatVersion is the puppetlabs-concat release whose type files the run's
@@ -82,22 +84,6 @@ func concatBool(v any) (b, ok bool) {
 	return false, false
 }
 
-// holdsHash reports whether v is, or nests, a Hash, which rubyInspectValue
-// does not render as Ruby does.
-func holdsHash(v any) bool {
-	switch t := v.(type) {
-	case map[string]any:
-		return true
-	case []any:
-		for _, e := range t {
-			if holdsHash(e) {
-				return true
-			}
-		}
-	}
-	return false
-}
-
 // concatFormats are concat_file's format values; only plain is native.
 var concatFormats = []string{"plain", "yaml", "json", "json-array", "json-pretty", "json-array-pretty"}
 
@@ -107,15 +93,6 @@ var windowsAbsolute = regexp.MustCompile(`^(?:[A-Za-z]:[/\\]|\\\\)`)
 
 // orderForbidden is concat_fragment's order check, unanchored as Ruby's.
 var orderForbidden = regexp.MustCompile(`[:\n/]`)
-
-// concatRich refuses, as an unimplemented value, a resource carrying a rich
-// value anywhere in its parameters (spec §0 row 1 (f)).
-func concatRich(r catalog.Resource) error {
-	if rich := catalog.RichValues(r); len(rich) > 0 {
-		return &unimplementedValue{r.Ref(), rich[0].Param, rich[0].PType}
-	}
-	return nil
-}
 
 // concatTag reads tag: Ruby accepts any value, native a String or an Array
 // of Strings. false is falsy in Ruby, so it reads as unset (M22).
@@ -134,27 +111,13 @@ func concatTag(r catalog.Resource) (any, error) {
 		for i, e := range v {
 			s, ok := e.(string)
 			if !ok {
-				return nil, &unimplementedValue{r.Ref(), "tag", shownValue(r, "tag", v)}
+				return nil, &rubyvalue.UnimplementedValue{Ref: r.Ref(), Attr: "tag", Shown: rubyvalue.ShownValue(r, "tag", v)}
 			}
 			tags[i] = s
 		}
 		return tags, nil
 	}
-	return nil, &unimplementedValue{r.Ref(), "tag", shownValue(r, "tag", r.Parameters["tag"])}
-}
-
-// concatPathClean reports whether p, which starts with "/", is in the clean
-// form §0 row 1 (e) lets native handle.
-func concatPathClean(p string) bool {
-	if p == "/" || strings.HasSuffix(p, "/") || strings.Contains(p, "//") {
-		return false
-	}
-	for _, seg := range strings.Split(p, "/") {
-		if seg == "." || seg == ".." {
-			return false
-		}
-	}
-	return true
+	return nil, &rubyvalue.UnimplementedValue{Ref: r.Ref(), Attr: "tag", Shown: rubyvalue.ShownValue(r, "tag", r.Parameters["tag"])}
 }
 
 // Validate implements Validating. It reports the first failure in §3.1's
@@ -166,29 +129,29 @@ func (ConcatFile) Validate(r catalog.Resource) error {
 
 func parseConcatFile(r catalog.Resource) (concatFileParams, error) {
 	p := concatFileParams{Order: "numeric", CreateEmptyFile: true, Replace: true, Copied: map[string]any{}}
-	if err := concatRich(r); err != nil {
+	if err := rubyvalue.Rich(r); err != nil {
 		return p, err
 	}
-	shown := func(name string) string { return shownValue(r, name, r.Parameters[name]) }
+	shown := func(name string) string { return rubyvalue.ShownValue(r, name, r.Parameters[name]) }
 	marked := func(name string) bool { return slices.Contains(r.SensitiveParameters, name) }
 
 	p.Path = r.Title
 	if v, set := r.Parameters["path"]; set && v != nil {
 		s, ok := v.(string)
 		if !ok {
-			return p, &unimplementedValue{r.Ref(), "path", shownValue(r, "path", v)}
+			return p, &rubyvalue.UnimplementedValue{Ref: r.Ref(), Attr: "path", Shown: rubyvalue.ShownValue(r, "path", v)}
 		}
 		p.Path = s
 	}
 	switch {
 	case strings.HasPrefix(p.Path, "/"):
-		if !concatPathClean(p.Path) {
-			return p, &unimplementedValue{r.Ref(), "path", shownValue(r, "path", p.Path)}
+		if !puppetpath.Clean(p.Path) {
+			return p, &rubyvalue.UnimplementedValue{Ref: r.Ref(), Attr: "path", Shown: rubyvalue.ShownValue(r, "path", p.Path)}
 		}
 	case windowsAbsolute.MatchString(p.Path):
-		return p, &unimplementedValue{r.Ref(), "path", shownValue(r, "path", p.Path)}
+		return p, &rubyvalue.UnimplementedValue{Ref: r.Ref(), Attr: "path", Shown: rubyvalue.ShownValue(r, "path", p.Path)}
 	default:
-		return p, paramFailure(r, "path", "File paths must be fully qualified, not '"+redactIf(marked("path"), "%s", p.Path)+"'")
+		return p, rubyvalue.ParamFailure(r, "path", "File paths must be fully qualified, not '"+rubyvalue.RedactIf(marked("path"), "%s", p.Path)+"'")
 	}
 
 	switch v := r.Parameters["ensure"]; v {
@@ -196,10 +159,10 @@ func parseConcatFile(r catalog.Resource) (concatFileParams, error) {
 	case "absent":
 		p.Absent = true
 	default:
-		if holdsHash(v) {
-			return p, &unimplementedValue{r.Ref(), "ensure", shown("ensure")}
+		if rubyvalue.HoldsHash(v) {
+			return p, &rubyvalue.UnimplementedValue{Ref: r.Ref(), Attr: "ensure", Shown: shown("ensure")}
 		}
-		return p, paramFailure(r, "ensure", fmt.Sprintf("Invalid value %s. Valid values are present, absent.", shown("ensure")))
+		return p, rubyvalue.ParamFailure(r, "ensure", fmt.Sprintf("Invalid value %s. Valid values are present, absent.", shown("ensure")))
 	}
 
 	var err error
@@ -214,18 +177,18 @@ func parseConcatFile(r catalog.Resource) (concatFileParams, error) {
 		case nil:
 			continue
 		case []any, map[string]any:
-			return p, &unimplementedValue{r.Ref(), name, shownValue(r, name, v)}
+			return p, &rubyvalue.UnimplementedValue{Ref: r.Ref(), Attr: name, Shown: rubyvalue.ShownValue(r, name, v)}
 		}
 		// type/file/group.rb:20 refuses a false or empty group; owner has no check.
 		if name == "group" && (v == false || v == "") {
-			return p, paramFailure(r, name, "Invalid group name '"+redactIf(marked(name), "%s", rubyInspectValue(v))+"'")
+			return p, rubyvalue.ParamFailure(r, name, "Invalid group name '"+rubyvalue.RedactIf(marked(name), "%s", rubyvalue.InspectValue(v))+"'")
 		}
 		p.Copied[name] = v
 	}
 
-	if v := param(r, "mode"); v != nil {
-		if _, err := parseDeclaredMode(v, marked("mode")); err != nil {
-			return p, paramFailure(r, "mode", err.Error())
+	if v := rubyvalue.Param(r, "mode"); v != nil {
+		if _, err := puppetpath.ParseDeclaredMode(v, marked("mode")); err != nil {
+			return p, rubyvalue.ParamFailure(r, "mode", err.Error())
 		}
 		p.Copied["mode"] = v
 	}
@@ -235,22 +198,22 @@ func parseConcatFile(r catalog.Resource) (concatFileParams, error) {
 	case "alpha":
 		p.Order = "alpha"
 	default:
-		if holdsHash(v) {
-			return p, &unimplementedValue{r.Ref(), "order", shown("order")}
+		if rubyvalue.HoldsHash(v) {
+			return p, &rubyvalue.UnimplementedValue{Ref: r.Ref(), Attr: "order", Shown: shown("order")}
 		}
-		return p, paramFailure(r, "order", fmt.Sprintf("Invalid value %s. Valid values are alpha, numeric.", shown("order")))
+		return p, rubyvalue.ParamFailure(r, "order", fmt.Sprintf("Invalid value %s. Valid values are alpha, numeric.", shown("order")))
 	}
 
 	switch v := r.Parameters["backup"].(type) {
 	case nil, string, bool:
 		if v == true {
-			return p, &unimplementedValue{r.Ref(), "backup", "true"}
+			return p, &rubyvalue.UnimplementedValue{Ref: r.Ref(), Attr: "backup", Shown: "true"}
 		}
 		if v != nil {
 			p.Copied["backup"] = v
 		}
 	default:
-		return p, paramFailure(r, "backup", "Backup must be a Boolean or String")
+		return p, rubyvalue.ParamFailure(r, "backup", "Backup must be a Boolean or String")
 	}
 
 	// boolean reads one Puppet::Parameter::Boolean into dst, when the catalog
@@ -262,11 +225,11 @@ func parseConcatFile(r catalog.Resource) (concatFileParams, error) {
 		}
 		b, ok := concatBool(v)
 		if !ok {
-			if holdsHash(v) {
+			if rubyvalue.HoldsHash(v) {
 				// Ruby refuses it, but inspect of a Hash is not ported.
-				return &unimplementedValue{r.Ref(), name, shownValue(r, name, v)}
+				return &rubyvalue.UnimplementedValue{Ref: r.Ref(), Attr: name, Shown: rubyvalue.ShownValue(r, name, v)}
 			}
-			return paramFailure(r, name, fmt.Sprintf("Invalid value %s. Valid values are true, false, yes, no.", shown(name)))
+			return rubyvalue.ParamFailure(r, name, fmt.Sprintf("Invalid value %s. Valid values are true, false, yes, no.", shown(name)))
 		}
 		if dst != nil {
 			*dst = b
@@ -282,7 +245,7 @@ func parseConcatFile(r catalog.Resource) (concatFileParams, error) {
 		case string:
 			p.Copied[name] = v
 		default:
-			return paramFailure(r, name, label+" must be a String")
+			return rubyvalue.ParamFailure(r, name, label+" must be a String")
 		}
 		return nil
 	}
@@ -296,12 +259,12 @@ func parseConcatFile(r catalog.Resource) (concatFileParams, error) {
 			case nil, "plain":
 				return nil
 			case "yaml", "json", "json-array", "json-pretty", "json-array-pretty":
-				return &unimplementedValue{r.Ref(), "format", shownValue(r, "format", v)}
+				return &rubyvalue.UnimplementedValue{Ref: r.Ref(), Attr: "format", Shown: rubyvalue.ShownValue(r, "format", v)}
 			default:
-				if holdsHash(v) {
-					return &unimplementedValue{r.Ref(), "format", shown("format")}
+				if rubyvalue.HoldsHash(v) {
+					return &rubyvalue.UnimplementedValue{Ref: r.Ref(), Attr: "format", Shown: shown("format")}
 				}
-				return paramFailure(r, "format", fmt.Sprintf("Invalid value %s. Valid values are %s.", shown("format"), strings.Join(concatFormats, ", ")))
+				return rubyvalue.ParamFailure(r, "format", fmt.Sprintf("Invalid value %s. Valid values are %s.", shown("format"), strings.Join(concatFormats, ", ")))
 			}
 		},
 		func() error { return boolean("force", nil, false) },
@@ -331,13 +294,13 @@ func (ConcatFragment) Validate(r catalog.Resource) error {
 
 func parseConcatFragment(r catalog.Resource) (concatFragmentParams, error) {
 	p := concatFragmentParams{Name: r.Title, Order: "10"}
-	if err := concatRich(r); err != nil {
+	if err := rubyvalue.Rich(r); err != nil {
 		return p, err
 	}
 	if v := r.Parameters["name"]; v != nil {
 		s, ok := v.(string)
 		if !ok {
-			return p, &unimplementedValue{r.Ref(), "name", shownValue(r, "name", v)}
+			return p, &rubyvalue.UnimplementedValue{Ref: r.Ref(), Attr: "name", Shown: rubyvalue.ShownValue(r, "name", v)}
 		}
 		p.Name = s
 	}
@@ -347,7 +310,7 @@ func parseConcatFragment(r catalog.Resource) (concatFragmentParams, error) {
 	case string:
 		p.Target = v
 	default:
-		return p, paramFailure(r, "target", "Target must be a String")
+		return p, rubyvalue.ParamFailure(r, "target", "Target must be a String")
 	}
 
 	hasContent := false
@@ -356,32 +319,32 @@ func parseConcatFragment(r catalog.Resource) (concatFragmentParams, error) {
 	case string:
 		p.Content, hasContent = v, true
 	default:
-		return p, paramFailure(r, "content", "Content must be a String")
+		return p, rubyvalue.ParamFailure(r, "content", "Content must be a String")
 	}
 
 	// source is read through Puppet::FileServing, which native does not
 	// implement (spec §0 row 1 (c)); its own refusals come from the host.
 	if v := r.Parameters["source"]; v != nil {
-		return p, &unimplementedValue{r.Ref(), "source", shownValue(r, "source", v)}
+		return p, &rubyvalue.UnimplementedValue{Ref: r.Ref(), Attr: "source", Shown: rubyvalue.ShownValue(r, "source", v)}
 	}
 
-	switch v := param(r, "order").(type) {
+	switch v := rubyvalue.Param(r, "order").(type) {
 	case nil:
 	case string:
 		p.Order = v
 	case float64:
 		switch {
 		case v != math.Trunc(v):
-			return p, paramFailure(r, "order", "$order is not a string or integer.")
+			return p, rubyvalue.ParamFailure(r, "order", "$order is not a string or integer.")
 		case math.Abs(v) >= 1<<53:
-			return p, &unimplementedValue{r.Ref(), "order", shownValue(r, "order", v)}
+			return p, &rubyvalue.UnimplementedValue{Ref: r.Ref(), Attr: "order", Shown: rubyvalue.ShownValue(r, "order", v)}
 		}
 		p.Order = strconv.FormatInt(int64(v), 10)
 	default:
-		return p, paramFailure(r, "order", "$order is not a string or integer.")
+		return p, rubyvalue.ParamFailure(r, "order", "$order is not a string or integer.")
 	}
 	if orderForbidden.MatchString(p.Order) {
-		return p, paramFailure(r, "order", "Order cannot contain '/', ':', or '\\n'.")
+		return p, rubyvalue.ParamFailure(r, "order", "Order cannot contain '/', ':', or '\\n'.")
 	}
 
 	var err error

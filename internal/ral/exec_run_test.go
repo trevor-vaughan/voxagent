@@ -13,6 +13,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/voxagent/voxagent/internal/lib/raltest"
+	"github.com/voxagent/voxagent/internal/lib/sources"
 	"github.com/voxagent/voxagent/internal/report"
 )
 
@@ -77,7 +79,7 @@ func TestExecTimeoutFailsReturns(t *testing.T) {
 	for name, timeout := range map[string]any{"float": 0.2, "string": "0.2"} {
 		t.Run(name, func(t *testing.T) {
 			start := time.Now()
-			change := execChange(t, execRes("c", map[string]any{"command": "sleep 5", "timeout": timeout}))
+			change := execChange(t, raltest.ExecRes("c", map[string]any{"command": "sleep 5", "timeout": timeout}))
 			if elapsed := time.Since(start); elapsed > time.Second {
 				t.Errorf("Apply took %v; want it to return at the 0.2s timeout", elapsed)
 			}
@@ -97,7 +99,7 @@ func TestExecTimeoutFailsReturns(t *testing.T) {
 // M1 'array': a list timeout uses its first element.
 func TestExecTimeoutListFirstElement(t *testing.T) {
 	start := time.Now()
-	change := execChange(t, execRes("c", map[string]any{"command": "sleep 5", "timeout": []any{0.2, 100.0}}))
+	change := execChange(t, raltest.ExecRes("c", map[string]any{"command": "sleep 5", "timeout": []any{0.2, 100.0}}))
 	if elapsed := time.Since(start); elapsed > time.Second {
 		t.Errorf("Apply took %v; want the first element (0.2s) to bound it", elapsed)
 	}
@@ -111,7 +113,7 @@ func TestExecTimeoutListFirstElement(t *testing.T) {
 func TestExecTimeoutZeroDisables(t *testing.T) {
 	for name, timeout := range map[string]any{"zero": 0.0, "zero string": "0", "negative": -5.0} {
 		t.Run(name, func(t *testing.T) {
-			change := execChange(t, execRes("c", map[string]any{"command": "sleep 0.3", "timeout": timeout}))
+			change := execChange(t, raltest.ExecRes("c", map[string]any{"command": "sleep 0.3", "timeout": timeout}))
 			if change.Err != nil {
 				t.Errorf("returns failed: %v; want no timeout", change.Err)
 			}
@@ -125,7 +127,7 @@ func TestExecTimeoutZeroDisables(t *testing.T) {
 // "Z" state counts as gone: the property is that TERM reached it.
 func TestExecTimeoutKillsGrandchild(t *testing.T) {
 	pidFile := filepath.Join(t.TempDir(), "pid")
-	change := execChange(t, execRes("c", map[string]any{
+	change := execChange(t, raltest.ExecRes("c", map[string]any{
 		"command": fmt.Sprintf("sleep 30 & echo $! > %s; wait", pidFile),
 		"timeout": 0.3,
 	}))
@@ -147,7 +149,7 @@ func TestExecTimeoutKillsGrandchild(t *testing.T) {
 func TestExecTimeoutTermTrapperSurvivesAndIsReaped(t *testing.T) {
 	pidFile := filepath.Join(t.TempDir(), "pid")
 	start := time.Now()
-	change := execChange(t, execRes("c", map[string]any{
+	change := execChange(t, raltest.ExecRes("c", map[string]any{
 		"command": fmt.Sprintf(`echo $$ > %s; trap "" TERM; sleep 2`, pidFile),
 		"timeout": 0.2,
 	}))
@@ -179,7 +181,7 @@ func TestExecTimeoutChildSurvivesLaterCancel(t *testing.T) {
 	pidFile := filepath.Join(t.TempDir(), "pid")
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	changes, _, err := Exec{}.Apply(ctx, execRes("c", map[string]any{
+	changes, _, err := Exec{}.Apply(ctx, raltest.ExecRes("c", map[string]any{
 		"command": fmt.Sprintf(`echo $$ > %s; trap "" TERM; sleep 2`, pidFile),
 		"timeout": 0.2,
 	}), false)
@@ -217,14 +219,14 @@ func TestExecGuardTimeout(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			marker := filepath.Join(t.TempDir(), "ran")
 			command := "/usr/bin/touch " + marker
-			r := execRes("x", map[string]any{"command": command, tc.guard: tc.value, "timeout": 0.2})
+			r := raltest.ExecRes("x", map[string]any{"command": command, tc.guard: tc.value, "timeout": 0.2})
 			shown := command
 			if tc.marked {
 				r.SensitiveParameters = []string{tc.guard}
 				shown = "[command redacted]"
 			}
-			ctx, got := debugContext("debug")
-			ctx = WithSources(ctx, debugSources)
+			ctx, got := raltest.DebugContext("debug")
+			ctx = sources.WithSources(ctx, debugSources)
 			start := time.Now()
 			changes, _, err := Exec{}.Apply(ctx, r, false)
 			if elapsed := time.Since(start); elapsed > time.Second {
@@ -239,7 +241,7 @@ func TestExecGuardTimeout(t *testing.T) {
 					kept = append(kept, e)
 				}
 			}
-			assertWarnings(t, kept, []report.LogEntry{
+			raltest.AssertWarnings(t, kept, []report.LogEntry{
 				{Level: "err", Source: debugSources.Resource + "/" + tc.guard, Message: tc.check},
 				dbg(debugSources.Resource, fmt.Sprintf("'%s' won't be executed because of failed check '%s'", shown, tc.guard)),
 			})
@@ -256,7 +258,7 @@ func TestExecGuardTimeout(t *testing.T) {
 // output back, so none is logged even with logoutput.
 func TestExecExit127(t *testing.T) {
 	t.Run("main command", func(t *testing.T) {
-		change := execChange(t, execRes("c", map[string]any{
+		change := execChange(t, raltest.ExecRes("c", map[string]any{
 			"command": "echo gone >&2; exit 127", "logoutput": "true"}))
 		if change.Err == nil || change.Err.Error() != "gone\n" {
 			t.Errorf("returns error = %q, want %q", change.Err, "gone\n")
@@ -266,7 +268,7 @@ func TestExecExit127(t *testing.T) {
 		}
 	})
 	t.Run("returns accepts 127", func(t *testing.T) {
-		change := execChange(t, execRes("c", map[string]any{"command": "exit 127", "returns": []any{127.0}}))
+		change := execChange(t, raltest.ExecRes("c", map[string]any{"command": "exit 127", "returns": []any{127.0}}))
 		if change.Err == nil || change.Err.Error() != "" {
 			t.Errorf("returns error = %v, want the empty output as the error", change.Err)
 		}
@@ -275,7 +277,7 @@ func TestExecExit127(t *testing.T) {
 		}
 	})
 	t.Run("argv", func(t *testing.T) {
-		change := execChange(t, execRes("c", map[string]any{
+		change := execChange(t, raltest.ExecRes("c", map[string]any{
 			"command": []any{"/bin/sh", "-c", "echo argv; exit 127"}}))
 		if change.Err == nil || change.Err.Error() != "argv\n" {
 			t.Errorf("returns error = %q, want %q", change.Err, "argv\n")
@@ -287,7 +289,7 @@ func TestExecExit127(t *testing.T) {
 	} {
 		t.Run(tc.guard, func(t *testing.T) {
 			marker := filepath.Join(t.TempDir(), "ran")
-			changes, _, err := Exec{}.Apply(context.Background(), execRes("c", map[string]any{
+			changes, _, err := Exec{}.Apply(context.Background(), raltest.ExecRes("c", map[string]any{
 				"command": "/usr/bin/touch " + marker, tc.guard: tc.script}), false)
 			if err == nil || err.Error() != tc.want {
 				t.Errorf("Apply error = %v, want exactly %q", err, tc.want)

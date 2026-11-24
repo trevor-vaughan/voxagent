@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Run internal/ral's `augeaslib`-tagged tests against openvox's real libaugeas
+# Run internal/lib/augeas's `augeaslib`-tagged tests against openvox's real libaugeas
 # 1.15.0 (spec §10, `task dev:augeas-lib`).
 #
 # The host has no openvox and the image has no Go, so the test binary is built
@@ -21,7 +21,7 @@ TEST_DIR="${2:-.test-output}"
 IMAGE="${AUGEAS_IMAGE:-localhost/augeas-measure-el}"
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 OUT="$TEST_DIR/augeas-lib"
-BIN="$OUT/ral.test"
+BIN="$OUT/augeas.test"
 LOG="$OUT/test.log"
 
 command -v podman >/dev/null || { echo "augeas-lib: podman not found" >&2; exit 2; }
@@ -33,10 +33,9 @@ mkdir -p "$OUT"
 . "$ROOT_DIR/tests/spine/augeas/image.sh"
 augeas_image augeas-lib "${AUGEAS_BASE_IMAGE:-localhost/fleet-node-el:latest}" "$IMAGE" \
   "$OUT/image-build.log" || exit 2
-(cd "$ROOT_DIR" && CGO_ENABLED=1 go test -c -tags augeaslib -o "$BIN" ./internal/ral)
-
-# Only the tests that need the library: the rest of the package expects its
-# testdata/ beside the binary and runs on the host anyway.
+(cd "$ROOT_DIR" && CGO_ENABLED=1 go test -c -tags augeaslib -o "$BIN" ./internal/lib/augeas)
+# Only the tests that need the library: the rest of the package runs on the host
+# anyway.
 RUN='^Test(ProbeRealLibrary|Real)'
 # Named with this script's PID so the trap cannot remove another run's container.
 NAME="voxagent-augeas-lib-$$"
@@ -44,8 +43,8 @@ VERBOSE=(-test.v)
 [ "$MODE" = llm ] && VERBOSE=()
 trap 'podman rm -f "$NAME" >/dev/null 2>&1 || :' EXIT
 podman create --name "$NAME" --user 0 --env GODEBUG=cgocheck=1 "$IMAGE" \
-  /usr/local/bin/ral.test -test.count=1 -test.run "$RUN" "${VERBOSE[@]}" >/dev/null
-podman cp "$BIN" "$NAME:/usr/local/bin/ral.test"
+  /usr/local/bin/augeas.test -test.count=1 -test.run "$RUN" "${VERBOSE[@]}" >/dev/null
+podman cp "$BIN" "$NAME:/usr/local/bin/augeas.test"
 
 set +e
 podman start --attach "$NAME" >"$LOG" 2>&1

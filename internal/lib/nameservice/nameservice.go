@@ -1,53 +1,57 @@
-package ral
+package nameservice
 
 import (
 	"context"
 	"fmt"
+	"path/filepath"
 	"slices"
+	"strings"
 	"sync"
 	"syscall"
 
+	"github.com/voxagent/voxagent/internal/lib/command"
+	"github.com/voxagent/voxagent/internal/lib/rubyvalue"
 	"github.com/voxagent/voxagent/internal/runlog"
 )
 
-// passwdEntry is the getpwnam_r fields the user provider reads.
-type passwdEntry struct {
+// PasswdEntry is the getpwnam_r fields the user provider reads.
+type PasswdEntry struct {
 	Name       string
 	UID, GID   int64
 	Gecos, Dir string
 	Shell      string
 }
 
-// shadowEntry is getspnam_r's record. libc's -1 for an unset field is kept as -1.
-type shadowEntry struct {
+// ShadowEntry is getspnam_r's record. libc's -1 for an unset field is kept as -1.
+type ShadowEntry struct {
 	Hash                   string
 	Min, Max, Warn, Expire int64
 }
 
-// groupEntry is a group(5) record; Members is gr_mem in NSS order.
-type groupEntry struct {
+// GroupEntry is a group(5) record; Members is gr_mem in NSS order.
+type GroupEntry struct {
 	Name    string
 	GID     int64
 	Members []string
 }
 
-// nameService is the seam over libc's reentrant NSS calls. Unit tests supply a
-// fake; hostNSS is the real one. "false" means the entry does not exist; an
+// NameService is the seam over libc's reentrant NSS calls. Unit tests supply a
+// fake; Host is the real one. "false" means the entry does not exist; an
 // error means the lookup itself failed and must not be read as absence.
-type nameService interface {
-	user(name string) (passwdEntry, bool, error)       // getpwnam_r
-	shadow(name string) (shadowEntry, bool, error)     // getspnam_r; EACCES/ENOENT = false, nil
-	group(name string) (groupEntry, bool, error)       // getgrnam_r
-	groupByID(gid int64) (groupEntry, bool, error)     // getgrgid_r
-	groupList(user string, gid int64) ([]int64, error) // getgrouplist, grown until it fits
-	allGroups() ([]groupEntry, error)                  // setgrent/getgrent_r/endgrent under nssEnumMu
+type NameService interface {
+	User(name string) (PasswdEntry, bool, error)       // getpwnam_r
+	Shadow(name string) (ShadowEntry, bool, error)     // getspnam_r; EACCES/ENOENT = false, nil
+	Group(name string) (GroupEntry, bool, error)       // getgrnam_r
+	GroupByID(gid int64) (GroupEntry, bool, error)     // getgrgid_r
+	GroupList(user string, gid int64) ([]int64, error) // getgrouplist, grown until it fits
+	AllGroups() ([]GroupEntry, error)                  // setgrent/getgrent_r/endgrent under nssEnumMu
 }
 
 // nssEnumMu serialises setgrent..endgrent: libc keeps one enumeration cursor
 // per process.
 var nssEnumMu sync.Mutex
 
-var hostNSS nameService = cNSS{}
+var Host NameService = cNSS{}
 
 // maxGID bounds what getgrgid_r can be asked for. Ruby refuses ids above
 // Puppet[:maximum_uid] (4294967290) with an error log (util/posix.rb:79-83);
@@ -55,15 +59,15 @@ var hostNSS nameService = cNSS{}
 // truncated into a different gid_t.
 const maxGID = 4294967290
 
-// posixGID is Puppet::Util.gid, i.e. get_posix_value(:group, :gid, v)
+// PosixGID is Puppet::Util.gid, i.e. get_posix_value(:group, :gid, v)
 // (util/posix.rb:172-205). v is an int64 or a string. ok=false is Ruby's nil: no
 // such group.
-func posixGID(ctx context.Context, ns nameService, v any) (gid int64, ok bool, err error) {
+func PosixGID(ctx context.Context, ns NameService, v any) (gid int64, ok bool, err error) {
 	// posix.rb:173-177: Integer(field) rescuing ArgumentError, so a string that
 	// is not an integer literal stays a name.
 	var field any = v
 	if s, isString := v.(string); isString {
-		if n, convErr := rubyInteger(s); convErr == nil {
+		if n, convErr := rubyvalue.Integer(s); convErr == nil {
 			field = n
 		}
 	}
@@ -74,11 +78,11 @@ func posixGID(ctx context.Context, ns nameService, v any) (gid int64, ok bool, e
 		if n < 0 || n > maxGID {
 			return 0, false, nil
 		}
-		byID, found, err := ns.groupByID(n)
+		byID, found, err := ns.GroupByID(n)
 		if err != nil || !found {
 			return 0, false, err
 		}
-		byName, found, err := ns.group(byID.Name)
+		byName, found, err := ns.Group(byID.Name)
 		if err != nil {
 			return 0, false, err
 		}
@@ -90,12 +94,12 @@ func posixGID(ctx context.Context, ns nameService, v any) (gid int64, ok bool, e
 		}
 		id, check = byName.GID, byName.GID
 	} else {
-		byName, found, err := ns.group(field.(string))
+		byName, found, err := ns.Group(field.(string))
 		if err != nil || !found {
 			return 0, false, err
 		}
 		id = byName.GID
-		byID, found, err := ns.groupByID(id)
+		byID, found, err := ns.GroupByID(id)
 		if err != nil {
 			return 0, false, err
 		}
@@ -113,13 +117,13 @@ func posixGID(ctx context.Context, ns nameService, v any) (gid int64, ok bool, e
 	haveCheckID := false
 	switch c := check.(type) {
 	case int64:
-		e, found, err := ns.groupByID(c)
+		e, found, err := ns.GroupByID(c)
 		if err != nil {
 			return 0, false, err
 		}
 		checkID, haveCheckID = e.GID, found
 	case string:
-		e, found, err := ns.group(c)
+		e, found, err := ns.Group(c)
 		if err != nil {
 			return 0, false, err
 		}
@@ -137,7 +141,7 @@ func posixGID(ctx context.Context, ns nameService, v any) (gid int64, ok bool, e
 
 	// search_posix_field (posix.rb:100-126): first entry whose gid equals an
 	// integer input, or whose name equals the input.
-	all, err := ns.allGroups()
+	all, err := ns.AllGroups()
 	if err != nil {
 		return 0, false, err
 	}
@@ -149,19 +153,19 @@ func posixGID(ctx context.Context, ns nameService, v any) (gid int64, ok bool, e
 	return 0, false, nil
 }
 
-// groupsOf is Puppet::Util::POSIX.groups_of (util/posix.rb:15-34): the groups
+// GroupsOf is Puppet::Util::POSIX.groups_of (util/posix.rb:15-34): the groups
 // getgrouplist reports for user, in its order, keeping those whose gr_mem lists
 // the user (so the primary group is omitted unless listed), duplicates dropped.
 // A user with no passwd entry (Etc.getpwnam raises, posix.rb:41) or a gid
 // without a group (Etc.getgrgid raises, posix.rb:55) takes Ruby's fallback: a
 // scan of every group for the user, in enumeration order.
-func groupsOf(ns nameService, user string) ([]string, error) {
+func GroupsOf(ns NameService, user string) ([]string, error) {
 	groups, complete, err := groupsFromList(ns, user)
 	if err != nil {
 		return nil, err
 	}
 	if !complete {
-		all, err := ns.allGroups()
+		all, err := ns.AllGroups()
 		if err != nil {
 			return nil, err
 		}
@@ -183,17 +187,17 @@ func groupsOf(ns nameService, user string) ([]string, error) {
 
 // groupsFromList is get_groups_list (posix.rb:38-68). complete=false means Ruby
 // would raise and fall back to the full scan.
-func groupsFromList(ns nameService, user string) (groups []string, complete bool, err error) {
-	pw, found, err := ns.user(user)
+func groupsFromList(ns NameService, user string) (groups []string, complete bool, err error) {
+	pw, found, err := ns.User(user)
 	if err != nil || !found {
 		return nil, false, err
 	}
-	gids, err := ns.groupList(user, pw.GID)
+	gids, err := ns.GroupList(user, pw.GID)
 	if err != nil {
 		return nil, false, err
 	}
 	for _, gid := range gids {
-		g, found, err := ns.groupByID(gid)
+		g, found, err := ns.GroupByID(gid)
 		if err != nil || !found {
 			return nil, false, err
 		}
@@ -260,4 +264,29 @@ func growGroupList(user string, attempt func(n int) (groups []int64, count int))
 		}
 		n = next
 	}
+}
+
+// FeatureMissing is type.rb:790's debug line for a dropped attribute.
+const FeatureMissing = "Provider %s does not support features %s; not managing attribute %s"
+
+// ShadowPath is the search order of Ruby's default PATH, where Puppet's
+// command() finds the shadow-utils commands; tests point it elsewhere.
+// shadowDirs is its colon-separated source, a string so that a test building
+// the voxagent binary can link a directory of fake commands in its place
+// (-ldflags -X, cmd/voxagent's TestNoSensitiveMarkerLeaks).
+var (
+	shadowDirs = "/usr/sbin:/usr/bin:/sbin:/bin"
+	ShadowPath = strings.Split(shadowDirs, ":")
+)
+
+// ShadowCommand is Puppet::Util.which over ShadowPath: the absolute path of
+// the first executable regular file called name.
+func ShadowCommand(name string) (string, error) {
+	for _, dir := range ShadowPath {
+		path := filepath.Join(dir, name)
+		if command.ExecutableFile(path) {
+			return path, nil
+		}
+	}
+	return "", fmt.Errorf("%s not found in %s", name, strings.Join(ShadowPath, ":"))
 }

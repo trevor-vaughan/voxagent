@@ -1,4 +1,6 @@
-package ral
+// Package puppetpath holds the path and file-mode rules Puppet applies to the
+// File and Concat types: clean absolute paths, O_PATH, and the mode attribute.
+package puppetpath
 
 import (
 	"fmt"
@@ -8,6 +10,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/voxagent/voxagent/internal/catalog"
+	"github.com/voxagent/voxagent/internal/lib/rubyvalue"
 )
 
 // Go's ^ and $ are text anchors, Ruby's are line anchors: Puppet accepts
@@ -17,49 +20,49 @@ var (
 	symbolicModeRe = regexp.MustCompile(`^([ugoa]*[-=+][-=+rstwxXugo]*)(,[ugoa]*[-=+][-=+rstwxXugo]*)*$`)
 )
 
-// declaredMode is File's mode as Puppet validates and computes it
+// DeclaredMode is File's mode as Puppet validates and computes it
 // (type/file/mode.rb:78-190, util/symbolic_file_mode.rb:19-153).
-type declaredMode struct {
-	raw    string // as written
-	octal  bool
+type DeclaredMode struct {
+	Raw    string // as written
+	Octal  bool
 	value  uint32 // the octal mode, when octal
 	redact bool   // errors show the mode as [redacted]
 }
 
-// parseDeclaredMode validates a mode attribute. "000755" is invalid by
+// ParseDeclaredMode validates a mode attribute. "000755" is invalid by
 // util/symbolic_file_mode.rb:19-20 (read from the source, not measured).
 //
 // redact shows the mode as [redacted] in errors, for a marked mode (D-78:
 // Ruby leaks it).
-func parseDeclaredMode(raw any, redact bool) (declaredMode, error) {
+func ParseDeclaredMode(raw any, redact bool) (DeclaredMode, error) {
 	s, ok := raw.(string)
 	if !ok {
-		return declaredMode{}, fmt.Errorf("The file mode specification must be a string, not '%s'", catalog.RubyClassName(raw))
+		return DeclaredMode{}, fmt.Errorf("The file mode specification must be a string, not '%s'", catalog.RubyClassName(raw))
 	}
 	if octalModeRe.MatchString(s) {
 		v, err := strconv.ParseUint(s, 8, 32)
 		if err != nil {
-			return declaredMode{}, err
+			return DeclaredMode{}, err
 		}
-		return declaredMode{raw: s, octal: true, value: uint32(v), redact: redact}, nil
+		return DeclaredMode{Raw: s, Octal: true, value: uint32(v), redact: redact}, nil
 	}
 	if !symbolicModeRe.MatchString(s) {
-		return declaredMode{}, fmt.Errorf("The file mode specification is invalid: %s", redactIf(redact, "%s", rubyInspect(s)))
+		return DeclaredMode{}, fmt.Errorf("The file mode specification is invalid: %s", rubyvalue.RedactIf(redact, "%s", rubyvalue.Inspect(s)))
 	}
-	return declaredMode{raw: s, redact: redact}, nil
+	return DeclaredMode{Raw: s, redact: redact}, nil
 }
 
-// apply is symbolic_mode_to_int: the mode this declaration gives a path
+// Apply is symbolic_mode_to_int: the mode this declaration gives a path
 // whose current mode is current (low 12 bits). An octal mode ignores current.
-func (m declaredMode) apply(current uint32, isDir bool) (uint32, error) {
-	if m.octal {
+func (m DeclaredMode) Apply(current uint32, isDir bool) (uint32, error) {
+	if m.Octal {
 		return m.value, nil
 	}
 	// Digits are indexed by who: 'u', 'g', 'o'; special bits live in sticky.
 	final := map[byte]uint32{'u': current >> 6 & 7, 'g': current >> 3 & 7, 'o': current & 7}
 	special := current >> 9 & 7
 	anyX := current&0o111 != 0 // the original mode, never the one in progress
-	clauses := strings.Split(m.raw, ",")
+	clauses := strings.Split(m.Raw, ",")
 	for _, clause := range clauses {
 		whoEnd := strings.IndexAny(clause, "-=+")
 		who := clause[:whoEnd]
@@ -116,28 +119,46 @@ func combineBits(value, bits uint32, action byte) uint32 {
 	return value | bits
 }
 
-func (m declaredMode) xError(clause string, multiClause bool) error {
+func (m DeclaredMode) xError(clause string, multiClause bool) error {
 	msg := "X only works with the '+' operator"
 	if multiClause {
-		msg += " at " + rubyInspect(clause)
+		msg += " at " + rubyvalue.Inspect(clause)
 	}
-	return fmt.Errorf("%s in symbolic mode %s", msg, redactIf(m.redact, "%s", rubyInspect(m.raw)))
+	return fmt.Errorf("%s in symbolic mode %s", msg, rubyvalue.RedactIf(m.redact, "%s", rubyvalue.Inspect(m.Raw)))
 }
 
-// desired is the event's desired_value: octal normalised to four digits,
+// Desired is the event's desired_value: octal normalised to four digits,
 // symbolic as written.
-func (m declaredMode) desired() string {
-	if m.octal {
+func (m DeclaredMode) Desired() string {
+	if m.Octal {
 		return fmt.Sprintf("%04o", m.value)
 	}
-	return m.raw
+	return m.Raw
 }
 
-// failureDisplay is should_to_s for a failed change: raw left-padded with
+// FailureDisplay is should_to_s for a failed change: raw left-padded with
 // '0' to four characters (mode.rb:178-180), so "u-X" renders "0u-X".
-func (m declaredMode) failureDisplay() string {
-	if n := utf8.RuneCountInString(m.raw); n < 4 {
-		return strings.Repeat("0", 4-n) + m.raw
+func (m DeclaredMode) FailureDisplay() string {
+	if n := utf8.RuneCountInString(m.Raw); n < 4 {
+		return strings.Repeat("0", 4-n) + m.Raw
 	}
-	return m.raw
+	return m.Raw
 }
+
+// Clean reports whether p, which starts with "/", is in the clean
+// form §0 row 1 (e) lets native handle.
+func Clean(p string) bool {
+	if p == "/" || strings.HasSuffix(p, "/") || strings.Contains(p, "//") {
+		return false
+	}
+	for _, seg := range strings.Split(p, "/") {
+		if seg == "." || seg == ".." {
+			return false
+		}
+	}
+	return true
+}
+
+// OPath is O_PATH (<bits/fcntl-linux.h>:92, __O_PATH 010000000), absent from
+// Go's syscall package.
+const OPath = 0x200000

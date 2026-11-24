@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/voxagent/voxagent/internal/catalog"
+	"github.com/voxagent/voxagent/internal/lib/raltest"
 )
 
 func testRegistry() *Registry {
@@ -15,10 +16,6 @@ func testRegistry() *Registry {
 		stub{typ: "file", attrs: NewAttrs("ensure", "content", "mode", "owner", "group")},
 		stub{typ: "notify", attrs: NewAttrs("message", "withpath")},
 	)
-}
-
-func res(typ, title string, params map[string]any) catalog.Resource {
-	return catalog.Resource{Type: typ, Title: title, Parameters: params}
 }
 
 // stubValueProvider implements ensure => present|absent and nothing else. It
@@ -67,7 +64,7 @@ func valueRegistry() *Registry {
 // divergences that are artifacts of coverage rather than defects.
 func TestPreflightRefusesAnUnimplementedAttributeValue(t *testing.T) {
 	c := &catalog.Catalog{Resources: []catalog.Resource{
-		res("Stub", "a", map[string]any{"ensure": "purged"}),
+		raltest.Res("Stub", "a", map[string]any{"ensure": "purged"}),
 	}}
 	gaps := Preflight(valueRegistry(), c)
 	if len(gaps) != 1 {
@@ -88,12 +85,12 @@ func TestPreflightRefusesAnUnimplementedAttributeValue(t *testing.T) {
 // against a Preflight that refuses every value it sees.
 func TestPreflightAcceptsAnImplementedAttributeValue(t *testing.T) {
 	c := &catalog.Catalog{Resources: []catalog.Resource{
-		res("Stub", "a", map[string]any{"ensure": "present", "name": "a"}),
-		res("Stub", "b", map[string]any{"ensure": "absent"}),
+		raltest.Res("Stub", "a", map[string]any{"ensure": "present", "name": "a"}),
+		raltest.Res("Stub", "b", map[string]any{"ensure": "absent"}),
 		// A provider that does not implement ValueBounded is unaffected:
 		// "directory" is not in the stub's present|absent domain, and file
 		// must still accept it.
-		res("File", "/tmp/a", map[string]any{"ensure": "directory"}),
+		raltest.Res("File", "/tmp/a", map[string]any{"ensure": "directory"}),
 	}}
 	if gaps := Preflight(valueRegistry(), c); len(gaps) != 0 {
 		t.Errorf("Preflight found gaps on implemented values: %v", gaps)
@@ -106,7 +103,7 @@ func TestPreflightDoesNotDoubleReportAnUnimplementedAttribute(t *testing.T) {
 	// Halfstub rejects ensure => "purged" AND does not implement ensure, so a
 	// missing guard reports the attribute and the value both.
 	c := &catalog.Catalog{Resources: []catalog.Resource{
-		res("Halfstub", "a", map[string]any{"ensure": "purged"}),
+		raltest.Res("Halfstub", "a", map[string]any{"ensure": "purged"}),
 	}}
 	gaps := Preflight(valueRegistry(), c)
 	if len(gaps) != 1 {
@@ -124,21 +121,21 @@ func TestPreflightDoesNotDoubleReportAnUnimplementedAttribute(t *testing.T) {
 }
 
 // A non-string value is bounded as the string the provider will act on.
-// Providers read parameters through fmt's %v (paramString), so a JSON true
+// Providers read parameters through fmt's %v (rubyvalue.ParamString), so a JSON true
 // reaches Apply as "true" and must be judged as "true" here. Skipping
 // non-strings let {"ensure": false} through to apply time, where it failed one
 // resource after the rest of the catalog had been written.
 func TestPreflightBoundsNonStringValuesAsTheProviderReadsThem(t *testing.T) {
 	c := &catalog.Catalog{Resources: []catalog.Resource{
-		res("Stub", "a", map[string]any{"ensure": true}),
-		res("Stub", "b", map[string]any{"ensure": 42}),
-		res("Stub", "c", map[string]any{"ensure": []any{"purged"}}),
-		res("Stub", "d", map[string]any{"ensure": false}),
-		res("Stub", "e", map[string]any{"ensure": nil}),
-		res("Stub", "f", map[string]any{"ensure": map[string]any{"k": "v"}}),
+		raltest.Res("Stub", "a", map[string]any{"ensure": true}),
+		raltest.Res("Stub", "b", map[string]any{"ensure": 42}),
+		raltest.Res("Stub", "c", map[string]any{"ensure": []any{"purged"}}),
+		raltest.Res("Stub", "d", map[string]any{"ensure": false}),
+		raltest.Res("Stub", "e", map[string]any{"ensure": nil}),
+		raltest.Res("Stub", "f", map[string]any{"ensure": map[string]any{"k": "v"}}),
 		// name is implemented and not bounded: a non-string there is not a gap.
-		res("Stub", "g", map[string]any{"name": 42}),
-		res("Stub", "h", map[string]any{"name": []any{"x"}}),
+		raltest.Res("Stub", "g", map[string]any{"name": 42}),
+		raltest.Res("Stub", "h", map[string]any{"name": []any{"x"}}),
 	}}
 	got := []string{}
 	for _, g := range Preflight(valueRegistry(), c) {
@@ -159,10 +156,10 @@ func TestPreflightBoundsNonStringValuesAsTheProviderReadsThem(t *testing.T) {
 
 func TestPreflightAcceptsAnImplementedCatalog(t *testing.T) {
 	c := &catalog.Catalog{Resources: []catalog.Resource{
-		res("Stage", "main", nil),
-		res("Class", "main", nil),
-		res("File", "/tmp/a", map[string]any{"ensure": "file", "content": "x"}),
-		res("Notify", "hi", map[string]any{"message": "yo"}),
+		raltest.Res("Stage", "main", nil),
+		raltest.Res("Class", "main", nil),
+		raltest.Res("File", "/tmp/a", map[string]any{"ensure": "file", "content": "x"}),
+		raltest.Res("Notify", "hi", map[string]any{"message": "yo"}),
 	}}
 	if gaps := Preflight(testRegistry(), c); len(gaps) != 0 {
 		t.Errorf("Preflight found gaps in an implementable catalog: %v", gaps)
@@ -171,7 +168,7 @@ func TestPreflightAcceptsAnImplementedCatalog(t *testing.T) {
 
 func TestPreflightReportsUnimplementedType(t *testing.T) {
 	c := &catalog.Catalog{Resources: []catalog.Resource{
-		res("Service", "nginx", map[string]any{"ensure": "running"}),
+		raltest.Res("Service", "nginx", map[string]any{"ensure": "running"}),
 	}}
 	gaps := Preflight(testRegistry(), c)
 	if len(gaps) != 1 {
@@ -192,10 +189,10 @@ func TestPreflightReportsUnimplementedType(t *testing.T) {
 // early would under-report the work.
 func TestPreflightReportsEveryGap(t *testing.T) {
 	c := &catalog.Catalog{Resources: []catalog.Resource{
-		res("File", "/etc/app", map[string]any{
+		raltest.Res("File", "/etc/app", map[string]any{
 			"ensure": "directory", "recurselimit": 2, "links": "follow",
 		}),
-		res("Service", "nginx", nil),
+		raltest.Res("Service", "nginx", nil),
 	}}
 	gaps := Preflight(testRegistry(), c)
 	if len(gaps) != 3 {
@@ -218,15 +215,15 @@ func TestPreflightReportsEveryGap(t *testing.T) {
 
 func TestPreflightIgnoresContainersAndEngineAttrs(t *testing.T) {
 	c := &catalog.Catalog{Resources: []catalog.Resource{
-		res("Stage", "main", nil),
-		res("Class", "Settings", nil),
-		res("Node", "default", nil),
-		res("File", "/tmp/a", map[string]any{
+		raltest.Res("Stage", "main", nil),
+		raltest.Res("Class", "Settings", nil),
+		raltest.Res("Node", "default", nil),
+		raltest.Res("File", "/tmp/a", map[string]any{
 			"ensure": "file",
 			"notify": []any{"Notify[hi]"},
 			"tag":    []any{"role::web"},
 		}),
-		res("Notify", "hi", map[string]any{"message": "yo"}),
+		raltest.Res("Notify", "hi", map[string]any{"message": "yo"}),
 	}}
 	if gaps := Preflight(testRegistry(), c); len(gaps) != 0 {
 		t.Errorf("Preflight found gaps: %v", gaps)
@@ -237,7 +234,7 @@ func TestPreflightIgnoresContainersAndEngineAttrs(t *testing.T) {
 // `schedule` would mean applying a resource the catalog said not to apply yet.
 func TestPreflightRefusesUnhandledMetaparameter(t *testing.T) {
 	c := &catalog.Catalog{Resources: []catalog.Resource{
-		res("Notify", "hi", map[string]any{"message": "yo", "schedule": "daily"}),
+		raltest.Res("Notify", "hi", map[string]any{"message": "yo", "schedule": "daily"}),
 	}}
 	gaps := Preflight(testRegistry(), c)
 	if len(gaps) != 1 || gaps[0].Attribute != "schedule" {
@@ -250,7 +247,7 @@ func TestPreflightRefusesUnhandledMetaparameter(t *testing.T) {
 // gaps would refuse every catalog that uses a parameterised class.
 func TestPreflightSkipsContainerParameters(t *testing.T) {
 	c := &catalog.Catalog{Resources: []catalog.Resource{
-		res("Class", "profile::web", map[string]any{"port": 8080, "recurse": true}),
+		raltest.Res("Class", "profile::web", map[string]any{"port": 8080, "recurse": true}),
 	}}
 	if gaps := Preflight(testRegistry(), c); len(gaps) != 0 {
 		t.Errorf("Preflight found gaps on a parameterised container: %v", gaps)
@@ -259,8 +256,8 @@ func TestPreflightSkipsContainerParameters(t *testing.T) {
 
 func TestPreflightIsDeterministic(t *testing.T) {
 	c := &catalog.Catalog{Resources: []catalog.Resource{
-		res("File", "/z", map[string]any{"zeta": 1, "alpha": 2, "mu": 3}),
-		res("File", "/a", map[string]any{"beta": 1}),
+		raltest.Res("File", "/z", map[string]any{"zeta": 1, "alpha": 2, "mu": 3}),
+		raltest.Res("File", "/a", map[string]any{"beta": 1}),
 	}}
 	first := Preflight(testRegistry(), c)
 	for i := 0; i < 20; i++ {
@@ -345,10 +342,10 @@ func (s listStub) Prefetch(context.Context, []catalog.Resource) (Provider, error
 func TestPreflightBoundsEachElementOfAListValuedAttribute(t *testing.T) {
 	reg := NewRegistry(listStub{stubValueProvider{stub{typ: "liststub", attrs: NewAttrs("ensure", "source")}}})
 	c := &catalog.Catalog{Resources: []catalog.Resource{
-		res("Liststub", "a", map[string]any{"source": []any{"/ok", "puppet:///b", "puppet:///a"}}),
-		res("Liststub", "b", map[string]any{"source": []any{"/ok", "file:///ok"}}),
-		res("Liststub", "c", map[string]any{"source": "puppet:///c"}),
-		res("Liststub", "d", map[string]any{"ensure": []any{"present"}}),
+		raltest.Res("Liststub", "a", map[string]any{"source": []any{"/ok", "puppet:///b", "puppet:///a"}}),
+		raltest.Res("Liststub", "b", map[string]any{"source": []any{"/ok", "file:///ok"}}),
+		raltest.Res("Liststub", "c", map[string]any{"source": "puppet:///c"}),
+		raltest.Res("Liststub", "d", map[string]any{"ensure": []any{"present"}}),
 	}}
 	var got []string
 	for _, g := range Preflight(reg, c) {
@@ -369,13 +366,13 @@ func TestPreflightBoundsEachElementOfAListValuedAttribute(t *testing.T) {
 // onto every File it makes. Any other loglevel would change what is logged.
 func TestPreflightAcceptsLoglevelNoticeOnly(t *testing.T) {
 	c := &catalog.Catalog{Resources: []catalog.Resource{
-		res("File", "/a", map[string]any{"loglevel": "notice"}),
+		raltest.Res("File", "/a", map[string]any{"loglevel": "notice"}),
 	}}
 	if gaps := Preflight(testRegistry(), c); len(gaps) != 0 {
 		t.Errorf("loglevel => notice is a gap: %v", gaps)
 	}
 	c = &catalog.Catalog{Resources: []catalog.Resource{
-		res("File", "/a", map[string]any{"loglevel": "debug"}),
+		raltest.Res("File", "/a", map[string]any{"loglevel": "debug"}),
 	}}
 	gaps := Preflight(testRegistry(), c)
 	if len(gaps) != 1 || gaps[0].Attribute != "loglevel" {
@@ -393,11 +390,11 @@ func TestResourceGapsMatchesPreflightForOneResource(t *testing.T) {
 		listStub{stubValueProvider{stub{typ: "liststub", attrs: NewAttrs("source", "ensure")}}},
 	)
 	for _, r := range []catalog.Resource{
-		res("File", "/ok", map[string]any{"ensure": "file", "require": "File[/x]", "loglevel": "notice"}),
-		res("File", "/gaps", map[string]any{"links": "follow", "recurselimit": 2, "loglevel": "info"}),
-		res("Stub", "v", map[string]any{"ensure": "purged", "name": "n"}),
-		res("Liststub", "l", map[string]any{"source": []any{"good", "puppet:///bad"}, "ensure": []any{"present"}}),
-		res("Service", "nginx", map[string]any{"ensure": "running"}),
+		raltest.Res("File", "/ok", map[string]any{"ensure": "file", "require": "File[/x]", "loglevel": "notice"}),
+		raltest.Res("File", "/gaps", map[string]any{"links": "follow", "recurselimit": 2, "loglevel": "info"}),
+		raltest.Res("Stub", "v", map[string]any{"ensure": "purged", "name": "n"}),
+		raltest.Res("Liststub", "l", map[string]any{"source": []any{"good", "puppet:///bad"}, "ensure": []any{"present"}}),
+		raltest.Res("Service", "nginx", map[string]any{"ensure": "running"}),
 	} {
 		want := Preflight(reg, &catalog.Catalog{Resources: []catalog.Resource{r}})
 		p, _ := reg.Provider(r.Type)
@@ -425,9 +422,9 @@ func TestPreflightRefusesADeclaredFilebucket(t *testing.T) {
 		stub{typ: "filebucket", attrs: NewAttrs("path", "server")},
 	)
 	for _, title := range []string{"main", "puppet"} {
-		r := res("Filebucket", title, map[string]any{"path": "/x"})
+		r := raltest.Res("Filebucket", title, map[string]any{"path": "/x"})
 		c := &catalog.Catalog{Resources: []catalog.Resource{
-			r, res("File", "/f", map[string]any{"content": "new", "backup": title}),
+			r, raltest.Res("File", "/f", map[string]any{"content": "new", "backup": title}),
 		}}
 		gaps := Preflight(reg, c)
 		if len(gaps) != 1 || gaps[0].Ref != r.Ref() {
@@ -460,13 +457,13 @@ var richSamples = []struct {
 
 func TestResourceGapsRefuseRichValuesOnNativeResources(t *testing.T) {
 	for _, s := range richSamples {
-		gaps := ResourceGaps(Notify{}, res("Notify", "n", map[string]any{"message": s.value}))
+		gaps := ResourceGaps(Notify{}, raltest.Res("Notify", "n", map[string]any{"message": s.value}))
 		if len(gaps) != 1 || gaps[0].String() != s.want {
 			t.Errorf("gaps = %v, want exactly %q", gaps, s.want)
 		}
 	}
 	// An unimplemented attribute stays the attribute's one gap.
-	gaps := ResourceGaps(Notify{}, res("Notify", "n", map[string]any{"nope": richSamples[0].value}))
+	gaps := ResourceGaps(Notify{}, raltest.Res("Notify", "n", map[string]any{"nope": richSamples[0].value}))
 	if len(gaps) != 1 || gaps[0].String() != `Notify[n]: attribute "nope" is not implemented` {
 		t.Errorf("unimplemented attribute gaps = %v", gaps)
 	}
@@ -478,7 +475,7 @@ func TestResourceGapsLeaveRichValuesToTheHost(t *testing.T) {
 	for _, s := range richSamples {
 		params := map[string]any{"value": s.value}
 		e := NewExtension("vox_value", &fakeHost{}, load, nil, cat(params))
-		if gaps := ResourceGaps(e, res("Vox_value", "a", params)); len(gaps) != 0 {
+		if gaps := ResourceGaps(e, raltest.Res("Vox_value", "a", params)); len(gaps) != 0 {
 			t.Errorf("%v: gaps = %v, want none", s.value, gaps)
 		}
 	}
@@ -526,7 +523,7 @@ func TestDeferredGapsFindNestedDeferred(t *testing.T) {
 
 // A marked attribute's unsupported value is shown as [redacted] (D-78).
 func TestPreflightRedactsAMarkedValue(t *testing.T) {
-	r := res("Stub", "a", map[string]any{"ensure": "purged"})
+	r := raltest.Res("Stub", "a", map[string]any{"ensure": "purged"})
 	for _, tc := range []struct {
 		marked []string
 		want   string

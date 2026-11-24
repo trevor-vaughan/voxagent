@@ -1,4 +1,4 @@
-package ral
+package command
 
 import (
 	"context"
@@ -14,10 +14,12 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"github.com/voxagent/voxagent/internal/lib/sources"
 	"github.com/voxagent/voxagent/internal/report"
+	"github.com/voxagent/voxagent/internal/runlog"
 )
 
-// runWithin runs the command through fileOutputRunner and fails the test,
+// runWithin runs the command through FileOutputRunner and fails the test,
 // rather than hanging it, if run has not returned within limit.
 func runWithin(t *testing.T, limit time.Duration, name string, args ...string) (int, string, error) {
 	t.Helper()
@@ -28,7 +30,7 @@ func runWithin(t *testing.T, limit time.Duration, name string, args ...string) (
 	}
 	done := make(chan result, 1)
 	go func() {
-		code, out, err := fileOutputRunner{}.run(context.Background(), name, args...)
+		code, out, err := FileOutputRunner{}.Run(context.Background(), name, args...)
 		done <- result{code, out, err}
 	}()
 	select {
@@ -113,14 +115,6 @@ func TestFileOutputRunnerRemovesItsTemporaryFile(t *testing.T) {
 	}
 }
 
-// Service's commands go through the file runner by default, so a custom start
-// that backgrounds a daemon cannot hang the run.
-func TestServiceDefaultRunnerUsesAFile(t *testing.T) {
-	if _, ok := (Service{}).runner().(fileOutputRunner); !ok {
-		t.Errorf("default runner is %T, want fileOutputRunner", Service{}.runner())
-	}
-}
-
 func TestCutOutput(t *testing.T) {
 	for _, tc := range []struct {
 		name     string
@@ -150,14 +144,6 @@ func TestCutOutput(t *testing.T) {
 			}
 		})
 	}
-}
-
-// withOutputCap lowers the cap for the test.
-func withOutputCap(t *testing.T, n int) {
-	t.Helper()
-	old := outputCap
-	outputCap = n
-	t.Cleanup(func() { outputCap = old })
 }
 
 func TestRunCapturingToFileCaps(t *testing.T) {
@@ -198,20 +184,20 @@ func TestFileOutputRunnerWarnsOnTruncation(t *testing.T) {
 	withOutputCap(t, 4)
 	for _, tc := range []struct {
 		name    string
-		sources Sources
+		sources sources.Sources
 		script  string
 		want    []report.LogEntry
 	}{
-		{"with a ref", Sources{Ref: "Service[x]"}, "printf abcdefgh",
+		{"with a ref", sources.Sources{Ref: "Service[x]"}, "printf abcdefgh",
 			[]report.LogEntry{{Level: "warning", Source: "voxagent", Message: "Service[x]: output of '/bin/sh -c printf abcdefgh' truncated at 64 MiB"}}},
-		{"no ref during prefetch", Sources{}, "printf abcdefgh",
+		{"no ref during prefetch", sources.Sources{}, "printf abcdefgh",
 			[]report.LogEntry{{Level: "warning", Source: "voxagent", Message: "output of '/bin/sh -c printf abcdefgh' truncated at 64 MiB"}}},
-		{"exactly the cap warns of nothing", Sources{Ref: "Service[x]"}, "printf abcd", nil},
+		{"exactly the cap warns of nothing", sources.Sources{Ref: "Service[x]"}, "printf abcd", nil},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			ctx, got := debugContext("notice")
-			ctx = WithSources(ctx, tc.sources)
-			_, out, err := fileOutputRunner{}.run(ctx, "/bin/sh", "-c", tc.script)
+			ctx = sources.WithSources(ctx, tc.sources)
+			_, out, err := FileOutputRunner{}.Run(ctx, "/bin/sh", "-c", tc.script)
 			if err != nil {
 				t.Fatalf("err = %v", err)
 			}
@@ -225,81 +211,18 @@ func TestFileOutputRunnerWarnsOnTruncation(t *testing.T) {
 
 func TestFileOutputRunnerWithoutALoggerStillTruncates(t *testing.T) {
 	withOutputCap(t, 4)
-	_, out, err := fileOutputRunner{}.run(context.Background(), "/bin/sh", "-c", "printf abcdefgh")
+	_, out, err := FileOutputRunner{}.Run(context.Background(), "/bin/sh", "-c", "printf abcdefgh")
 	if err != nil || out != "abcd" {
 		t.Errorf("got (%q, %v), want (%q, nil)", out, err, "abcd")
 	}
 }
 
-// Review Focus 3: the cut is on a character boundary, so logoutput, which
-// decodes the output, does not fail on it.
-func TestExecLogoutputTruncatedStaysDecodable(t *testing.T) {
-	withOutputCap(t, 4)
-	setLocale(t, "C.UTF-8")
-	ctx, got := debugContext("notice")
-	ctx = WithSources(ctx, Sources{Ref: "Exec[big]"})
-	r := execRes("big", map[string]any{"command": `printf 'ab\342\202\254'`, "logoutput": true})
-	changes, _, err := Exec{}.Apply(ctx, r, false)
-	if err != nil || len(changes) != 1 {
-		t.Fatalf("Apply = (%v, %v)", changes, err)
-	}
-	if changes[0].Err != nil {
-		t.Fatalf("change failed: %v", changes[0].Err)
-	}
-	if want := []string{"ab"}; !slices.Equal(changes[0].PropertyNotices, want) {
-		t.Errorf("PropertyNotices = %q, want %q", changes[0].PropertyNotices, want)
-	}
-	assertWarnings(t, *got, []report.LogEntry{{Level: "warning", Source: "voxagent",
-		Message: "Exec[big]: output of 'printf 'ab\\342\\202\\254'' truncated at 64 MiB"}})
-}
-
-// A Sensitive command stays redacted in the warning.
-func TestExecTruncationWarningRedactsASensitiveCommand(t *testing.T) {
-	withOutputCap(t, 4)
-	ctx, got := debugContext("notice")
-	ctx = WithSources(ctx, Sources{Ref: "Exec[s]"})
-	r := markedExec(map[string]any{"command": "printf abcdefgh"}, "command")
-	if _, _, err := (Exec{}).Apply(ctx, r, false); err != nil {
-		t.Fatal(err)
-	}
-	assertWarnings(t, *got, []report.LogEntry{{Level: "warning", Source: "voxagent",
-		Message: "Exec[s]: output of [command redacted] truncated at 64 MiB"}})
-}
-
-func TestValidateCmdTruncationWarns(t *testing.T) {
-	withOutputCap(t, 4)
-	ctx, got := debugContext("notice")
-	ctx = WithSources(ctx, Sources{Ref: "File[/x]"})
-	path := filepath.Join(t.TempDir(), "f")
-	r := fileRes(path, map[string]any{"content": "new\n", "validate_cmd": "printf abcdefgh; true"})
-	if _, _, err := (File{}).Apply(ctx, r, false); err != nil {
-		t.Fatal(err)
-	}
-	if len(*got) != 1 || (*got)[0].Level != "warning" || !strings.HasPrefix((*got)[0].Message, "File[/x]: output of ") ||
-		!strings.HasSuffix((*got)[0].Message, " truncated at 64 MiB") {
-		t.Errorf("entries = %+v, want one truncation warning", *got)
-	}
-}
-
-func assertWarnings(t *testing.T, got, want []report.LogEntry) {
-	t.Helper()
-	if len(got) != len(want) {
-		t.Fatalf("entries = %+v, want %+v", got, want)
-	}
-	for i := range want {
-		if got[i].Level != want[i].Level || got[i].Source != want[i].Source || got[i].Message != want[i].Message {
-			t.Errorf("entry %d = {%s %s %q}, want {%s %s %q}", i,
-				got[i].Level, got[i].Source, got[i].Message, want[i].Level, want[i].Source, want[i].Message)
-		}
-	}
-}
-
-// execRunner serves package and SELinux commands; it is capped like the rest.
+// ExecRunner serves package and SELinux commands; it is capped like the rest.
 func TestExecRunnerTruncatesAndWarns(t *testing.T) {
 	withOutputCap(t, 4)
 	ctx, got := debugContext("notice")
-	ctx = WithSources(ctx, Sources{Ref: "Package[x]"})
-	code, out, err := execRunner{}.run(ctx, "/bin/sh", "-c", "printf abcdefgh; exit 100")
+	ctx = sources.WithSources(ctx, sources.Sources{Ref: "Package[x]"})
+	code, out, err := ExecRunner{}.Run(ctx, "/bin/sh", "-c", "printf abcdefgh; exit 100")
 	if err != nil || code != 100 || out != "abcd" {
 		t.Errorf("got (%d, %q, %v), want (100, %q, nil)", code, out, err, "abcd")
 	}
@@ -308,7 +231,7 @@ func TestExecRunnerTruncatesAndWarns(t *testing.T) {
 }
 
 func TestExecRunnerStartFailureNamesTheCommand(t *testing.T) {
-	_, _, err := execRunner{}.run(context.Background(), "/no/such/cmd", "a")
+	_, _, err := ExecRunner{}.Run(context.Background(), "/no/such/cmd", "a")
 	if err == nil || !strings.Contains(err.Error(), "run '/no/such/cmd a'") {
 		t.Errorf("err = %v, want it to name 'run '/no/such/cmd a''", err)
 	}
@@ -318,8 +241,8 @@ func TestExecRunnerStartFailureNamesTheCommand(t *testing.T) {
 // Executing: line at Puppet, once per command.
 func TestSharedRunnersLogExecuting(t *testing.T) {
 	for name, run := range map[string]func(context.Context, string, ...string) (int, string, error){
-		"fileOutputRunner": fileOutputRunner{}.run,
-		"execRunner":       execRunner{}.run,
+		"FileOutputRunner": FileOutputRunner{}.Run,
+		"ExecRunner":       ExecRunner{}.Run,
 	} {
 		t.Run(name, func(t *testing.T) {
 			ctx, got := debugContext("debug")
@@ -337,16 +260,16 @@ func TestSharedRunnersLogExecuting(t *testing.T) {
 func TestArgvRunnersRedactACommandNamingAMarkedValue(t *testing.T) {
 	for _, runner := range []struct {
 		name string
-		r    commandRunner
-	}{{"execRunner", execRunner{}}, {"fileOutputRunner", fileOutputRunner{}}} {
+		r    Runner
+	}{{"ExecRunner", ExecRunner{}}, {"FileOutputRunner", FileOutputRunner{}}} {
 		for _, marked := range []bool{false, true} {
 			t.Run(fmt.Sprintf("%s marked=%v", runner.name, marked), func(t *testing.T) {
 				withOutputCap(t, 4)
 				ctx, got := debugContext("debug")
 				if marked {
-					ctx = withRedactedCommands(ctx)
+					ctx = WithRedactedCommands(ctx)
 				}
-				if _, _, err := runner.r.run(ctx, "/bin/echo", "tree-s3cret", "0123456789"); err != nil {
+				if _, _, err := runner.r.Run(ctx, "/bin/echo", "tree-s3cret", "0123456789"); err != nil {
 					t.Fatal(err)
 				}
 				wantExec, wantWarn := "Executing: '/bin/echo tree-s3cret 0123456789'", "output of '/bin/echo tree-s3cret 0123456789' truncated at 64 MiB"
@@ -378,7 +301,7 @@ func TestRunArgvWithLocale(t *testing.T) {
 	}
 	t.Setenv("LANG", "de_DE.UTF-8")
 	t.Setenv("LC_ALL", "de_DE.UTF-8")
-	code, out, err := runArgvWith(context.Background(), argvOpts{}, "/usr/bin/env")
+	code, out, err := RunArgvWith(context.Background(), ArgvOpts{}, "/usr/bin/env")
 	if err != nil || code != 0 {
 		t.Fatalf("got (%d, %v), want (0, nil)", code, err)
 	}
@@ -408,11 +331,11 @@ func countOf(lines []string, s string) int {
 }
 
 func TestRunArgvWithStdin(t *testing.T) {
-	code, out, err := runArgvWith(context.Background(), argvOpts{Stdin: []byte("foo:$6$hash\n")}, "/bin/cat")
+	code, out, err := RunArgvWith(context.Background(), ArgvOpts{Stdin: []byte("foo:$6$hash\n")}, "/bin/cat")
 	if err != nil || code != 0 || out != "foo:$6$hash\n" {
 		t.Errorf("got (%d, %q, %v), want (0, the stdin bytes, nil)", code, out, err)
 	}
-	code, out, err = runArgvWith(context.Background(), argvOpts{}, "/bin/cat")
+	code, out, err = RunArgvWith(context.Background(), ArgvOpts{}, "/bin/cat")
 	if err != nil || code != 0 || out != "" {
 		t.Errorf("no stdin: got (%d, %q, %v), want (0, \"\", nil)", code, out, err)
 	}
@@ -421,7 +344,7 @@ func TestRunArgvWithStdin(t *testing.T) {
 func TestRunArgvWithRedactedDebug(t *testing.T) {
 	for _, redact := range []bool{false, true} {
 		ctx, got := debugContext("debug")
-		if _, _, err := runArgvWith(ctx, argvOpts{Redact: redact}, "/bin/echo", "s3cret-hash"); err != nil {
+		if _, _, err := RunArgvWith(ctx, ArgvOpts{Redact: redact}, "/bin/echo", "s3cret-hash"); err != nil {
 			t.Fatal(err)
 		}
 		want := "Executing: '/bin/echo s3cret-hash'"
@@ -437,7 +360,7 @@ func TestRunArgvWithRedactedDebug(t *testing.T) {
 func TestRunArgvWithRedactedTruncationWarning(t *testing.T) {
 	withOutputCap(t, 4)
 	ctx, got := debugContext("debug")
-	if _, _, err := runArgvWith(ctx, argvOpts{Redact: true}, "/bin/echo", "s3cret-hash", "0123456789"); err != nil {
+	if _, _, err := RunArgvWith(ctx, ArgvOpts{Redact: true}, "/bin/echo", "s3cret-hash", "0123456789"); err != nil {
 		t.Fatal(err)
 	}
 	for _, e := range *got {
@@ -448,8 +371,8 @@ func TestRunArgvWithRedactedTruncationWarning(t *testing.T) {
 }
 
 func TestHostShadowRunnerRunsTheCommand(t *testing.T) {
-	var r shadowRunner = hostShadowRunner{}
-	code, out, err := r.run(context.Background(), argvOpts{Stdin: []byte("x")}, "/bin/cat")
+	var r ShadowRunner = HostShadowRunner{}
+	code, out, err := r.Run(context.Background(), ArgvOpts{Stdin: []byte("x")}, "/bin/cat")
 	if err != nil || code != 0 || out != "x" {
 		t.Errorf("got (%d, %q, %v), want (0, \"x\", nil)", code, out, err)
 	}
@@ -473,9 +396,55 @@ func TestExecFailureText(t *testing.T) {
 		{"empty output", cmd, false, 3, "", "Execution of '/usr/sbin/usermod -u 5 foo' returned 3: "},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			if got := execFailure(tc.cmd, tc.redact, tc.code, tc.output).Error(); got != tc.want {
+			if got := ExecFailure(tc.cmd, tc.redact, tc.code, tc.output).Error(); got != tc.want {
 				t.Errorf("got %q, want %q", got, tc.want)
 			}
 		})
 	}
+}
+
+// debugContext returns a context whose run logger keeps entries at level and
+// the entries it keeps.
+func debugContext(level string) (context.Context, *[]report.LogEntry) {
+	var got []report.LogEntry
+	l := runlog.New(level, func(e report.LogEntry) { got = append(got, e) }, nil)
+	return runlog.WithLogger(context.Background(), l), &got
+}
+
+// linesAt returns the messages of the debug entries logged at source, in
+// order. Entries at other sources (the Executing: line at Puppet, say) are
+// left out so a test names only the rows it covers.
+func linesAt(entries []report.LogEntry, source string) []string {
+	var out []string
+	for _, e := range entries {
+		if e.Source == source && e.Level == "debug" {
+			out = append(out, e.Message)
+		}
+	}
+	return out
+}
+
+func dbg(source, message string) report.LogEntry {
+	return report.LogEntry{Level: "debug", Source: source, Message: message}
+}
+
+func assertWarnings(t *testing.T, got, want []report.LogEntry) {
+	t.Helper()
+	if len(got) != len(want) {
+		t.Fatalf("entries = %+v, want %+v", got, want)
+	}
+	for i := range want {
+		if got[i].Level != want[i].Level || got[i].Source != want[i].Source || got[i].Message != want[i].Message {
+			t.Errorf("entry %d = {%s %s %q}, want {%s %s %q}", i,
+				got[i].Level, got[i].Source, got[i].Message, want[i].Level, want[i].Source, want[i].Message)
+		}
+	}
+}
+
+// withOutputCap lowers the cap for the test.
+func withOutputCap(t *testing.T, n int) {
+	t.Helper()
+	old := OutputCap
+	OutputCap = n
+	t.Cleanup(func() { OutputCap = old })
 }

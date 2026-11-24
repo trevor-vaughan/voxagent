@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/voxagent/voxagent/internal/catalog"
+	"github.com/voxagent/voxagent/internal/lib/raltest"
 	"github.com/voxagent/voxagent/internal/report"
 )
 
@@ -87,7 +88,7 @@ func TestMarkSensitiveHonoursSetSensitivityWithoutCascade(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			r := fileRes("/f", map[string]any{"ensure": "file", "content": "x"})
+			r := raltest.FileRes("/f", map[string]any{"ensure": "file", "content": "x"})
 			r.SetSensitivity = tc.set
 			marked, logs := MarkSensitive(File{}, r)
 			if len(logs) != 0 || len(marked) != len(tc.want) {

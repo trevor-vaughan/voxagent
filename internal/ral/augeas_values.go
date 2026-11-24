@@ -1,6 +1,10 @@
 package ral
 
-import "strconv"
+import (
+	"strconv"
+
+	"github.com/voxagent/voxagent/internal/lib/augeas"
+)
 
 // The value helpers augeasproviders_ssh 7.0.0's ssh_config (SCP) and
 // sshd_config (SDP) providers share, spec §6: get_value, set_simple_value and
@@ -11,21 +15,21 @@ import "strconv"
 // read whole, or element by element when it has a numbered child, flattened.
 // It is a Ruby Array: each element a string, or nil for a node without a
 // value (a RemoteForward, for one).
-func getValue(a *rubyAug, path string) ([]any, error) {
-	nodes, err := a.match(path)
+func getValue(a *augeas.Aug, path string) ([]any, error) {
+	nodes, err := a.Match(path)
 	if err != nil {
 		return nil, err
 	}
 	var out []any
 	read := func(p string) {
-		if v, ok := a.get(p); ok {
+		if v, ok := a.Get(p); ok {
 			out = append(out, v)
 		} else {
 			out = append(out, nil)
 		}
 	}
 	for _, vp := range nodes {
-		numbered, err := a.match(vp + "/*[label()=~regexp('[0-9]*')]")
+		numbered, err := a.Match(vp + "/*[label()=~regexp('[0-9]*')]")
 		if err != nil {
 			return nil, err
 		}
@@ -33,7 +37,7 @@ func getValue(a *rubyAug, path string) ([]any, error) {
 			read(vp)
 			continue
 		}
-		subs, err := a.match(vp + "/*")
+		subs, err := a.Match(vp + "/*")
 		if err != nil {
 			return nil, err
 		}
@@ -51,8 +55,8 @@ func getValue(a *rubyAug, path string) ([]any, error) {
 // "" or ", 'i'"), else for sshd before the first Match or after the last
 // node. ssh_config then rebinds $resource to path. values are as getValue's:
 // a nil consumes an entry by removing it, and is set valueless beyond them.
-func setSimpleValue(a *rubyAug, base, path, label string, values []any, commentFlags string, sshd bool) error {
-	entries, err := a.match(path)
+func setSimpleValue(a *augeas.Aug, base, path, label string, values []any, commentFlags string, sshd bool) error {
+	entries, err := a.Match(path)
 	if err != nil {
 		return err
 	}
@@ -65,23 +69,23 @@ func setSimpleValue(a *rubyAug, base, path, label string, values []any, commentF
 			v, rest = rest[0], rest[1:]
 		}
 		if v == nil {
-			a.rm(sp)
+			a.Rm(sp)
 			continue
 		}
-		a.set(sp, v.(string))
+		a.Set(sp, v.(string))
 		lastsp = sp
 	}
 	for _, v := range rest {
 		if lastsp != "" {
-			a.insert(lastsp, label, false)
+			a.Insert(lastsp, label, false)
 		} else {
-			commented, err := a.match(base + "/#comment[.=~regexp('" + label + "([^a-z.].*)?'" + commentFlags + ")]")
+			commented, err := a.Match(base + "/#comment[.=~regexp('" + label + "([^a-z.].*)?'" + commentFlags + ")]")
 			if err != nil {
 				return err
 			}
 			switch {
 			case len(commented) > 0:
-				a.insert(commented[0], label, false)
+				a.Insert(commented[0], label, false)
 			case sshd:
 				if err := insertBeforeMatch(a, base, label); err != nil {
 					return err
@@ -89,7 +93,7 @@ func setSimpleValue(a *rubyAug, base, path, label string, values []any, commentF
 			}
 		}
 		setOrClear(a, path+"[last()]", v)
-		last, err := a.match(path + "[last()]")
+		last, err := a.Match(path + "[last()]")
 		if err != nil {
 			return err
 		}
@@ -100,7 +104,7 @@ func setSimpleValue(a *rubyAug, base, path, label string, values []any, commentF
 		}
 	}
 	if !sshd {
-		a.defvar("resource", path)
+		a.Defvar("resource", path)
 	}
 	return nil
 }
@@ -109,14 +113,14 @@ func setSimpleValue(a *rubyAug, base, path, label string, values []any, commentF
 // label entry first (before the first Match, else after the last node); then
 // path's children and every entry but the first are removed, and the values
 // set as children 1, 2, … (a nil valueless).
-func setArrayValue(a *rubyAug, base, path, label string, values []any, sshd bool) error {
+func setArrayValue(a *augeas.Aug, base, path, label string, values []any, sshd bool) error {
 	if sshd {
 		if err := insertBeforeMatch(a, base, label); err != nil {
 			return err
 		}
 	}
-	a.rm(path + "/*")
-	a.rm(path + "[position() != 1]")
+	a.Rm(path + "/*")
+	a.Rm(path + "[position() != 1]")
 	for i, v := range values {
 		setOrClear(a, path+"/"+strconv.Itoa(i+1), v)
 	}
@@ -124,25 +128,25 @@ func setArrayValue(a *rubyAug, base, path, label string, values []any, sshd bool
 }
 
 // setOrClear is Augeas#set with a String or nil value.
-func setOrClear(a *rubyAug, path string, v any) {
+func setOrClear(a *augeas.Aug, path string, v any) {
 	if v == nil {
-		a.clear(path)
+		a.Clear(path)
 	} else {
-		a.set(path, v.(string))
+		a.Set(path, v.(string))
 	}
 }
 
 // insertBeforeMatch is SDP's placement of a new entry in the main section:
 // before the first Match block, or after the last node when there is none.
-func insertBeforeMatch(a *rubyAug, base, label string) error {
-	matches, err := a.match(base + "/Match")
+func insertBeforeMatch(a *augeas.Aug, base, label string) error {
+	matches, err := a.Match(base + "/Match")
 	if err != nil {
 		return err
 	}
 	if len(matches) == 0 {
-		a.insert(base+"/*", label, false)
+		a.Insert(base+"/*", label, false)
 	} else {
-		a.insert(base+"/Match[1]", label, true)
+		a.Insert(base+"/Match[1]", label, true)
 	}
 	return nil
 }

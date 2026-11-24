@@ -5,6 +5,9 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+
+	"github.com/voxagent/voxagent/internal/lib/raltest"
+	"github.com/voxagent/voxagent/internal/lib/rubyvalue"
 )
 
 // simpResolv is SIMP's Augeas resolv.conf resource (.test-output/ranking/simp.json).
@@ -146,22 +149,22 @@ func TestParseAugeasShape(t *testing.T) {
 	}
 	for _, tc := range refused {
 		t.Run("refused "+tc.name, func(t *testing.T) {
-			_, err := parseAugeas(augRes("Augeas", "t", tc.params))
-			var uv *unimplementedValue
+			_, err := parseAugeas(raltest.AugRes("Augeas", "t", tc.params))
+			var uv *rubyvalue.UnimplementedValue
 			if !errors.As(err, &uv) {
-				t.Fatalf("error = %v, want *unimplementedValue", err)
+				t.Fatalf("error = %v, want *rubyvalue.UnimplementedValue", err)
 			}
-			if uv.attr != tc.attr {
-				t.Fatalf("attr = %q, want %q", uv.attr, tc.attr)
+			if uv.Attr != tc.attr {
+				t.Fatalf("attr = %q, want %q", uv.Attr, tc.attr)
 			}
 		})
 	}
 
 	t.Run("sensitive", func(t *testing.T) {
-		_, err := parseAugeas(augRes("Augeas", "t", with(nil), "changes"))
-		var uv *unimplementedValue
+		_, err := parseAugeas(raltest.AugRes("Augeas", "t", with(nil), "changes"))
+		var uv *rubyvalue.UnimplementedValue
 		if !errors.As(err, &uv) {
-			t.Fatalf("error = %v, want *unimplementedValue", err)
+			t.Fatalf("error = %v, want *rubyvalue.UnimplementedValue", err)
 		}
 	})
 
@@ -185,7 +188,7 @@ func TestParseAugeasShape(t *testing.T) {
 	}
 	for _, tc := range accepted {
 		t.Run("accepted "+tc.name, func(t *testing.T) {
-			p, err := parseAugeas(augRes("Augeas", "t", tc.params))
+			p, err := parseAugeas(raltest.AugRes("Augeas", "t", tc.params))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -196,14 +199,14 @@ func TestParseAugeasShape(t *testing.T) {
 	}
 
 	t.Run("simp resolv", func(t *testing.T) {
-		p, err := parseAugeas(augRes("Augeas", "r", map[string]any{"context": "/files/etc/resolv.conf", "changes": simpResolv, "require": "File[/etc/resolv.conf]"}))
+		p, err := parseAugeas(raltest.AugRes("Augeas", "r", map[string]any{"context": "/files/etc/resolv.conf", "changes": simpResolv, "require": "File[/etc/resolv.conf]"}))
 		if err != nil || len(p.Commands) != 14 {
 			t.Fatalf("got %d commands, err %v", len(p.Commands), err)
 		}
 	})
 	t.Run("simp modprobe", func(t *testing.T) {
 		for _, m := range strings.Fields("bluetooth cramfs dccp dccp_ipv4 dccp_ipv6 freevxfs hfs hfsplus ieee1394 jffs2 net-pf-31 rds sctp squashfs tipc udf usb-storage") {
-			p, err := parseAugeas(augRes("Augeas", m, map[string]any{
+			p, err := parseAugeas(raltest.AugRes("Augeas", m, map[string]any{
 				"incl": "/etc/modprobe.d/blacklist.conf", "lens": "Modprobe.lns",
 				"changes": []any{"set blacklist[. = '" + m + "'] " + m}, "require": "File[/etc/modprobe.d/blacklist.conf]"}))
 			want := cmd("set", "/files/etc/modprobe.d/blacklist.conf/blacklist[. = '"+m+"']", m)

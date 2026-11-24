@@ -11,13 +11,15 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+
+	"github.com/voxagent/voxagent/internal/lib/raltest"
 )
 
 // applyOne applies r and requires exactly one change and no resource-level
 // error, the shape of every ensure => link and target event.
 func applyOne(t *testing.T, params map[string]any, path string, noop bool) Change {
 	t.Helper()
-	changes, _, err := (File{}).Apply(context.Background(), fileRes(path, params), noop)
+	changes, _, err := (File{}).Apply(context.Background(), raltest.FileRes(path, params), noop)
 	if err != nil || len(changes) != 1 {
 		t.Fatalf("Apply = %+v, %v; want one change", changes, err)
 	}
@@ -125,7 +127,7 @@ func TestLinkWithoutATargetFails(t *testing.T) {
 func TestLinkWithoutATargetLeavesALink(t *testing.T) {
 	l := filepath.Join(t.TempDir(), "l")
 	mustSymlink(t, "y", l)
-	changes, _, err := (File{}).Apply(context.Background(), fileRes(l, map[string]any{"ensure": "link"}), false)
+	changes, _, err := (File{}).Apply(context.Background(), raltest.FileRes(l, map[string]any{"ensure": "link"}), false)
 	if err != nil || len(changes) != 0 {
 		t.Errorf("Apply = %+v, %v; want nothing", changes, err)
 	}
@@ -140,7 +142,7 @@ func TestLinkRetargets(t *testing.T) {
 	wantReadlink(t, l, "new")
 
 	changes, _, err := (File{}).Apply(context.Background(),
-		fileRes(l, map[string]any{"ensure": "link", "target": "new"}), false)
+		raltest.FileRes(l, map[string]any{"ensure": "link", "target": "new"}), false)
 	if err != nil || len(changes) != 0 {
 		t.Errorf("second Apply = %+v, %v; want nothing", changes, err)
 	}
@@ -210,7 +212,7 @@ func TestFileWithATargetUnderNoopReportsTargetAndMode(t *testing.T) {
 		t.Fatal(err)
 	}
 	changes, _, err := (File{}).Apply(context.Background(),
-		fileRes(f, map[string]any{"ensure": "file", "target": "x", "mode": "0600"}), true)
+		raltest.FileRes(f, map[string]any{"ensure": "file", "target": "x", "mode": "0600"}), true)
 	if err != nil || len(changes) != 2 {
 		t.Fatalf("Apply = %+v, %v; want target and mode", changes, err)
 	}
@@ -245,7 +247,7 @@ func TestLinkReplaceFalseLeavesAFile(t *testing.T) {
 	f := filepath.Join(t.TempDir(), "f")
 	mustWrite(t, f, "x\n")
 	changes, _, err := (File{}).Apply(context.Background(),
-		fileRes(f, map[string]any{"ensure": "link", "target": "x", "replace": false}), false)
+		raltest.FileRes(f, map[string]any{"ensure": "link", "target": "x", "replace": false}), false)
 	if err != nil || len(changes) != 0 {
 		t.Errorf("Apply = %+v, %v; want nothing", changes, err)
 	}
@@ -268,7 +270,7 @@ func TestLinkReplaceFalseRetargetsADanglingLink(t *testing.T) {
 	k := filepath.Join(dir, "k")
 	mustSymlink(t, "real", k)
 	changes, _, err := (File{}).Apply(context.Background(),
-		fileRes(k, map[string]any{"ensure": "link", "target": "x", "replace": false}), false)
+		raltest.FileRes(k, map[string]any{"ensure": "link", "target": "x", "replace": false}), false)
 	if err != nil || len(changes) != 0 {
 		t.Errorf("live link: Apply = %+v, %v; want nothing", changes, err)
 	}
@@ -280,7 +282,7 @@ func TestLinkReplaceFalseRetargetsADanglingLink(t *testing.T) {
 func TestLinkModeIsNotManaged(t *testing.T) {
 	real, l := seedLink(t, "a\n", 0o644)
 	changes, _, err := (File{}).Apply(context.Background(),
-		fileRes(l, map[string]any{"ensure": "link", "target": real, "mode": "0600"}), false)
+		raltest.FileRes(l, map[string]any{"ensure": "link", "target": real, "mode": "0600"}), false)
 	if err != nil || len(changes) != 0 {
 		t.Errorf("Apply = %+v, %v; want nothing", changes, err)
 	}
@@ -370,7 +372,7 @@ func TestFileValidateRejectsTargetWithContent(t *testing.T) {
 		{"target": "y", "source": "/src"},
 		{"ensure": "/y", "content": "c"},
 	} {
-		if err := (File{}).Validate(fileRes("/x/f", params)); err == nil || err.Error() != want {
+		if err := (File{}).Validate(raltest.FileRes("/x/f", params)); err == nil || err.Error() != want {
 			t.Errorf("Validate(%v) = %v; want %q", params, err, want)
 		}
 	}
@@ -379,7 +381,7 @@ func TestFileValidateRejectsTargetWithContent(t *testing.T) {
 		{"ensure": "link", "content": "c"},
 		{"ensure": "symlink"},
 	} {
-		if err := (File{}).Validate(fileRes("/x/f", params)); err != nil {
+		if err := (File{}).Validate(raltest.FileRes("/x/f", params)); err != nil {
 			t.Errorf("Validate(%v) = %v; want nil", params, err)
 		}
 	}
@@ -401,7 +403,7 @@ func TestFileValidateRefusesWhatLinksDoNotImplement(t *testing.T) {
 		{map[string]any{"ensure": []any{"q", "r"}}, "ensure => [q r] ([]interface {}) is not implemented"},
 		{map[string]any{"target": float64(1)}, "target => 1 (float64) is not implemented"},
 	} {
-		err := (File{}).Validate(fileRes("/x/f", tc.params))
+		err := (File{}).Validate(raltest.FileRes("/x/f", tc.params))
 		if err == nil || !strings.Contains(err.Error(), tc.want) || !strings.HasPrefix(err.Error(), "File[/x/f]: ") {
 			t.Errorf("Validate(%v) = %v; want %q", tc.params, err, tc.want)
 		}
@@ -426,7 +428,7 @@ func TestFileAutoRequiresAManagedLinkTarget(t *testing.T) {
 		{map[string]any{"ensure": "link", "target": "real"}, []string{"File[real]"}, nil},
 		{map[string]any{"ensure": "link", "target": "/t"}, []string{"File[/t]"}, []string{"File[/t]"}},
 	} {
-		got := (File{}).AutoRequires(fileRes("/t/l", tc.params), managed(tc.managed...))
+		got := (File{}).AutoRequires(raltest.FileRes("/t/l", tc.params), managed(tc.managed...))
 		if !slices.Equal(got, tc.want) {
 			t.Errorf("AutoRequires(%v) = %v; want %v", tc.params, got, tc.want)
 		}
@@ -509,7 +511,7 @@ func TestLinkRetargetSymlinkFailureIsNotWrapped(t *testing.T) {
 	mustSymlink(t, "old", l)
 	injected := errors.New("symlink injected failure")
 	changes, _, err := applyLink(context.Background(), linkFaultFS{symlinkErr: injected}, l,
-		fileRes(l, map[string]any{"ensure": "link", "target": "new"}), false, nil, nil)
+		raltest.FileRes(l, map[string]any{"ensure": "link", "target": "new"}), false, nil, nil)
 	if err != nil || len(changes) != 1 {
 		t.Fatalf("applyLink = %+v, %v; want one change", changes, err)
 	}
@@ -566,7 +568,7 @@ func TestLinkCreatedMetadataBlamesTheFirstFailure(t *testing.T) {
 			}
 			params := map[string]any{"ensure": "link", "target": "real", "links": "follow"}
 			maps.Copy(params, tc.params)
-			changes, _, err := applyLink(context.Background(), tc.fsys(), l, fileRes(l, params), false, nil, nil)
+			changes, _, err := applyLink(context.Background(), tc.fsys(), l, raltest.FileRes(l, params), false, nil, nil)
 			if err != nil || len(changes) != 1 || changes[0].Err == nil {
 				t.Fatalf("applyLink = %+v, %v; want one failed ensure change", changes, err)
 			}

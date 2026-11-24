@@ -4,6 +4,8 @@ import (
 	"context"
 
 	"github.com/voxagent/voxagent/internal/catalog"
+	"github.com/voxagent/voxagent/internal/lib/rubyvalue"
+	"github.com/voxagent/voxagent/internal/lib/sources"
 	"github.com/voxagent/voxagent/internal/runlog"
 )
 
@@ -51,7 +53,7 @@ func (s SshdConfigSubsystem) Apply(ctx context.Context, r catalog.Resource, noop
 	if err != nil {
 		return nil, nil, err
 	}
-	found, err := aug.match("$resource")
+	found, err := aug.Match("$resource")
 	if err != nil {
 		return nil, nil, err
 	}
@@ -64,7 +66,7 @@ func (s SshdConfigSubsystem) Apply(ctx context.Context, r catalog.Resource, noop
 		if aug, err = s.run.augopen(subsystemLens, target, resourcePath); err != nil {
 			return nil, nil, err
 		}
-		if v, ok := aug.get("$resource"); ok {
+		if v, ok := aug.Get("$resource"); ok {
 			is = v
 		}
 	}
@@ -87,11 +89,11 @@ func (s SshdConfigSubsystem) Apply(ctx context.Context, r catalog.Resource, noop
 			if aug, err := s.run.augopen(subsystemLens, target, resourcePath); err != nil {
 				ch.Err = err
 			} else {
-				aug.rm("$target/*[label()=~regexp('Subsystem', 'i') and " + p.Name + "]")
+				aug.Rm("$target/*[label()=~regexp('Subsystem', 'i') and " + p.Name + "]")
 			}
 		}
 	case !exists:
-		runlog.Debugf(ctx, SourcesFrom(ctx).Resource, "Nothing to manage: no ensure and the resource doesn't exist")
+		runlog.Debugf(ctx, sources.SourcesFrom(ctx).Resource, "Nothing to manage: no ensure and the resource doesn't exist")
 		return nil, nil, nil
 	default:
 		if !p.HasCommand || is == p.Command {
@@ -100,9 +102,9 @@ func (s SshdConfigSubsystem) Apply(ctx context.Context, r catalog.Resource, noop
 		// is_to_s/should_to_s: format_value_for_display, nil as undef.
 		was := "undef"
 		if v, ok := is.(string); ok {
-			was = puppetQuote(v)
+			was = rubyvalue.PuppetQuote(v)
 		}
-		want := puppetQuote(p.Command)
+		want := rubyvalue.PuppetQuote(p.Command)
 		ch = Change{Property: "command", Was: is, Is: p.Command, Name: "command_changed",
 			Message: "command changed " + was + " to " + want + suffix, WasDisplay: was, IsDisplay: want, DisplayVerbatim: true}
 		if !noop {
@@ -110,7 +112,7 @@ func (s SshdConfigSubsystem) Apply(ctx context.Context, r catalog.Resource, noop
 			if aug, err := s.run.augopen(subsystemLens, target, resourcePath); err != nil {
 				ch.Err = err
 			} else {
-				aug.set("$resource", p.Command)
+				aug.Set("$resource", p.Command)
 			}
 		}
 	}
@@ -128,19 +130,19 @@ func (s SshdConfigSubsystem) create(p subsystemParams, target, resourcePath stri
 	if err != nil {
 		return err
 	}
-	m, err := aug.match("$target/Match")
+	m, err := aug.Match("$target/Match")
 	if err != nil {
 		return err
 	}
 	if len(m) > 0 {
-		aug.insert("$target/Match[1]", "Subsystem", true)
-		aug.clear("$target/Subsystem[last()]/" + p.Name)
+		aug.Insert("$target/Match[1]", "Subsystem", true)
+		aug.Clear("$target/Subsystem[last()]/" + p.Name)
 	}
 	path := "$target/Subsystem/" + p.Name
 	if p.HasCommand {
-		aug.set(path, p.Command)
+		aug.Set(path, p.Command)
 	} else {
-		aug.clear(path)
+		aug.Clear(path)
 	}
 	return nil
 }

@@ -7,6 +7,8 @@ import (
 	"strings"
 
 	"github.com/voxagent/voxagent/internal/catalog"
+	"github.com/voxagent/voxagent/internal/lib/command"
+	"github.com/voxagent/voxagent/internal/lib/sources"
 	"github.com/voxagent/voxagent/internal/runlog"
 )
 
@@ -24,7 +26,7 @@ func (s Sysctl) Apply(ctx context.Context, r catalog.Resource, noop bool) ([]Cha
 	if err != nil {
 		return nil, nil, err
 	}
-	src := SourcesFrom(ctx)
+	src := sources.SourcesFrom(ctx)
 	entry := s.run.sysctl[p.Name]
 
 	// exists? (SYP:284-305): ensure is retrieved even when unset (type.rb
@@ -51,7 +53,7 @@ func (s Sysctl) Apply(ctx context.Context, r catalog.Resource, noop bool) ([]Cha
 		return nil, nil, err
 	}
 	var cur *string
-	if v, ok := aug.get("$resource"); ok {
+	if v, ok := aug.Get("$resource"); ok {
 		cur = &v
 	}
 	var was any
@@ -73,7 +75,7 @@ func (s Sysctl) Apply(ctx context.Context, r catalog.Resource, noop bool) ([]Cha
 		} else {
 			code, out, err := s.runner.run(ctx, s.sysctl, "-n", p.Name)
 			if err == nil && code != 0 {
-				err = execFailure([]string{s.sysctl, "-n", p.Name}, false, code, out)
+				err = command.ExecFailure([]string{s.sysctl, "-n", p.Name}, false, code, out)
 			}
 			if err != nil {
 				return []Change{{Property: "value", Was: was, Is: p.Value, Err: err}}, nil, nil
@@ -107,7 +109,7 @@ func (s Sysctl) sync(ctx context.Context, p sysctlParams, entry sysctlEntry, tar
 		ch.Err = err
 		return []Change{ch}, nil, nil
 	}
-	aug.set("$resource", p.Value)
+	aug.Set("$resource", p.Value)
 	return []Change{ch}, nil, s.flush(ctx, p, entry, target, resourcePath)
 }
 
@@ -120,7 +122,7 @@ func (s Sysctl) flush(ctx context.Context, p sysctlParams, entry sysctlEntry, ta
 		arg := p.Name + "=" + p.Value
 		code, out, err := s.runner.run(ctx, s.sysctl, "-w", arg)
 		if err == nil && code != 0 {
-			err = execFailure([]string{s.sysctl, "-w", arg}, false, code, out)
+			err = command.ExecFailure([]string{s.sysctl, "-w", arg}, false, code, out)
 		}
 		if err != nil {
 			if !p.Silent {
@@ -150,7 +152,7 @@ func (s Sysctl) cleanupDuplicates(p sysctlParams, target, resourcePath string) (
 	if err != nil {
 		return false, err
 	}
-	entries, err := aug.match("$target/" + p.Name)
+	entries, err := aug.Match("$target/" + p.Name)
 	if err != nil {
 		return false, err
 	}
@@ -161,28 +163,28 @@ func (s Sysctl) cleanupDuplicates(p sysctlParams, target, resourcePath string) (
 		if !strings.Contains(path, "#comment") {
 			return false
 		}
-		v, ok := aug.get(path)
+		v, ok := aug.Get(path)
 		return ok && rubyLineStartsWith(v, p.Name+":")
 	}
-	all, err := aug.match("$target/*")
+	all, err := aug.Match("$target/*")
 	if err != nil {
 		return false, err
 	}
 	for i := len(entries) - 1; i >= 1; i-- {
 		e := entries[i]
 		if idx := slices.Index(all, e); idx > 0 && managed(all[idx-1]) {
-			aug.rm(all[idx-1])
+			aug.Rm(all[idx-1])
 		}
-		aug.rm(e)
+		aug.Rm(e)
 	}
-	children, err := aug.match("$target/*")
+	children, err := aug.Match("$target/*")
 	if err != nil {
 		return false, err
 	}
 	if n := len(children); n > 0 && managed(children[n-1]) {
-		aug.rm(children[n-1])
+		aug.Rm(children[n-1])
 	}
-	aug.set("$target/"+p.Name, p.Value)
+	aug.Set("$target/"+p.Name, p.Value)
 	return true, nil
 }
 
@@ -193,18 +195,18 @@ func (s Sysctl) create(p sysctlParams, target, resourcePath string) error {
 	if err != nil {
 		return err
 	}
-	commented, err := aug.match("$target/#comment[.=~regexp('" + p.Name + "([^a-z.].*)?')]")
+	commented, err := aug.Match("$target/#comment[.=~regexp('" + p.Name + "([^a-z.].*)?')]")
 	if err != nil {
 		return err
 	}
 	if len(commented) > 0 {
-		aug.insert(commented[0], p.Name, false)
+		aug.Insert(commented[0], p.Name, false)
 	}
-	aug.set("$target/"+p.Name, p.Value)
+	aug.Set("$target/"+p.Name, p.Value)
 	file := "/files" + strings.TrimSuffix(target, "/")
-	aug.set("/augeas/context", file)
-	aug.defnode("target", file)
-	aug.defvar("resource", resourcePath)
+	aug.Set("/augeas/context", file)
+	aug.Defnode("target", file)
+	aug.Defvar("resource", resourcePath)
 	return nil
 }
 

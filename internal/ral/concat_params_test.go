@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/voxagent/voxagent/internal/catalog"
+	"github.com/voxagent/voxagent/internal/lib/rubyvalue"
 )
 
 func concatFileRes(title string, params map[string]any, marked ...string) catalog.Resource {
@@ -89,7 +90,7 @@ func TestConcatFileParams(t *testing.T) {
 			if verr == nil || verr.Error() != tc.want {
 				t.Fatalf("Validate error = %v\nwant %s", verr, tc.want)
 			}
-			var uv *unimplementedValue
+			var uv *rubyvalue.UnimplementedValue
 			if errors.As(err, &uv) {
 				t.Fatalf("a Ruby refusal must not read as an unimplemented value: %v", err)
 			}
@@ -136,7 +137,7 @@ func TestConcatFileParamsValues(t *testing.T) {
 }
 
 // TestConcatFileUnimplemented: shapes Ruby accepts and native does not
-// implement come back as *unimplementedValue (spec §0 (b), (d), (e), (f)).
+// implement come back as *rubyvalue.UnimplementedValue (spec §0 (b), (d), (e), (f)).
 func TestConcatFileUnimplemented(t *testing.T) {
 	cases := []struct {
 		name   string
@@ -173,12 +174,12 @@ func TestConcatFileUnimplemented(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			_, err := parseConcatFile(concatFileRes(tc.title, tc.params))
-			var uv *unimplementedValue
+			var uv *rubyvalue.UnimplementedValue
 			if !errors.As(err, &uv) {
-				t.Fatalf("error = %v, want *unimplementedValue", err)
+				t.Fatalf("error = %v, want *rubyvalue.UnimplementedValue", err)
 			}
-			if uv.attr != tc.attr {
-				t.Errorf("attr = %q, want %q (%v)", uv.attr, tc.attr, err)
+			if uv.Attr != tc.attr {
+				t.Errorf("attr = %q, want %q (%v)", uv.Attr, tc.attr, err)
 			}
 		})
 	}
@@ -270,15 +271,15 @@ func TestConcatFragmentUnimplemented(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			_, err := parseConcatFragment(concatFragRes("x", tc.params))
-			var uv *unimplementedValue
-			if !errors.As(err, &uv) || uv.attr != tc.attr {
-				t.Fatalf("error = %v, want *unimplementedValue for %s", err, tc.attr)
+			var uv *rubyvalue.UnimplementedValue
+			if !errors.As(err, &uv) || uv.Attr != tc.attr {
+				t.Fatalf("error = %v, want *rubyvalue.UnimplementedValue for %s", err, tc.attr)
 			}
 		})
 	}
 	// A refusal that comes first wins over a later unimplemented shape.
 	_, err := parseConcatFragment(concatFragRes("x", map[string]any{"target": true, "source": "s"}))
-	var uv *unimplementedValue
+	var uv *rubyvalue.UnimplementedValue
 	if err == nil || errors.As(err, &uv) {
 		t.Errorf("target refusal should come before source: %v", err)
 	}
@@ -366,7 +367,7 @@ func TestConcatDelegationRedactsMarkedValues(t *testing.T) {
 		t.Run(attr, func(t *testing.T) {
 			r := concatFileRes("/etc/a", map[string]any{attr: secret}, attr)
 			_, err := parseConcatFile(r)
-			var uv *unimplementedValue
+			var uv *rubyvalue.UnimplementedValue
 			if !errors.As(err, &uv) {
 				return // a refusal that shows no value
 			}

@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/voxagent/voxagent/internal/catalog"
+	"github.com/voxagent/voxagent/internal/lib/raltest"
 )
 
 func userRes(title string, params map[string]any) catalog.Resource {
@@ -47,7 +48,7 @@ func TestUserParamsRefusals(t *testing.T) {
 		{map[string]any{"managehome": "maybe", "role_membership": "bogus"}, `Parameter managehome failed on User[u9]: Munging failed for value "maybe" in class managehome: expected a boolean value`},
 		{map[string]any{"ensure": "role", "groups": "a,b"}, "Parameter ensure failed on User[u9]: Provider useradd must have features 'manages_solaris_rbac' to set 'ensure' to 'role'"},
 	} {
-		if got := errText(User{}.Validate(userRes("u9", tc.params))); got != tc.want {
+		if got := raltest.ErrText(User{}.Validate(userRes("u9", tc.params))); got != tc.want {
 			t.Errorf("%v:\n got %q\nwant %q", tc.params, got, tc.want)
 		}
 	}
@@ -57,7 +58,7 @@ func TestUserParamsAccepts(t *testing.T) {
 	// A Sensitive password is refused without its value in the text.
 	r := userRes("u9", map[string]any{"password": "a:b"})
 	r.SensitiveParameters = []string{"password"}
-	if got := errText(User{}.Validate(r)); got != "Parameter password failed on User[u9]: Passwords cannot include ':'" {
+	if got := raltest.ErrText(User{}.Validate(r)); got != "Parameter password failed on User[u9]: Passwords cannot include ':'" {
 		t.Errorf("sensitive password: %q", got)
 	}
 	// Dropped for a missing feature before munging: never refused.

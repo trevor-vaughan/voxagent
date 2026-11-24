@@ -8,6 +8,8 @@ import (
 	"strings"
 
 	"github.com/voxagent/voxagent/internal/catalog"
+	"github.com/voxagent/voxagent/internal/lib/nameservice"
+	"github.com/voxagent/voxagent/internal/lib/rubyvalue"
 )
 
 // userParams is a User resource munged as type/user.rb munges it. Ensure is ""
@@ -76,7 +78,7 @@ func parseUserParams(r catalog.Resource) (userParams, error) {
 		p.Name = n
 	}
 	unsupported := func(name string, v any) error {
-		return &unimplementedValue{r.Ref(), name, rubyInspectValue(v)}
+		return &rubyvalue.UnimplementedValue{Ref: r.Ref(), Attr: name, Shown: rubyvalue.InspectValue(v)}
 	}
 
 	switch v := r.Parameters["ensure"]; v {
@@ -84,9 +86,9 @@ func parseUserParams(r catalog.Resource) (userParams, error) {
 	case "present", "absent":
 		p.Ensure = v.(string)
 	case "role":
-		return p, paramFailure(r, "ensure", "Provider useradd must have features 'manages_solaris_rbac' to set 'ensure' to 'role'")
+		return p, rubyvalue.ParamFailure(r, "ensure", "Provider useradd must have features 'manages_solaris_rbac' to set 'ensure' to 'role'")
 	default:
-		return p, paramFailure(r, "ensure", fmt.Sprintf("Invalid value %s. Valid values are present, absent, role.", rubyInspectValue(v)))
+		return p, rubyvalue.ParamFailure(r, "ensure", fmt.Sprintf("Invalid value %s. Valid values are present, absent, role.", rubyvalue.InspectValue(v)))
 	}
 
 	text := func(name string, dst **string) error {
@@ -102,16 +104,16 @@ func parseUserParams(r catalog.Resource) (userParams, error) {
 	// id is the uid and gid munge: a string of digits and dashes is read as
 	// Ruby's Integer(); any other string is kept.
 	id := func(name string, dst *any) error {
-		switch v := param(r, name).(type) {
+		switch v := rubyvalue.Param(r, name).(type) {
 		case nil:
 		case string:
 			if !idPattern.MatchString(v) {
 				*dst = v
 				return nil
 			}
-			n, err := rubyInteger(v)
+			n, err := rubyvalue.Integer(v)
 			if err != nil {
-				return mungeFailure(r, name, v, err.Error())
+				return rubyvalue.MungeFailure(r, name, v, err.Error())
 			}
 			*dst = n
 		case float64:
@@ -127,7 +129,7 @@ func parseUserParams(r catalog.Resource) (userParams, error) {
 	// age validates on to_s, then munges a String with Integer().
 	age := func(name, label string, dst **int64) error {
 		var text string
-		switch v := param(r, name).(type) {
+		switch v := rubyvalue.Param(r, name).(type) {
 		case nil:
 			return nil
 		case string:
@@ -136,7 +138,7 @@ func parseUserParams(r catalog.Resource) (userParams, error) {
 			if v == math.Trunc(v) && math.Abs(v) < 1<<53 {
 				text = strconv.FormatInt(int64(v), 10)
 			} else {
-				text = rubyInspectValue(v)
+				text = rubyvalue.InspectValue(v)
 			}
 		case bool:
 			text = strconv.FormatBool(v)
@@ -144,11 +146,11 @@ func parseUserParams(r catalog.Resource) (userParams, error) {
 			return unsupported(name, v)
 		}
 		if !agePattern.MatchString(text) {
-			return paramFailure(r, name, label+" must be provided as a number.")
+			return rubyvalue.ParamFailure(r, name, label+" must be provided as a number.")
 		}
-		n, err := rubyInteger(text)
+		n, err := rubyvalue.Integer(text)
 		if err != nil {
-			return mungeFailure(r, name, r.Parameters[name], err.Error())
+			return rubyvalue.MungeFailure(r, name, r.Parameters[name], err.Error())
 		}
 		*dst = &n
 		return nil
@@ -183,10 +185,10 @@ func parseUserParams(r catalog.Resource) (userParams, error) {
 		}
 	}
 	if r.Parameters["password"] != nil && p.Password == nil {
-		return p, &unimplementedValue{r.Ref(), "password", "[redacted]"}
+		return p, &rubyvalue.UnimplementedValue{Ref: r.Ref(), Attr: "password", Shown: "[redacted]"}
 	}
 	if p.Password != nil && strings.Contains(*p.Password, ":") {
-		return p, paramFailure(r, "password", "Passwords cannot include ':'")
+		return p, rubyvalue.ParamFailure(r, "password", "Passwords cannot include ':'")
 	}
 	if err := age("password_min_age", "Password minimum age", &p.MinAge); err != nil {
 		return p, err
@@ -217,11 +219,11 @@ func parseUserParams(r catalog.Resource) (userParams, error) {
 	for _, g := range p.Groups {
 		switch {
 		case gidNumber.MatchString(g):
-			return p, paramFailure(r, "groups", "Group names must be provided, not GID numbers.")
+			return p, rubyvalue.ParamFailure(r, "groups", "Group names must be provided, not GID numbers.")
 		case strings.Contains(g, ","):
-			return p, paramFailure(r, "groups", "Group names must be provided as an array, not a comma-separated list.")
+			return p, rubyvalue.ParamFailure(r, "groups", "Group names must be provided as an array, not a comma-separated list.")
 		case g == "":
-			return p, paramFailure(r, "groups", `Group names must not be empty. If you want to specify "no groups" pass an empty array`)
+			return p, rubyvalue.ParamFailure(r, "groups", `Group names must not be empty. If you want to specify "no groups" pass an empty array`)
 		}
 	}
 
@@ -229,7 +231,7 @@ func parseUserParams(r catalog.Resource) (userParams, error) {
 	case nil:
 	case string:
 		if v != "absent" && !datePattern.MatchString(v) {
-			return p, paramFailure(r, "expiry", `Expiry dates must be YYYY-MM-DD or the string "absent"`)
+			return p, rubyvalue.ParamFailure(r, "expiry", `Expiry dates must be YYYY-MM-DD or the string "absent"`)
 		}
 		p.Expiry = &v
 	default:
@@ -241,9 +243,9 @@ func parseUserParams(r catalog.Resource) (userParams, error) {
 		if v == nil {
 			return nil
 		}
-		val, err := rubyBool(v)
+		val, err := rubyvalue.Bool(v)
 		if err != nil {
-			return mungeFailure(r, name, v, err.Error())
+			return rubyvalue.MungeFailure(r, name, v, err.Error())
 		}
 		*dst = val
 		return nil
@@ -256,7 +258,7 @@ func parseUserParams(r catalog.Resource) (userParams, error) {
 				*inclusive = true
 			}
 		default:
-			return paramFailure(r, name, fmt.Sprintf("Invalid value %s. Valid values are inclusive, minimum.", rubyInspectValue(v)))
+			return rubyvalue.ParamFailure(r, name, fmt.Sprintf("Invalid value %s. Valid values are inclusive, minimum.", rubyvalue.InspectValue(v)))
 		}
 		return nil
 	}
@@ -311,7 +313,7 @@ func (User) ConversionDebug(r catalog.Resource) []string {
 	var lines []string
 	for _, d := range userDropped {
 		if d.attr == "forcelocal" || r.Parameters[d.attr] != nil {
-			lines = append(lines, fmt.Sprintf(featureMissing, useraddProvider, d.feature, d.attr))
+			lines = append(lines, fmt.Sprintf(nameservice.FeatureMissing, useraddProvider, d.feature, d.attr))
 		}
 	}
 	return lines

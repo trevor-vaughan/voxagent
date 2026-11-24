@@ -9,6 +9,8 @@ import (
 	"testing"
 
 	"github.com/voxagent/voxagent/internal/catalog"
+	"github.com/voxagent/voxagent/internal/lib/augeas"
+	"github.com/voxagent/voxagent/internal/lib/raltest"
 )
 
 var (
@@ -30,11 +32,11 @@ const resolvChanges = "rm #comment\nrm nameserver[.!=\"10.0.0.53\"]\nset nameser
 
 // kmodRes is an Augeas resource of the kmod shape (incl and lens).
 func kmodRes(title string, changes any) catalog.Resource {
-	return augRes("Augeas", title, map[string]any{"incl": blacklistConf, "lens": "Modprobe.lns", "changes": changes})
+	return raltest.AugRes("Augeas", title, map[string]any{"incl": blacklistConf, "lens": "Modprobe.lns", "changes": changes})
 }
 
 func resolvRes() catalog.Resource {
-	return augRes("Augeas", "/etc/resolv.conf", map[string]any{"context": "/files/etc/resolv.conf", "changes": resolvChanges})
+	return raltest.AugRes("Augeas", "/etc/resolv.conf", map[string]any{"context": "/files/etc/resolv.conf", "changes": resolvChanges})
 }
 
 // augeasOver builds Augeas over the run's library with lens path "", the
@@ -81,20 +83,20 @@ func providerSource(r caseResult) string { return r.ref + "(provider=augeas)" }
 
 // noopCalls is a live trace's retrieve half under noop (spec §4 step 7): per
 // handle, every call through the dry run's saved-files lookup, then the close.
-func noopCalls(calls []traceCall) []traceCall {
-	var out []traceCall
-	done := map[augHandle]bool{}
+func noopCalls(calls []raltest.TraceCall) []raltest.TraceCall {
+	var out []raltest.TraceCall
+	done := map[augeas.Handle]bool{}
 	for i := 0; i < len(calls); i++ {
 		c := calls[i]
-		if done[c.handle] {
+		if done[c.Handle] {
 			continue
 		}
 		out = append(out, c)
-		if c.fn == "aug_match" && *c.args[0] == "/augeas/events/saved" {
-			out = append(out, calls[i+1:i+1+len(c.matches)]...)
-			i += len(c.matches)
-			out = append(out, traceCall{src: c.src + " (noop close)", handle: c.handle, fn: "aug_close"})
-			done[c.handle] = true
+		if c.Fn == "aug_match" && *c.Args[0] == "/augeas/events/saved" {
+			out = append(out, calls[i+1:i+1+len(c.Matches)]...)
+			i += len(c.Matches)
+			out = append(out, raltest.TraceCall{Src: c.Src + " (noop close)", Handle: c.Handle, Fn: "aug_close"})
+			done[c.Handle] = true
 		}
 	}
 	return out
@@ -103,7 +105,7 @@ func noopCalls(calls []traceCall) []traceCall {
 // M42: two blacklist entries added, each in its own handle, dry run then sync.
 func TestAugeasReplays06a(t *testing.T) {
 	var unlinked []string
-	got := runAugeasCase(t, loadTrace(t, "06a"), nil, augeasOver(&unlinked), []catalog.Resource{
+	got := runAugeasCase(t, raltest.LoadTrace(t, "06a"), nil, augeasOver(&unlinked), []catalog.Resource{
 		kmodRes("kmod::setting blacklist cramfs", []any{"set blacklist[. = 'cramfs'] cramfs"}),
 		kmodRes("kmod::setting blacklist udf", []any{"set blacklist[. = 'udf'] udf"}),
 	}, false)
@@ -132,7 +134,7 @@ func TestAugeasReplays06a(t *testing.T) {
 // handle closes and sync is skipped.
 func TestAugeasReplays06aNoop(t *testing.T) {
 	var unlinked []string
-	got := runAugeasCase(t, noopCalls(loadTrace(t, "06a")), nil, augeasOver(&unlinked), []catalog.Resource{
+	got := runAugeasCase(t, noopCalls(raltest.LoadTrace(t, "06a")), nil, augeasOver(&unlinked), []catalog.Resource{
 		kmodRes("kmod::setting blacklist cramfs", []any{"set blacklist[. = 'cramfs'] cramfs"}),
 		kmodRes("kmod::setting blacklist udf", []any{"set blacklist[. = 'udf'] udf"}),
 	}, true)
@@ -151,7 +153,7 @@ func TestAugeasReplays06aNoop(t *testing.T) {
 // M43: the rerun's dry run saves nothing, so both resources are in sync.
 func TestAugeasReplays06b(t *testing.T) {
 	var unlinked []string
-	got := runAugeasCase(t, loadTrace(t, "06b"), nil, augeasOver(&unlinked), []catalog.Resource{
+	got := runAugeasCase(t, raltest.LoadTrace(t, "06b"), nil, augeasOver(&unlinked), []catalog.Resource{
 		kmodRes("kmod::setting blacklist cramfs", []any{"set blacklist[. = 'cramfs'] cramfs"}),
 		kmodRes("kmod::setting blacklist udf", []any{"set blacklist[. = 'udf'] udf"}),
 	}, false)
@@ -171,7 +173,7 @@ func TestAugeasReplays06b(t *testing.T) {
 // fails in retrieve. Its dependent never runs, so it has no handle.
 func TestAugeasReplays06c(t *testing.T) {
 	var unlinked []string
-	got := runAugeasCase(t, loadTrace(t, "06c"), nil, augeasOver(&unlinked), []catalog.Resource{
+	got := runAugeasCase(t, raltest.LoadTrace(t, "06c"), nil, augeasOver(&unlinked), []catalog.Resource{
 		kmodRes("kmod option", []any{"set blacklist[. = 'cramfs'] cramfs", "set options[. = 'tipc']/foo bar"}),
 	}, false)
 	wantFailure(t, got[0], "Save failed, see debug output for details")
@@ -194,7 +196,7 @@ func TestAugeasReplays06c(t *testing.T) {
 // defnode and $opts paths reach libaugeas verbatim.
 func TestAugeasReplays06d(t *testing.T) {
 	var unlinked []string
-	got := runAugeasCase(t, loadTrace(t, "06d"), nil, augeasOver(&unlinked), []catalog.Resource{resolvRes()}, false)
+	got := runAugeasCase(t, raltest.LoadTrace(t, "06d"), nil, augeasOver(&unlinked), []catalog.Resource{resolvRes()}, false)
 	wantReturns(t, got[0], "executed successfully")
 	if want := []string{"/etc/resolv.conf.augnew"}; !reflect.DeepEqual(unlinked, want) {
 		t.Errorf("unlinked %q, want %q", unlinked, want)
@@ -209,7 +211,7 @@ func TestAugeasReplays06d(t *testing.T) {
 // M45 noop.txt.
 func TestAugeasReplays06dNoop(t *testing.T) {
 	var unlinked []string
-	got := runAugeasCase(t, noopCalls(loadTrace(t, "06d")), nil, augeasOver(&unlinked), []catalog.Resource{resolvRes()}, true)
+	got := runAugeasCase(t, noopCalls(raltest.LoadTrace(t, "06d")), nil, augeasOver(&unlinked), []catalog.Resource{resolvRes()}, true)
 	wantReturns(t, got[0], "executed successfully (noop)")
 	if len(unlinked) != 1 {
 		t.Errorf("unlinked %q", unlinked)
@@ -219,7 +221,7 @@ func TestAugeasReplays06dNoop(t *testing.T) {
 // M46.
 func TestAugeasReplays06e(t *testing.T) {
 	var unlinked []string
-	got := runAugeasCase(t, loadTrace(t, "06e"), nil, augeasOver(&unlinked), []catalog.Resource{resolvRes()}, false)
+	got := runAugeasCase(t, raltest.LoadTrace(t, "06e"), nil, augeasOver(&unlinked), []catalog.Resource{resolvRes()}, false)
 	wantInSync(t, got[0])
 }
 
@@ -227,7 +229,7 @@ func TestAugeasReplays06e(t *testing.T) {
 // send the same two commands.
 func TestAugeasReplays06i(t *testing.T) {
 	var unlinked []string
-	got := runAugeasCase(t, loadTrace(t, "06i"), nil, augeasOver(&unlinked), []catalog.Resource{
+	got := runAugeasCase(t, raltest.LoadTrace(t, "06i"), nil, augeasOver(&unlinked), []catalog.Resource{
 		kmodRes("changes as array", []any{"set blacklist[. = 'a1'] a1", "set blacklist[. = 'a2'] a2"}),
 		kmodRes("changes as string", "set blacklist[. = 's1'] s1\nset blacklist[. = 's2'] s2"),
 		kmodRes("changes as one string with CRLF-free blank lines", "\n  set blacklist[. = 'b1'] b1\n\n  set blacklist[. = 'b2'] b2\n"),
@@ -241,7 +243,7 @@ func TestAugeasReplays06i(t *testing.T) {
 // M52.
 func TestAugeasReplays06k(t *testing.T) {
 	var unlinked []string
-	got := runAugeasCase(t, loadTrace(t, "06k"), nil, augeasOver(&unlinked), []catalog.Resource{
+	got := runAugeasCase(t, raltest.LoadTrace(t, "06k"), nil, augeasOver(&unlinked), []catalog.Resource{
 		kmodRes("kmod option", []any{"set options[. = 'tipc'] tipc", "set options[. = 'tipc']/foo bar"}),
 		kmodRes("kmod rm", "rm blacklist[. = 'udf']"),
 	}, false)
@@ -254,7 +256,7 @@ func TestAugeasReplays06k(t *testing.T) {
 // sync failure, not a retrieve failure.
 func TestAugeasReplays06r(t *testing.T) {
 	var unlinked []string
-	got := runAugeasCase(t, loadTrace(t, "06r"), nil, augeasOver(&unlinked), []catalog.Resource{resolvRes()}, false)
+	got := runAugeasCase(t, raltest.LoadTrace(t, "06r"), nil, augeasOver(&unlinked), []catalog.Resource{resolvRes()}, false)
 	r := got[0]
 	if r.err != nil || len(r.changes) != 1 {
 		t.Fatalf("changes %+v err %v", r.changes, r.err)
@@ -276,8 +278,8 @@ func TestAugeasReplays06r(t *testing.T) {
 func TestAugeasReplaysRuntimeErrors(t *testing.T) {
 	var unlinked []string
 	res := func(title, change string) catalog.Resource { return kmodRes(title, []any{change}) }
-	bad := augRes("Augeas", "e12 bad lens name", map[string]any{"incl": blacklistConf, "lens": "Nonesuch.lns", "changes": []any{"set foo bar"}})
-	got := runAugeasCase(t, loadTrace(t, "augeas-runtime-errors"), nil, augeasOver(&unlinked), []catalog.Resource{
+	bad := raltest.AugRes("Augeas", "e12 bad lens name", map[string]any{"incl": blacklistConf, "lens": "Nonesuch.lns", "changes": []any{"set foo bar"}})
+	got := runAugeasCase(t, raltest.LoadTrace(t, "augeas-runtime-errors"), nil, augeasOver(&unlinked), []catalog.Resource{
 		res("e2 rm bad path", "rm blacklist[. = "),
 		res("e6 one token", "rm"),
 		res("e7 insert bad where", "insert foo sideways blacklist"),
@@ -322,7 +324,7 @@ func TestAugeasReplaysRuntimeErrors(t *testing.T) {
 // A notify only refreshes; Augeas has no refresh, and the rerun is in sync.
 func TestAugeasReplaysNotified(t *testing.T) {
 	var unlinked []string
-	got := runAugeasCase(t, loadTrace(t, "augeas-notified"), nil, augeasOver(&unlinked), []catalog.Resource{
+	got := runAugeasCase(t, raltest.LoadTrace(t, "augeas-notified"), nil, augeasOver(&unlinked), []catalog.Resource{
 		kmodRes("blacklist cramfs", []any{"set blacklist[. = 'cramfs'] cramfs"}),
 	}, false)
 	wantInSync(t, got[0])
@@ -331,7 +333,7 @@ func TestAugeasReplaysNotified(t *testing.T) {
 // puppet apply passes "" whatever the libdir's lenses (spec §0 row 4).
 func TestAugeasReplaysApplyIgnoresLibdirLens(t *testing.T) {
 	var unlinked []string
-	got := runAugeasCase(t, loadTrace(t, "augeas-apply-ignores-libdir-lens"), []string{augeasCaseLibdir + "/augeas/lenses"}, augeasOver(&unlinked), []catalog.Resource{
+	got := runAugeasCase(t, raltest.LoadTrace(t, "augeas-apply-ignores-libdir-lens"), []string{augeasCaseLibdir + "/augeas/lenses"}, augeasOver(&unlinked), []catalog.Resource{
 		kmodRes("kmod::setting blacklist cramfs", []any{"set blacklist[. = 'cramfs'] cramfs"}),
 	}, false)
 	wantInSync(t, got[0])
@@ -361,7 +363,7 @@ h1 aug_close
 // lensPath and the real unlink, returning its result.
 func applyScript(t *testing.T, script, lensPath string, r catalog.Resource, noop bool) caseResult {
 	t.Helper()
-	lib := newScriptLib(t, parseTrace(t, t.Name(), script))
+	lib := raltest.NewScriptLib(t, raltest.ParseTrace(t, t.Name(), script))
 	return runAugeasCase(t, nil, nil, func(*augeasRun) []Provider {
 		return []Provider{newAugeas(lib, lensPath)}
 	}, []catalog.Resource{r}, noop)[0]
@@ -507,7 +509,7 @@ h1 aug_mv "` + bp + `/foo" "` + bp + `/bar" => ` + syncRC + `
 // property's failure, and the handle is still closed once.
 func TestAugeasMvSync(t *testing.T) {
 	ok := mvSync("0") + "h1 aug_save => 0\nh1 aug_close\n"
-	lib := newScriptLib(t, parseTrace(t, t.Name(), ok))
+	lib := raltest.NewScriptLib(t, raltest.ParseTrace(t, t.Name(), ok))
 	var unlinked []string
 	a := newAugeas(lib, "")
 	a.unlink = func(p string) error { unlinked = append(unlinked, p); return nil }
@@ -519,7 +521,7 @@ func TestAugeasMvSync(t *testing.T) {
 	}
 
 	fails := mvSync("-1") + "h1 aug_close\n"
-	lib = newScriptLib(t, parseTrace(t, t.Name()+"/fails", fails))
+	lib = raltest.NewScriptLib(t, raltest.ParseTrace(t, t.Name()+"/fails", fails))
 	a = newAugeas(lib, "")
 	a.unlink = func(string) error { return nil }
 	r = runAugeasCase(t, nil, nil, func(*augeasRun) []Provider { return []Provider{a} },
@@ -551,7 +553,7 @@ h1 aug_get "/augeas/version" => 1 "1.15.0"
 h1 aug_set "/augeas/save" "newfile" => 0
 h1 aug_set "/files/etc/x/a" "b" => 0
 ` + inSyncTail
-	r := applyScript(t, script, "", augRes("Augeas", "ctx", map[string]any{"context": "/files/etc/x/", "changes": "set a b"}), false)
+	r := applyScript(t, script, "", raltest.AugRes("Augeas", "ctx", map[string]any{"context": "/files/etc/x/", "changes": "set a b"}), false)
 	wantInSync(t, r)
 	if len(r.warnings) != 0 {
 		t.Errorf("warnings %+v", r.warnings)
@@ -588,7 +590,7 @@ h1 aug_get "/augeas/version" => 1 "1.15.0"
 h1 aug_set "/augeas/save" "newfile" => 0
 h1 aug_set "/files/a" "b" => 0
 ` + inSyncTail
-	r := applyScript(t, script, "", augRes("Augeas", "e", map[string]any{"incl": "", "lens": "", "changes": "set a b"}), false)
+	r := applyScript(t, script, "", raltest.AugRes("Augeas", "e", map[string]any{"incl": "", "lens": "", "changes": "set a b"}), false)
 	wantInSync(t, r)
 }
 

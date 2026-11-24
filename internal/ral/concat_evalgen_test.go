@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/voxagent/voxagent/internal/catalog"
+	"github.com/voxagent/voxagent/internal/lib/sources"
 	"github.com/voxagent/voxagent/internal/report"
 )
 
@@ -31,7 +32,7 @@ func evalGen(t *testing.T, v ConcatVersion, cat *catalog.Catalog, title string) 
 	if i < 0 {
 		t.Fatalf("no Concat_file[%s]", title)
 	}
-	ctx := WithSources(context.Background(), Sources{Resource: "/Stage[main]/Main/Concat_file[" + title + "]"})
+	ctx := sources.WithSources(context.Background(), sources.Sources{Resource: "/Stage[main]/Main/Concat_file[" + title + "]"})
 	c := ConcatFile{Version: v, Catalog: cat}
 	if !c.EvalGenerates(cat.Resources[i]) {
 		t.Fatal("EvalGenerates = false")

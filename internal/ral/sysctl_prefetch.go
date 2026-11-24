@@ -7,6 +7,8 @@ import (
 	"strings"
 
 	"github.com/voxagent/voxagent/internal/catalog"
+	"github.com/voxagent/voxagent/internal/lib/command"
+	"github.com/voxagent/voxagent/internal/lib/rubyvalue"
 	"github.com/voxagent/voxagent/internal/runlog"
 )
 
@@ -61,7 +63,7 @@ func (s Sysctl) Prefetch(ctx context.Context, rs []catalog.Resource) (Provider, 
 		if inFile[t] {
 			continue
 		}
-		m, err := aug.match("$target/" + t)
+		m, err := aug.Match("$target/" + t)
 		if err != nil {
 			return s, err
 		}
@@ -71,13 +73,13 @@ func (s Sysctl) Prefetch(ctx context.Context, rs []catalog.Resource) (Provider, 
 		// The value and the comment are read only because Ruby reads them
 		// (spec §0: every call, reads included): retrieve reads the value
 		// again, and native refuses comment.
-		aug.get(m[0])
-		c, err := aug.match("$target/#comment[following-sibling::*[1][self::" + t + "]]")
+		aug.Get(m[0])
+		c, err := aug.Match("$target/#comment[following-sibling::*[1][self::" + t + "]]")
 		if err != nil {
 			return s, err
 		}
 		if len(c) > 0 {
-			aug.get(c[0])
+			aug.Get(c[0])
 		}
 		inFile[t] = true
 	}
@@ -89,7 +91,7 @@ func (s Sysctl) Prefetch(ctx context.Context, rs []catalog.Resource) (Provider, 
 			return s, err
 		}
 		if code != 0 {
-			return s, execFailure(append([]string{s.sysctl}, args...), false, code, o)
+			return s, command.ExecFailure(append([]string{s.sysctl}, args...), false, code, o)
 		}
 		out.WriteString(o)
 	}
@@ -132,7 +134,7 @@ func parseSysctlE(out string) []string {
 			return r
 		}, line)
 		key, _, _ := strings.Cut(ascii, "=")
-		keys = append(keys, rubyStrip(key))
+		keys = append(keys, rubyvalue.Strip(key))
 	}
 	return keys
 }
@@ -146,13 +148,13 @@ func parseSysctlE(out string) []string {
 // "~" reached before any hit is expanded by Ruby against HOME (and raises when
 // HOME is unset), so its answer is Ruby's alone: none here.
 func resolveSysctl(path string, executable func(string) bool) (string, bool) {
-	entries := rubySplitPath(path)
+	entries := rubyvalue.SplitPath(path)
 	for _, d := range []string{"/usr/sbin", "/sbin"} {
 		if !slices.Contains(entries, d) {
 			path += ":" + d
 		}
 	}
-	for _, dir := range rubySplitPath(path) {
+	for _, dir := range rubyvalue.SplitPath(path) {
 		if strings.HasPrefix(dir, "~") {
 			return "", false
 		}
@@ -174,9 +176,6 @@ func rubyChomp(s string) string {
 	}
 	return strings.TrimSuffix(s, "\r")
 }
-
-// rubyStrip is String#strip: NUL and ASCII whitespace from both ends.
-func rubyStrip(s string) string { return strings.Trim(s, "\x00 \t\n\v\f\r") }
 
 // rubyCollapseSpace is gsub(/\s+/, ' '): each run of Ruby's \s (ASCII space,
 // \t, \n, \v, \f, \r only) becomes one space.

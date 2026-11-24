@@ -12,6 +12,9 @@ import (
 	"testing"
 
 	"github.com/voxagent/voxagent/internal/catalog"
+	"github.com/voxagent/voxagent/internal/lib/command"
+	"github.com/voxagent/voxagent/internal/lib/nameservice"
+	"github.com/voxagent/voxagent/internal/lib/raltest"
 )
 
 // testHash is M7's password hash. It is a measurement fixture, not a secret,
@@ -24,7 +27,7 @@ func scrub(v any) string { return strings.ReplaceAll(fmt.Sprintf("%q", v), testH
 // directory stripped, and its options.
 type argvCall struct {
 	argv []string
-	opts argvOpts
+	opts command.ArgvOpts
 }
 
 // argvRunner is a shadowRunner that keeps each argv element apart, so a
@@ -37,7 +40,7 @@ type argvRunner struct {
 	results map[string]runResult
 }
 
-func (r *argvRunner) run(_ context.Context, o argvOpts, name string, args ...string) (int, string, error) {
+func (r *argvRunner) Run(_ context.Context, o command.ArgvOpts, name string, args ...string) (int, string, error) {
 	argv := append([]string{strings.TrimPrefix(name, r.dir+"/")}, args...)
 	r.calls = append(r.calls, argvCall{argv: argv, opts: o})
 	res := r.results[strings.Join(argv, " ")]
@@ -52,18 +55,18 @@ func (r *argvRunner) argvs() [][]string {
 	return out
 }
 
-// userNSS is fakeNSS with shadow entries.
+// userNSS is raltest.FakeNSS with shadow entries.
 type userNSS struct {
-	fakeNSS
-	shadows map[string]shadowEntry
+	raltest.FakeNSS
+	shadows map[string]nameservice.ShadowEntry
 }
 
-func (n userNSS) shadow(name string) (shadowEntry, bool, error) {
+func (n userNSS) Shadow(name string) (nameservice.ShadowEntry, bool, error) {
 	s, ok := n.shadows[name]
 	return s, ok, nil
 }
 
-// withUserBin points shadowCommand at stand-ins for useradd's commands.
+// withUserBin points nameservice.ShadowCommand at stand-ins for useradd's commands.
 func withUserBin(t *testing.T) string {
 	t.Helper()
 	dir := t.TempDir()
@@ -72,19 +75,19 @@ func withUserBin(t *testing.T) string {
 			t.Fatal(err)
 		}
 	}
-	saved := shadowPath
-	shadowPath = []string{dir}
-	t.Cleanup(func() { shadowPath = saved })
+	saved := nameservice.ShadowPath
+	nameservice.ShadowPath = []string{dir}
+	t.Cleanup(func() { nameservice.ShadowPath = saved })
 	return dir
 }
 
 // The groups the measured image has, plus the ones the cases seed.
-var userHostGroups = []groupEntry{
+var userHostGroups = []nameservice.GroupEntry{
 	{Name: "root", GID: 0}, {Name: "adm", GID: 4}, {Name: "wheel", GID: 10}, {Name: "audio", GID: 63},
 	{Name: "g2", GID: 2200}, {Name: "g4", GID: 2500},
 }
 
-func applyUser(t *testing.T, ctx context.Context, r catalog.Resource, noop bool, ns nameService, results map[string]runResult) ([]Change, *argvRunner) {
+func applyUser(t *testing.T, ctx context.Context, r catalog.Resource, noop bool, ns nameservice.NameService, results map[string]runResult) ([]Change, *argvRunner) {
 	t.Helper()
 	runner := &argvRunner{dir: withUserBin(t), results: results}
 	changes, warnings, err := User{ns: ns, runner: runner}.Apply(ctx, r, noop)
@@ -102,13 +105,13 @@ func TestUserCreateArgv(t *testing.T) {
 		name   string
 		title  string
 		params map[string]any
-		groups []groupEntry
+		groups []nameservice.GroupEntry
 		want   [][]string
 		redact bool
 	}{
 		{"M1 minimal", "u1", map[string]any{"ensure": "present"}, nil, [][]string{{"useradd", "-M", "u1"}}, false},
 		{"M31 implicit ensure", "u11", map[string]any{"uid": 2011.0}, nil, [][]string{{"useradd", "-u", "2011", "-M", "u11"}}, false},
-		{"M5 same-name group", "u3", map[string]any{"ensure": "present"}, []groupEntry{{Name: "u3", GID: 1000}},
+		{"M5 same-name group", "u3", map[string]any{"ensure": "present"}, []nameservice.GroupEntry{{Name: "u3", GID: 1000}},
 			[][]string{{"useradd", "-g", "u3", "-M", "u3"}}, false},
 		{"M3 full without password", "u2b", map[string]any{
 			"ensure": "present", "comment": "A, B", "expiry": "2030-01-02", "gid": "g2", "groups": []any{"wheel", "adm"},
@@ -132,16 +135,16 @@ func TestUserCreateArgv(t *testing.T) {
 		// Under minimum the should csv adds the groups that already list the
 		// not-yet-created user (posix.rb's fallback scan).
 		{"minimum adds listed groups", "u", map[string]any{"groups": []any{"wheel"}},
-			[]groupEntry{{Name: "audio", GID: 63, Members: []string{"u"}}},
+			[]nameservice.GroupEntry{{Name: "audio", GID: 63, Members: []string{"u"}}},
 			[][]string{{"useradd", "-G", "audio,wheel", "-M", "u"}}, false},
 		{"inclusive ignores listed groups", "u", map[string]any{"groups": []any{"wheel"}, "membership": "inclusive"},
-			[]groupEntry{{Name: "audio", GID: 63, Members: []string{"u"}}},
+			[]nameservice.GroupEntry{{Name: "audio", GID: 63, Members: []string{"u"}}},
 			[][]string{{"useradd", "-G", "wheel", "-M", "u"}}, false},
 		{"empty inclusive groups omitted", "u", map[string]any{"groups": []any{}, "membership": "inclusive"}, nil,
 			[][]string{{"useradd", "-M", "u"}}, false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			ns := userNSS{fakeNSS: fakeNSS{users: map[string]passwdEntry{}, groups: tc.groups}}
+			ns := userNSS{FakeNSS: raltest.FakeNSS{Users: map[string]nameservice.PasswdEntry{}, Groups: tc.groups}}
 			changes, runner := applyUser(t, context.Background(), userRes(tc.title, tc.params), false, ns, nil)
 			if got := runner.argvs(); !reflect.DeepEqual(got, tc.want) {
 				t.Errorf("argv:\n got %s\nwant %s", scrub(got), scrub(tc.want))
@@ -185,13 +188,13 @@ func TestUserCreateFailures(t *testing.T) {
 		{"shell not executable", "u", map[string]any{"shell": notExec}, nil, "Shell " + notExec + " must be executable", 0},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			ns := userNSS{fakeNSS: fakeNSS{users: map[string]passwdEntry{}}}
+			ns := userNSS{FakeNSS: raltest.FakeNSS{Users: map[string]nameservice.PasswdEntry{}}}
 			changes, runner := applyUser(t, context.Background(), userRes(tc.title, tc.params), false, ns, tc.results)
 			if len(changes) != 1 || changes[0].Message != "created" || changes[0].Property != "ensure" {
 				t.Fatalf("changes = %+v", changes)
 			}
 			want := strings.ReplaceAll(tc.wantErr, "dir/", runner.dir+"/")
-			if got := errText(changes[0].Err); got != want {
+			if got := raltest.ErrText(changes[0].Err); got != want {
 				t.Errorf("err:\n got %q\nwant %q", got, want)
 			}
 			if len(runner.calls) != tc.wantCmds {
@@ -204,7 +207,7 @@ func TestUserCreateFailures(t *testing.T) {
 // A user with a password has every create command redacted, so a failure
 // names the command as [redacted] (M2, util/execution.rb:162).
 func TestUserCreateFailureWithPasswordIsRedacted(t *testing.T) {
-	ns := userNSS{fakeNSS: fakeNSS{users: map[string]passwdEntry{}}}
+	ns := userNSS{FakeNSS: raltest.FakeNSS{Users: map[string]nameservice.PasswdEntry{}}}
 	for _, tc := range []struct {
 		failing string
 		want    string
@@ -214,10 +217,10 @@ func TestUserCreateFailureWithPasswordIsRedacted(t *testing.T) {
 	} {
 		changes, runner := applyUser(t, context.Background(), userRes("u", map[string]any{"password": testHash}), false, ns,
 			map[string]runResult{tc.failing: {code: 4, out: "useradd: boom\n"}})
-		if len(changes) != 1 || errText(changes[0].Err) != tc.want {
+		if len(changes) != 1 || raltest.ErrText(changes[0].Err) != tc.want {
 			t.Errorf("changes = %s, want one with err %q", scrub(changes), tc.want)
 		}
-		if strings.Contains(errText(changes[0].Err), testHash) || len(runner.calls) == 0 {
+		if strings.Contains(raltest.ErrText(changes[0].Err), testHash) || len(runner.calls) == 0 {
 			t.Errorf("calls %s", scrub(runner.argvs()))
 		}
 	}
@@ -226,15 +229,15 @@ func TestUserCreateFailureWithPasswordIsRedacted(t *testing.T) {
 // existingU4 is M7's seeded user: uid and gid 2001 (its private group), in adm,
 // with a shadow entry whose expiry is 2030-01-01 (day 21915).
 func existingU4() userNSS {
-	groups := append(slices.Clone(userHostGroups), groupEntry{Name: "u4", GID: 2001})
+	groups := append(slices.Clone(userHostGroups), nameservice.GroupEntry{Name: "u4", GID: 2001})
 	groups[1].Members = []string{"u4"} // adm
 	return userNSS{
-		fakeNSS: fakeNSS{
-			users:    map[string]passwdEntry{"u4": {Name: "u4", UID: 2001, GID: 2001, Gecos: "old comment", Dir: "/home/old4", Shell: "/bin/sh"}},
-			groups:   groups,
-			grouplst: map[string][]int64{"u4": {2001, 4}},
+		FakeNSS: raltest.FakeNSS{
+			Users:    map[string]nameservice.PasswdEntry{"u4": {Name: "u4", UID: 2001, GID: 2001, Gecos: "old comment", Dir: "/home/old4", Shell: "/bin/sh"}},
+			Groups:   groups,
+			Grouplst: map[string][]int64{"u4": {2001, 4}},
 		},
-		shadows: map[string]shadowEntry{"u4": {Hash: "$6$pepperpepper$old", Min: 2, Max: 50, Warn: 3, Expire: 21915}},
+		shadows: map[string]nameservice.ShadowEntry{"u4": {Hash: "$6$pepperpepper$old", Min: 2, Max: 50, Warn: 3, Expire: 21915}},
 	}
 }
 
@@ -316,7 +319,7 @@ func TestUserMarkedPropertyRedactsItsCommands(t *testing.T) {
 		return r
 	}
 	t.Run("create", func(t *testing.T) {
-		ns := userNSS{fakeNSS: fakeNSS{users: map[string]passwdEntry{}}}
+		ns := userNSS{FakeNSS: raltest.FakeNSS{Users: map[string]nameservice.PasswdEntry{}}}
 		r := marked("u", map[string]any{"comment": "SECRET", "password_max_age": 90.0}, "comment")
 		changes, runner := applyUser(t, context.Background(), r, false, ns, nil)
 		if len(changes) != 1 || changes[0].Err != nil || len(runner.calls) != 2 {
@@ -329,8 +332,8 @@ func TestUserMarkedPropertyRedactsItsCommands(t *testing.T) {
 		}
 		changes, _ = applyUser(t, context.Background(), r, false, ns,
 			map[string]runResult{"useradd -c SECRET -M u": {code: 6, out: "boom\n"}})
-		if want := "Could not create user u: Execution of '[redacted]' returned 6: boom"; errText(changes[0].Err) != want {
-			t.Errorf("err = %q, want %q", errText(changes[0].Err), want)
+		if want := "Could not create user u: Execution of '[redacted]' returned 6: boom"; raltest.ErrText(changes[0].Err) != want {
+			t.Errorf("err = %q, want %q", raltest.ErrText(changes[0].Err), want)
 		}
 	})
 	t.Run("modify", func(t *testing.T) {
@@ -349,8 +352,8 @@ func TestUserMarkedPropertyRedactsItsCommands(t *testing.T) {
 		}
 		for _, c := range changes {
 			if c.Property == "comment" {
-				if want := "Could not set comment on user[u4]: Execution of '[redacted]' returned 6: boom"; errText(c.Err) != want {
-					t.Errorf("err = %q, want %q", errText(c.Err), want)
+				if want := "Could not set comment on user[u4]: Execution of '[redacted]' returned 6: boom"; raltest.ErrText(c.Err) != want {
+					t.Errorf("err = %q, want %q", raltest.ErrText(c.Err), want)
 				}
 			}
 		}
@@ -379,7 +382,7 @@ func TestUserChpasswdOutputFails(t *testing.T) {
 	out := "chpasswd: existing lock file /etc/passwd.lock with an invalid PID '1\n'\nchpasswd: cannot lock /etc/passwd; try again later.\n"
 	changes, _ := applyUser(t, context.Background(), userRes("u4", map[string]any{"password": testHash}), false, existingU4(),
 		map[string]runResult{"chpasswd -e": {code: 0, out: out}})
-	if len(changes) != 1 || errText(changes[0].Err) != "chpasswd said "+out {
+	if len(changes) != 1 || raltest.ErrText(changes[0].Err) != "chpasswd said "+out {
 		t.Fatalf("changes = %s", scrub(changes))
 	}
 	c := changes[0]
@@ -396,7 +399,7 @@ func TestUserChpasswdOutputFails(t *testing.T) {
 
 func TestUserPasswordInSync(t *testing.T) {
 	ns := existingU4()
-	ns.shadows["u4"] = shadowEntry{Hash: testHash, Min: -1, Max: -1, Warn: -1, Expire: -1}
+	ns.shadows["u4"] = nameservice.ShadowEntry{Hash: testHash, Min: -1, Max: -1, Warn: -1, Expire: -1}
 	changes, runner := applyUser(t, context.Background(), userRes("u4", map[string]any{"password": testHash, "expiry": "absent"}), false, ns, nil)
 	if len(changes) != 0 || len(runner.calls) != 0 {
 		t.Errorf("changes %s, calls %s", scrub(changes), scrub(runner.argvs()))
@@ -413,10 +416,10 @@ func TestUserGroupsMembership(t *testing.T) {
 				gids = append(gids, groups[i].GID)
 			}
 		}
-		return userNSS{fakeNSS: fakeNSS{
-			users:    map[string]passwdEntry{user: {Name: user, UID: 2005, GID: 2005}},
-			groups:   groups,
-			grouplst: map[string][]int64{user: gids},
+		return userNSS{FakeNSS: raltest.FakeNSS{
+			Users:    map[string]nameservice.PasswdEntry{user: {Name: user, UID: 2005, GID: 2005}},
+			Groups:   groups,
+			Grouplst: map[string][]int64{user: gids},
 		}}
 	}
 	for _, tc := range []struct {
@@ -470,10 +473,10 @@ func TestUserGroupsDisplayUsesCurrentOrder(t *testing.T) {
 	groups := slices.Clone(userHostGroups)
 	groups[1].Members = []string{"u"} // adm
 	groups[2].Members = []string{"u"} // wheel
-	ns := userNSS{fakeNSS: fakeNSS{
-		users:    map[string]passwdEntry{"u": {Name: "u", UID: 2005, GID: 2005}},
-		groups:   groups,
-		grouplst: map[string][]int64{"u": {10, 4}},
+	ns := userNSS{FakeNSS: raltest.FakeNSS{
+		Users:    map[string]nameservice.PasswdEntry{"u": {Name: "u", UID: 2005, GID: 2005}},
+		Groups:   groups,
+		Grouplst: map[string][]int64{"u": {10, 4}},
 	}}
 	changes, _ := applyUser(t, context.Background(), userRes("u", map[string]any{"groups": []any{"audio"}}), true, ns, nil)
 	if len(changes) != 1 || changes[0].Message != "groups changed wheel,adm to ['adm', 'audio', 'wheel'] (noop)" ||
@@ -484,9 +487,9 @@ func TestUserGroupsDisplayUsesCurrentOrder(t *testing.T) {
 
 func TestUserModifyFailures(t *testing.T) {
 	existing := func(name string, uid int64) userNSS {
-		return userNSS{fakeNSS: fakeNSS{
-			users:  map[string]passwdEntry{name: {Name: name, UID: uid, GID: uid, Shell: "/bin/sh"}},
-			groups: userHostGroups,
+		return userNSS{FakeNSS: raltest.FakeNSS{
+			Users:  map[string]nameservice.PasswdEntry{name: {Name: name, UID: uid, GID: uid, Shell: "/bin/sh"}},
+			Groups: userHostGroups,
 		}}
 	}
 	for _, tc := range []struct {
@@ -524,8 +527,8 @@ func TestUserModifyFailures(t *testing.T) {
 			}
 			c := changes[0]
 			want := strings.ReplaceAll(tc.wantErr, "dir/", runner.dir+"/")
-			if c.Message != tc.msg || errText(c.Err) != want {
-				t.Errorf("message %q err %q\nwant %q err %q", c.Message, errText(c.Err), tc.msg, want)
+			if c.Message != tc.msg || raltest.ErrText(c.Err) != want {
+				t.Errorf("message %q err %q\nwant %q err %q", c.Message, raltest.ErrText(c.Err), tc.msg, want)
 			}
 			if c.WasDisplay != tc.was || c.IsDisplay != tc.is || !c.DisplayVerbatim {
 				t.Errorf("display = %q %q %v, want %q %q", c.WasDisplay, c.IsDisplay, c.DisplayVerbatim, tc.was, tc.is)
@@ -538,7 +541,7 @@ func TestUserModifyFailures(t *testing.T) {
 }
 
 func TestUserModifyAllowdupeAndComment(t *testing.T) {
-	ns := userNSS{fakeNSS: fakeNSS{users: map[string]passwdEntry{"u19c": {Name: "u19c", UID: 2000, Gecos: "had comment"}}}}
+	ns := userNSS{FakeNSS: raltest.FakeNSS{Users: map[string]nameservice.PasswdEntry{"u19c": {Name: "u19c", UID: 2000, Gecos: "had comment"}}}}
 	changes, runner := applyUser(t, context.Background(), userRes("u19c", map[string]any{"comment": "", "uid": 0.0, "allowdupe": true}), false, ns, nil)
 	if len(changes) != 2 || changes[0].Message != "uid changed 2000 to 0" || changes[1].Message != "comment changed 'had comment' to ''" {
 		t.Errorf("changes = %+v", changes)
@@ -552,7 +555,7 @@ func TestUserModifyAllowdupeAndComment(t *testing.T) {
 // A user with no shadow entry reads every shadow property as absent: an age
 // or a date is "defined", and expiry absent is in sync (M45, property.rb:205-211).
 func TestUserDefinedUndefinedRule(t *testing.T) {
-	ns := userNSS{fakeNSS: fakeNSS{users: map[string]passwdEntry{"u": {Name: "u", UID: 2000}}}}
+	ns := userNSS{FakeNSS: raltest.FakeNSS{Users: map[string]nameservice.PasswdEntry{"u": {Name: "u", UID: 2000}}}}
 	changes, runner := applyUser(t, context.Background(), userRes("u", map[string]any{
 		"password_min_age": 1.0, "expiry": "2031-02-03",
 	}), false, ns, nil)
@@ -574,7 +577,7 @@ func TestUserDefinedUndefinedRule(t *testing.T) {
 }
 
 func TestUserDelete(t *testing.T) {
-	ns := userNSS{fakeNSS: fakeNSS{users: map[string]passwdEntry{"u7a": {Name: "u7a", UID: 2007}}}}
+	ns := userNSS{FakeNSS: raltest.FakeNSS{Users: map[string]nameservice.PasswdEntry{"u7a": {Name: "u7a", UID: 2007}}}}
 	// userdel is never redacted: delete passes no :sensitive (nameservice.rb:180).
 	changes, runner := applyUser(t, context.Background(), userRes("u7a", map[string]any{"ensure": "absent", "managehome": true, "password": testHash}), false, ns, nil)
 	want := []Change{{Property: "ensure", Was: "present", Is: "absent", Message: "removed", Name: "user_removed"}}
@@ -586,7 +589,7 @@ func TestUserDelete(t *testing.T) {
 	}
 	changes, runner = applyUser(t, context.Background(), userRes("u7a", map[string]any{"ensure": "absent"}), false, ns,
 		map[string]runResult{"userdel u7a": {code: 8, out: "userdel: busy\n"}})
-	if len(changes) != 1 || errText(changes[0].Err) != "Could not delete user u7a: Execution of '"+runner.dir+"/userdel u7a' returned 8: userdel: busy" {
+	if len(changes) != 1 || raltest.ErrText(changes[0].Err) != "Could not delete user u7a: Execution of '"+runner.dir+"/userdel u7a' returned 8: userdel: busy" {
 		t.Errorf("changes = %+v", changes)
 	}
 	changes, runner = applyUser(t, context.Background(), userRes("u7a", map[string]any{"ensure": "absent"}), true, ns, nil)
@@ -598,12 +601,12 @@ func TestUserDelete(t *testing.T) {
 // A missing user that is to be absent, or that the catalog manages nothing of
 // (M30), is left alone with resource_harness.rb:97's debug line.
 func TestUserNothingToManage(t *testing.T) {
-	ns := userNSS{fakeNSS: fakeNSS{users: map[string]passwdEntry{}}}
+	ns := userNSS{FakeNSS: raltest.FakeNSS{Users: map[string]nameservice.PasswdEntry{}}}
 	for _, params := range []map[string]any{
 		{"ensure": "absent", "managehome": true},
 		{"roles": "x", "forcelocal": true},
 	} {
-		ctx, msgs := debugCtx()
+		ctx, msgs := raltest.DebugCtx()
 		changes, runner := applyUser(t, ctx, userRes("u7b", params), false, ns, nil)
 		if len(changes) != 0 || len(runner.calls) != 0 {
 			t.Errorf("%v: changes %+v calls %v", params, changes, runner.argvs())
@@ -617,7 +620,7 @@ func TestUserNothingToManage(t *testing.T) {
 // Under noop no command runs and no provider check is made: the bad shell is
 // "created (noop)" and the unknown gid a plain change (M14 noop.txt).
 func TestUserNoopMakesNoProviderChecks(t *testing.T) {
-	ns := userNSS{fakeNSS: fakeNSS{users: map[string]passwdEntry{"u8b": {Name: "u8b", UID: 2101, GID: 2101}}, groups: userHostGroups}}
+	ns := userNSS{FakeNSS: raltest.FakeNSS{Users: map[string]nameservice.PasswdEntry{"u8b": {Name: "u8b", UID: 2101, GID: 2101}}, Groups: userHostGroups}}
 	changes, runner := applyUser(t, context.Background(), userRes("u8a", map[string]any{"shell": "/nonexistent/sh"}), true, ns, nil)
 	if len(changes) != 1 || changes[0].Message != "created (noop)" || changes[0].Err != nil {
 		t.Errorf("u8a = %+v", changes)
@@ -634,7 +637,7 @@ func TestUserNoopMakesNoProviderChecks(t *testing.T) {
 // When ensure changes nothing else is synced (resource_harness.rb:84-99; M2
 // has one event).
 func TestUserCreateSyncsNothingElse(t *testing.T) {
-	ns := userNSS{fakeNSS: fakeNSS{users: map[string]passwdEntry{}}}
+	ns := userNSS{FakeNSS: raltest.FakeNSS{Users: map[string]nameservice.PasswdEntry{}}}
 	changes, _ := applyUser(t, context.Background(), userRes("u2", map[string]any{"uid": 2002.0, "groups": []any{"wheel"}, "password": testHash}), false, ns, nil)
 	if len(changes) != 1 || changes[0].Property != "ensure" {
 		t.Errorf("changes = %s", scrub(changes))
@@ -646,9 +649,9 @@ func TestUserProviderNotFunctional(t *testing.T) {
 	if err := os.Remove(filepath.Join(dir, "chpasswd")); err != nil {
 		t.Fatal(err)
 	}
-	ns := userNSS{fakeNSS: fakeNSS{users: map[string]passwdEntry{}}}
+	ns := userNSS{FakeNSS: raltest.FakeNSS{Users: map[string]nameservice.PasswdEntry{}}}
 	_, _, err := User{ns: ns, runner: &argvRunner{}}.Apply(context.Background(), userRes("u", map[string]any{"ensure": "present"}), false)
-	if errText(err) != "Provider useradd is not functional on this host" {
+	if raltest.ErrText(err) != "Provider useradd is not functional on this host" {
 		t.Errorf("err = %v", err)
 	}
 }
@@ -670,37 +673,20 @@ func TestUserPasswordIsAlwaysMarked(t *testing.T) {
 	}
 }
 
-func TestPuppetQuote(t *testing.T) {
-	for in, want := range map[string]string{
-		"new, comment": "'new, comment'",
-		"O'Brien":      `'O\'Brien'`,
-		`a\b`:          `'a\b'`,
-		`a\`:           `'a\'`,
-		"":             "''",
-		"tab\there":    `"tab\there"`,
-		"x$y\x01":      `"x\$y\u{1}"`,
-		"é":            "'é'",
-	} {
-		if got := puppetQuote(in); got != want {
-			t.Errorf("puppetQuote(%q) = %s, want %s", in, got, want)
-		}
-	}
-}
-
 // groupErrNSS fails every group lookup.
 type groupErrNSS struct{ userNSS }
 
-func (groupErrNSS) group(string) (groupEntry, bool, error) {
-	return groupEntry{}, false, errors.New("getgrnam_r g4: EIO")
+func (groupErrNSS) Group(string) (nameservice.GroupEntry, bool, error) {
+	return nameservice.GroupEntry{}, false, errors.New("getgrnam_r g4: EIO")
 }
 
 // A gid lookup that fails is the in-sync test failing, which fails the event
 // under noop too.
 func TestUserGIDLookupErrorFailsUnderNoop(t *testing.T) {
-	ns := groupErrNSS{userNSS{fakeNSS: fakeNSS{users: map[string]passwdEntry{"u": {Name: "u", UID: 2000, GID: 2000}}}}}
+	ns := groupErrNSS{userNSS{FakeNSS: raltest.FakeNSS{Users: map[string]nameservice.PasswdEntry{"u": {Name: "u", UID: 2000, GID: 2000}}}}}
 	for _, noop := range []bool{true, false} {
 		changes, runner := applyUser(t, context.Background(), userRes("u", map[string]any{"gid": "g4"}), noop, ns, nil)
-		if len(changes) != 1 || errText(changes[0].Err) != "getgrnam_r g4: EIO" || len(runner.calls) != 0 {
+		if len(changes) != 1 || raltest.ErrText(changes[0].Err) != "getgrnam_r g4: EIO" || len(runner.calls) != 0 {
 			t.Errorf("noop %v: changes %+v calls %v", noop, changes, runner.argvs())
 		}
 	}

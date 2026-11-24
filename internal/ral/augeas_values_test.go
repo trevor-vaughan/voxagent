@@ -1,15 +1,20 @@
 package ral
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/voxagent/voxagent/internal/lib/augeas"
+	"github.com/voxagent/voxagent/internal/lib/raltest"
+)
 
 const sshdConfigFile = "/etc/ssh/sshd_config"
 
 // sshdValueRun opens 07b's sshd_config handle (trace lines 21-29) and replays
 // calls after it, then the handle's close.
-func sshdValueRun(t *testing.T, calls []traceCall) *rubyAug {
+func sshdValueRun(t *testing.T, calls []raltest.TraceCall) *augeas.Aug {
 	t.Helper()
-	all := append(traceLines(t, "07b", [2]int{21, 29}), calls...)
-	all = append(all, parseTrace(t, "close", "h2 aug_close\n")...)
+	all := append(raltest.TraceLines(t, "07b", [2]int{21, 29}), calls...)
+	all = append(all, raltest.ParseTrace(t, "close", "h2 aug_close\n")...)
 	r := testAugeasRun(t, all, augeasCaseLibdir, gateLoadpath, sshdConfigFile)
 	t.Cleanup(r.EndRun)
 	aug, err := r.augopen(sshdConfigLens, sshdConfigFile, "$target/*[label()=~regexp('PermitRootLogin', 'i')]")
@@ -22,7 +27,7 @@ func sshdValueRun(t *testing.T, calls []traceCall) *rubyAug {
 // 07b: sshd_config's new key goes after its commented-out line, matched
 // case-insensitively, and $resource is not rebound.
 func TestSetSimpleValueSshdAfterComment(t *testing.T) {
-	aug := sshdValueRun(t, traceLines(t, "07b", [2]int{42, 46}))
+	aug := sshdValueRun(t, raltest.TraceLines(t, "07b", [2]int{42, 46}))
 	if err := setSimpleValue(aug, "$target", "$target/PermitRootLogin", "PermitRootLogin", []any{"no"}, ", 'i'", true); err != nil {
 		t.Fatal(err)
 	}
@@ -38,7 +43,7 @@ func TestSetSimpleValueSshdWithoutComment(t *testing.T) {
 		{"Match", `h2 aug_match "$target/Match" => 1 "/files/etc/ssh/sshd_config/Match"`, `h2 aug_insert "$target/Match[1]" "X11Forwarding" 1 => 0`},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			aug := sshdValueRun(t, parseTrace(t, "script", `h2 aug_match "$target/X11Forwarding" => 0
+			aug := sshdValueRun(t, raltest.ParseTrace(t, "script", `h2 aug_match "$target/X11Forwarding" => 0
 h2 aug_match "$target/#comment[.=~regexp('X11Forwarding([^a-z.].*)?', 'i')]" => 0
 `+tc.match+"\n"+tc.insert+`
 h2 aug_set "$target/X11Forwarding[last()]" "no" => 0
@@ -55,7 +60,7 @@ h2 aug_match "$target/X11Forwarding[last()]" => 1 "/files/etc/ssh/sshd_config/X1
 // a value beyond them goes after the last one set; ssh_config then rebinds
 // $resource to the path.
 func TestSetSimpleValueExistingEntries(t *testing.T) {
-	aug := sshdValueRun(t, parseTrace(t, "script", `h2 aug_match "$target/Host[.='*']/SendEnv" => 2 "/files/etc/ssh/sshd_config/Host/SendEnv[1]" "/files/etc/ssh/sshd_config/Host/SendEnv[2]"
+	aug := sshdValueRun(t, raltest.ParseTrace(t, "script", `h2 aug_match "$target/Host[.='*']/SendEnv" => 2 "/files/etc/ssh/sshd_config/Host/SendEnv[1]" "/files/etc/ssh/sshd_config/Host/SendEnv[2]"
 h2 aug_set "/files/etc/ssh/sshd_config/Host/SendEnv[1]" "A" => 0
 h2 aug_set "/files/etc/ssh/sshd_config/Host/SendEnv[2]" "B" => 0
 h2 aug_insert "/files/etc/ssh/sshd_config/Host/SendEnv[2]" "SendEnv" 0 => 0
@@ -84,14 +89,14 @@ h2 aug_defvar "resource" "$target/Host[.='*']/Compression" => 1
 // 07b: sshd_config's array key is first inserted after the last node (no
 // Match), then rewritten.
 func TestSetArrayValueSshd(t *testing.T) {
-	aug := sshdValueRun(t, traceLines(t, "07b", [2]int{71, 76}))
+	aug := sshdValueRun(t, raltest.TraceLines(t, "07b", [2]int{71, 76}))
 	if err := setArrayValue(aug, "$target", "$target/AllowUsers", "AllowUsers", []any{"alice", "bob"}, true); err != nil {
 		t.Fatal(err)
 	}
 }
 
 func TestSetArrayValueSshdBeforeMatch(t *testing.T) {
-	aug := sshdValueRun(t, parseTrace(t, "script", `h2 aug_match "$target/Match" => 1 "/files/etc/ssh/sshd_config/Match"
+	aug := sshdValueRun(t, raltest.ParseTrace(t, "script", `h2 aug_match "$target/Match" => 1 "/files/etc/ssh/sshd_config/Match"
 h2 aug_insert "$target/Match[1]" "AllowUsers" 1 => 0
 h2 aug_rm "$target/AllowUsers/*" => 0
 h2 aug_rm "$target/AllowUsers[position() != 1]" => 0
@@ -104,7 +109,7 @@ h2 aug_set "$target/AllowUsers/1" "alice" => 0
 
 // A failing match is ruby-augeas' raise, returned.
 func TestSetValueMatchFailure(t *testing.T) {
-	aug := sshdValueRun(t, parseTrace(t, "script", `h2 aug_match "$target/Match" => -1
+	aug := sshdValueRun(t, raltest.ParseTrace(t, "script", `h2 aug_match "$target/Match" => -1
 h2 aug_match "$target/X" => -1
 h2 aug_match "$target/Y" => -1
 `))
@@ -122,7 +127,7 @@ h2 aug_match "$target/Y" => -1
 // A nil value (an array_append union keeping a valueless element) consumes an
 // existing entry by removing it, and is written valueless beyond them.
 func TestSetValueNil(t *testing.T) {
-	aug := sshdValueRun(t, parseTrace(t, "script", `h2 aug_match "$target/Banner" => 2 "/files/etc/ssh/sshd_config/Banner[1]" "/files/etc/ssh/sshd_config/Banner[2]"
+	aug := sshdValueRun(t, raltest.ParseTrace(t, "script", `h2 aug_match "$target/Banner" => 2 "/files/etc/ssh/sshd_config/Banner[1]" "/files/etc/ssh/sshd_config/Banner[2]"
 h2 aug_rm "/files/etc/ssh/sshd_config/Banner[1]" => 1
 h2 aug_set "/files/etc/ssh/sshd_config/Banner[2]" "a" => 0
 h2 aug_insert "/files/etc/ssh/sshd_config/Banner[2]" "Banner" 0 => 0

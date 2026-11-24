@@ -1,4 +1,4 @@
-package ral
+package augeas
 
 import (
 	"os"

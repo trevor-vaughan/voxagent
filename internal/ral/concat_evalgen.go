@@ -6,6 +6,8 @@ import (
 	"strings"
 
 	"github.com/voxagent/voxagent/internal/catalog"
+	"github.com/voxagent/voxagent/internal/lib/rubyvalue"
+	"github.com/voxagent/voxagent/internal/lib/sources"
 	"github.com/voxagent/voxagent/internal/report"
 )
 
@@ -53,7 +55,7 @@ func (c ConcatFile) EvalGenerate(ctx context.Context, r catalog.Resource) (EvalG
 	}
 	failed := func(detail string) EvalGeneration {
 		return EvalGeneration{Failed: true, Logs: []report.LogEntry{{
-			Level: "err", Source: SourcesFrom(ctx).Resource,
+			Level: "err", Source: sources.SourcesFrom(ctx).Resource,
 			Message: "Failed to generate additional resources using 'eval_generate': " + detail,
 			File:    r.File, Line: r.Line,
 		}}}
@@ -151,9 +153,9 @@ func (f ConcatFragment) GraphWarnings(r catalog.Resource, cat *catalog.Catalog) 
 		case nil:
 			return ""
 		case string:
-			return redactIf(marked, "%s", t)
+			return rubyvalue.RedactIf(marked, "%s", t)
 		}
-		return redactIf(marked, "%s", rubyInspectValue(v))
+		return rubyvalue.RedactIf(marked, "%s", rubyvalue.InspectValue(v))
 	}
 	tag := ""
 	if p.Tag != nil {

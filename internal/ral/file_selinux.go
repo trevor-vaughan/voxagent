@@ -21,6 +21,10 @@ import (
 	"unsafe"
 
 	"github.com/voxagent/voxagent/internal/catalog"
+	"github.com/voxagent/voxagent/internal/lib/command"
+	"github.com/voxagent/voxagent/internal/lib/puppetpath"
+	"github.com/voxagent/voxagent/internal/lib/rubyvalue"
+	"github.com/voxagent/voxagent/internal/lib/sources"
 	"github.com/voxagent/voxagent/internal/runlog"
 )
 
@@ -157,7 +161,7 @@ type defaultAnswer struct {
 // handleOpens; the other methods do not use it. handle memoizes handleOpens
 // for the process, which is one run; nil probes every time.
 type hostSELinux struct {
-	run    commandRunner
+	run    command.Runner
 	handle *handleProbe
 }
 
@@ -363,10 +367,6 @@ func (hostSELinux) set(fsys fileSystem, p, context string) error {
 	return setfileconRaw(fsys, p, xattrNameSELinux, context)
 }
 
-// oPath is O_PATH (<bits/fcntl-linux.h>:92, __O_PATH 010000000), absent from
-// Go's syscall package.
-const oPath = 0x200000
-
 // fileconFD opens p itself through fsys -- O_PATH|O_NOFOLLOW, so a final link
 // is the link -- and returns the handle with its /proc/self/fd path. This is
 // how libselinux reaches an O_PATH descriptor's label
@@ -380,7 +380,7 @@ const oPath = 0x200000
 // directory (rootFS): a parent directory swapped for a link out of the tree
 // is refused there, where lgetxattr and lsetxattr on the name would follow it.
 func fileconFD(fsys fileSystem, p string) (*os.File, string, error) {
-	f, err := fsys.OpenFile(p, oPath|syscall.O_NOFOLLOW|syscall.O_CLOEXEC, 0)
+	f, err := fsys.OpenFile(p, puppetpath.OPath|syscall.O_NOFOLLOW|syscall.O_CLOEXEC, 0)
 	if err != nil {
 		return nil, "", err
 	}
@@ -502,7 +502,7 @@ func setfileconRaw(fsys fileSystem, p, name, value string) error {
 // missing or broken file contexts fails rather than leaving defaults unmanaged.
 // Failing to run the command at all is an error.
 func (h hostSELinux) defaultFor(ctx context.Context, p string, mode uint32) (seContext, bool, error) {
-	code, out, err := h.run.run(ctx, "selabel_lookup", "-b", "file", "-k", p, "-t", strconv.FormatUint(uint64(mode), 10))
+	code, out, err := h.run.Run(ctx, "selabel_lookup", "-b", "file", "-k", p, "-t", strconv.FormatUint(uint64(mode), 10))
 	if err != nil {
 		return seContext{}, false, err
 	}
@@ -590,7 +590,7 @@ func (h hostSELinux) matchpathcon(ctx context.Context, fixed []string, chunk []d
 	for _, q := range chunk {
 		args = append(args, q.path)
 	}
-	code, out, err := h.run.run(ctx, fixed[0], args...)
+	code, out, err := h.run.Run(ctx, fixed[0], args...)
 	switch {
 	case err != nil:
 		return
@@ -683,7 +683,7 @@ func prefetchChildDefaults(ctx context.Context, se selinuxOps, parent string, ch
 	var qs []defaultQuery
 	for _, c := range children {
 		path := FilePath(c)
-		if e := paramString(c, "ensure", ""); e == "absent" || e == "false" || !defaultsWanted(c) {
+		if e := rubyvalue.ParamString(c, "ensure", ""); e == "absent" || e == "false" || !defaultsWanted(c) {
 			continue
 		}
 		if mode, err := lookupMode(fsys, path, c); err == nil {
@@ -794,7 +794,7 @@ func planSELinux(ctx context.Context, se selinuxOps, fsys fileSystem, path strin
 	if reason != "" {
 		for _, prop := range selProps {
 			if _, declared := r.Parameters[prop].(string); declared {
-				runlog.Debugf(ctx, SourcesFrom(ctx).Resource+"/"+prop, "%s", reason)
+				runlog.Debugf(ctx, sources.SourcesFrom(ctx).Resource+"/"+prop, "%s", reason)
 			}
 		}
 		return nil, nil
@@ -820,7 +820,7 @@ func planSELinux(ctx context.Context, se selinuxOps, fsys fileSystem, path strin
 		for _, prop := range undeclared {
 			if v := def.field(prop); ok && v != "" {
 				p.want[prop] = v
-				runlog.Debugf(ctx, SourcesFrom(ctx).Resource+"/"+prop, "Found %s default '%s' for %s", prop, v, path)
+				runlog.Debugf(ctx, sources.SourcesFrom(ctx).Resource+"/"+prop, "Found %s default '%s' for %s", prop, v, path)
 			}
 		}
 	}

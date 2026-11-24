@@ -16,7 +16,11 @@ import (
 func TestOnlyTheExecWaiterStartsAGoroutine(t *testing.T) {
 	var found []string
 	fset := token.NewFileSet()
-	for _, dir := range []string{".", "../transaction"} {
+	libs, err := filepath.Glob("../lib/*")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, dir := range append([]string{".", "../transaction"}, libs...) {
 		names, err := filepath.Glob(filepath.Join(dir, "*.go"))
 		if err != nil {
 			t.Fatal(err)

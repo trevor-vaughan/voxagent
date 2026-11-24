@@ -12,6 +12,7 @@ import (
 	"syscall"
 
 	"github.com/voxagent/voxagent/internal/catalog"
+	"github.com/voxagent/voxagent/internal/lib/rubyvalue"
 )
 
 // parseSourceURL parses a source the way Puppet does: % is escaped first
@@ -83,13 +84,13 @@ func validateSource(ref string, raw any, redact bool) error {
 			}
 			return fmt.Errorf("Parameter source failed on %s: Could not understand source %s: %v", ref, s, err)
 		case u.Scheme == "":
-			return fmt.Errorf("Parameter source failed on %s: Cannot use relative URLs %s", ref, redactIf(redact, "'%s'", s))
+			return fmt.Errorf("Parameter source failed on %s: Cannot use relative URLs %s", ref, rubyvalue.RedactIf(redact, "'%s'", s))
 		case u.Opaque != "":
-			return fmt.Errorf("Parameter source failed on %s: Cannot use opaque URLs %s", ref, redactIf(redact, "'%s'", s))
+			return fmt.Errorf("Parameter source failed on %s: Cannot use opaque URLs %s", ref, rubyvalue.RedactIf(redact, "'%s'", s))
 		case u.Scheme == "file" && u.Host != "":
 			// Ours: a host names another machine, which voxagent cannot read.
 			return fmt.Errorf("Parameter source failed on %s: file: URI %s names host %s; only a local file: URI is implemented",
-				ref, redactIf(redact, "'%s'", s), redactIf(redact, "'%s'", u.Host))
+				ref, rubyvalue.RedactIf(redact, "'%s'", s), rubyvalue.RedactIf(redact, "'%s'", u.Host))
 		}
 	}
 	return nil
@@ -226,12 +227,12 @@ func resolveSource(fsys fileSystem, r catalog.Resource, environment string, sour
 	redact := sourceMarked(r)
 	if err != nil {
 		return resolvedSource{}, fmt.Errorf("Could not retrieve file metadata for %s: %w",
-			redactIf(redact, "%s", spec.shown), hideDownload(spec, err, redact))
+			rubyvalue.RedactIf(redact, "%s", spec.shown), hideDownload(spec, err, redact))
 	}
 	if !found {
 		shown := make([]string, len(specs))
 		for i, s := range specs {
-			shown[i] = redactIf(redact, "%s", s.shown)
+			shown[i] = rubyvalue.RedactIf(redact, "%s", s.shown)
 		}
 		// source.rb:208, verbatim. Measured on Puppet 8.10.0: "Could not
 		// retrieve information from environment production source(s)
@@ -248,7 +249,7 @@ func resolveSource(fsys fileSystem, r catalog.Resource, environment string, sour
 		target, err := fsys.Readlink(spec.path)
 		if err != nil {
 			return resolvedSource{}, fmt.Errorf("Could not retrieve file metadata for %s: %w",
-				redactIf(redact, "%s", spec.shown), hideDownload(spec, err, redact))
+				rubyvalue.RedactIf(redact, "%s", spec.shown), hideDownload(spec, err, redact))
 		}
 		return resolvedSource{spec: spec, linkTarget: target, fsys: fsys, redact: redact}, nil
 	case fi.IsDir():
@@ -257,19 +258,19 @@ func resolveSource(fsys fileSystem, r catalog.Resource, environment string, sour
 		f, err := openSource(fsys, spec.path, follow)
 		if err != nil {
 			return resolvedSource{}, fmt.Errorf("Could not retrieve file metadata for %s: %w",
-				redactIf(redact, "%s", spec.shown), hideDownload(spec, err, redact))
+				rubyvalue.RedactIf(redact, "%s", spec.shown), hideDownload(spec, err, redact))
 		}
 		sum, err := checksumOf(f)
 		_ = f.Close()
 		if err != nil {
 			return resolvedSource{}, fmt.Errorf("Could not retrieve file metadata for %s: %w",
-				redactIf(redact, "%s", spec.shown), hideDownload(spec, err, redact))
+				rubyvalue.RedactIf(redact, "%s", spec.shown), hideDownload(spec, err, redact))
 		}
 		return resolvedSource{spec: spec, sum: sum, follow: follow, fsys: fsys, redact: redact}, nil
 	default:
 		// D-26: a FIFO, socket or device.
 		return resolvedSource{}, fmt.Errorf("source %s is not a regular file or a directory; only those can be a source",
-			redactIf(redact, "%s", spec.shown))
+			rubyvalue.RedactIf(redact, "%s", spec.shown))
 	}
 }
 

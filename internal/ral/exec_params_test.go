@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/voxagent/voxagent/internal/catalog"
+	"github.com/voxagent/voxagent/internal/lib/raltest"
 )
 
 // paramsRes is an exec with a qualified command, so only the parameter under
@@ -17,7 +18,7 @@ func paramsRes(params map[string]any) catalog.Resource {
 	for k, v := range params {
 		all[k] = v
 	}
-	return execRes("t", all)
+	return raltest.ExecRes("t", all)
 }
 
 func setAgentRoot(t *testing.T, root bool) {

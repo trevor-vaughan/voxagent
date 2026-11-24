@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/voxagent/voxagent/internal/catalog"
+	"github.com/voxagent/voxagent/internal/lib/raltest"
 )
 
 // sysctlCall is one scripted sysctl command: its argv after the binary and
@@ -54,13 +55,13 @@ func (s *scriptSysctl) run(_ context.Context, name string, args ...string) (int,
 func sysctlResources(titles ...string) []catalog.Resource {
 	rs := make([]catalog.Resource, len(titles))
 	for i, title := range titles {
-		rs[i] = augRes("Sysctl", title, map[string]any{"value": "1"})
+		rs[i] = raltest.AugRes("Sysctl", title, map[string]any{"value": "1"})
 	}
 	return rs
 }
 
-func lastTraceCall(t *testing.T, id string) []traceCall {
-	calls := loadTrace(t, id)
+func lastTraceCall(t *testing.T, id string) []raltest.TraceCall {
+	calls := raltest.LoadTrace(t, id)
 	return calls[len(calls)-1:]
 }
 
@@ -123,11 +124,6 @@ func TestRubyWhitespace(t *testing.T) {
 			t.Errorf("chomp(%q) = %q, want %q", in, got, want)
 		}
 	}
-	for in, want := range map[string]string{"\x00 a\v\x00": "a", " \t\n\v\f\ra b\r": "a b", " a ": " a "} {
-		if got := rubyStrip(in); got != want {
-			t.Errorf("strip(%q) = %q, want %q", in, got, want)
-		}
-	}
 	for in, want := range map[string]string{"4096\t87380\v\v6291456": "4096 87380 6291456", "a\u2003b": "a\u2003b", " a ": " a ", "a\x00b": "a\x00b"} {
 		if got := rubyCollapseSpace(in); got != want {
 			t.Errorf("collapse(%q) = %q, want %q", in, got, want)
@@ -167,12 +163,12 @@ func TestResolveSysctl(t *testing.T) {
 // 01e: no title is in the file; -e names the three live keys.
 func TestSysctlPrefetchReplays01e(t *testing.T) {
 	withAugVersionMemo(t, map[string]bool{})
-	calls := append(traceLines(t, "01e", [2]int{4, 17}), lastTraceCall(t, "01e")...)
+	calls := append(raltest.TraceLines(t, "01e", [2]int{4, 17}), lastTraceCall(t, "01e")...)
 	run := testAugeasRun(t, calls, t.TempDir(), "/etc/sysctl.conf")
 	titles := []string{"net.ipv4.ip_forward", "net.ipv4.conf.all.rp_filter", "foo.bar", "foo.qux", "vm.swappiness"}
 	runner := newScriptSysctl(t, sysctlCall{args: append([]string{"-e"}, titles...),
 		out: "net.ipv4.ip_forward = 0\nnet.ipv4.conf.all.rp_filter = 0\nvm.swappiness = 60\n"})
-	ctx, logs := debugContext("debug")
+	ctx, logs := raltest.DebugContext("debug")
 	if _, err := (Sysctl{run: run, sysctl: "/usr/sbin/sysctl", runner: runner}).Prefetch(ctx, sysctlResources(titles...)); err != nil {
 		t.Fatal(err)
 	}
@@ -186,7 +182,7 @@ func TestSysctlPrefetchReplays01e(t *testing.T) {
 	if !maps.Equal(run.sysctl, want) {
 		t.Errorf("table = %v\nwant %v", run.sysctl, want)
 	}
-	if got := linesAt(*logs, "Puppet"); len(got) == 0 || got[0] != "Prefetching augeas resources for sysctl" {
+	if got := raltest.LinesAt(*logs, "Puppet"); len(got) == 0 || got[0] != "Prefetching augeas resources for sysctl" {
 		t.Errorf("Puppet debug = %q", got)
 	}
 	run.EndRun()
@@ -195,7 +191,7 @@ func TestSysctlPrefetchReplays01e(t *testing.T) {
 // 01c: every title is in the file, so persist; each found entry's comment is
 // looked up.
 func TestSysctlPrefetchReplays01c(t *testing.T) {
-	calls := append(traceLines(t, "01c", [2]int{4, 21}), lastTraceCall(t, "01c")...)
+	calls := append(raltest.TraceLines(t, "01c", [2]int{4, 21}), lastTraceCall(t, "01c")...)
 	run := testAugeasRun(t, calls, t.TempDir(), "/etc/sysctl.conf")
 	titles := []string{"vm.swappiness", "net.ipv4.ip_forward", "net.ipv4.conf.all.rp_filter"}
 	runner := newScriptSysctl(t, sysctlCall{args: append([]string{"-e"}, titles...),
@@ -214,7 +210,7 @@ func TestSysctlPrefetchReplays01c(t *testing.T) {
 // 01j: duplicate entries; the first's value and the comment before it are
 // read. A key in the file that sysctl does not know is still valid.
 func TestSysctlPrefetchReplays01j(t *testing.T) {
-	calls := append(traceLines(t, "01j", [2]int{4, 16}), lastTraceCall(t, "01j")...)
+	calls := append(raltest.TraceLines(t, "01j", [2]int{4, 16}), lastTraceCall(t, "01j")...)
 	run := testAugeasRun(t, calls, t.TempDir(), "/etc/sysctl.conf")
 	runner := newScriptSysctl(t, sysctlCall{args: []string{"-e", "vm.swappiness"}})
 	if _, err := (Sysctl{run: run, sysctl: "/usr/sbin/sysctl", runner: runner}).Prefetch(context.Background(), sysctlResources("vm.swappiness")); err != nil {
@@ -229,7 +225,7 @@ func TestSysctlPrefetchReplays01j(t *testing.T) {
 // Every title is looked up in the first resource's target, whatever the
 // others set.
 func TestSysctlPrefetchReadsEveryTitleInFirstTarget(t *testing.T) {
-	calls := parseTrace(t, "script", `h1 aug_init NULL NULL 64
+	calls := raltest.ParseTrace(t, "script", `h1 aug_init NULL NULL 64
 h1 aug_match "/augeas/load/Sysctl" => 0
 h1 aug_set "/augeas/load/Sysctl/lens" "Sysctl.lns" => 0
 h1 aug_set "/augeas/load/Sysctl/incl[last()+1]" "/etc/sysctl.d/50-x.conf" => 0
@@ -243,8 +239,8 @@ h1 aug_close
 `)
 	run := testAugeasRun(t, calls, t.TempDir())
 	rs := []catalog.Resource{
-		augRes("Sysctl", "a.b", map[string]any{"target": "/etc/sysctl.d/50-x.conf"}),
-		augRes("Sysctl", "c.d", map[string]any{"target": "/etc/sysctl.conf"}),
+		raltest.AugRes("Sysctl", "a.b", map[string]any{"target": "/etc/sysctl.d/50-x.conf"}),
+		raltest.AugRes("Sysctl", "c.d", map[string]any{"target": "/etc/sysctl.conf"}),
 	}
 	runner := newScriptSysctl(t, sysctlCall{args: []string{"-e", "a.b", "c.d"}, out: "c.d = 1\n"})
 	if _, err := (Sysctl{run: run, sysctl: "/usr/sbin/sysctl", runner: runner}).Prefetch(context.Background(), rs); err != nil {
@@ -273,7 +269,7 @@ h1 aug_defvar "resource" "$target/k.n1" => 0
 	for _, title := range titles {
 		script += fmt.Sprintf("h1 aug_match \"$target/%s\" => 0\n", title)
 	}
-	run := testAugeasRun(t, parseTrace(t, "script", script+"h1 aug_close\n"), t.TempDir())
+	run := testAugeasRun(t, raltest.ParseTrace(t, "script", script+"h1 aug_close\n"), t.TempDir())
 	runner := newScriptSysctl(t,
 		sysctlCall{args: append([]string{"-e"}, titles[:30]...), out: "k.n1 = 1\nk.n"},
 		sysctlCall{args: append([]string{"-e"}, titles...), out: "2 = 1\n"})
@@ -295,7 +291,7 @@ h1 aug_defvar "resource" "$target/k.n1" => 0
 
 // CORE's load error is a prefetch failure, and no sysctl command runs.
 func TestSysctlPrefetchLoadErrorFails(t *testing.T) {
-	calls := parseTrace(t, "script", `h1 aug_init NULL NULL 64
+	calls := raltest.ParseTrace(t, "script", `h1 aug_init NULL NULL 64
 h1 aug_match "/augeas/load/Sysctl" => 0
 h1 aug_set "/augeas/load/Sysctl/lens" "Sysctl.lns" => 0
 h1 aug_set "/augeas/load/Sysctl/incl[last()+1]" "/etc/sysctl.conf" => 0
@@ -317,7 +313,7 @@ h1 aug_close
 
 // A failing -e is Puppet::ExecutionFailure and a prefetch failure.
 func TestSysctlPrefetchSysctlFailureFails(t *testing.T) {
-	calls := append(traceLines(t, "01e", [2]int{4, 17}), lastTraceCall(t, "01e")...)
+	calls := append(raltest.TraceLines(t, "01e", [2]int{4, 17}), lastTraceCall(t, "01e")...)
 	run := testAugeasRun(t, calls, t.TempDir(), "/etc/sysctl.conf")
 	titles := []string{"net.ipv4.ip_forward", "net.ipv4.conf.all.rp_filter", "foo.bar", "foo.qux", "vm.swappiness"}
 	runner := newScriptSysctl(t, sysctlCall{args: append([]string{"-e"}, titles...), code: 255, out: "sysctl: boom\n"})

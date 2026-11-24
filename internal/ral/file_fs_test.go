@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"github.com/voxagent/voxagent/internal/catalog"
+	"github.com/voxagent/voxagent/internal/lib/raltest"
 )
 
 // recordingFS delegates to osFS and records each operation's name. A helper
@@ -99,17 +100,17 @@ func TestFileHelpersReachTheFilesystemOnlyThroughFsys(t *testing.T) {
 		want  []string
 	}{
 		{"create a file", nil, func(fsys fileSystem, path string) error {
-			_, _, err := applyFile(context.Background(), fsys, path, fileRes(path, map[string]any{
+			_, _, err := applyFile(context.Background(), fsys, path, raltest.FileRes(path, map[string]any{
 				"ensure": "file", "content": "x", "mode": "0640"}), false, false, nil, nil, nil)
 			return err
 		}, []string{"Lstat", "CreateTemp", "Chmod", "Rename", "Lstat"}}, // the last is mode's re-read (type/file.rb:1117)
 		{"replace content", seedFile, func(fsys fileSystem, path string) error {
-			_, _, err := applyFile(context.Background(), fsys, path, fileRes(path, map[string]any{
+			_, _, err := applyFile(context.Background(), fsys, path, raltest.FileRes(path, map[string]any{
 				"ensure": "file", "content": "new"}), false, false, nil, nil, nil)
 			return err
 		}, []string{"Lstat", "OpenFile", "Lstat", "CreateTemp", "Chown", "Chmod", "Rename"}},
 		{"create a directory", nil, func(fsys fileSystem, path string) error {
-			_, _, err := applyDirectory(context.Background(), fsys, path, fileRes(path, map[string]any{"ensure": "directory"}), false, nil, nil)
+			_, _, err := applyDirectory(context.Background(), fsys, path, raltest.FileRes(path, map[string]any{"ensure": "directory"}), false, nil, nil)
 			return err
 		}, []string{"Lstat", "Stat", "Mkdir", "Chmod"}},
 		{"remove a file", seedFile, func(fsys fileSystem, path string) error {
@@ -117,19 +118,19 @@ func TestFileHelpersReachTheFilesystemOnlyThroughFsys(t *testing.T) {
 			return err
 		}, []string{"Lstat", "Remove"}},
 		{"create a link", nil, func(fsys fileSystem, path string) error {
-			_, _, err := applyLink(context.Background(), fsys, path, fileRes(path, map[string]any{"ensure": "link", "target": "x"}), false, nil, nil)
+			_, _, err := applyLink(context.Background(), fsys, path, raltest.FileRes(path, map[string]any{"ensure": "link", "target": "x"}), false, nil, nil)
 			return err
 		}, []string{"Lstat", "Lstat", "Stat", "Symlink"}},
 		{"retarget a link", func(path string) error { return os.Symlink("old", path) }, func(fsys fileSystem, path string) error {
-			_, _, err := applyLink(context.Background(), fsys, path, fileRes(path, map[string]any{"ensure": "link", "target": "x"}), false, nil, nil)
+			_, _, err := applyLink(context.Background(), fsys, path, raltest.FileRes(path, map[string]any{"ensure": "link", "target": "x"}), false, nil, nil)
 			return err
 		}, []string{"Lstat", "Readlink", "Lstat", "Remove", "Stat", "Symlink"}},
 		{"mode only", seedFile, func(fsys fileSystem, path string) error {
-			_, _, err := applyMetadataOnly(context.Background(), fsys, path, fileRes(path, map[string]any{"mode": "0600"}), false, nil)
+			_, _, err := applyMetadataOnly(context.Background(), fsys, path, raltest.FileRes(path, map[string]any{"mode": "0600"}), false, nil)
 			return err
 		}, []string{"Lstat", "Chmod"}},
 		{"ownership in sync", seedFile, func(fsys fileSystem, path string) error {
-			_, _, err := applyMetadataOnly(context.Background(), fsys, path, fileRes(path, map[string]any{"owner": uid, "group": gid}), false, nil)
+			_, _, err := applyMetadataOnly(context.Background(), fsys, path, raltest.FileRes(path, map[string]any{"owner": uid, "group": gid}), false, nil)
 			return err
 		}, []string{"Lstat"}},
 	} {
@@ -201,7 +202,7 @@ func TestFileOwnershipOnALinkLchownsUnderManageAndChownsUnderFollow(t *testing.T
 			}
 			var ops []string
 			changes, _, err := applyMetadataOnly(context.Background(), recordingFS{ops: &ops}, link,
-				fileRes(link, map[string]any{"group": "0", "links": tc.links}), false, nil)
+				raltest.FileRes(link, map[string]any{"group": "0", "links": tc.links}), false, nil)
 			if err != nil || len(changes) != 1 || changes[0].Err == nil {
 				t.Fatalf("changes = %+v, err %v; want one failed group change", changes, err)
 			}
@@ -239,7 +240,7 @@ func TestFileFollowChildLinkIsNeitherChmodedNorChownedThroughTheRoot(t *testing.
 	if err := os.Symlink("real", link); err != nil {
 		t.Fatal(err)
 	}
-	parent := fileRes(dst, map[string]any{"source": src, "recurse": true,
+	parent := raltest.FileRes(dst, map[string]any{"source": src, "recurse": true,
 		"links": "follow", "mode": "0600", "group": "0"})
 	children, _, err := File{}.Generate(context.Background(), parent, noneManaged)
 	if err != nil {
@@ -345,7 +346,7 @@ func TestFileApplyNoopRefusesAChildWhenProcIsUnusable(t *testing.T) {
 	tree(t, dir, "f")
 	procFdDir = filepath.Join(dir, "no-such-proc")
 	t.Cleanup(func() { procFdDir = "/proc/self/fd" })
-	child := childOf(fileRes(dir, map[string]any{"recurse": true}), filepath.Join(dir, "f"), map[string]any{"ensure": "file"})
+	child := childOf(raltest.FileRes(dir, map[string]any{"recurse": true}), filepath.Join(dir, "f"), map[string]any{"ensure": "file"})
 	for _, noop := range []bool{false, true} {
 		_, _, err := File{}.Apply(context.Background(), child, noop)
 		if err == nil || errors.Is(err, fs.ErrNotExist) || !strings.Contains(err.Error(), "/proc") {

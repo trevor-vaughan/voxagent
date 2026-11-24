@@ -5,6 +5,8 @@ import (
 	"testing"
 
 	"github.com/voxagent/voxagent/internal/catalog"
+	"github.com/voxagent/voxagent/internal/lib/raltest"
+	"github.com/voxagent/voxagent/internal/lib/sources"
 	"github.com/voxagent/voxagent/internal/report"
 )
 
@@ -30,7 +32,7 @@ func (c caseResult) messages() []string {
 }
 
 // debugAt is the debug messages logged at source during the turn.
-func (c caseResult) debugAt(source string) []string { return linesAt(c.logs, source) }
+func (c caseResult) debugAt(source string) []string { return raltest.LinesAt(c.logs, source) }
 
 // augeasCaseLibdir is the libdir of every case: the recordings' --libdir.
 // File.exist? is faked, so its lens directory is the loadpath exactly when
@@ -43,7 +45,7 @@ const augeasCaseLibdir = "/tmp/gatelib"
 // resource is applied with noop, with the transaction's Sources on the
 // context, and the run ends. providers builds the providers over the run; a
 // resource's provider is the one whose Type is its lowercased type.
-func runAugeasCase(t *testing.T, calls []traceCall, present []string, providers func(*augeasRun) []Provider, rs []catalog.Resource, noop bool) []caseResult {
+func runAugeasCase(t *testing.T, calls []raltest.TraceCall, present []string, providers func(*augeasRun) []Provider, rs []catalog.Resource, noop bool) []caseResult {
 	t.Helper()
 	run := testAugeasRun(t, calls, augeasCaseLibdir, present...)
 	defer run.EndRun()
@@ -51,7 +53,7 @@ func runAugeasCase(t *testing.T, calls []traceCall, present []string, providers 
 	for _, p := range providers(run) {
 		byType[p.Type()] = p
 	}
-	ctx, logs := debugContext("debug")
+	ctx, logs := raltest.DebugContext("debug")
 	prefetched := map[string]error{}
 	var out []caseResult
 	for _, r := range rs {
@@ -81,7 +83,7 @@ func runAugeasCase(t *testing.T, calls []traceCall, present []string, providers 
 		if perr != nil {
 			res.err = perr
 		} else {
-			rctx := WithSources(ctx, Sources{
+			rctx := sources.WithSources(ctx, sources.Sources{
 				Resource: "/Stage[main]/Main/" + ref,
 				Provider: ref + "(provider=" + *p.ProviderUsed() + ")",
 				Ref:      ref,

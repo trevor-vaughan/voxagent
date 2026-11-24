@@ -5,6 +5,8 @@ import (
 	"testing"
 
 	"github.com/voxagent/voxagent/internal/catalog"
+	"github.com/voxagent/voxagent/internal/lib/nameservice"
+	"github.com/voxagent/voxagent/internal/lib/raltest"
 )
 
 func autoUser(params map[string]any) catalog.Resource {
@@ -28,10 +30,10 @@ func TestUserAutoRequires(t *testing.T) {
 	only := func(refs ...string) func(string) bool {
 		return func(ref string) bool { return slices.Contains(refs, ref) }
 	}
-	ns := fakeNSS{
-		users:    map[string]passwdEntry{"u17": {Name: "u17", GID: 100}},
-		groups:   []groupEntry{{Name: "adm", GID: 4, Members: []string{"u17"}}, {Name: "users", GID: 100}},
-		grouplst: map[string][]int64{"u17": {100, 4}},
+	ns := raltest.FakeNSS{
+		Users:    map[string]nameservice.PasswdEntry{"u17": {Name: "u17", GID: 100}},
+		Groups:   []nameservice.GroupEntry{{Name: "adm", GID: 4, Members: []string{"u17"}}, {Name: "users", GID: 100}},
+		Grouplst: map[string][]int64{"u17": {100, 4}},
 	}
 	tests := []struct {
 		name    string
@@ -63,7 +65,7 @@ func TestUserAutoRequires(t *testing.T) {
 }
 
 func TestUserAutoRequiresMissingUserUsesGroupScan(t *testing.T) {
-	ns := fakeNSS{groups: []groupEntry{{Name: "adm", GID: 4, Members: []string{"u17"}}}}
+	ns := raltest.FakeNSS{Groups: []nameservice.GroupEntry{{Name: "adm", GID: 4, Members: []string{"u17"}}}}
 	got := User{ns: ns}.AutoRequires(autoUser(map[string]any{"groups": "g"}), func(string) bool { return true })
 	if want := []string{"Group[adm]", "Group[g]"}; !slices.Equal(got, want) {
 		t.Errorf("AutoRequires = %v, want %v", got, want)

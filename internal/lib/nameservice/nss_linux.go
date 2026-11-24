@@ -1,4 +1,4 @@
-package ral
+package nameservice
 
 /*
 #define _GNU_SOURCE
@@ -51,7 +51,7 @@ import (
 	"unsafe"
 )
 
-// cNSS is the nameService backed by libc, so lookups see every NSS source the
+// cNSS is the NameService backed by libc, so lookups see every NSS source the
 // host configures (files, sssd, ...) exactly as Ruby's Etc does.
 type cNSS struct{}
 
@@ -74,8 +74,8 @@ func nssLookup(what string, sizeConf C.int, notFound []syscall.Errno, call func(
 	})
 }
 
-func goGroup(g *C.struct_group) groupEntry {
-	e := groupEntry{Name: C.GoString(g.gr_name), GID: int64(g.gr_gid)}
+func goGroup(g *C.struct_group) GroupEntry {
+	e := GroupEntry{Name: C.GoString(g.gr_name), GID: int64(g.gr_gid)}
 	for i := C.int(0); ; i++ {
 		m := C.nss_member(g.gr_mem, i)
 		if m == nil {
@@ -86,16 +86,16 @@ func goGroup(g *C.struct_group) groupEntry {
 	return e
 }
 
-func (cNSS) user(name string) (passwdEntry, bool, error) {
+func (cNSS) User(name string) (PasswdEntry, bool, error) {
 	cname := C.CString(name)
 	defer C.free(unsafe.Pointer(cname))
-	var out passwdEntry
+	var out PasswdEntry
 	var pw C.struct_passwd
 	found, err := nssLookup("getpwnam_r "+name, C._SC_GETPW_R_SIZE_MAX, notFoundPW, func(buf *C.char, size C.size_t) (C.int, bool) {
 		var ok C.int
 		rc := C.nss_getpwnam(cname, &pw, buf, size, &ok)
 		if rc == 0 && ok != 0 {
-			out = passwdEntry{
+			out = PasswdEntry{
 				Name: C.GoString(pw.pw_name), UID: int64(pw.pw_uid), GID: int64(pw.pw_gid),
 				Gecos: C.GoString(pw.pw_gecos), Dir: C.GoString(pw.pw_dir), Shell: C.GoString(pw.pw_shell),
 			}
@@ -105,16 +105,16 @@ func (cNSS) user(name string) (passwdEntry, bool, error) {
 	return out, found, err
 }
 
-func (cNSS) shadow(name string) (shadowEntry, bool, error) {
+func (cNSS) Shadow(name string) (ShadowEntry, bool, error) {
 	cname := C.CString(name)
 	defer C.free(unsafe.Pointer(cname))
-	var out shadowEntry
+	var out ShadowEntry
 	var sp C.struct_spwd
 	found, err := nssLookup("getspnam_r "+name, C._SC_GETPW_R_SIZE_MAX, notFoundSP, func(buf *C.char, size C.size_t) (C.int, bool) {
 		var ok C.int
 		rc := C.nss_getspnam(cname, &sp, buf, size, &ok)
 		if rc == 0 && ok != 0 {
-			out = shadowEntry{
+			out = ShadowEntry{
 				Hash: C.GoString(sp.sp_pwdp), Min: int64(sp.sp_min), Max: int64(sp.sp_max),
 				Warn: int64(sp.sp_warn), Expire: int64(sp.sp_expire),
 			}
@@ -124,10 +124,10 @@ func (cNSS) shadow(name string) (shadowEntry, bool, error) {
 	return out, found, err
 }
 
-func (cNSS) group(name string) (groupEntry, bool, error) {
+func (cNSS) Group(name string) (GroupEntry, bool, error) {
 	cname := C.CString(name)
 	defer C.free(unsafe.Pointer(cname))
-	var out groupEntry
+	var out GroupEntry
 	var gr C.struct_group
 	found, err := nssLookup("getgrnam_r "+name, C._SC_GETGR_R_SIZE_MAX, notFoundPW, func(buf *C.char, size C.size_t) (C.int, bool) {
 		var ok C.int
@@ -142,11 +142,11 @@ func (cNSS) group(name string) (groupEntry, bool, error) {
 
 // groupByID treats an id outside gid_t as absent rather than truncating it into
 // a different group.
-func (cNSS) groupByID(gid int64) (groupEntry, bool, error) {
+func (cNSS) GroupByID(gid int64) (GroupEntry, bool, error) {
 	if gid < 0 || gid > 1<<32-1 {
-		return groupEntry{}, false, nil
+		return GroupEntry{}, false, nil
 	}
-	var out groupEntry
+	var out GroupEntry
 	var gr C.struct_group
 	found, err := nssLookup(fmt.Sprintf("getgrgid_r %d", gid), C._SC_GETGR_R_SIZE_MAX, notFoundPW, func(buf *C.char, size C.size_t) (C.int, bool) {
 		var ok C.int
@@ -159,7 +159,7 @@ func (cNSS) groupByID(gid int64) (groupEntry, bool, error) {
 	return out, found, err
 }
 
-func (cNSS) groupList(user string, gid int64) ([]int64, error) {
+func (cNSS) GroupList(user string, gid int64) ([]int64, error) {
 	if gid < 0 || gid > 1<<32-1 {
 		return nil, fmt.Errorf("getgrouplist %s: gid %d out of range", user, gid)
 	}
@@ -179,15 +179,15 @@ func (cNSS) groupList(user string, gid int64) ([]int64, error) {
 	})
 }
 
-func (cNSS) allGroups() ([]groupEntry, error) {
+func (cNSS) AllGroups() ([]GroupEntry, error) {
 	nssEnumMu.Lock()
 	defer nssEnumMu.Unlock()
 	C.setgrent()
 	defer C.endgrent()
-	var all []groupEntry
+	var all []GroupEntry
 	for {
 		var gr C.struct_group
-		var entry groupEntry
+		var entry GroupEntry
 		// getgrent_r signals the end with ENOENT, which nssLookup reports as
 		// "no entry"; ERANGE retries the same position with a bigger buffer.
 		found, err := nssLookup("getgrent_r", C._SC_GETGR_R_SIZE_MAX, []syscall.Errno{syscall.ENOENT}, func(buf *C.char, size C.size_t) (C.int, bool) {

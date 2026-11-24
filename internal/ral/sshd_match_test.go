@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/voxagent/voxagent/internal/catalog"
+	"github.com/voxagent/voxagent/internal/lib/raltest"
 )
 
 // forEachPermutation calls f with each permutation of 0..n-1 in the order of
@@ -176,7 +177,7 @@ func TestSshdAutoRequiresMatchesPermutations(t *testing.T) {
 		if target != "" {
 			params["target"] = target
 		}
-		r := augRes("Sshd_config", "PermitRootLogin", params)
+		r := raltest.AugRes("Sshd_config", "PermitRootLogin", params)
 		p, err := parseSshdConfig(r)
 		if err != nil {
 			t.Fatalf("iteration %d: %v", i, err)
@@ -216,7 +217,7 @@ func TestSshdAutoRequiresTwelveKeys(t *testing.T) {
 	}
 	cond := strings.Join(forward, " ")
 	rev := strings.Join(backward, " ")
-	r := augRes("Sshd_config", "x", map[string]any{"value": "v", "condition": cond, "target": "/etc/ssh/sshd_config"})
+	r := raltest.AugRes("Sshd_config", "x", map[string]any{"value": "v", "condition": cond, "target": "/etc/ssh/sshd_config"})
 	if err := (SshdConfig{}).Validate(r); err != nil {
 		t.Fatalf("twelve keys: %v", err)
 	}

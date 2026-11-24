@@ -1,6 +1,10 @@
-package ral
+package puppetpath
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/voxagent/voxagent/internal/lib/rubyvalue"
+)
 
 func TestDeclaredModeApply(t *testing.T) {
 	for _, tt := range []struct {
@@ -28,11 +32,11 @@ func TestDeclaredModeApply(t *testing.T) {
 		{"a+X", 0o010, false, 0o111}, {"g=u,o=g", 0o100, false, 0o111},
 		{"0755", 0o2755, false, 0o755}, {"7755", 0o644, false, 0o7755},
 	} {
-		m, err := parseDeclaredMode(tt.mode, false)
+		m, err := ParseDeclaredMode(tt.mode, false)
 		if err != nil {
 			t.Fatalf("%q: %v", tt.mode, err)
 		}
-		got, err := m.apply(tt.current, tt.dir)
+		got, err := m.Apply(tt.current, tt.dir)
 		if err != nil || got != tt.want {
 			t.Errorf("%q on %04o (dir %v) = %04o, %v; want %04o", tt.mode, tt.current, tt.dir, got, err, tt.want)
 		}
@@ -46,13 +50,13 @@ func TestDeclaredModeXNeedsPlus(t *testing.T) {
 		"u+r-X":       `X only works with the '+' operator in symbolic mode "u+r-X"`,
 		"u+r,g=X,o+r": `X only works with the '+' operator at "g=X" in symbolic mode "u+r,g=X,o+r"`,
 	} {
-		m, _ := parseDeclaredMode(mode, false)
-		if _, err := m.apply(0o644, false); err == nil || err.Error() != want {
+		m, _ := ParseDeclaredMode(mode, false)
+		if _, err := m.Apply(0o644, false); err == nil || err.Error() != want {
 			t.Errorf("%q: err = %v, want %q", mode, err, want)
 		}
 	}
-	if m, _ := parseDeclaredMode("u-X", false); m.failureDisplay() != "0u-X" {
-		t.Errorf("failureDisplay = %q, want 0u-X", m.failureDisplay())
+	if m, _ := ParseDeclaredMode("u-X", false); m.FailureDisplay() != "0u-X" {
+		t.Errorf("failureDisplay = %q, want 0u-X", m.FailureDisplay())
 	}
 }
 
@@ -61,20 +65,20 @@ func TestParseDeclaredMode(t *testing.T) {
 		{"0755", "0755"}, {"755", "0755"}, {"00755", "0755"}, {"7755", "7755"}, {"2775", "2775"},
 		{"u+rwX,g-rwx,o-rwx", "u+rwX,g-rwx,o-rwx"},
 	} {
-		m, err := parseDeclaredMode(ok.mode, false)
-		if err != nil || m.desired() != ok.desired {
-			t.Errorf("%q: desired %q, %v; want %q", ok.mode, m.desired(), err, ok.desired)
+		m, err := ParseDeclaredMode(ok.mode, false)
+		if err != nil || m.Desired() != ok.desired {
+			t.Errorf("%q: desired %q, %v; want %q", ok.mode, m.Desired(), err, ok.desired)
 		}
 	}
 	// "000755" is invalid by util/symbolic_file_mode.rb:19-20 (read, not measured).
 	for _, bad := range []string{"u+q", "", " u+x", "u+x ,g+r", "u+rw,,g+r", "u+x,", "rw", "u",
 		"12345", "0o755", "789", "000755", "u+x\nj", "j\nu+x", "u+x\n"} {
-		_, err := parseDeclaredMode(bad, false)
-		if want := "The file mode specification is invalid: " + rubyInspect(bad); err == nil || err.Error() != want {
+		_, err := ParseDeclaredMode(bad, false)
+		if want := "The file mode specification is invalid: " + rubyvalue.Inspect(bad); err == nil || err.Error() != want {
 			t.Errorf("%q: err = %v, want %q", bad, err, want)
 		}
 	}
-	if _, err := parseDeclaredMode(float64(755), false); err == nil ||
+	if _, err := ParseDeclaredMode(float64(755), false); err == nil ||
 		err.Error() != "The file mode specification must be a string, not 'Integer'" {
 		t.Errorf("Integer: err = %v", err)
 	}

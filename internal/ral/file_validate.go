@@ -16,6 +16,9 @@ import (
 	"unicode"
 
 	"github.com/voxagent/voxagent/internal/catalog"
+	"github.com/voxagent/voxagent/internal/lib/command"
+	"github.com/voxagent/voxagent/internal/lib/rubyvalue"
+	"github.com/voxagent/voxagent/internal/lib/sources"
 	"github.com/voxagent/voxagent/internal/runlog"
 )
 
@@ -108,8 +111,8 @@ func (v *validation) run(ctx context.Context, tmpPath string) error {
 		// (D-78); Exec's one "[output redacted]" line is not copied, as the
 		// validator's output is not a command result the user asked to see.
 		if l := runlog.From(ctx); !v.outputRedacted && l.Enabled("debug") {
-			for _, out := range splitOutput(output) {
-				l.Log("debug", SourcesFrom(ctx).Resource, out)
+			for _, out := range command.SplitOutput(output) {
+				l.Log("debug", sources.SourcesFrom(ctx).Resource, out)
 			}
 		}
 		return nil
@@ -117,27 +120,7 @@ func (v *validation) run(ctx context.Context, tmpPath string) error {
 	if v.outputRedacted {
 		output = "[output redacted]"
 	}
-	return &executionFailure{command: line, status: status, output: output}
-}
-
-// executionFailure is Puppet::ExecutionFailure as util/execution.rb:311-312
-// raises it. It is a Puppet::Error, so the ensure setter re-raises it
-// unwrapped (property.rb:490), like checksumMismatchError.
-type executionFailure struct {
-	command string
-	// status is the exit status, or -1 for a process killed by a signal,
-	// whose Ruby exitstatus is nil and interpolates as nothing.
-	status int
-	output string
-}
-
-func (e *executionFailure) Error() string {
-	status := ""
-	if e.status >= 0 {
-		status = strconv.Itoa(e.status)
-	}
-	// String#strip: Ruby 3.4 takes NULs as well as whitespace from both ends.
-	return fmt.Sprintf("Execution of '%s' returned %s: %s", e.command, status, strings.Trim(e.output, " \t\n\v\f\r\x00"))
+	return &command.ExecutionFailure{Command: line, Status: status, Output: output}
 }
 
 // rubyEnvDropped are the variables Puppet deletes in the child before every
@@ -147,10 +130,10 @@ func (e *executionFailure) Error() string {
 // the userEnvVars; validate_cmd drops both.
 var rubyEnvDropped = func() map[string]struct{} {
 	dropped := map[string]struct{}{}
-	for _, name := range rubyLocaleVars {
+	for _, name := range command.RubyLocaleVars {
 		dropped[name] = struct{}{}
 	}
-	for _, name := range userEnvVars {
+	for _, name := range command.UserEnvVars {
 		dropped[name] = struct{}{}
 	}
 	return dropped
@@ -180,7 +163,7 @@ func runAsRubyExec(ctx context.Context, line string) (int, string, error) {
 		argv0 = words[0]
 		cmd = rubyChild(argv0, argv0, words[1:]...)
 	}
-	status, output, err := runLogged(ctx, cmd, quoteOrRedact(line, false), line)
+	status, output, err := command.RunLogged(ctx, cmd, command.QuoteOrRedact(line, false), line)
 	if err == nil {
 		return status, output, nil
 	}
@@ -199,7 +182,7 @@ func runAsRubyExec(ctx context.Context, line string) (int, string, error) {
 		// A file with no #! line: Ruby retries it as a /bin/sh script
 		// (process.c proc_exec_cmd), measured with Ruby 3.4.9.
 		retry := rubyChild("/bin/sh", "sh", append([]string{cmd.Path}, cmd.Args[1:]...)...)
-		return runCapped(ctx, retry, quoteOrRedact(line, false), (*exec.Cmd).Run)
+		return command.RunCapped(ctx, retry, command.QuoteOrRedact(line, false), (*exec.Cmd).Run)
 	}
 	return 1, couldNotExecute(errno, argv0), nil
 }
@@ -317,7 +300,7 @@ func validateValidateCmd(r catalog.Resource) error {
 			return fmt.Errorf(`%s: validate_replacement => %v (%T) is refused: Puppet accepts it and fails every change it validates with "wrong argument type"`, r.Ref(), v, v)
 		}
 	}
-	if paramString(r, "recurse", "false") == "true" {
+	if rubyvalue.ParamString(r, "recurse", "false") == "true" {
 		return fmt.Errorf("%s: validate_cmd with recurse => true is not implemented: each generated file's name would be substituted into the command", r.Ref())
 	}
 	return nil

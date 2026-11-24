@@ -7,6 +7,8 @@ import (
 	"strings"
 
 	"github.com/voxagent/voxagent/internal/catalog"
+	"github.com/voxagent/voxagent/internal/lib/augeas"
+	"github.com/voxagent/voxagent/internal/lib/sources"
 	"github.com/voxagent/voxagent/internal/runlog"
 )
 
@@ -69,7 +71,7 @@ func (s SshdConfig) Apply(ctx context.Context, r catalog.Resource, noop bool) ([
 	if err != nil {
 		return nil, nil, err
 	}
-	found, err := aug.match("$resource")
+	found, err := aug.Match("$resource")
 	if err != nil {
 		return nil, nil, err
 	}
@@ -101,12 +103,12 @@ func (s SshdConfig) Apply(ctx context.Context, r catalog.Resource, noop bool) ([
 			if aug, err := s.run.augopen(sshdConfigLens, target, resourcePath); err != nil {
 				ch.Err = err
 			} else {
-				aug.rm("$resource")
-				aug.rm("$target/Match[count(Settings/*)=0]")
+				aug.Rm("$resource")
+				aug.Rm("$target/Match[count(Settings/*)=0]")
 			}
 		}
 	case !exists:
-		runlog.Debugf(ctx, SourcesFrom(ctx).Resource, "Nothing to manage: no ensure and the resource doesn't exist")
+		runlog.Debugf(ctx, sources.SourcesFrom(ctx).Resource, "Nothing to manage: no ensure and the resource doesn't exist")
 		return nil, nil, nil
 	default:
 		should := rubyStrings(p.Value)
@@ -206,14 +208,14 @@ func (s SshdConfig) create(p sshdConfigParams, target, base, resourcePath string
 	}
 	if len(p.Condition) > 0 {
 		// match_exists? (SDP:170-173): base without its /Settings step.
-		m, err := aug.match(strings.TrimSuffix(base, "/Settings"))
+		m, err := aug.Match(strings.TrimSuffix(base, "/Settings"))
 		if err != nil {
 			return err
 		}
 		if len(m) == 0 {
-			aug.insert("$target/*[last()]", "Match", false)
+			aug.Insert("$target/*[last()]", "Match", false)
 			for _, c := range p.Condition {
-				aug.set("$target/Match[last()]/Condition/"+c.Key, c.Value)
+				aug.Set("$target/Match[last()]/Condition/"+c.Key, c.Value)
 			}
 		}
 	}
@@ -229,12 +231,12 @@ func (s SshdConfig) create(p sshdConfigParams, target, base, resourcePath string
 		if !strings.EqualFold(p.Key, ins.key) {
 			continue
 		}
-		m, err := aug.match(base + "/" + ins.other)
+		m, err := aug.Match(base + "/" + ins.other)
 		if err != nil {
 			return err
 		}
 		if len(m) > 0 {
-			aug.insert(base+"/"+ins.at, p.Key, ins.before)
+			aug.Insert(base+"/"+ins.at, p.Key, ins.before)
 		}
 	}
 	return s.setValue(aug, base, base+"/"+p.Key, p.Key, rubyStrings(p.Value))
@@ -242,7 +244,7 @@ func (s SshdConfig) create(p sshdConfigParams, target, base, resourcePath string
 
 // setValue is set_value (SDP:46-52): an array entry when the stock lens
 // parses "<label> FOO" with a numbered child, else one entry per value.
-func (s SshdConfig) setValue(aug *rubyAug, base, path, label string, values []any) error {
+func (s SshdConfig) setValue(aug *augeas.Aug, base, path, label string, values []any) error {
 	array, err := s.run.parsedAs(sshdConfigLens.lens(), label)
 	if err != nil {
 		return err

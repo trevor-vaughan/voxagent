@@ -13,6 +13,7 @@ import (
 	"github.com/voxagent/voxagent/internal/catalog"
 	"github.com/voxagent/voxagent/internal/extension"
 	"github.com/voxagent/voxagent/internal/extension/extensiontest"
+	"github.com/voxagent/voxagent/internal/lib/augeas"
 	"github.com/voxagent/voxagent/internal/ral"
 	"github.com/voxagent/voxagent/internal/report"
 	"github.com/voxagent/voxagent/internal/runlog"
@@ -41,12 +42,12 @@ func augeasLibdir(t *testing.T, extra ...string) string {
 // fakeAugeasLib is libaugeas answering every call with success and nothing
 // found; it records which handles were opened and how often each was closed.
 type fakeAugeasLib struct {
-	next      ral.AugeasHandle
-	closed    map[ral.AugeasHandle]int
+	next      augeas.Handle
+	closed    map[augeas.Handle]int
 	loadpaths []string // the loadpath each Init received; "<nil>" for NULL
 }
 
-func (f *fakeAugeasLib) Init(root, loadpath *string, flags uint) (ral.AugeasHandle, bool) {
+func (f *fakeAugeasLib) Init(root, loadpath *string, flags uint) (augeas.Handle, bool) {
 	f.next++
 	if loadpath == nil {
 		f.loadpaths = append(f.loadpaths, "<nil>")
@@ -54,23 +55,23 @@ func (f *fakeAugeasLib) Init(root, loadpath *string, flags uint) (ral.AugeasHand
 		f.loadpaths = append(f.loadpaths, *loadpath)
 	}
 	if f.closed == nil {
-		f.closed = map[ral.AugeasHandle]int{}
+		f.closed = map[augeas.Handle]int{}
 	}
 	f.closed[f.next] = 0
 	return f.next, true
 }
-func (f *fakeAugeasLib) Close(h ral.AugeasHandle)                               { f.closed[h]++ }
-func (f *fakeAugeasLib) Get(ral.AugeasHandle, string) (*string, int)            { return nil, 0 }
-func (f *fakeAugeasLib) Set(ral.AugeasHandle, string, *string) int              { return 0 }
-func (f *fakeAugeasLib) Rm(ral.AugeasHandle, string) int                        { return 0 }
-func (f *fakeAugeasLib) Insert(ral.AugeasHandle, string, string, bool) int      { return 0 }
-func (f *fakeAugeasLib) Mv(ral.AugeasHandle, string, string) int                { return 0 }
-func (f *fakeAugeasLib) Match(ral.AugeasHandle, string) ([]string, int)         { return []string{}, 0 }
-func (f *fakeAugeasLib) Load(ral.AugeasHandle) int                              { return 0 }
-func (f *fakeAugeasLib) Save(ral.AugeasHandle) int                              { return 0 }
-func (f *fakeAugeasLib) Defvar(ral.AugeasHandle, string, string) int            { return 0 }
-func (f *fakeAugeasLib) Defnode(ral.AugeasHandle, string, string, *string) int  { return 0 }
-func (f *fakeAugeasLib) TextStore(ral.AugeasHandle, string, string, string) int { return 0 }
+func (f *fakeAugeasLib) Close(h augeas.Handle)                               { f.closed[h]++ }
+func (f *fakeAugeasLib) Get(augeas.Handle, string) (*string, int)            { return nil, 0 }
+func (f *fakeAugeasLib) Set(augeas.Handle, string, *string) int              { return 0 }
+func (f *fakeAugeasLib) Rm(augeas.Handle, string) int                        { return 0 }
+func (f *fakeAugeasLib) Insert(augeas.Handle, string, string, bool) int      { return 0 }
+func (f *fakeAugeasLib) Mv(augeas.Handle, string, string) int                { return 0 }
+func (f *fakeAugeasLib) Match(augeas.Handle, string) ([]string, int)         { return []string{}, 0 }
+func (f *fakeAugeasLib) Load(augeas.Handle) int                              { return 0 }
+func (f *fakeAugeasLib) Save(augeas.Handle) int                              { return 0 }
+func (f *fakeAugeasLib) Defvar(augeas.Handle, string, string) int            { return 0 }
+func (f *fakeAugeasLib) Defnode(augeas.Handle, string, string, *string) int  { return 0 }
+func (f *fakeAugeasLib) TextStore(augeas.Handle, string, string, string) int { return 0 }
 
 // fakeAugeasProbe answers the library probe with lib, or fails with reason.
 type fakeAugeasProbe struct {
@@ -79,7 +80,7 @@ type fakeAugeasProbe struct {
 	calls  int
 }
 
-func (p *fakeAugeasProbe) Probe() (ral.AugeasLib, string, bool) {
+func (p *fakeAugeasProbe) Probe() (augeas.Lib, string, bool) {
 	p.calls++
 	if p.reason != "" {
 		return nil, p.reason, false
