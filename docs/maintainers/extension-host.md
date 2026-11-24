@@ -309,11 +309,11 @@ notify). `transaction/build.go` (`autoRequireEdges`) merges them as
 The host answers `relationships` for every Tier 3 resource, and its answers are
 already filtered to resources in the catalog (`type.rb:2076-2113`). The
 native `File` also autorequires `User[owner]` and `Group[group]` by name
-(`type/file.rb:403-418`; `internal/ral/file.go`), skipping an owner that is all
+(`type/file.rb:403-418`; `internal/units/file/file.go`), skipping an owner that is all
 digits, and the native `exec` autorequires `User[user]` for a `user` that is
-not numeric (`type/exec.rb:642-648`; `internal/ral/exec.go`). `user` and
+not numeric (`type/exec.rb:642-648`; `internal/units/exec/exec.go`). `user` and
 `group` are themselves native on the platform their contract was measured on
-(`ral.NativeUserGroup`, apply-spine.md's `user` and `group` provider section)
+(the user and group units' `Route`, apply-spine.md's `user` and `group` provider section)
 and Tier 3 everywhere else, so these edges join two native resources there
 and cross the boundary elsewhere; the graph orders them the same either way.
 A catalog with a `User` whose `purge_ssh_keys` is anything but `false`, `"false"` or
@@ -469,7 +469,7 @@ is still a gap (`internal/ral/check.go`).
 **`concat`.** `concat_file` and `concat_fragment` are native, not host types,
 when `--libdir` holds puppetlabs-concat 9.1.0 or 10.0.1 (both type files match
 a measured digest) and every resource of both types has a measured shape
-(`ral.NativeConcat`, D-89); then `concat_file`'s `generate` is voxagent's, and
+(the concat unit's `Route`, D-89); then `concat_file`'s `generate` is voxagent's, and
 runs only when the host did not load the catalog (`hostLoaded`), since the
 host's `load` has already run Puppet's own on every vertex. Otherwise both
 types go to the host, which is the oracle for any release or shape not

@@ -12,7 +12,7 @@ import (
 
 // §4.2 item 8: staging changes the agent's cwd and umask while it starts a
 // child, which is safe only because nothing else runs then. The one goroutine
-// these packages start is runExec's waiter, which calls nothing but Wait.
+// these packages (and the units) start is runExec's waiter, which calls nothing but Wait.
 func TestOnlyTheExecWaiterStartsAGoroutine(t *testing.T) {
 	var found []string
 	fset := token.NewFileSet()
@@ -20,7 +20,11 @@ func TestOnlyTheExecWaiterStartsAGoroutine(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, dir := range append([]string{".", "../transaction"}, libs...) {
+	units, err := filepath.Glob("../units/*")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, dir := range append(append([]string{".", "../transaction"}, libs...), units...) {
 		names, err := filepath.Glob(filepath.Join(dir, "*.go"))
 		if err != nil {
 			t.Fatal(err)
@@ -45,7 +49,7 @@ func TestOnlyTheExecWaiterStartsAGoroutine(t *testing.T) {
 			})
 		}
 	}
-	if len(found) != 1 || !strings.HasPrefix(found[0], "exec_run.go:") {
-		t.Errorf("go statements at %v, want exactly one, in exec_run.go", found)
+	if len(found) != 1 || !strings.HasPrefix(found[0], "../units/exec/exec_run.go:") {
+		t.Errorf("go statements at %v, want exactly one, in units/exec/exec_run.go", found)
 	}
 }

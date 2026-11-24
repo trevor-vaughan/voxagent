@@ -21,9 +21,10 @@ import (
 	"syscall"
 	"testing"
 
+	"github.com/voxagent/voxagent/internal/units/file"
+
 	"github.com/voxagent/voxagent/internal/catalog"
 	"github.com/voxagent/voxagent/internal/puppetapi"
-	"github.com/voxagent/voxagent/internal/ral"
 )
 
 const testServer = "puppet.example"
@@ -493,7 +494,7 @@ func TestFetchSourcesModes(t *testing.T) {
 	}
 }
 
-// End to end: the map FetchSources returns is what ral.File reads, and the
+// End to end: the map FetchSources returns is what file.File reads, and the
 // provider's messages name the source as the catalog wrote it.
 func TestFetchSourcesAppliedByRal(t *testing.T) {
 	s := newSourceServer()
@@ -508,7 +509,7 @@ func TestFetchSourcesAppliedByRal(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	f := ral.File{Environment: "production", Sources: m}
+	f := file.File{Environment: "production", Sources: m}
 	for _, r := range []catalog.Resource{present, missing} {
 		if err := f.Validate(r); err != nil {
 			t.Fatalf("Validate %s: %v", r.Ref(), err)

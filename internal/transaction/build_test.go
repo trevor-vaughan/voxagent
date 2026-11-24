@@ -7,11 +7,15 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/voxagent/voxagent/internal/units/file"
+
 	"github.com/voxagent/voxagent/internal/catalog"
 	"github.com/voxagent/voxagent/internal/graph"
 	"github.com/voxagent/voxagent/internal/ral"
 	"github.com/voxagent/voxagent/internal/report"
 	"github.com/voxagent/voxagent/internal/runlog"
+	"github.com/voxagent/voxagent/internal/units/exec"
+	"github.com/voxagent/voxagent/internal/units/notify"
 )
 
 // walked is the order a Walker places g's vertices in when nothing is
@@ -427,7 +431,7 @@ func TestBuildGraphAcceptsEmptyCatalog(t *testing.T) {
 // testRegistry holds the real providers, so autorequire behaves in these tests
 // the way it behaves in a run. The fixtures above use relative titles like "a",
 // which have no managed ancestor, so it adds no edges where none are intended.
-var testRegistry = ral.NewRegistry(ral.Notify{}, ral.File{}, ral.Exec{})
+var testRegistry = ral.NewRegistry(notify.Notify{}, file.File{}, exec.Exec{})
 
 // A file is applied after its parent directory with nothing in the catalog
 // saying so.

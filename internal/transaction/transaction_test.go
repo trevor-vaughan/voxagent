@@ -19,6 +19,7 @@ import (
 	"github.com/voxagent/voxagent/internal/ral"
 	"github.com/voxagent/voxagent/internal/report"
 	"github.com/voxagent/voxagent/internal/runlog"
+	"github.com/voxagent/voxagent/internal/units/exec"
 )
 
 // recorder is a provider that records the order it was called in and can be
@@ -3285,7 +3286,7 @@ func TestGuardBlockedExecInAClassIsTriggered(t *testing.T) {
 	marker := filepath.Join(t.TempDir(), "ran")
 	var applied, refreshed []string
 	tx := &Transaction{Registry: ral.NewRegistry(
-		unrefreshable{recorder{typ: "notify", applied: &applied, refreshed: &refreshed, changes: 1}}, ral.Exec{})}
+		unrefreshable{recorder{typ: "notify", applied: &applied, refreshed: &refreshed, changes: 1}}, exec.Exec{})}
 	c := classCatalog([]catalog.Resource{
 		res("Class", "b", nil),
 		res("Exec", "b_plain", map[string]any{"command": "/usr/bin/touch " + marker, "unless": "/bin/true"}),
@@ -3631,7 +3632,7 @@ func TestGeneratedChildPrefetchIsLogged(t *testing.T) {
 // M1 and M20 as the console shows them: a timed-out or exit-127 main command
 // logs its detail bare at Puppet and fails returns with it.
 func TestExecTimeoutAndExit127Logs(t *testing.T) {
-	tx := &Transaction{Registry: ral.NewRegistry(ral.Exec{})}
+	tx := &Transaction{Registry: ral.NewRegistry(exec.Exec{})}
 	rep := runCatalog(t, tx, &catalog.Catalog{Resources: []catalog.Resource{
 		res("Exec", "slow", map[string]any{"command": "sleep 5", "timeout": 0.2}),
 		res("Exec", "gone", map[string]any{"command": "echo gone >&2; exit 127"}),
@@ -3656,7 +3657,7 @@ func TestExecTimeoutAndExit127Logs(t *testing.T) {
 // one with a guard, that set E empty warn once per run, and the next run warns
 // again.
 func TestExecEmptyEnvironmentWarnsOncePerRun(t *testing.T) {
-	tx := &Transaction{Registry: ral.NewRegistry(ral.Exec{})}
+	tx := &Transaction{Registry: ral.NewRegistry(exec.Exec{})}
 	c := &catalog.Catalog{Resources: []catalog.Resource{
 		res("Exec", "a", map[string]any{"command": "/bin/true", "onlyif": "/bin/true", "environment": []any{"E="}}),
 		res("Exec", "b", map[string]any{"command": "/bin/true", "environment": []any{"E="}}),
@@ -3686,7 +3687,7 @@ type stagingBreaker struct {
 func (p stagingBreaker) Apply(ctx context.Context, r catalog.Resource, noop bool) ([]ral.Change, []ral.Warning, error) {
 	if r.Ref() == p.breakOn {
 		*p.applied = append(*p.applied, r.Ref())
-		return nil, nil, fmt.Errorf("run '/bin/true': %w: permission denied", ral.ErrStagingBroken)
+		return nil, nil, fmt.Errorf("run '/bin/true': %w: permission denied", exec.ErrStagingBroken)
 	}
 	return p.recorder.Apply(ctx, r, noop)
 }
@@ -3714,7 +3715,7 @@ func TestRunStopsOnStagingBroken(t *testing.T) {
 	}
 	rep := report.New("n", "production", false)
 	err = tx.Run(context.Background(), c, g, rep)
-	if !errors.Is(err, ral.ErrStagingBroken) {
+	if !errors.Is(err, exec.ErrStagingBroken) {
 		t.Fatalf("Run returned %v, want ErrStagingBroken", err)
 	}
 	if !strings.Contains(err.Error(), "Exec[a]") {
@@ -3742,7 +3743,7 @@ func TestRunStopsOnStagingBrokenRefresh(t *testing.T) {
 		t.Fatal(err)
 	}
 	err = tx.Run(context.Background(), c, g, report.New("n", "production", false))
-	if !errors.Is(err, ral.ErrStagingBroken) {
+	if !errors.Is(err, exec.ErrStagingBroken) {
 		t.Fatalf("Run returned %v, want ErrStagingBroken", err)
 	}
 	if slices.Contains(applied, "Exec[b]") {
@@ -3753,7 +3754,7 @@ func TestRunStopsOnStagingBrokenRefresh(t *testing.T) {
 type refreshBreaker struct{ recorder }
 
 func (p refreshBreaker) Refresh(context.Context, catalog.Resource, bool) (bool, error) {
-	return false, fmt.Errorf("run '/bin/true': %w: permission denied", ral.ErrStagingBroken)
+	return false, fmt.Errorf("run '/bin/true': %w: permission denied", exec.ErrStagingBroken)
 }
 
 func (p refreshBreaker) Prefetch(context.Context, []catalog.Resource) (ral.Provider, error) {

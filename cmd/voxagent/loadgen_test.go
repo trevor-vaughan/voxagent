@@ -8,16 +8,19 @@ import (
 	"testing"
 	"time"
 
+	"github.com/voxagent/voxagent/internal/units/file"
+
 	"github.com/voxagent/voxagent/internal/catalog"
 	"github.com/voxagent/voxagent/internal/extension"
 	"github.com/voxagent/voxagent/internal/extension/extensiontest"
 	"github.com/voxagent/voxagent/internal/ral"
+	"github.com/voxagent/voxagent/internal/units/notify"
 )
 
 // fakeGen is a native type (Vox_lg) whose generate builds File[<dir>/<title>],
 // so the load-time hook is tested before any real provider implements it.
 type fakeGen struct {
-	ral.Notify
+	notify.Notify
 	typ     string // the type it claims; "" is vox_lg, which only the native path knows
 	dir     string
 	fileOpt map[string]any // extra File parameters
@@ -74,7 +77,7 @@ func applyInProcess(t *testing.T, resources []map[string]any, o applyOptions) (s
 func TestLoadGenerateRunsWithoutHost(t *testing.T) {
 	dir := t.TempDir()
 	var calls []string
-	reg := ral.NewRegistry(ral.File{}, fakeGen{dir: dir, calls: &calls})
+	reg := ral.NewRegistry(file.File{}, fakeGen{dir: dir, calls: &calls})
 	cat := &catalog.Catalog{Resources: []catalog.Resource{
 		{Type: "Vox_lg", Title: "a"}, {Type: "Notify", Title: "n"}, {Type: "Vox_lg", Title: "b"},
 	}}

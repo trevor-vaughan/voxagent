@@ -9,7 +9,7 @@ import (
 	"github.com/voxagent/voxagent/internal/lib/command"
 )
 
-// Platform is what NativeUserGroup and NativeAugeas learn from the host. It is
+// Platform is what the user and group units and the augeas routes learn from the host. It is
 // an interface so tests do not depend on the machine they run on.
 type Platform interface {
 	Executable(path string) bool
@@ -30,9 +30,9 @@ func (realPlatform) OSRelease() ([]byte, error) { return os.ReadFile("/etc/os-re
 // were measured against.
 const minNativeMajor = 10
 
-// measuredRelease reports whether /etc/os-release names RHEL family major >=
+// MeasuredRelease reports whether /etc/os-release names RHEL family major >=
 // 10, not Fedora. An unreadable or unparsable os-release does not.
-func measuredRelease(p Platform) bool {
+func MeasuredRelease(p Platform) bool {
 	data, err := p.OSRelease()
 	if err != nil {
 		return false

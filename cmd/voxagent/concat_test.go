@@ -14,6 +14,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/voxagent/voxagent/internal/units/concat"
+
 	"github.com/voxagent/voxagent/internal/catalog"
 	"github.com/voxagent/voxagent/internal/extension"
 	"github.com/voxagent/voxagent/internal/extension/extensiontest"
@@ -21,19 +23,19 @@ import (
 )
 
 // concatModuleLib returns the lib directory holding the two type files of
-// puppetlabs-concat at version (ral.Concat910 or ral.Concat1001), committed
-// under internal/ral/testdata/concat (see its README).
-func concatModuleLib(t *testing.T, version ral.ConcatVersion) string {
+// puppetlabs-concat at version (concat.Concat910 or concat.Concat1001), committed
+// under internal/units/concat/testdata (see its README).
+func concatModuleLib(t *testing.T, version concat.ConcatVersion) string {
 	t.Helper()
 	_, here, _, ok := runtime.Caller(0)
 	if !ok {
 		t.Fatal("cannot locate the repository")
 	}
-	name := map[ral.ConcatVersion]string{ral.Concat910: "9.1.0", ral.Concat1001: "10.0.1"}[version]
+	name := map[concat.ConcatVersion]string{concat.Concat910: "lib-9.1.0", concat.Concat1001: "lib"}[version]
 	if name == "" {
 		t.Fatalf("no concat testdata for version %d", version)
 	}
-	return filepath.Join(filepath.Dir(filepath.Dir(filepath.Dir(here))), "internal", "ral", "testdata", "concat", name, "lib")
+	return filepath.Join(filepath.Dir(filepath.Dir(filepath.Dir(here))), "internal", "units", "concat", "testdata", name)
 }
 
 // concatLibdir returns a temp libdir holding puppetlabs-concat 10.0.1's lib
@@ -41,7 +43,7 @@ func concatModuleLib(t *testing.T, version ral.ConcatVersion) string {
 // concat_file.rb, so the tree is not measured.
 func concatLibdir(t *testing.T, edit func([]byte) []byte, extra ...string) string {
 	t.Helper()
-	lib := concatModuleLib(t, ral.Concat1001)
+	lib := concatModuleLib(t, concat.Concat1001)
 	dir := t.TempDir()
 	for _, src := range append([]string{lib}, extra...) {
 		if err := os.CopyFS(dir, os.DirFS(src)); err != nil {

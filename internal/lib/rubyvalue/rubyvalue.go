@@ -172,7 +172,7 @@ func Integer(s string) (int64, error) {
 func Strip(s string) string { return strings.Trim(s, "\x00 \t\n\v\f\r") }
 
 // UnimplementedValue is a value shape the native user or group parser does
-// not implement, though Ruby accepts it. NativeUserGroup sends a type with one
+// not implement, though Ruby accepts it. The user and group units send a type with one
 // to the extension host (spec §0); Ruby's own validation failures are other
 // errors and stay native. shown is the value as the refusal prints it.
 type UnimplementedValue struct{ Ref, Attr, Shown string }

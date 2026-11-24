@@ -2,35 +2,28 @@ package ral
 
 import (
 	"encoding/json"
+	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/voxagent/voxagent/internal/catalog"
 )
 
-func TestFileValidateRequiresAnAbsolutePath(t *testing.T) {
-	cases := []struct {
-		title string
-		want  string // "" means valid
-	}{
-		{"/tmp/a", ""},
-		{"/", ""},
-		{"rel/f1", "Parameter path failed on File[rel/f1]: File paths must be fully qualified, not 'rel/f1'"},
-		{"./x", "Parameter path failed on File[./x]: File paths must be fully qualified, not './x'"},
-		{"", "Parameter path failed on File[]: File paths must be fully qualified, not ''"},
+// fileValidator stands in for file's path check, the one Validating provider
+// the engine tests need: its message is type/file.rb's verbatim.
+type fileValidator struct{ stub }
+
+func (fileValidator) Validate(r catalog.Resource) error {
+	if !strings.HasPrefix(r.Title, "/") {
+		return fmt.Errorf("Parameter path failed on %s: File paths must be fully qualified, not '%s'", r.Ref(), r.Title)
 	}
-	for _, tc := range cases {
-		err := File{}.Validate(catalog.Resource{Type: "File", Title: tc.title})
-		switch {
-		case tc.want == "" && err != nil:
-			t.Errorf("%q: unexpected error %v", tc.title, err)
-		case tc.want != "" && (err == nil || err.Error() != tc.want):
-			t.Errorf("%q: error = %v, want %q", tc.title, err, tc.want)
-		}
-	}
+	return nil
 }
 
+var fileValidating = fileValidator{stub{typ: "file", attrs: NewAttrs("path")}}
+
 func TestValidateCollectsEveryInvalidResourceSorted(t *testing.T) {
-	reg := NewRegistry(File{}, Notify{})
+	reg := NewRegistry(fileValidating, stub{typ: "notify", attrs: NewAttrs("message")})
 	c := &catalog.Catalog{Resources: []catalog.Resource{
 		{Type: "File", Title: "zz/rel"},
 		{Type: "File", Title: "/ok"},
@@ -53,7 +46,7 @@ func TestValidateCollectsEveryInvalidResourceSorted(t *testing.T) {
 }
 
 func TestValidateAcceptsAValidCatalog(t *testing.T) {
-	reg := NewRegistry(File{}, Notify{})
+	reg := NewRegistry(fileValidating, stub{typ: "notify", attrs: NewAttrs("message")})
 	c := &catalog.Catalog{Resources: []catalog.Resource{
 		{Type: "File", Title: "/ok"},
 		{Type: "Notify", Title: "hello"},
@@ -68,7 +61,7 @@ func TestValidateAcceptsAValidCatalog(t *testing.T) {
 // reads every source itself, so a catalog carrying either key is refused
 // before anything runs.
 func TestValidateRefusesInlinedFileMetadata(t *testing.T) {
-	reg := NewRegistry(File{})
+	reg := NewRegistry(fileValidating)
 	c := &catalog.Catalog{
 		Resources:         []catalog.Resource{{Type: "File", Title: "/ok"}},
 		Metadata:          json.RawMessage(`{"/ok":{"checksum":{"type":"sha256","value":"x"}}}`),

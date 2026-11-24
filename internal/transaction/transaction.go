@@ -12,12 +12,15 @@ import (
 	"strings"
 	"time"
 
+	"github.com/voxagent/voxagent/internal/units/file"
+
 	"github.com/voxagent/voxagent/internal/catalog"
 	"github.com/voxagent/voxagent/internal/graph"
 	"github.com/voxagent/voxagent/internal/lib/sources"
 	"github.com/voxagent/voxagent/internal/ral"
 	"github.com/voxagent/voxagent/internal/report"
 	"github.com/voxagent/voxagent/internal/runlog"
+	"github.com/voxagent/voxagent/internal/units/exec"
 )
 
 // Transaction applies a catalog.
@@ -41,7 +44,7 @@ type walk struct {
 	rep *report.Report
 
 	byRef map[string]catalog.Resource
-	// filePaths holds the cleaned path of every catalog File (ral.FilePath):
+	// filePaths holds the cleaned path of every catalog File (file.FilePath):
 	// the path Puppet's path parameter munges its value to (type/file.rb:66-73,
 	// File.join(File.split(File.expand_path(value))), which is
 	// filepath.Clean for an absolute path). A recursion's exemption of
@@ -111,7 +114,7 @@ type walk struct {
 	// resource whose type overrides title, by catalog ref (puppetNames).
 	display map[string]string
 	titles  map[string]string
-	// broken is the ral.ErrStagingBroken a provider returned: the agent's cwd
+	// broken is the exec.ErrStagingBroken a provider returned: the agent's cwd
 	// is wrong, so the walk applies nothing more and Run returns it. It also
 	// carries take's could-not-run error for a member of a unit, which has no
 	// error return of its own.
@@ -184,7 +187,7 @@ func (tx *Transaction) Run(ctx context.Context, c *catalog.Catalog, g *graph.Gra
 	for _, r := range c.Resources {
 		byRef[r.Ref()] = r
 		if strings.ToLower(r.Type) == "file" {
-			filePaths[ral.FilePath(r)] = struct{}{}
+			filePaths[file.FilePath(r)] = struct{}{}
 		}
 	}
 	primed, prefetchFailed := tx.prefetch(ctx, c, rep)
@@ -551,7 +554,7 @@ func (w *walk) apply(provider ral.Provider, s subject, propagate bool) result {
 		changes, warnings, applyErr = provider.Apply(ctx, r, w.tx.Noop)
 	}
 	// §4.2 item 5 of the exec design: stop at once, recording nothing.
-	if errors.Is(applyErr, ral.ErrStagingBroken) {
+	if errors.Is(applyErr, exec.ErrStagingBroken) {
 		w.broken = fmt.Errorf("%s: %w", ref, applyErr)
 		return result{}
 	}
@@ -930,7 +933,7 @@ func (w *walk) apply(provider ral.Provider, s subject, propagate bool) result {
 			} else {
 				refreshed, err = provider.Refresh(ctx, r, w.tx.Noop)
 			}
-			if errors.Is(err, ral.ErrStagingBroken) {
+			if errors.Is(err, exec.ErrStagingBroken) {
 				w.broken = fmt.Errorf("%s: %w", ref, err)
 				return result{}
 			}
@@ -1172,7 +1175,7 @@ func (w *walk) visitUnit(gen ral.Generator, provider ral.Provider, parent subjec
 		// and then the child (type/file.rb:608-626). Measured:
 		// ["Stage[main]", "Main", "Node[default]", "File[/tmp/rx/tgt/a]"].
 		func(c catalog.Resource) []string { return append(slices.Clone(base), c.Ref()) },
-		ral.FilePath(parent.r))
+		file.FilePath(parent.r))
 }
 
 // generate runs a native Generator for s and returns its children, logging

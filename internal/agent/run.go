@@ -46,7 +46,7 @@ type Phase struct {
 
 // Prepared is a run ready to apply. Catalog is the catalog response's exact
 // bytes; Environment is the one pluginsync and the catalog request used;
-// Sources maps each puppet: source to its local copy, for ral.File.Sources.
+// Sources maps each puppet: source to its local copy, for file.File.Sources.
 // Phases are the steps timed so far, in Puppet's order. Close removes the
 // local copies.
 type Prepared struct {

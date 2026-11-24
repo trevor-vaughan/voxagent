@@ -9,6 +9,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/voxagent/voxagent/internal/units/concat"
+
 	"github.com/voxagent/voxagent/internal/catalog"
 	"github.com/voxagent/voxagent/internal/ral"
 )
@@ -49,7 +51,7 @@ type leakCase struct {
 	// concat, when set, runs with a libdir holding that puppetlabs-concat
 	// version, so Concat_file and Concat_fragment are native. Not in agent
 	// mode: pluginsync purges the libdir to the fake server's empty plugins.
-	concat ral.ConcatVersion
+	concat concat.ConcatVersion
 }
 
 func writeSeed(t *testing.T, path, content string, mode os.FileMode) {
@@ -252,8 +254,8 @@ func leakCases() []leakCase {
 		// A Sensitive fragment under each measured concat version, in a file
 		// that applies and in one whose validate_cmd fails after printing the
 		// file it validated, so the content reaches the validator's output.
-		{name: "concat-9.1.0", concat: ral.Concat910, seed: seedCatFail, resources: concatLeakResources},
-		{name: "concat-10.0.1", concat: ral.Concat1001, seed: seedCatFail, resources: concatLeakResources},
+		{name: "concat-9.1.0", concat: concat.Concat910, seed: seedCatFail, resources: concatLeakResources},
+		{name: "concat-10.0.1", concat: concat.Concat1001, seed: seedCatFail, resources: concatLeakResources},
 		// The refusal text of an unimplemented marked value must carry no marker.
 		{name: "service-unimplemented-values", refused: true, resources: func(dir string) []map[string]any {
 			return []map[string]any{
@@ -280,7 +282,7 @@ func concatLeakResources(dir string) []map[string]any {
 }
 
 // pid1IsNotSystemd mirrors Service.Validate's init-system check
-// (internal/ral/service.go). An unreadable /proc/1/comm counts as not systemd.
+// (internal/units/service/service.go). An unreadable /proc/1/comm counts as not systemd.
 func pid1IsNotSystemd() bool {
 	comm, err := os.ReadFile("/proc/1/comm")
 	return err != nil || !strings.Contains(string(comm), "systemd")
@@ -366,7 +368,7 @@ func TestNoSensitiveMarkerLeaks(t *testing.T) {
 				bin := bin
 				if tc.fakeShadow {
 					probe := &catalog.Catalog{Resources: []catalog.Resource{{Type: "User", Title: "nobody"}}}
-					if user, _ := ral.NativeUserGroup(ral.HostPlatform, probe); !user {
+					if user, _ := nativeUserGroup(ral.HostPlatform, probe); !user {
 						t.Skip("user is not native on this host")
 					}
 					bin = shadowBin

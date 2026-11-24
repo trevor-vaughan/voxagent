@@ -232,7 +232,7 @@ simp_apply() {
 #
 # Returns 0 when LIBDIR's puppet/type/concat_file.rb and concat_fragment.rb
 # carry the sha256 of puppetlabs-concat VERSION (9.1.0 or 10.0.1), the
-# fingerprints voxagent routes concat on (internal/ral/concat_route.go; concat
+# fingerprints voxagent routes concat on (internal/units/concat/manifest.go; concat
 # design §0). Otherwise it names the file and returns 2: a wrong module cache
 # would send both types to the extension host, and the gate would compare Ruby
 # with Ruby while looking green. GATE prefixes the messages.
@@ -264,7 +264,8 @@ concat_fingerprints() {
 #
 # Returns 0 when LIBDIR carries the fifteen files voxagent routes sysctl,
 # ssh_config, sshd_config, sshd_config_subsystem and augeas on, with their
-# sha256 (internal/ral/augeas_route.go's augeasFingerprints; augeas design §0):
+# sha256 (the manifests of internal/units/augeasproviders_{core,sysctl,ssh} and
+# internal/units/augeas_core/manifest.go; augeas design §0):
 # augeasproviders_core 4.2.0's three, then each type's type and provider file
 # from augeasproviders_sysctl 4.1.0 and augeasproviders_ssh 7.0.0, _ssh's
 # sshd_config_match type, which sshd_config's autorequire depends on, and

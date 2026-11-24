@@ -453,7 +453,7 @@ func TestNoopDoesNotRunANotifiedExec(t *testing.T) {
 
 // Every registered provider is reachable through the command.
 //
-// Dropping ral.Exec{} or ral.Notify{} from the registry turns any catalog
+// Dropping exec.Exec{} or notify.Notify{} from the registry turns any catalog
 // containing that type into a pre-flight refusal at exit 2. Both survived the
 // suite because every fixture here was a File.
 func TestAllRegisteredProvidersApply(t *testing.T) {

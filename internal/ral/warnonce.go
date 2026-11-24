@@ -21,11 +21,11 @@ func WithUniqueWarnings(ctx context.Context) context.Context {
 	return context.WithValue(ctx, uniqueWarningsKey{}, uniqueWarnings{})
 }
 
-// warnOnce is Puppet.warn_once (util/logging.rb:181-201): message at warning
+// WarnOnce is Puppet.warn_once (util/logging.rb:181-201): message at warning
 // from Puppet, the location of file and line on a second line, unless key has
 // been logged this run or the run has logged 100 keys. A context without a set
 // (a provider called outside a run) logs every time.
-func warnOnce(ctx context.Context, key, message, file string, line int) {
+func WarnOnce(ctx context.Context, key, message, file string, line int) {
 	if seen, ok := ctx.Value(uniqueWarningsKey{}).(uniqueWarnings); ok {
 		if _, dup := seen[key]; dup || len(seen) >= 100 {
 			return

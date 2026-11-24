@@ -1,0 +1,17 @@
+Unmodified copies of the augeas_core files whose digests identify the
+measured release, used as test fixtures.
+Upstream (Puppet, Inc.): https://github.com/puppetlabs/puppetlabs-augeas_core   2.1.0
+Copyright 2011 Bryan Kearney <bkearney@redhat.com> (file headers).
+Licensed under the Apache License, Version 2.0 (see /LICENSE.md and /NOTICE).
+
+lib/puppet/type/augeas.rb
+lib/puppet/provider/augeas/augeas.rb
+lib/puppet_x/augeas/util/parser.rb
+lib/puppet/feature/augeas.rb   (byte-identical to augeasproviders_core 4.2.0's)
+
+Do not edit: TestFixturesMatchManifest requires each file's sha256 to equal the
+digest in ../manifest.go.
+
+augeas/traces/ holds the generic augeas type's recordings (06a-06r,
+augeas-runtime-errors, augeas-notified, augeas-apply-ignores-libdir-lens),
+recorded with trace.sh (tests/spine/augeas/trace/). Do not edit them.

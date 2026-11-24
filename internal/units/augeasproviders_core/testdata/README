@@ -1,0 +1,17 @@
+Unmodified copies of the augeasproviders_core files whose digests identify the
+measured release, used as test fixtures.
+Upstream (Vox Pupuli): https://github.com/voxpupuli/puppet-augeasproviders_core 4.2.0
+Copyright (c) 2012 Dominic Cleal; Copyright (c) 2012-2020 Raphaël Pinson.
+Licensed under the Apache License, Version 2.0 (see /LICENSE.md and /NOTICE).
+
+lib/puppet/feature/augeas.rb                  augeasproviders_core 4.2.0
+lib/puppet/provider/augeasprovider/default.rb augeasproviders_core 4.2.0
+lib/puppet/type/augeasprovider.rb             augeasproviders_core 4.2.0
+
+Do not edit: TestAugeasFixturesMatchManifests (internal/units) requires each
+file's sha256 to equal the digest in ../manifest.go.
+
+augeas/traces/ holds copies of four recordings that this package's tests replay
+(01a, 02b, 02e, 07b); the originals live in the augeasproviders_sysctl and
+augeasproviders_ssh units' testdata/augeas/traces, whose README says how they
+were recorded. Do not edit them either.

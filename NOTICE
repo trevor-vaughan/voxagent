@@ -10,12 +10,12 @@ messages and report format are derived from Puppet 8.10.0's source, which the
 code cites by path and line. No Puppet source file is redistributed
 unmodified.
 
-voxagent's native concat (internal/ral/concat*.go) likewise reproduces the
+voxagent's native concat (internal/units/concat/concat*.go) likewise reproduces the
 behaviour and messages of puppetlabs-concat 9.1.0 and 10.0.1 ("Puppet Module -
 puppetlabs-concat, Copyright 2018 Puppet, Inc."), licensed under the Apache
 License, Version 2.0. The four type files of puppetlabs-concat 9.1.0 and 10.0.1
 (concat_file.rb and concat_fragment.rb of each) are redistributed unmodified as
-test fixtures under internal/ral/testdata/concat; they remain under the Apache
+test fixtures under internal/units/concat/testdata; they remain under the Apache
 License, Version 2.0, a copy of which is in LICENSE.md.
 
 voxagent's native sysctl, ssh_config, sshd_config and sshd_config_subsystem
@@ -26,17 +26,18 @@ augeasproviders_ssh 7.0.0 ("Copyright (c) 2012 Dominic Cleal", "Copyright (c)
 2012-2020 Raphaël Pinson"), licensed under the Apache License, Version 2.0.
 The twelve files of those releases whose digests voxagent checks are
 redistributed unmodified as test fixtures under
-internal/ral/testdata/augeasproviders; they remain under the Apache License,
-Version 2.0, a copy of which is in LICENSE.md. At run time voxagent loads
+the testdata/lib trees of internal/units/augeasproviders_core,
+internal/units/augeasproviders_sysctl and internal/units/augeasproviders_ssh; they
+remain under the Apache License, Version 2.0, a copy of which is in LICENSE.md. At run time voxagent loads
 openvox's libaugeas (LGPL-2.1-or-later) with dlopen; it redistributes neither
 libaugeas nor ruby-augeas.
 
-voxagent's native augeas type (internal/ral/augeas_generic*.go) reproduces the
+voxagent's native augeas type (internal/units/augeas_core) reproduces the
 behaviour and messages of Puppet, Inc.'s puppetlabs-augeas_core 2.1.0
 ("Copyright 2011 Bryan Kearney", Apache-2.0). Its four files whose digests
 voxagent checks (puppet/type/augeas.rb, puppet/provider/augeas/augeas.rb,
 puppet_x/augeas/util/parser.rb and puppet/feature/augeas.rb) are redistributed
-unmodified as test fixtures under internal/ral/testdata/augeas_core; they remain
+unmodified as test fixtures under internal/units/augeas_core/testdata; they remain
 under the Apache License, Version 2.0, a copy of which is in LICENSE.md.
 
 Licensed under the Apache License, Version 2.0; see LICENSE.md.

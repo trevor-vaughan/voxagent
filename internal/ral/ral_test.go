@@ -2,7 +2,6 @@ package ral
 
 import (
 	"context"
-	"reflect"
 	"strings"
 	"testing"
 
@@ -158,42 +157,6 @@ func TestAttrsSortedIsStable(t *testing.T) {
 	for i := range want {
 		if got[i] != want[i] {
 			t.Fatalf("Sorted() = %v, want %v", got, want)
-		}
-	}
-}
-
-// A provider with nothing to pre-read returns itself, unchanged. The three
-// spine providers all read per-resource state inside Apply, so prefetching is
-// meaningless for them and must not become a required implementation burden.
-func TestSpineProvidersPrefetchToThemselves(t *testing.T) {
-	for _, p := range []Provider{File{}, Exec{}, Notify{}} {
-		got, err := p.Prefetch(context.Background(), nil)
-		if err != nil {
-			t.Errorf("%s: Prefetch returned %v, want nil", p.Type(), err)
-			continue
-		}
-		// Comparing interface values is only defined when the dynamic type is
-		// comparable, and it PANICS at runtime when that type contains a map,
-		// slice or func. File, Exec and Notify are empty structs, so this is
-		// safe -- and the list is deliberately the three production providers,
-		// never the test stubs (recorder holds maps). A provider that later
-		// gains an unexported field must revisit this assertion -- compare the
-		// field, or the identity that matters -- rather than delete it. File's
-		// Prefetch gives the run its own store of SELinux defaults, so that
-		// field is compared for being set and the rest for equality: File
-		// holds the agent's Sources map, so it is not comparable.
-		if f, ok := got.(File); ok {
-			if f.defaults == nil {
-				t.Errorf("file: Prefetch returned no store for the run's SELinux defaults")
-			}
-			f.defaults = nil
-			if !reflect.DeepEqual(f, p) {
-				t.Errorf("file: Prefetch returned %+v, want the receiver %+v", f, p)
-			}
-			continue
-		}
-		if got != Provider(p) {
-			t.Errorf("%s: Prefetch returned a different provider, want the receiver", p.Type())
 		}
 	}
 }

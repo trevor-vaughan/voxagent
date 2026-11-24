@@ -28,7 +28,7 @@ type sourceFetch struct {
 }
 
 // FetchSources downloads every puppet: source of every File in cat into dir
-// and returns the map for ral.File.Sources: each source value, exactly as the
+// and returns the map for file.File.Sources: each source value, exactly as the
 // catalog wrote it (every element of a list), to its local copy.
 //
 // dir is run-private: the caller makes it with os.MkdirTemp under vardir

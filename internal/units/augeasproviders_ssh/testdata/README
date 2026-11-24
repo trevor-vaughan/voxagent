@@ -1,0 +1,19 @@
+Unmodified copies of the augeasproviders_ssh files whose digests identify the
+measured release, used as test fixtures.
+Upstream (Vox Pupuli): https://github.com/voxpupuli/augeasproviders_ssh 7.0.0
+Copyright (c) 2012 Dominic Cleal; Copyright (c) 2012-2020 Raphaël Pinson.
+Licensed under the Apache License, Version 2.0 (see /LICENSE.md and /NOTICE).
+
+lib/puppet/type/{ssh_config,sshd_config,sshd_config_subsystem,sshd_config_match}.rb
+lib/puppet/provider/{ssh_config,sshd_config,sshd_config_subsystem}/augeas.rb
+                                        augeasproviders_ssh 7.0.0
+
+Do not edit: TestAugeasFixturesMatchManifests (internal/units) requires each
+file's sha256 to equal the digest in ../manifest.go. The unit's route also lists
+augeasproviders_core's three files; they are in that unit's testdata/lib.
+
+augeas/traces/ holds the ssh_config (02*), sshd_config (03*), sshd_config_subsystem
+(04*) and SIMP-lens (07*) cases: every libaugeas call openvox 8.33.0 made to
+libaugeas 1.15.0 while applying the case's catalog, recorded by an LD_PRELOAD
+interposer (see tests/spine/augeas/trace/). Do not edit: the providers' call
+sequences are asserted equal to them. Re-record a case instead.

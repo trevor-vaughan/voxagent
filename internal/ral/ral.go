@@ -135,12 +135,6 @@ type Change struct {
 	DisplayVerbatim bool
 }
 
-// posix is the provider name Puppet resolves file and exec to on Linux. A
-// package-level variable because ProviderUsed returns a pointer -- Ruby
-// distinguishes a named provider from null, and the address of a shared
-// constant string is the cheapest way to say "named".
-var posix = "posix"
-
 // Warning is one line for the run log that belongs to no property.
 //
 // Source and dedupe are independent in Ruby and so are independent here.

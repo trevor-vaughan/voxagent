@@ -7,6 +7,8 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/voxagent/voxagent/internal/units/file"
+
 	"github.com/voxagent/voxagent/internal/catalog"
 	"github.com/voxagent/voxagent/internal/graph"
 	"github.com/voxagent/voxagent/internal/ral"
@@ -464,7 +466,7 @@ func fileAliases(c *catalog.Catalog) map[string]string {
 		if r.Type != "File" {
 			continue
 		}
-		if alias := "File[" + ral.FilePath(r) + "]"; alias != r.Ref() {
+		if alias := "File[" + file.FilePath(r) + "]"; alias != r.Ref() {
 			out[alias] = r.Ref()
 		}
 	}

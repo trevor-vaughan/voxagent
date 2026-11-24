@@ -8,9 +8,27 @@ import (
 
 	"github.com/voxagent/voxagent/internal/catalog"
 	"github.com/voxagent/voxagent/internal/ral"
+	"github.com/voxagent/voxagent/internal/unit"
+	"github.com/voxagent/voxagent/internal/units/group"
+	"github.com/voxagent/voxagent/internal/units/user"
 )
 
-// fakePlatform answers NativeUserGroup's probes without the build host.
+// nativeUserGroup says whether the user and group units each route cat natively
+// on p, as nativeProviders decides it.
+func nativeUserGroup(p ral.Platform, cat *catalog.Catalog) (hasUser, hasGroup bool) {
+	env := &unit.Env{Catalog: cat, Platform: p}
+	for _, pr := range unit.RouteAll(env, []unit.Unit{group.Unit, user.Unit}).Providers {
+		switch pr.Type() {
+		case "user":
+			hasUser = true
+		case "group":
+			hasGroup = true
+		}
+	}
+	return hasUser, hasGroup
+}
+
+// fakePlatform answers the user and group units' probes without the build host.
 type fakePlatform struct{ release string }
 
 func (fakePlatform) Executable(string) bool       { return false }
@@ -48,7 +66,7 @@ func TestUserGroupAreNativeOnlyOnTheMeasuredPlatform(t *testing.T) {
 // validation, before "Applying configuration", at the resource's own path.
 func TestGroupConversionDebugIsLoggedBeforeApplying(t *testing.T) {
 	probe := &catalog.Catalog{Resources: []catalog.Resource{{Type: "Group", Title: "root"}}}
-	if _, group := ral.NativeUserGroup(ral.HostPlatform, probe); !group {
+	if _, group := nativeUserGroup(ral.HostPlatform, probe); !group {
 		t.Skip("group is not native on this host")
 	}
 	bin := buildBinary(t)
@@ -73,7 +91,7 @@ func TestGroupConversionDebugIsLoggedBeforeApplying(t *testing.T) {
 // autorequires the group of its numeric gid and the groups it lists.
 func TestUserIsAppliedAfterItsGroups(t *testing.T) {
 	probe := &catalog.Catalog{Resources: []catalog.Resource{{Type: "User", Title: "u"}, {Type: "Group", Title: "g"}}}
-	if user, group := ral.NativeUserGroup(ral.HostPlatform, probe); !user || !group {
+	if user, group := nativeUserGroup(ral.HostPlatform, probe); !user || !group {
 		t.Skip("user and group are not native on this host")
 	}
 	bin := buildBinary(t)

@@ -21,17 +21,22 @@ import (
 )
 
 // augeasLibdir returns a temp libdir holding the twelve augeasproviders files
-// committed under internal/ral/testdata/augeasproviders (see its README),
-// then each extra tree.
+// committed under the testdata/lib of the augeasproviders_core, _sysctl and
+// _ssh units (see their READMEs), then each extra tree.
 func augeasLibdir(t *testing.T, extra ...string) string {
 	t.Helper()
 	_, here, _, ok := runtime.Caller(0)
 	if !ok {
 		t.Fatal("cannot locate the repository")
 	}
-	lib := filepath.Join(filepath.Dir(filepath.Dir(filepath.Dir(here))), "internal", "ral", "testdata", "augeasproviders", "lib")
+	units := filepath.Join(filepath.Dir(filepath.Dir(filepath.Dir(here))), "internal", "units")
+	trees := []string{
+		filepath.Join(units, "augeasproviders_core", "testdata", "lib"),
+		filepath.Join(units, "augeasproviders_sysctl", "testdata", "lib"),
+		filepath.Join(units, "augeasproviders_ssh", "testdata", "lib"),
+	}
 	dir := t.TempDir()
-	for _, src := range append([]string{lib}, extra...) {
+	for _, src := range append(trees, extra...) {
 		if err := os.CopyFS(dir, os.DirFS(src)); err != nil {
 			t.Fatal(err)
 		}
@@ -322,7 +327,7 @@ func TestAugeasGenericRouting(t *testing.T) {
 		t.Fatal("cannot locate the repository")
 	}
 	libdir := t.TempDir()
-	core := filepath.Join(filepath.Dir(filepath.Dir(filepath.Dir(here))), "internal", "ral", "testdata", "augeas_core", "lib")
+	core := filepath.Join(filepath.Dir(filepath.Dir(filepath.Dir(here))), "internal", "units", "augeas_core", "testdata", "lib")
 	if err := os.CopyFS(libdir, os.DirFS(core)); err != nil {
 		t.Fatal(err)
 	}
@@ -361,7 +366,7 @@ func TestAugeasGenericLensPathFollowsTheRunCommand(t *testing.T) {
 	if !ok {
 		t.Fatal("cannot locate the repository")
 	}
-	core := filepath.Join(filepath.Dir(filepath.Dir(filepath.Dir(here))), "internal", "ral", "testdata", "augeas_core", "lib")
+	core := filepath.Join(filepath.Dir(filepath.Dir(filepath.Dir(here))), "internal", "units", "augeas_core", "testdata", "lib")
 	for _, tc := range []struct {
 		command string
 		want    func(libdir string) string

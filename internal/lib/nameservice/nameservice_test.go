@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
 	"reflect"
 	"slices"
 	"syscall"
@@ -280,5 +282,34 @@ func TestGrowGroupList(t *testing.T) {
 	}
 	if _, err := growGroupList("u", func(n int) ([]int64, int) { return nil, n }); err == nil {
 		t.Error("unbounded growth accepted")
+	}
+}
+
+func TestShadowCommandSearchesRubysPathInOrder(t *testing.T) {
+	first, second := t.TempDir(), t.TempDir()
+	if err := os.WriteFile(filepath.Join(first, "groupadd"), nil, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Mkdir(filepath.Join(first, "groupmod"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	for _, c := range []string{"groupadd", "groupmod"} {
+		if err := os.WriteFile(filepath.Join(second, c), nil, 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	saved := ShadowPath
+	ShadowPath = []string{first, second}
+	t.Cleanup(func() { ShadowPath = saved })
+	for _, c := range []string{"groupadd", "groupmod"} {
+		if got, err := ShadowCommand(c); err != nil || got != filepath.Join(second, c) {
+			t.Errorf("ShadowCommand(%s) = %q, %v; want the executable file in %s", c, got, err, second)
+		}
+	}
+	if _, err := ShadowCommand("groupdel"); err == nil {
+		t.Error("missing command resolved")
+	}
+	if !reflect.DeepEqual(saved, []string{"/usr/sbin", "/usr/bin", "/sbin", "/bin"}) {
+		t.Errorf("default search order = %q", saved)
 	}
 }

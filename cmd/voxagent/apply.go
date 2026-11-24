@@ -22,6 +22,8 @@ import (
 	"github.com/voxagent/voxagent/internal/report"
 	"github.com/voxagent/voxagent/internal/runlog"
 	"github.com/voxagent/voxagent/internal/transaction"
+	"github.com/voxagent/voxagent/internal/unit"
+	"github.com/voxagent/voxagent/internal/units"
 )
 
 // applyOptions is everything applyCatalog needs beyond the catalog bytes.
@@ -31,7 +33,7 @@ type applyOptions struct {
 	timeouts                        extension.Timeouts
 	certname                        string                // "" -> node.Certname()
 	transactionUUID                 string                // "" -> the one report.New generates
-	sources                         map[string]string     // ral.File.Sources: puppet: source -> local copy
+	sources                         map[string]string     // file.File.Sources: puppet: source -> local copy
 	runLogs                         []report.LogEntry     // the agent's pre-apply logs, first in the report
 	command                         string                // "apply" or "agent", for the run-start debug line
 	level                           string                // "notice", "info" or "debug": what the console and report keep
@@ -44,38 +46,30 @@ type applyOptions struct {
 	environ                         ral.Environ           // nil -> os.Getenv; tests only
 }
 
-// nativeProviders lists the providers voxagent applies itself for cat. User
-// and Group join them where p is the platform their contract was measured on
-// (spec §2), each decided on its own; concat_file and concat_fragment where
-// o.libdir holds a measured concat release (ral.NativeConcat); and each
-// augeasproviders type ral.NativeAugeas proves native, all sharing one run's
-// libaugeas state. augeasHost holds, per augeas type sent to the host, why.
+// augeasTypes are the types whose delegation reasons the debug output reports
+// (Concat's, for one, are not).
+var augeasTypes = []string{"augeas", "ssh_config", "sshd_config", "sshd_config_subsystem", "sysctl"}
+
+// nativeProviders lists the providers voxagent applies itself for cat: each
+// unit's providers (units.All), over one libaugeas probe the augeas units
+// share. augeasHost holds, per augeas type sent to the host, why; the other
+// units' delegations are not reported.
 func nativeProviders(cat *catalog.Catalog, o applyOptions, p ral.Platform) (natives []ral.Provider, augeasHost map[string]string) {
-	// File names the catalog's environment in a missing source's message
-	// (type/file/source.rb:208).
-	natives = []ral.Provider{ral.Notify{}, ral.File{Environment: cat.Environment, Sources: o.sources, Vardir: o.vardir}, ral.Exec{}, ral.Package{}, ral.Service{}}
-	user, group := ral.NativeUserGroup(p, cat)
-	if user {
-		natives = append(natives, ral.User{CatalogGroups: ral.GroupGIDs(cat)})
-	}
-	if group {
-		natives = append(natives, ral.Group{})
-	}
-	// ConcatFile reads cat when it generates its content, after load-time
-	// generation has merged File[path] into this same catalog.
-	if v, ok := ral.NativeConcat(plugintree.LibdirTree(o.libdir), cat); ok {
-		natives = append(natives, ral.ConcatFile{Version: v, Catalog: cat}, ral.ConcatFragment{Version: v})
-	}
-	probe, environ := o.augeasProbe, o.environ
-	if probe == nil {
-		probe = augeas.HostProbe
-	}
+	environ := o.environ
 	if environ == nil {
 		environ = os.Getenv
 	}
-	augeasTypes := ral.NativeAugeas(plugintree.LibdirTree(o.libdir), p, probe, environ, o.libdir, o.command, cat)
-	natives = append(natives, augeasTypes.Providers()...)
-	return append(natives, o.providers...), augeasTypes.Reasons
+	tree, session := plugintree.LibdirTree(o.libdir), augeas.NewSession(o.augeasProbe)
+	env := &unit.Env{Catalog: cat, Libdir: o.libdir, Tree: tree, Platform: p, Environ: environ, Command: o.command,
+		Vardir: o.vardir, Sources: o.sources, Augeas: session}
+	decision := unit.RouteAll(env, units.All())
+	augeasHost = map[string]string{}
+	for _, typ := range augeasTypes {
+		if why, ok := decision.Delegated[typ]; ok {
+			augeasHost[typ] = why
+		}
+	}
+	return append(decision.Providers, o.providers...), augeasHost
 }
 
 // applyCatalog applies raw (exact catalog bytes) and returns the run's status

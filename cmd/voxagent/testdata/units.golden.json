@@ -1,0 +1,392 @@
+[
+  {
+    "name": "augeas_core",
+    "version": "1.0.0",
+    "source": {
+      "implementation": "puppetlabs-augeas_core",
+      "version": ""
+    },
+    "oracle": {
+      "implementation": "openvox",
+      "version": "8.33.0"
+    },
+    "types": [
+      "augeas"
+    ],
+    "requires": [],
+    "releases": [
+      {
+        "version": "2.1.0",
+        "files": [
+          {
+            "path": "puppet_x/augeas/util/parser.rb",
+            "sha256": "586daa7ddf5a741286f805c90c5e9fc464bb91f184c0c746231bbc5ca0374a7a"
+          },
+          {
+            "path": "puppet/feature/augeas.rb",
+            "sha256": "d98e8ef39433632b9e835bbb3e85a75f90a8d17a33c2540f2e14f851ca2791b3"
+          },
+          {
+            "path": "puppet/type/augeas.rb",
+            "sha256": "1b8fe183607c21efb9a3a6431a8644d1dbb7e061a83b03bdd6744c1d9549b071"
+          },
+          {
+            "path": "puppet/provider/augeas/augeas.rb",
+            "sha256": "4eedaf2d530bc89909b97f36f552cf820bfbe9808040e6c9caa748a10df31c93"
+          }
+        ],
+        "types": {
+          "augeas": [
+            "puppet_x/augeas/util/parser.rb",
+            "puppet/feature/augeas.rb",
+            "puppet/type/augeas.rb",
+            "puppet/provider/augeas/augeas.rb"
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "augeasproviders_core",
+    "version": "1.0.0",
+    "source": {
+      "implementation": "puppet-augeasproviders_core",
+      "version": ""
+    },
+    "oracle": {
+      "implementation": "openvox",
+      "version": "8.33.0"
+    },
+    "types": [],
+    "requires": [],
+    "releases": [
+      {
+        "version": "4.2.0",
+        "files": [
+          {
+            "path": "puppet/provider/augeasprovider/default.rb",
+            "sha256": "3900c7e789d651b9f5271087ef3a3b3a9b08cfef2b725d30b559bfff280af42a"
+          },
+          {
+            "path": "puppet/type/augeasprovider.rb",
+            "sha256": "0cd37a04489790a03adcae071cf3ee62a81ba238c4ce4959314092d1ab69e795"
+          },
+          {
+            "path": "puppet/feature/augeas.rb",
+            "sha256": "d98e8ef39433632b9e835bbb3e85a75f90a8d17a33c2540f2e14f851ca2791b3"
+          }
+        ],
+        "types": {}
+      }
+    ]
+  },
+  {
+    "name": "augeasproviders_ssh",
+    "version": "1.0.0",
+    "source": {
+      "implementation": "puppet-augeasproviders_ssh",
+      "version": ""
+    },
+    "oracle": {
+      "implementation": "openvox",
+      "version": "8.33.0"
+    },
+    "types": [
+      "ssh_config",
+      "sshd_config",
+      "sshd_config_subsystem"
+    ],
+    "requires": [
+      "augeasproviders_core"
+    ],
+    "releases": [
+      {
+        "version": "7.0.0",
+        "files": [
+          {
+            "path": "puppet/type/ssh_config.rb",
+            "sha256": "d1486d319d5b8f036d5d0f308503f2e5cb46ae45527371a7637585a58b582884"
+          },
+          {
+            "path": "puppet/provider/ssh_config/augeas.rb",
+            "sha256": "9df8e00affdfe326090333b578eb91235e4a011c72d4cd3547601fd9d15c7221"
+          },
+          {
+            "path": "puppet/type/sshd_config.rb",
+            "sha256": "5b7cf51863c22995039d6db35e67f43c7e273c886a668ec1365428ed5baa1350"
+          },
+          {
+            "path": "puppet/provider/sshd_config/augeas.rb",
+            "sha256": "322463ac709f044adcbfd6ff5b20216490c928e31d26a8622fc9266bafd4374f"
+          },
+          {
+            "path": "puppet/type/sshd_config_subsystem.rb",
+            "sha256": "e5d4c56466d580bdf5943ae89d312916b8d8de3fc473a8a3012bb8240e5fc58b"
+          },
+          {
+            "path": "puppet/provider/sshd_config_subsystem/augeas.rb",
+            "sha256": "237148d020f7c3b53d8414863afc7c76dc85f4e3241b685d04af1cf791f13c9c"
+          },
+          {
+            "path": "puppet/type/sshd_config_match.rb",
+            "sha256": "dedfb3f7e0cf6250fe1454c247c5b3d7968c80b673f6e704b5314da34a33ccd7"
+          }
+        ],
+        "types": {
+          "ssh_config": [
+            "augeasproviders_core:puppet/provider/augeasprovider/default.rb",
+            "augeasproviders_core:puppet/type/augeasprovider.rb",
+            "augeasproviders_core:puppet/feature/augeas.rb",
+            "puppet/type/ssh_config.rb",
+            "puppet/provider/ssh_config/augeas.rb"
+          ],
+          "sshd_config": [
+            "augeasproviders_core:puppet/provider/augeasprovider/default.rb",
+            "augeasproviders_core:puppet/type/augeasprovider.rb",
+            "augeasproviders_core:puppet/feature/augeas.rb",
+            "puppet/type/sshd_config.rb",
+            "puppet/provider/sshd_config/augeas.rb",
+            "puppet/type/sshd_config_match.rb"
+          ],
+          "sshd_config_subsystem": [
+            "augeasproviders_core:puppet/provider/augeasprovider/default.rb",
+            "augeasproviders_core:puppet/type/augeasprovider.rb",
+            "augeasproviders_core:puppet/feature/augeas.rb",
+            "puppet/type/sshd_config_subsystem.rb",
+            "puppet/provider/sshd_config_subsystem/augeas.rb"
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "augeasproviders_sysctl",
+    "version": "1.0.0",
+    "source": {
+      "implementation": "puppet-augeasproviders_sysctl",
+      "version": ""
+    },
+    "oracle": {
+      "implementation": "openvox",
+      "version": "8.33.0"
+    },
+    "types": [
+      "sysctl"
+    ],
+    "requires": [
+      "augeasproviders_core"
+    ],
+    "releases": [
+      {
+        "version": "4.1.0",
+        "files": [
+          {
+            "path": "puppet/type/sysctl.rb",
+            "sha256": "e3e75816ce52ca14acbf78252e2dc0ae98867e5d3b81637a5d4e29fe2803d863"
+          },
+          {
+            "path": "puppet/provider/sysctl/augeas.rb",
+            "sha256": "25ca6b921df6408d69107cba0dcc807c0ff996f8d2e6f2d7b381fa0ef285031d"
+          }
+        ],
+        "types": {
+          "sysctl": [
+            "augeasproviders_core:puppet/provider/augeasprovider/default.rb",
+            "augeasproviders_core:puppet/type/augeasprovider.rb",
+            "augeasproviders_core:puppet/feature/augeas.rb",
+            "puppet/type/sysctl.rb",
+            "puppet/provider/sysctl/augeas.rb"
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "concat",
+    "version": "1.0.0",
+    "source": {
+      "implementation": "puppetlabs-concat",
+      "version": ""
+    },
+    "oracle": {
+      "implementation": "openvox",
+      "version": "8.33.0"
+    },
+    "types": [
+      "concat_file",
+      "concat_fragment"
+    ],
+    "requires": [
+      "file"
+    ],
+    "releases": [
+      {
+        "version": "9.1.0",
+        "files": [
+          {
+            "path": "puppet/type/concat_file.rb",
+            "sha256": "7872760598bf35c8e3b285d89daecc4fa29c727a456e47118626a2c58f9c0d6f"
+          },
+          {
+            "path": "puppet/type/concat_fragment.rb",
+            "sha256": "ee003b5d10550f6104fde62ad46f5296ce9361a6a4c1e5ef6d973333f30585ef"
+          }
+        ],
+        "types": {
+          "concat_file": [
+            "puppet/type/concat_file.rb",
+            "puppet/type/concat_fragment.rb"
+          ],
+          "concat_fragment": [
+            "puppet/type/concat_file.rb",
+            "puppet/type/concat_fragment.rb"
+          ]
+        }
+      },
+      {
+        "version": "10.0.1",
+        "files": [
+          {
+            "path": "puppet/type/concat_file.rb",
+            "sha256": "e38f130ed5ccb6bc0bb3c7a047ead0ace40ebcbb8d2f408acf46f10b8b9c59c6"
+          },
+          {
+            "path": "puppet/type/concat_fragment.rb",
+            "sha256": "1a53e85c6a873be95eb4b410153e3632658d01c0c65b5f2e0f2886a6f0cb067d"
+          }
+        ],
+        "types": {
+          "concat_file": [
+            "puppet/type/concat_file.rb",
+            "puppet/type/concat_fragment.rb"
+          ],
+          "concat_fragment": [
+            "puppet/type/concat_file.rb",
+            "puppet/type/concat_fragment.rb"
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "exec",
+    "version": "1.0.0",
+    "source": {
+      "implementation": "puppet",
+      "version": "8.10.0"
+    },
+    "oracle": {
+      "implementation": "openvox",
+      "version": "8.33.0"
+    },
+    "types": [
+      "exec"
+    ],
+    "requires": [],
+    "releases": []
+  },
+  {
+    "name": "file",
+    "version": "1.0.0",
+    "source": {
+      "implementation": "puppet",
+      "version": "8.10.0"
+    },
+    "oracle": {
+      "implementation": "openvox",
+      "version": "8.33.0"
+    },
+    "types": [
+      "file"
+    ],
+    "requires": [],
+    "releases": []
+  },
+  {
+    "name": "group",
+    "version": "1.0.0",
+    "source": {
+      "implementation": "puppet",
+      "version": "8.10.0"
+    },
+    "oracle": {
+      "implementation": "openvox",
+      "version": "8.33.0"
+    },
+    "types": [
+      "group"
+    ],
+    "requires": [],
+    "releases": []
+  },
+  {
+    "name": "notify",
+    "version": "1.0.0",
+    "source": {
+      "implementation": "puppet",
+      "version": "8.10.0"
+    },
+    "oracle": {
+      "implementation": "openvox",
+      "version": "8.33.0"
+    },
+    "types": [
+      "notify"
+    ],
+    "requires": [],
+    "releases": []
+  },
+  {
+    "name": "package",
+    "version": "1.0.0",
+    "source": {
+      "implementation": "puppet",
+      "version": "8.10.0"
+    },
+    "oracle": {
+      "implementation": "openvox",
+      "version": "8.33.0"
+    },
+    "types": [
+      "package"
+    ],
+    "requires": [],
+    "releases": []
+  },
+  {
+    "name": "service",
+    "version": "1.0.0",
+    "source": {
+      "implementation": "puppet",
+      "version": "8.10.0"
+    },
+    "oracle": {
+      "implementation": "openvox",
+      "version": "8.33.0"
+    },
+    "types": [
+      "service"
+    ],
+    "requires": [],
+    "releases": []
+  },
+  {
+    "name": "user",
+    "version": "1.0.0",
+    "source": {
+      "implementation": "puppet",
+      "version": "8.10.0"
+    },
+    "oracle": {
+      "implementation": "openvox",
+      "version": "8.33.0"
+    },
+    "types": [
+      "user"
+    ],
+    "requires": [
+      "group"
+    ],
+    "releases": []
+  }
+]

@@ -1,6 +1,6 @@
 package ral
 
-// PluginTree is the plugin tree NativeConcat and NativeAugeas fingerprint:
+// PluginTree is the plugin tree the concat unit and the augeas routes fingerprint:
 // the libdir the extension host would load types from. It is an interface so
 // tests do not depend on the machine they run on.
 type PluginTree interface {

@@ -28,10 +28,13 @@ func main() {
 			os.Exit(applyCommand(os.Args[2:]))
 		case "agent":
 			os.Exit(agentCommand(os.Args[2:]))
+		case "units":
+			os.Exit(unitsCommand(os.Args[2:], os.Stdout, os.Stderr))
 		}
 	}
 	fmt.Fprintln(os.Stderr, usage)
 	fmt.Fprintln(os.Stderr, agentUsage)
+	fmt.Fprintln(os.Stderr, unitsUsage)
 	// No --detailed-exitcodes has been parsed at this point, so this uses
 	// the plain convention: 2 is could-not-run.
 	fmt.Fprintf(os.Stderr, "voxagent: outcome=%s\n", report.OutcomeCouldNotRun)

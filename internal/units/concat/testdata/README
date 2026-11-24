@@ -1,0 +1,13 @@
+Unmodified copies of puppetlabs-concat type files, used as test fixtures.
+Upstream: https://github.com/puppetlabs/puppetlabs-concat
+"Puppet Module - puppetlabs-concat", Copyright 2018 Puppet, Inc.
+Licensed under the Apache License, Version 2.0 (see /LICENSE.md and /NOTICE).
+
+lib/puppet/type/{concat_file,concat_fragment}.rb      puppetlabs-concat 10.0.1
+lib-9.1.0/puppet/type/{concat_file,concat_fragment}.rb  puppetlabs-concat 9.1.0
+
+lib is the newest release, laid out as units/units_test.go assembles a unit's
+testdata/lib into the all-native plugin tree.
+
+Do not edit: TestConcatTestdataMatchesManifest requires each file's sha256 to
+equal the matching release in internal/units/concat/manifest.go.

@@ -28,6 +28,9 @@ internal/ral/augeas_replay_test.go.
    lens files) and podman-args. No compiled catalog is needed; G5 keeps
    its own catalogs only in a temporary directory.
 5. Copy .test-output/augeas-trace/<case>/aug-trace.txt to
-   internal/ral/testdata/augeas/traces/<case>.txt, replacing the old file.
+   the testdata/augeas/traces/<case>.txt of the unit that tests the case
+   (internal/units/augeasproviders_sysctl for 01, _ssh for 02-04 and 07,
+   internal/units/augeas_core for the generic augeas cases), replacing the old file and any copy
+   (README there).
    Those files are read-only otherwise: the native providers' calls are
    asserted equal to them.

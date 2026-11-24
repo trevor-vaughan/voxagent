@@ -457,13 +457,13 @@ var richSamples = []struct {
 
 func TestResourceGapsRefuseRichValuesOnNativeResources(t *testing.T) {
 	for _, s := range richSamples {
-		gaps := ResourceGaps(Notify{}, raltest.Res("Notify", "n", map[string]any{"message": s.value}))
+		gaps := ResourceGaps(stub{typ: "notify", attrs: NewAttrs("message")}, raltest.Res("Notify", "n", map[string]any{"message": s.value}))
 		if len(gaps) != 1 || gaps[0].String() != s.want {
 			t.Errorf("gaps = %v, want exactly %q", gaps, s.want)
 		}
 	}
 	// An unimplemented attribute stays the attribute's one gap.
-	gaps := ResourceGaps(Notify{}, raltest.Res("Notify", "n", map[string]any{"nope": richSamples[0].value}))
+	gaps := ResourceGaps(stub{typ: "notify", attrs: NewAttrs("message")}, raltest.Res("Notify", "n", map[string]any{"nope": richSamples[0].value}))
 	if len(gaps) != 1 || gaps[0].String() != `Notify[n]: attribute "nope" is not implemented` {
 		t.Errorf("unimplemented attribute gaps = %v", gaps)
 	}

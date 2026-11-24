@@ -8,6 +8,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/voxagent/voxagent/internal/units/file"
+
 	"github.com/voxagent/voxagent/internal/catalog"
 	"github.com/voxagent/voxagent/internal/ral"
 	"github.com/voxagent/voxagent/internal/report"
@@ -199,11 +201,11 @@ func contentMarkRunWith(t *testing.T, params map[string]any, existing *string, m
 	stub := evalGenStub{evaluatorStub: evaluatorStub{typ: "vox_evalgen", calls: &calls},
 		gens: map[string]ral.EvalGeneration{"Vox_evalgen[p]": {Overrides: []ral.Override{{
 			Ref: ref, Parameters: map[string]any{"content": "public\ns3cret-token\n"}, ContentMark: mark}}}}}
-	file := res("File", path, params)
-	file.SensitiveParameters = catalogMarked
-	tx := &Transaction{Registry: ral.NewRegistry(stub, ral.File{})}
+	fileRes := res("File", path, params)
+	fileRes.SensitiveParameters = catalogMarked
+	tx := &Transaction{Registry: ral.NewRegistry(stub, file.File{})}
 	rep := runCatalog(t, tx, &catalog.Catalog{Resources: []catalog.Resource{
-		res("Vox_evalgen", "p", map[string]any{"before": ref}), file}})
+		res("Vox_evalgen", "p", map[string]any{"before": ref}), fileRes}})
 	return rep.ResourceStatuses[ref].Events
 }
 
@@ -298,7 +300,7 @@ func TestOverrideRedactOutputKeepsContentUnmarked(t *testing.T) {
 	stub := evalGenStub{evaluatorStub: evaluatorStub{typ: "vox_evalgen", calls: &calls},
 		gens: map[string]ral.EvalGeneration{"Vox_evalgen[p]": {Overrides: []ral.Override{{
 			Ref: ref, Parameters: map[string]any{"content": "s3cret-token\n"}, RedactOutput: true}}}}}
-	tx := &Transaction{Registry: ral.NewRegistry(stub, ral.File{})}
+	tx := &Transaction{Registry: ral.NewRegistry(stub, file.File{})}
 	rep := runCatalog(t, tx, &catalog.Catalog{Resources: []catalog.Resource{
 		res("Vox_evalgen", "p", map[string]any{"before": ref}),
 		res("File", path, map[string]any{"ensure": "file", "validate_cmd": `/bin/sh -c 'cat "$0"; exit 3' %`})}})

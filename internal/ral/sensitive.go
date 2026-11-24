@@ -116,10 +116,10 @@ func MarkSensitive(p Provider, r catalog.Resource) (Attrs, []report.LogEntry) {
 	return marked, logs
 }
 
-// isMarked reports whether MarkSensitive marks attr on r. A provider site
+// IsMarked reports whether MarkSensitive marks attr on r. A provider site
 // that interpolates the attribute's value into error text asks this; it
 // ignores the console logs, which the agent prints once at validation.
-func isMarked(p Provider, r catalog.Resource, attr string) bool {
+func IsMarked(p Provider, r catalog.Resource, attr string) bool {
 	marked, _ := MarkSensitive(p, r)
 	_, ok := marked[attr]
 	return ok
