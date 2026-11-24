@@ -1,0 +1,20 @@
+docs/maintainers/agent-transport.md
+  s_edec75bbf1b7b3::t_ba78050424fbd7 63-64,79-81
+  s_edec75bbf1b7b3::t_35fc98f3c146b8 3-4
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "9a3e56e96064491e4a8a25e3842a85ade52d0be1",
+  "prompts": {},
+  "sessions": {
+    "s_edec75bbf1b7b3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f82cc920-c095-4025-9de4-ef70d9879282",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "LLM (riotbox) <llm@riotbox>"
+    }
+  }
+}
