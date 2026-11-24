@@ -1,0 +1,23 @@
+README.md
+  s_edec75bbf1b7b3::t_7962efba2fc656 5-6
+docs/maintainers/harness.md
+  s_edec75bbf1b7b3::t_7962efba2fc656 76,111-117,192-194
+docs/maintainers/fleet.md
+  s_edec75bbf1b7b3::t_7962efba2fc656 7,168,170
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "2d7d1feb6d7a70e4c819695a1e8bd8af847d72b7",
+  "prompts": {},
+  "sessions": {
+    "s_edec75bbf1b7b3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f82cc920-c095-4025-9de4-ef70d9879282",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "LLM (riotbox) <llm@riotbox>"
+    }
+  }
+}
