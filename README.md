@@ -2,6 +2,15 @@
 
 A Go Puppet agent with opportunistic Ruby fallback.
 
+![voxagent applies a catalog (exit 2), re-applies it with no changes (exit 0), reverts a hand edit, and refuses a catalog with types it cannot implement (exit 1)](docs/demo/hero.gif)
+
+The first run converges the node and exits 2, and the second finds nothing to do and exits 0. Next, a hand edit to a
+managed file is put back. Last, a catalog with types voxagent has no native implementation for is refused before
+anything is applied.
+
+<sub>Rendered with [VHS](https://github.com/charmbracelet/vhs) from [`scripts/demo.tape`](scripts/demo.tape) against a
+throwaway directory; regenerate with `task dev:demo` (needs `vhs`, `ttyd`, `ffmpeg` and `jq` on `PATH`).</sub>
+
 **Status:** proof of concept.
 
 ## What this is

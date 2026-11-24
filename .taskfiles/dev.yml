@@ -127,6 +127,13 @@ tasks:
     deps: [build]
     cmd: bash "{{.ROOT_DIR}}/tests/spine/idempotence.sh"
 
+  demo:
+    desc: Render the README hero GIF into docs/demo (needs vhs, ttyd, ffmpeg, jq on PATH)
+    # Records against a throwaway mktemp -d sandbox (see scripts/demo.sh), never
+    # the working tree. Install vhs with `go install github.com/charmbracelet/vhs@latest`;
+    # ttyd, ffmpeg and jq come from your package manager (EPEL on EL).
+    cmd: bash "{{.ROOT_DIR}}/scripts/demo.sh" "{{.ROOT_DIR}}" "{{.ROOT_DIR}}/scripts/demo.tape" "{{.ROOT_DIR}}/docs/demo/hero.gif"
+
   state-diff:
     desc: Prove voxagent and Ruby produce the same state from the same catalog
     # G3. Deliberately NOT in `check`: it needs a built container image and takes
