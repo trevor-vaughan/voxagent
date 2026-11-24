@@ -1,0 +1,19 @@
+SECURITY.md
+  s_edec75bbf1b7b3::t_145fb02d9c193f 1-4
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "09ecb089159faf0802d0d8f2833d6b522ec65c78",
+  "prompts": {},
+  "sessions": {
+    "s_edec75bbf1b7b3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f82cc920-c095-4025-9de4-ef70d9879282",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "LLM (riotbox) <llm@riotbox>"
+    }
+  }
+}
