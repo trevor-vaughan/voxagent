@@ -39,12 +39,13 @@ func typeFiles(typ string, extra ...string) []string {
 // (spec §0 row 4), with the three files of augeasproviders_core. The digests
 // of the core files are in augeasproviders_core's manifest.
 var Manifest = unit.Manifest{
-	Name:     "augeasproviders_ssh",
-	Version:  "1.0.0",
-	Source:   unit.Origin{Implementation: "puppet-augeasproviders_ssh", Version: ""},
-	Oracle:   unit.Origin{Implementation: "openvox", Version: "8.33.0"},
-	Types:    []string{"ssh_config", "sshd_config", "sshd_config_subsystem"},
-	Requires: []string{"augeasproviders_core"},
+	Name:      "augeasproviders_ssh",
+	Version:   "1.0.0",
+	Source:    unit.Origin{Implementation: "puppet-augeasproviders_ssh", Version: ""},
+	Oracle:    unit.Origin{Implementation: "openvox", Version: "8.33.0"},
+	Types:     []string{"ssh_config", "sshd_config", "sshd_config_subsystem"},
+	Requires:  []string{"augeasproviders_core"},
+	Platforms: unit.AnyPlatform,
 	Releases: []unit.Release{{
 		Version: "7.0.0",
 		Files: []unit.FileDigest{

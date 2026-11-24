@@ -85,6 +85,7 @@ live in `lib`.
 | `Oracle` | `Origin` the behaviour was measured against: `openvox` `8.33.0` for every unit but `host_core`, `sshkeys_core` and `mount_core`, measured on `8.34.0` |
 | `Types` | the catalog types the unit serves, lower case. Empty for a library unit |
 | `Requires` | names of units this one imports; the layering test allows imports of exactly these |
+| `Platforms` | `[]ral.OS` the unit's parity was measured on; never empty. `unit.AnyPlatform` (`[]ral.OS{{ID: "*"}}`, matches without reading os-release) for a unit with no platform limit; `user`, `group`, `augeasproviders_sysctl`, `cron_core`, `host_core`, `sshkeys_core` and `mount_core` declare `{ID: "rhel", Like: true, MinMajor: 10}`: RHEL family (`ID` `rhel`, or `rhel` among `ID_LIKE`'s words), `VERSION_ID`'s major at least 10, not Fedora (it has no `ID_LIKE`). Each unit's routes check its own list with `ral.OnPlatform`, which reads `/etc/os-release` and falls back to `/usr/lib/os-release` when that file does not exist; an unreadable or unparsable os-release matches no entry other than `*` |
 | `Releases` | `[]Release{Version, Files, Types}`: one entry per measured version of the module's Ruby files |
 
 `Release.Files` lists `FileDigest{Path, SHA256}` (lowercase hex, path relative to the plugin tree). `Release.Types` maps
@@ -143,24 +144,24 @@ Each unit's remaining checks are its own, and every failure is a `Delegated` rea
   `purge_ssh_keys`. `user` requires `group`, whose helpers it calls.
 - `augeas_core`, `augeasproviders_sysctl`, `augeasproviders_ssh`: fingerprints, then provider directory
   (`ral.AugeasProviderDir`), then the environment (`ral.AugeasRunChecks`: no `AUGEAS_*`/`LD_*` override, clean
-  `--libdir`), then the probe, then value shapes, then (sysctl) the measured release (`ral.MeasuredRelease`) and an executable `sysctl` on `PATH`, `/usr/sbin` or `/sbin` (`command.RubyWhich`: `PATH` entries first, then those two, first executable wins). The probe comes after the
+  `--libdir`), then the probe, then value shapes, then (sysctl) the unit's `Platforms` (`ral.OnPlatform`) and an executable `sysctl` on `PATH`, `/usr/sbin` or `/sbin` (`command.RubyWhich`: `PATH` entries first, then those two, first executable wins). The probe comes after the
   environment checks so libaugeas never reads an `AUGEAS_*` override. `Env.Augeas.Probe()` makes the probe at most once
   per run however many types hold, and the sysctl and ssh units get one shared run from `core.SharedRun(env.Augeas, libdir)`
   (`augeasproviders_core/augeas_mixin.go`, whose `Run.EndRun` closes every handle).
-- `cron_core`: the measured platform (`ral.MeasuredRelease`), an executable `crontab` (`command.RubyWhich`: `PATH` entries
+- `cron_core`: the measured platform (the unit's `Platforms`, `ral.OnPlatform`), an executable `crontab` (`command.RubyWhich`: `PATH` entries
   first, then `/usr/sbin` and `/sbin`, first executable wins, a `~` entry before a hit delegates), a `provider` other than
   `crontab` (`group.ForeignProvider`; the unit requires `group`), the plugin tree (none of the three files is the vendored
   1.3.0, else `MatchFiles` for 1.3.0 or 2.1.0, and no second provider file under `puppet/provider/cron/`), a `Resources`
   purge of `cron`, then value shapes (`rubyvalue.UnimplementedValue`). The release it found is passed to the provider
   (`cron_core/manifest.go:Route`, `pluginRelease`). It also reads `Env.LookupEnv` and `Env.Stderr`, which no other unit uses.
-- `host_core`: the measured platform (`ral.MeasuredRelease`), `/etc/hosts` existing, following symlinks
+- `host_core`: the measured platform (the unit's `Platforms`, `ral.OnPlatform`), `/etc/hosts` existing, following symlinks
   (`ral.Platform.FileExists`, Ruby's `confine exists:`), a `provider` other than `parsed` (`group.ForeignProvider`; the
   unit requires `group`, and `file` for `file.BucketBackup` and `file.RelabelHook`), the plugin tree (none of the two
   files is the vendored 1.3.0, else `MatchFiles` for 1.3.0, and no provider file under `puppet/provider/host/` but
   `parsed.rb`: `checkTree`), a `Resources` purge of `host`, then value shapes (`rubyvalue.UnimplementedValue`). One
   release covers both openvox's vendored 1.3.0 and SIMP's 2.1.0, whose two files are the same bytes
   (`host_core/manifest.go:Route`).
-- `sshkeys_core`, each type decided on its own: the measured platform (`ral.MeasuredRelease`; neither type has a
+- `sshkeys_core`, each type decided on its own: the measured platform (the unit's `Platforms`, `ral.OnPlatform`; neither type has a
   confine), a `provider` other than `parsed` (`group.ForeignProvider`; the unit requires `group`, `file` for
   `file.BucketBackup` and `file.RelabelHook`, and `user` for `user.PurgeKeepsNative`), the plugin tree (neither of the
   type's two files is the vendored 2.5.0, else `MatchFiles` for 2.5.0 or 3.1.0, and no provider file under
@@ -169,7 +170,7 @@ Each unit's remaining checks are its own, and every failure is a `Delegated` rea
   (`rubyvalue.UnimplementedValue`) under the release found. Each type is fingerprinted by its own two files; the
   release found selects 3.1.0's `sshkey` `key` check and is passed to the provider
   (`sshkeys_core/manifest.go:Route`, `routeSshkeyType`, `routeSakType`).
-- `mount_core`: the measured platform (`ral.MeasuredRelease`), executable `mount` and then `umount` (`command.RubyWhich`
+- `mount_core`: the measured platform (the unit's `Platforms`, `ral.OnPlatform`), executable `mount` and then `umount` (`command.RubyWhich`
   over `PATH`, as the provider's `commands` confine resolves them; the resolved paths are passed to the provider), a
   `provider` other than `parsed` (`group.ForeignProvider`; the unit requires `group`, and `file` for
   `file.BucketBackup` and `file.RelabelHook`), the plugin tree (none of the three files is the vendored 1.3.0, else
@@ -193,7 +194,7 @@ so a reviewer must.
 
 1. Create `internal/units/<name>/` with the type code, a package clause that drops underscores, and a package doc with a
    `Changelog:` line.
-2. Write `manifest.go`: `Manifest` (version `1.0.0`, `Source`, `Oracle`, `Types`, `Requires`, `Releases`; use `[]string{}`
+2. Write `manifest.go`: `Manifest` (version `1.0.0`, `Source`, `Oracle`, `Types`, `Requires`, `Platforms`, `Releases`; use `[]string{}`
    and `[]unit.Release{}` rather than nil), `Unit`, and a `Route`. For a module, put the measured Ruby files under
    `testdata/lib` (so they are in the layout `--libdir` has) and list their digests in `Releases`; use `unit.MatchFiles`
    in `Route`.
@@ -210,8 +211,17 @@ The unit-wide tests then impose, with no further wiring:
 | `TestImportsWithinRequires` | the layering above; the unit is in `units.All()` |
 | `TestManifestTypesAreRoutedTypes` | with every unit's `testdata/lib` assembled into one libdir, `RouteAll` returns a provider for each `Types` entry and delegates nothing |
 | `TestDigestsOwnedByManifests` | no empty digest; each digest appears in the Go sources only in the `manifest.go` of the units listing it |
-| `TestManifestsWellFormed` | unique names, semver, directory exists, `Requires` are listed units, module units have releases; for a unit that has releases, `Types` equals the union of its releases' types and no type lists no files (a core unit with no releases is not checked) |
+| `TestManifestsWellFormed` | unique names, semver, directory exists, `Requires` are listed units, `Platforms` is not empty, module units have releases; for a unit that has releases, `Types` equals the union of its releases' types and no type lists no files (a core unit with no releases is not checked) |
 | `TestRalHoldsNoTypes` | no `Type() string` in `ral` outside `extension.go` |
 
 The `voxagent units` output (README) is the manifests, so a new unit appears in it with no further change
 (`cmd/voxagent/units.go`, tested by `cmd/voxagent/units_test.go`).
+
+## Adding a platform to a unit
+
+1. Measure the unit on the new platform's oracle image, as the unit's measurements README does for the current one.
+2. Add the `ral.OS` entry to that unit's `Platforms` only. Set `Like` only when derivatives keep the parent's numbering.
+3. Add a route-test row for that platform.
+4. Run the unit's G5 half on that image.
+5. Bump the unit's `Version` minor and add a changelog line.
+6. When `augeasproviders_sysctl`'s list changes, update its delegation reason in `internal/units/augeasproviders_sysctl/manifest.go` (it names RHEL family 10 or later and "Fedora excluded") and the matching expectation in `TestRoutesHonourOwnPlatforms`.

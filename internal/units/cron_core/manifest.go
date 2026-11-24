@@ -24,13 +24,15 @@ var cronFiles = []string{
 // Manifest describes the cron_core unit: puppetlabs-cron_core 1.3.0, the
 // release openvox 8.33.0 vendors, and 2.1.0, the release SIMP pins. It
 // requires group because it routes with group.ForeignProvider.
+// Platforms is the list its parity was measured on.
 var Manifest = unit.Manifest{
-	Name:     "cron_core",
-	Version:  "1.0.0",
-	Source:   unit.Origin{Implementation: "puppetlabs-cron_core", Version: ""},
-	Oracle:   unit.Origin{Implementation: "openvox", Version: "8.33.0"},
-	Types:    []string{"cron"},
-	Requires: []string{"group"},
+	Name:      "cron_core",
+	Version:   "1.0.0",
+	Source:    unit.Origin{Implementation: "puppetlabs-cron_core", Version: ""},
+	Oracle:    unit.Origin{Implementation: "openvox", Version: "8.33.0"},
+	Types:     []string{"cron"},
+	Requires:  []string{"group"},
+	Platforms: []ral.OS{{ID: "rhel", Like: true, MinMajor: 10}},
 	Releases: []unit.Release{
 		{
 			Version: "1.3.0",
@@ -82,7 +84,7 @@ func (unitImpl) Route(env *unit.Env) unit.Decision {
 	}
 	delegate := func(why string) unit.Decision { return unit.Decision{Delegated: map[string]string{"cron": why}} }
 
-	if !ral.MeasuredRelease(env.Platform) {
+	if !ral.OnPlatform(env.Platform, Manifest.Platforms) {
 		return delegate("not the measured platform")
 	}
 	crontab, ok := command.RubyWhich("crontab", env.Environ("PATH"), env.Platform.Executable)

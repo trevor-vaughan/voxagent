@@ -19,13 +19,15 @@ import (
 // provider (spec §0 row 4), with the three files of augeasproviders_core that
 // every augeasproviders type depends on. The digests of the core files are in
 // augeasproviders_core's manifest.
+// Platforms is the list its parity was measured on.
 var Manifest = unit.Manifest{
-	Name:     "augeasproviders_sysctl",
-	Version:  "1.0.0",
-	Source:   unit.Origin{Implementation: "puppet-augeasproviders_sysctl", Version: ""},
-	Oracle:   unit.Origin{Implementation: "openvox", Version: "8.33.0"},
-	Types:    []string{"sysctl"},
-	Requires: []string{"augeasproviders_core"},
+	Name:      "augeasproviders_sysctl",
+	Version:   "1.0.0",
+	Source:    unit.Origin{Implementation: "puppet-augeasproviders_sysctl", Version: ""},
+	Oracle:    unit.Origin{Implementation: "openvox", Version: "8.33.0"},
+	Types:     []string{"sysctl"},
+	Requires:  []string{"augeasproviders_core"},
+	Platforms: []ral.OS{{ID: "rhel", Like: true, MinMajor: 10}},
 	Releases: []unit.Release{{
 		Version: "4.1.0",
 		Files: []unit.FileDigest{
@@ -98,7 +100,7 @@ func (unitImpl) Route(env *unit.Env) unit.Decision {
 	}
 
 	// (g)
-	if !ral.MeasuredRelease(env.Platform) {
+	if !ral.OnPlatform(env.Platform, Manifest.Platforms) {
 		return delegate("the platform is not RHEL family 10 or later (Fedora excluded)")
 	}
 	cmd, ok := command.RubyWhich("sysctl", env.Environ("PATH"), env.Platform.Executable)

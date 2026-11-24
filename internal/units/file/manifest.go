@@ -9,13 +9,14 @@ import (
 // provider/file/posix.rb, which are part of puppet itself, so it lists no files
 // to measure.
 var Manifest = unit.Manifest{
-	Name:     "file",
-	Version:  "1.0.0",
-	Source:   unit.Origin{Implementation: "puppet", Version: "8.10.0"},
-	Oracle:   unit.Origin{Implementation: "openvox", Version: "8.33.0"},
-	Types:    []string{"file"},
-	Requires: []string{},
-	Releases: []unit.Release{},
+	Name:      "file",
+	Version:   "1.0.0",
+	Source:    unit.Origin{Implementation: "puppet", Version: "8.10.0"},
+	Oracle:    unit.Origin{Implementation: "openvox", Version: "8.33.0"},
+	Types:     []string{"file"},
+	Requires:  []string{},
+	Platforms: unit.AnyPlatform,
+	Releases:  []unit.Release{},
 }
 
 // Unit is the file unit as units.All lists it.

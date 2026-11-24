@@ -16,14 +16,21 @@ import (
 // Manifest describes a unit. The slices are never nil: a library unit has no
 // Types, and the units command prints them as [].
 type Manifest struct {
-	Name     string    `json:"name"`
-	Version  string    `json:"version"`
-	Source   Origin    `json:"source"`
-	Oracle   Origin    `json:"oracle"`
-	Types    []string  `json:"types"`
-	Requires []string  `json:"requires"`
-	Releases []Release `json:"releases"`
+	Name     string   `json:"name"`
+	Version  string   `json:"version"`
+	Source   Origin   `json:"source"`
+	Oracle   Origin   `json:"oracle"`
+	Types    []string `json:"types"`
+	Requires []string `json:"requires"`
+	// Platforms lists the operating systems the unit's parity was measured on;
+	// a unit that works anywhere declares AnyPlatform. Never empty.
+	Platforms []ral.OS  `json:"platforms"`
+	Releases  []Release `json:"releases"`
 }
+
+// AnyPlatform is the Platforms of a unit with no platform limit. The "*" id
+// matches without reading os-release.
+var AnyPlatform = []ral.OS{{ID: "*"}}
 
 // Origin names the Ruby implementation a unit reproduces or was measured
 // against.

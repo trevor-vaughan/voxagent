@@ -8,13 +8,14 @@ import (
 // Manifest describes the package unit. It reproduces type/package.rb, which
 // is part of puppet itself, so it lists no files to measure.
 var Manifest = unit.Manifest{
-	Name:     "package",
-	Version:  "1.0.0",
-	Source:   unit.Origin{Implementation: "puppet", Version: "8.10.0"},
-	Oracle:   unit.Origin{Implementation: "openvox", Version: "8.33.0"},
-	Types:    []string{"package"},
-	Requires: []string{},
-	Releases: []unit.Release{},
+	Name:      "package",
+	Version:   "1.0.0",
+	Source:    unit.Origin{Implementation: "puppet", Version: "8.10.0"},
+	Oracle:    unit.Origin{Implementation: "openvox", Version: "8.33.0"},
+	Types:     []string{"package"},
+	Requires:  []string{},
+	Platforms: unit.AnyPlatform,
+	Releases:  []unit.Release{},
 }
 
 // Unit is the package unit as units.All lists it.

@@ -474,7 +474,7 @@ func TestNativeAugeasSysctlPlatform(t *testing.T) {
 		{"PATH first", raltest.FakePlatform{Exec: map[string]bool{"/usr/sbin/sysctl": true, "/opt/x/sysctl": true},
 			Release: raltest.CentOS10}, "/opt/x:/usr/bin", true},
 		{"/sbin appended", raltest.FakePlatform{Exec: map[string]bool{"/sbin/sysctl": true}, Release: raltest.CentOS10}, "/usr/bin", true},
-		{"Fedora", raltest.FakePlatform{Exec: exec, Release: "ID=fedora\nID_LIKE=\"rhel\"\nVERSION_ID=41\n"}, "", false},
+		{"Fedora", raltest.FakePlatform{Exec: exec, Release: "ID=fedora\nVERSION_ID=41\n"}, "", false},
 		{"RHEL 9", raltest.FakePlatform{Exec: exec, Release: "ID=rhel\nVERSION_ID=\"9.4\"\n"}, "", false},
 		{"os-release unreadable", raltest.FakePlatform{Exec: exec, Err: os.ErrNotExist}, "", false},
 		{"no sysctl", raltest.FakePlatform{Release: raltest.CentOS10}, "/usr/bin", false},

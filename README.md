@@ -30,8 +30,8 @@ settings (`puppet.conf` is not read).
 Every Puppet type voxagent applies itself is implemented by a unit. `voxagent units`
 prints one JSON array holding every unit's manifest, sorted by name: its version,
 the Ruby implementation it reproduces (`source`) and the one it was tested against
-(`oracle`), the types it serves, the units it requires, and, for module units, the
-file digests of each measured release (a module's type is native only when the
+(`oracle`), the types it serves, the units it requires, the platforms its parity
+was measured on, and, for module units, the file digests of each measured release (a module's type is native only when the
 `--libdir` plugin tree matches one of them).
 
 ```bash
@@ -56,6 +56,13 @@ A core unit's element, `jq '.[] | select(.name == "notify")'`:
     "notify"
   ],
   "requires": [],
+  "platforms": [
+    {
+      "id": "*",
+      "like": false,
+      "min_major": 0
+    }
+  ],
   "releases": []
 }
 ```
@@ -126,8 +133,9 @@ A catalog with a `service` is refused whole on a host whose PID 1 is not systemd
 Two more, `user` and `group`, are applied natively, through shadow-utils (`useradd`,
 `usermod`, `userdel`, `chage`, `chpasswd`, `groupadd`, `groupmod`,
 `groupdel`) as Puppet's `useradd` and `groupadd` providers do, only on a
-RHEL-family host of major release 10 or later that is not Fedora
-(`/etc/os-release` `ID` is `rhel` or `ID_LIKE` lists it) and does not have
+RHEL-family host of major release 10 or later that is not Fedora (Fedora has no `ID_LIKE`)
+(`/etc/os-release` `ID` is `rhel` or `ID_LIKE` lists it; `/usr/lib/os-release` is read
+instead only when `/etc/os-release` is missing, not when it is unreadable) and does not have
 libuser's `/usr/sbin/luseradd` and `/usr/sbin/lgroupadd` both installed. Each type is decided per
 run, on its own: it stays with the Ruby extension host when any of its
 resources names a `provider` other than `useradd` or `groupadd`, and `user`
@@ -137,7 +145,7 @@ does not support (`forcelocal`, and the Solaris, AIX, BSD and macOS ones) are ig
 Puppet ignores them. Everywhere else `user` and `group` need the extension
 host, and `--no-ruby` refuses a catalog that has them.
 `cron` (puppetlabs-cron_core, the `crontab` provider) is applied natively, through `crontab -l` and
-`crontab -`, on a RHEL-family host of major release 10 or later that is not Fedora, with `crontab` on `PATH`,
+`crontab -`, on a RHEL-family host of major release 10 or later that is not Fedora (Fedora has no `ID_LIKE`), with `crontab` on `PATH`,
 `/usr/sbin` or `/sbin`, when no `cron` names a `provider` other than `crontab`, and the libdir holds no cron_core
 (openvox's vendored 1.3.0 applies) or holds cron_core 1.3.0 or 2.1.0 (identified by the digests of its type and two
 provider files). Every `cron` attribute is accepted. A `Resources` resource that may purge `cron`, and a few value
@@ -147,7 +155,7 @@ host, and `--no-ruby` refuses a catalog that has it. `--debug` logs why. Values 
 a line break in a `cron` value becomes extra crontab lines, as under Puppet.
 `host`, `sshkey`, `ssh_authorized_key` and `mount` (puppetlabs-host_core, sshkeys_core and
 mount_core, over voxagent's ParsedFile engine) are applied natively on a RHEL-family host of major release 10 or
-later that is not Fedora. Each is decided on its own, and it needs: for `host`, `/etc/hosts` to exist; for `mount`,
+later that is not Fedora (Fedora has no `ID_LIKE`). Each is decided on its own, and it needs: for `host`, `/etc/hosts` to exist; for `mount`,
 `mount` and `umount` on `PATH`, `/usr/sbin` or `/sbin`, and, when the catalog holds a `File`, mount names that hold none
 of `\`, `(?`, `{` and `[`; no resource naming a `provider` other than `parsed`; a libdir that holds none of the module
 (openvox's vendored release applies) or a measured one (host_core 2.1.0, mount_core 1.3.0 or 2.1.0, sshkeys_core 2.5.0
@@ -188,7 +196,7 @@ resource of the type stays inside the supported shapes (no `comment`, no
 `Sensitive` value, and for `sysctl` no `val`, `persist => false` or `ensure =>
 absent`; the names, hosts, conditions and targets are plain strings of the
 usual characters). `sysctl` also needs a RHEL-family host of major release 10
-or later that is not Fedora, with `sysctl` on `PATH`, `/usr/sbin` or `/sbin`.
+or later that is not Fedora (Fedora has no `ID_LIKE`), with `sysctl` on `PATH`, `/usr/sbin` or `/sbin`.
 Each type is decided on its own; a type that is not native is applied by the
 Ruby extension host, which is then required, and `--no-ruby` refuses a catalog
 that has one. `--debug` logs why a type was delegated. Custom lenses in

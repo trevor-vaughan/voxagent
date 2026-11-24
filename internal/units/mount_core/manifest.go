@@ -26,13 +26,15 @@ var mountFiles = []string{
 // release openvox 8.34.0 vendors, and 2.1.0, the release SIMP pins. They differ
 // only in Ruby 3.1 hash shorthand, so both run the same native code. It
 // requires group for group.ForeignProvider and file for the flat hooks.
+// Platforms is the list its parity was measured on.
 var Manifest = unit.Manifest{
-	Name:     "mount_core",
-	Version:  "1.0.0",
-	Source:   unit.Origin{Implementation: "puppetlabs-mount_core", Version: ""},
-	Oracle:   unit.Origin{Implementation: "openvox", Version: "8.34.0"},
-	Types:    []string{"mount"},
-	Requires: []string{"group", "file"},
+	Name:      "mount_core",
+	Version:   "1.0.0",
+	Source:    unit.Origin{Implementation: "puppetlabs-mount_core", Version: ""},
+	Oracle:    unit.Origin{Implementation: "openvox", Version: "8.34.0"},
+	Types:     []string{"mount"},
+	Requires:  []string{"group", "file"},
+	Platforms: []ral.OS{{ID: "rhel", Like: true, MinMajor: 10}},
 	Releases: []unit.Release{{
 		Version: "1.3.0",
 		Files: []unit.FileDigest{
@@ -87,7 +89,7 @@ func (unitImpl) Route(env *unit.Env) unit.Decision {
 	}
 	delegate := func(why string) unit.Decision { return unit.Decision{Delegated: map[string]string{"mount": why}} }
 
-	if !ral.MeasuredRelease(env.Platform) {
+	if !ral.OnPlatform(env.Platform, Manifest.Platforms) {
 		return delegate("not the measured platform")
 	}
 	path := env.Environ("PATH")

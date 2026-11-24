@@ -28,13 +28,15 @@ var (
 // only in the two type files; the release found selects sshkey's key
 // validation. It requires group for group.ForeignProvider, file for the flat
 // hooks and user for ssh_authorized_key's purge_ssh_keys condition.
+// Platforms is the list its parity was measured on.
 var Manifest = unit.Manifest{
-	Name:     "sshkeys_core",
-	Version:  "1.0.0",
-	Source:   unit.Origin{Implementation: "puppetlabs-sshkeys_core", Version: ""},
-	Oracle:   unit.Origin{Implementation: "openvox", Version: "8.34.0"},
-	Types:    []string{"sshkey", "ssh_authorized_key"},
-	Requires: []string{"group", "file", "user"},
+	Name:      "sshkeys_core",
+	Version:   "1.0.0",
+	Source:    unit.Origin{Implementation: "puppetlabs-sshkeys_core", Version: ""},
+	Oracle:    unit.Origin{Implementation: "openvox", Version: "8.34.0"},
+	Types:     []string{"sshkey", "ssh_authorized_key"},
+	Requires:  []string{"group", "file", "user"},
+	Platforms: []ral.OS{{ID: "rhel", Like: true, MinMajor: 10}},
 	Releases: []unit.Release{{
 		Version: "2.5.0",
 		Files: []unit.FileDigest{
@@ -117,7 +119,7 @@ type routed struct {
 // implement under the release found. The first condition that fails is the
 // reason.
 func routeSshkeyType(env *unit.Env, keys []catalog.Resource) routed {
-	if !ral.MeasuredRelease(env.Platform) {
+	if !ral.OnPlatform(env.Platform, Manifest.Platforms) {
 		return routed{why: "not the measured platform"}
 	}
 	for _, r := range keys {
@@ -148,7 +150,7 @@ func routeSshkeyType(env *unit.Env, keys []catalog.Resource) routed {
 // resources also delegates, because the host would edit the same files as the
 // native provider in one run.
 func routeSakType(env *unit.Env, auths []catalog.Resource) routed {
-	if !ral.MeasuredRelease(env.Platform) {
+	if !ral.OnPlatform(env.Platform, Manifest.Platforms) {
 		return routed{why: "not the measured platform"}
 	}
 	for _, r := range auths {

@@ -93,7 +93,7 @@ func TestRoutePlatform(t *testing.T) {
 		{"CentOS Stream 10", sysctlHost, "", "/usr/sbin/sysctl"},
 		{"PATH first", raltest.FakePlatform{Exec: map[string]bool{"/usr/sbin/sysctl": true, "/opt/x/sysctl": true}, Release: raltest.CentOS10}, "/opt/x:/usr/bin", "/opt/x/sysctl"},
 		{"/sbin appended", raltest.FakePlatform{Exec: map[string]bool{"/sbin/sysctl": true}, Release: raltest.CentOS10}, "/usr/bin", "/sbin/sysctl"},
-		{"Fedora", raltest.FakePlatform{Exec: exec, Release: "ID=fedora\nID_LIKE=\"rhel\"\nVERSION_ID=41\n"}, "", ""},
+		{"Fedora", raltest.FakePlatform{Exec: exec, Release: "ID=fedora\nVERSION_ID=41\n"}, "", ""},
 		{"RHEL 9", raltest.FakePlatform{Exec: exec, Release: "ID=rhel\nVERSION_ID=\"9.4\"\n"}, "", ""},
 		{"os-release unreadable", raltest.FakePlatform{Exec: exec, Err: os.ErrNotExist}, "", ""},
 		{"no sysctl", raltest.FakePlatform{Release: raltest.CentOS10}, "/usr/bin", ""},

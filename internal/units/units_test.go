@@ -1,11 +1,13 @@
 package units_test
 
 import (
+	"errors"
 	"fmt"
 	"go/ast"
 	"go/parser"
 	"go/token"
 	"io/fs"
+	"maps"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -18,8 +20,16 @@ import (
 	"github.com/voxagent/voxagent/internal/lib/augeas"
 	"github.com/voxagent/voxagent/internal/lib/plugintree"
 	"github.com/voxagent/voxagent/internal/lib/raltest"
+	"github.com/voxagent/voxagent/internal/ral"
 	"github.com/voxagent/voxagent/internal/unit"
 	"github.com/voxagent/voxagent/internal/units"
+	"github.com/voxagent/voxagent/internal/units/augeasproviders_sysctl"
+	"github.com/voxagent/voxagent/internal/units/cron_core"
+	"github.com/voxagent/voxagent/internal/units/group"
+	"github.com/voxagent/voxagent/internal/units/host_core"
+	"github.com/voxagent/voxagent/internal/units/mount_core"
+	"github.com/voxagent/voxagent/internal/units/sshkeys_core"
+	"github.com/voxagent/voxagent/internal/units/user"
 )
 
 // root is the repository root; go test runs in this package's directory.
@@ -207,10 +217,16 @@ type libProbe struct{ lib augeas.Lib }
 
 func (p libProbe) Probe() (augeas.Lib, string, bool) { return p.lib, "", true }
 
-// With everything measured and clean, each type a manifest declares is served
-// by a provider RouteAll returns, and nothing is delegated: a manifest that
-// names a type its Route does not serve is caught here.
-func TestManifestTypesAreRoutedTypes(t *testing.T) {
+// nativeExec and nativeFiles are the host facts every gated unit needs to route native.
+var (
+	nativeExec  = map[string]bool{"/usr/sbin/sysctl": true, "/usr/sbin/crontab": true, "/usr/sbin/mount": true, "/usr/sbin/umount": true}
+	nativeFiles = map[string]bool{"/etc/hosts": true}
+)
+
+// nativeEnv is an Env whose catalog holds one fixture resource of every type any unit declares,
+// routed on p, with every unit's plugin tree assembled under one libdir.
+func nativeEnv(t *testing.T, p ral.Platform) *unit.Env {
+	t.Helper()
 	libdir := t.TempDir()
 	for _, name := range unitDirs(t) {
 		lib := filepath.Join(name, "testdata", "lib")
@@ -231,16 +247,23 @@ func TestManifestTypesAreRoutedTypes(t *testing.T) {
 			cat.Resources = append(cat.Resources, res)
 		}
 	}
-	env := &unit.Env{
+	return &unit.Env{
 		Catalog:  cat,
 		Libdir:   libdir,
 		Tree:     plugintree.LibdirTree(libdir),
-		Platform: raltest.FakePlatform{Release: raltest.CentOS10, Exec: map[string]bool{"/usr/sbin/sysctl": true, "/usr/sbin/crontab": true, "/usr/sbin/mount": true, "/usr/sbin/umount": true}, Files: map[string]bool{"/etc/hosts": true}},
+		Platform: p,
 		Environ:  func(string) string { return "" },
 		Command:  "apply",
 		Vardir:   t.TempDir(),
 		Augeas:   augeas.NewSession(libProbe{raltest.NewScriptLib(t, nil)}),
 	}
+}
+
+// With everything measured and clean, each type a manifest declares is served
+// by a provider RouteAll returns, and nothing is delegated: a manifest that
+// names a type its Route does not serve is caught here.
+func TestManifestTypesAreRoutedTypes(t *testing.T) {
+	env := nativeEnv(t, raltest.FakePlatform{Release: raltest.CentOS10, Exec: nativeExec, Files: nativeFiles})
 	got := unit.RouteAll(env, units.All())
 	if len(got.Delegated) != 0 {
 		t.Errorf("delegated %v, want none", got.Delegated)
@@ -256,6 +279,66 @@ func TestManifestTypesAreRoutedTypes(t *testing.T) {
 			}
 		}
 	}
+}
+
+// Each gated unit routes on its own Manifest.Platforms, not on a shared rule.
+func TestRoutesHonourOwnPlatforms(t *testing.T) {
+	gated := map[string]*unit.Manifest{
+		"user": &user.Manifest, "group": &group.Manifest, "augeasproviders_sysctl": &augeasproviderssysctl.Manifest,
+		"cron_core": &croncore.Manifest, "host_core": &hostcore.Manifest, "mount_core": &mountcore.Manifest,
+		"sshkeys_core": &sshkeyscore.Manifest,
+	}
+	debian12 := []ral.OS{{ID: "debian", MinMajor: 12}}
+	saved := map[string][]ral.OS{}
+	for name, m := range gated {
+		saved[name] = m.Platforms
+		t.Cleanup(func() { m.Platforms = saved[name] })
+		m.Platforms = debian12
+	}
+	debian := raltest.FakePlatform{Release: "ID=debian\nVERSION_ID=\"12\"\n", Exec: nativeExec, Files: nativeFiles}
+
+	t.Run("every gated unit declared for the host routes", func(t *testing.T) {
+		if got := unit.RouteAll(nativeEnv(t, debian), units.All()); len(got.Delegated) != 0 {
+			t.Errorf("delegated %v, want none", got.Delegated)
+		}
+	})
+	t.Run("one unit left on RHEL is delegated alone", func(t *testing.T) {
+		const measured = "not the measured platform"
+		wantDelegated := map[string]map[string]string{
+			"user":                   {"user": measured},
+			"group":                  {"group": measured},
+			"augeasproviders_sysctl": {"sysctl": "the platform is not RHEL family 10 or later (Fedora excluded)"},
+			"cron_core":              {"cron": measured},
+			"host_core":              {"host": measured},
+			"mount_core":             {"mount": measured},
+			"sshkeys_core":           {"sshkey": measured, "ssh_authorized_key": measured},
+		}
+		for name, m := range gated {
+			m.Platforms = saved[name]
+			got := unit.RouteAll(nativeEnv(t, debian), units.All())
+			if want := wantDelegated[name]; !maps.Equal(got.Delegated, want) {
+				t.Errorf("only %s on its own list: delegated %v, want %v", name, got.Delegated, want)
+			}
+			m.Platforms = debian12
+		}
+	})
+	t.Run("unreadable os-release only affects gated units", func(t *testing.T) {
+		got := unit.RouteAll(nativeEnv(t, raltest.FakePlatform{Err: errors.New("denied"), Exec: nativeExec, Files: nativeFiles}), units.All())
+		routed := map[string]bool{}
+		for _, p := range got.Providers {
+			routed[p.Type()] = true
+		}
+		for _, u := range units.All() {
+			if _, isGated := gated[u.Manifest().Name]; isGated {
+				continue
+			}
+			for _, typ := range u.Manifest().Types {
+				if !routed[typ] {
+					t.Errorf("ungated unit %s: no provider for %q", u.Manifest().Name, typ)
+				}
+			}
+		}
+	})
 }
 
 // A measured digest is written once, in the manifest.go of a unit whose
@@ -325,6 +408,10 @@ func moduleWithoutReleases(m unit.Manifest) bool {
 	return m.Source.Version == "" && len(m.Releases) == 0
 }
 
+// noPlatforms reports a manifest that declares no platform; a unit that works
+// anywhere says so with unit.AnyPlatform.
+func noPlatforms(m unit.Manifest) bool { return len(m.Platforms) == 0 }
+
 var semver = regexp.MustCompile(`^\d+\.\d+\.\d+$`)
 
 func TestManifestsWellFormed(t *testing.T) {
@@ -334,6 +421,14 @@ func TestManifestsWellFormed(t *testing.T) {
 		}
 		if moduleWithoutReleases(unit.Manifest{Name: "core", Source: unit.Origin{Version: "8.10.0"}}) {
 			t.Error("a core unit (Source.Version set) was refused for having no Releases")
+		}
+	})
+	t.Run("manifest without platforms is refused", func(t *testing.T) {
+		if !noPlatforms(unit.Manifest{Name: "bad"}) || !noPlatforms(unit.Manifest{Name: "bad", Platforms: []ral.OS{}}) {
+			t.Error("a manifest with nil or empty Platforms was accepted")
+		}
+		if noPlatforms(unit.Manifest{Name: "any", Platforms: unit.AnyPlatform}) {
+			t.Error("unit.AnyPlatform was refused")
 		}
 	})
 	all := units.All()
@@ -359,6 +454,9 @@ func TestManifestsWellFormed(t *testing.T) {
 			if !names[r] {
 				t.Errorf("%s requires %q, which units.All() does not list", m.Name, r)
 			}
+		}
+		if noPlatforms(m) {
+			t.Errorf("%s declares no Platforms; use unit.AnyPlatform for none", m.Name)
 		}
 		if moduleWithoutReleases(m) {
 			t.Errorf("%s is a module unit (no Source.Version) but lists no Releases", m.Name)

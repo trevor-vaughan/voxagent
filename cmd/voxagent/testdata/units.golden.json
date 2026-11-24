@@ -14,6 +14,13 @@
       "augeas"
     ],
     "requires": [],
+    "platforms": [
+      {
+        "id": "*",
+        "like": false,
+        "min_major": 0
+      }
+    ],
     "releases": [
       {
         "version": "2.1.0",
@@ -59,6 +66,13 @@
     },
     "types": [],
     "requires": [],
+    "platforms": [
+      {
+        "id": "*",
+        "like": false,
+        "min_major": 0
+      }
+    ],
     "releases": [
       {
         "version": "4.2.0",
@@ -98,6 +112,13 @@
     ],
     "requires": [
       "augeasproviders_core"
+    ],
+    "platforms": [
+      {
+        "id": "*",
+        "like": false,
+        "min_major": 0
+      }
     ],
     "releases": [
       {
@@ -176,6 +197,13 @@
     "requires": [
       "augeasproviders_core"
     ],
+    "platforms": [
+      {
+        "id": "rhel",
+        "like": true,
+        "min_major": 10
+      }
+    ],
     "releases": [
       {
         "version": "4.1.0",
@@ -218,6 +246,13 @@
     ],
     "requires": [
       "file"
+    ],
+    "platforms": [
+      {
+        "id": "*",
+        "like": false,
+        "min_major": 0
+      }
     ],
     "releases": [
       {
@@ -285,6 +320,13 @@
     "requires": [
       "group"
     ],
+    "platforms": [
+      {
+        "id": "rhel",
+        "like": true,
+        "min_major": 10
+      }
+    ],
     "releases": [
       {
         "version": "1.3.0",
@@ -351,6 +393,13 @@
       "exec"
     ],
     "requires": [],
+    "platforms": [
+      {
+        "id": "*",
+        "like": false,
+        "min_major": 0
+      }
+    ],
     "releases": []
   },
   {
@@ -368,6 +417,13 @@
       "file"
     ],
     "requires": [],
+    "platforms": [
+      {
+        "id": "*",
+        "like": false,
+        "min_major": 0
+      }
+    ],
     "releases": []
   },
   {
@@ -385,6 +441,13 @@
       "group"
     ],
     "requires": [],
+    "platforms": [
+      {
+        "id": "rhel",
+        "like": true,
+        "min_major": 10
+      }
+    ],
     "releases": []
   },
   {
@@ -404,6 +467,13 @@
     "requires": [
       "group",
       "file"
+    ],
+    "platforms": [
+      {
+        "id": "rhel",
+        "like": true,
+        "min_major": 10
+      }
     ],
     "releases": [
       {
@@ -444,6 +514,13 @@
     "requires": [
       "group",
       "file"
+    ],
+    "platforms": [
+      {
+        "id": "rhel",
+        "like": true,
+        "min_major": 10
+      }
     ],
     "releases": [
       {
@@ -511,6 +588,13 @@
       "notify"
     ],
     "requires": [],
+    "platforms": [
+      {
+        "id": "*",
+        "like": false,
+        "min_major": 0
+      }
+    ],
     "releases": []
   },
   {
@@ -528,6 +612,13 @@
       "package"
     ],
     "requires": [],
+    "platforms": [
+      {
+        "id": "*",
+        "like": false,
+        "min_major": 0
+      }
+    ],
     "releases": []
   },
   {
@@ -545,6 +636,13 @@
       "service"
     ],
     "requires": [],
+    "platforms": [
+      {
+        "id": "*",
+        "like": false,
+        "min_major": 0
+      }
+    ],
     "releases": []
   },
   {
@@ -566,6 +664,13 @@
       "group",
       "file",
       "user"
+    ],
+    "platforms": [
+      {
+        "id": "rhel",
+        "like": true,
+        "min_major": 10
+      }
     ],
     "releases": [
       {
@@ -648,6 +753,13 @@
     ],
     "requires": [
       "group"
+    ],
+    "platforms": [
+      {
+        "id": "rhel",
+        "like": true,
+        "min_major": 10
+      }
     ],
     "releases": []
   }

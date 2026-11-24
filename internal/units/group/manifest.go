@@ -13,14 +13,16 @@ import (
 // Manifest describes the group unit. It reproduces type/group.rb and the
 // groupadd provider, which are part of puppet itself, so it lists no files to
 // measure.
+// Platforms is the list its parity was measured on.
 var Manifest = unit.Manifest{
-	Name:     "group",
-	Version:  "1.0.0",
-	Source:   unit.Origin{Implementation: "puppet", Version: "8.10.0"},
-	Oracle:   unit.Origin{Implementation: "openvox", Version: "8.33.0"},
-	Types:    []string{"group"},
-	Requires: []string{},
-	Releases: []unit.Release{},
+	Name:      "group",
+	Version:   "1.0.0",
+	Source:    unit.Origin{Implementation: "puppet", Version: "8.10.0"},
+	Oracle:    unit.Origin{Implementation: "openvox", Version: "8.33.0"},
+	Types:     []string{"group"},
+	Requires:  []string{},
+	Platforms: []ral.OS{{ID: "rhel", Like: true, MinMajor: 10}},
+	Releases:  []unit.Release{},
 }
 
 // Unit is the group unit as units.All lists it.
@@ -49,7 +51,7 @@ func (unitImpl) Route(env *unit.Env) unit.Decision {
 		}
 		return unit.Decision{Delegated: map[string]string{"group": why}}
 	}
-	if why := UnmeasuredReason(env.Platform); why != "" {
+	if why := UnmeasuredReason(env.Platform, Manifest.Platforms); why != "" {
 		return delegate(why)
 	}
 	var uv *rubyvalue.UnimplementedValue

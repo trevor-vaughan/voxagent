@@ -36,7 +36,6 @@ func TestNativeUserGroupPlatform(t *testing.T) {
 		{"rhel 10.1", "ID=rhel\nVERSION_ID=\"10.1\"\n", true},
 		{"rhel 9.4", "ID=rhel\nVERSION_ID=\"9.4\"\n", false},
 		{"rhel 11", "ID=rhel\nVERSION_ID=11\n", true},
-		{"fedora 41", "ID=fedora\nID_LIKE=\"rhel\"\nVERSION_ID=41\n", false},
 		{"fedora 41 is not rhel", "ID=fedora\nVERSION_ID=41\n", false},
 		{"id_like whole word", "ID=x\nID_LIKE=\"rhelish\"\nVERSION_ID=10\n", false},
 		{"id_like single quotes", "ID=x\nID_LIKE='fedora rhel'\nVERSION_ID='10'\n", true},

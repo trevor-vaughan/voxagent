@@ -27,12 +27,13 @@ var augeasFiles = []string{
 
 // Manifest describes the augeas_core unit.
 var Manifest = unit.Manifest{
-	Name:     "augeas_core",
-	Version:  "1.0.0",
-	Source:   unit.Origin{Implementation: "puppetlabs-augeas_core", Version: ""},
-	Oracle:   unit.Origin{Implementation: "openvox", Version: "8.33.0"},
-	Types:    []string{"augeas"},
-	Requires: []string{},
+	Name:      "augeas_core",
+	Version:   "1.0.0",
+	Source:    unit.Origin{Implementation: "puppetlabs-augeas_core", Version: ""},
+	Oracle:    unit.Origin{Implementation: "openvox", Version: "8.33.0"},
+	Types:     []string{"augeas"},
+	Requires:  []string{},
+	Platforms: unit.AnyPlatform,
 	Releases: []unit.Release{{
 		Version: "2.1.0",
 		Files: []unit.FileDigest{

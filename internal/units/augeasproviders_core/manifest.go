@@ -13,12 +13,13 @@ import "github.com/voxagent/voxagent/internal/unit"
 // depends on (spec §0 row 4). puppet/feature/augeas.rb is byte-identical in
 // augeas_core, which lists it too.
 var Manifest = unit.Manifest{
-	Name:     "augeasproviders_core",
-	Version:  "1.0.0",
-	Source:   unit.Origin{Implementation: "puppet-augeasproviders_core", Version: ""},
-	Oracle:   unit.Origin{Implementation: "openvox", Version: "8.33.0"},
-	Types:    []string{},
-	Requires: []string{},
+	Name:      "augeasproviders_core",
+	Version:   "1.0.0",
+	Source:    unit.Origin{Implementation: "puppet-augeasproviders_core", Version: ""},
+	Oracle:    unit.Origin{Implementation: "openvox", Version: "8.33.0"},
+	Types:     []string{},
+	Requires:  []string{},
+	Platforms: unit.AnyPlatform,
 	Releases: []unit.Release{{
 		Version: "4.2.0",
 		Files: []unit.FileDigest{

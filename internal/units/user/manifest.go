@@ -15,14 +15,16 @@ import (
 // provider, which are part of puppet itself, so it lists no files to measure.
 // It requires group: it routes with group's platform check and reads the
 // catalog's group gids.
+// Platforms is the list its parity was measured on.
 var Manifest = unit.Manifest{
-	Name:     "user",
-	Version:  "1.0.0",
-	Source:   unit.Origin{Implementation: "puppet", Version: "8.10.0"},
-	Oracle:   unit.Origin{Implementation: "openvox", Version: "8.33.0"},
-	Types:    []string{"user"},
-	Requires: []string{"group"},
-	Releases: []unit.Release{},
+	Name:      "user",
+	Version:   "1.0.0",
+	Source:    unit.Origin{Implementation: "puppet", Version: "8.10.0"},
+	Oracle:    unit.Origin{Implementation: "openvox", Version: "8.33.0"},
+	Types:     []string{"user"},
+	Requires:  []string{"group"},
+	Platforms: []ral.OS{{ID: "rhel", Like: true, MinMajor: 10}},
+	Releases:  []unit.Release{},
 }
 
 // Unit is the user unit as units.All lists it.
@@ -53,7 +55,7 @@ func (unitImpl) Route(env *unit.Env) unit.Decision {
 		}
 		return unit.Decision{Delegated: map[string]string{"user": why}}
 	}
-	if why := group.UnmeasuredReason(env.Platform); why != "" {
+	if why := group.UnmeasuredReason(env.Platform, Manifest.Platforms); why != "" {
 		return delegate(why)
 	}
 	var uv *rubyvalue.UnimplementedValue

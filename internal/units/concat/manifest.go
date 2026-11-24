@@ -11,12 +11,13 @@ import (
 // measured at the two releases the unit reproduces (spec §0 row 2). Both type
 // files of a release must match its digests.
 var Manifest = unit.Manifest{
-	Name:     "concat",
-	Version:  "1.0.0",
-	Source:   unit.Origin{Implementation: "puppetlabs-concat", Version: ""},
-	Oracle:   unit.Origin{Implementation: "openvox", Version: "8.33.0"},
-	Types:    []string{"concat_file", "concat_fragment"},
-	Requires: []string{"file"},
+	Name:      "concat",
+	Version:   "1.0.0",
+	Source:    unit.Origin{Implementation: "puppetlabs-concat", Version: ""},
+	Oracle:    unit.Origin{Implementation: "openvox", Version: "8.33.0"},
+	Types:     []string{"concat_file", "concat_fragment"},
+	Requires:  []string{"file"},
+	Platforms: unit.AnyPlatform,
 	Releases: []unit.Release{
 		{
 			Version: "9.1.0",
