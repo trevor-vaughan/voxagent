@@ -1,0 +1,25 @@
+docs/maintainers/extension-host.md
+  s_edec75bbf1b7b3::t_8c9acc040b0e3e 312,466-467
+  s_edec75bbf1b7b3::t_ccda49e97a1ba9 302-304,325,363-365,369-371,384-386,392
+  s_edec75bbf1b7b3::t_5b5311482392a9 468
+  s_edec75bbf1b7b3::t_35fc98f3c146b8 3-4
+  s_edec75bbf1b7b3::t_b1747f1aee521f 91-95,121-125,168-175
+  s_edec75bbf1b7b3::t_fe7e46bd8a374b 157-158,181-182,215-216,332
+  s_edec75bbf1b7b3::t_97adc5510d5572 425-430,434-438,532-542
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "a64fd46827af8bbf49162bbe2d70324b07315e17",
+  "prompts": {},
+  "sessions": {
+    "s_edec75bbf1b7b3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f82cc920-c095-4025-9de4-ef70d9879282",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "LLM (riotbox) <llm@riotbox>"
+    }
+  }
+}
