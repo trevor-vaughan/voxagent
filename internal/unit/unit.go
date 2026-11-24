@@ -6,6 +6,8 @@
 package unit
 
 import (
+	"io"
+
 	"github.com/voxagent/voxagent/internal/catalog"
 	"github.com/voxagent/voxagent/internal/lib/augeas"
 	"github.com/voxagent/voxagent/internal/ral"
@@ -62,6 +64,15 @@ type Env struct {
 	Vardir   string
 	Sources  map[string]string
 	Augeas   *augeas.Session // the run's libaugeas probe, made at most once
+	// LookupEnv is os.LookupEnv over the agent's environment: unlike Environ it
+	// tells a variable set to "" from an unset one (cron's $USER, spec §5.2).
+	// Environ stays the string-only reader the other units use.
+	LookupEnv func(key string) (string, bool)
+	// Stderr is where a native provider copies the output of a command it ran
+	// (cron's crontab write, D-95). The run scrubs what it receives, so a
+	// provider may pass it unfiltered text. Nil in a test that never reaches
+	// such a command.
+	Stderr io.Writer
 }
 
 // Decision is a unit's routing: the providers it serves natively, and the

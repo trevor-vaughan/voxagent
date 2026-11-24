@@ -42,13 +42,13 @@ IMAGE="${IMAGE:-localhost/fleet-node-el:latest}"
 # that measurement would have turned the tripwire into a rubber stamp. Bumped
 # again to 8.33.0 on 2026-11-17 the same way, when a rebuild moved the image:
 # this gate, report-diff-container, -systemd and -simp all agreed at 8.33.0
-# before any pin moved.
+# before any pin moved. And to 8.34.0 on 2026-11-23, likewise.
 #
 # The float itself is untouched, which means the NEXT rebuild will trip this
 # again. That is the intended failure mode: exit 2 and a demand to re-measure
 # beats a green run whose meaning silently changed. Pinning the Dockerfile would
 # fix it properly and belongs to the fleet harness, not the apply spine.
-WANT_PUPPET="${WANT_PUPPET:-8.33.0}"
+WANT_PUPPET="${WANT_PUPPET:-8.34.0}"
 
 # The two package fixtures, chosen by measuring the image rather than by taste.
 #

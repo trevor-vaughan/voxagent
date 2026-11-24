@@ -320,6 +320,32 @@ func TestRunArgvWithLocale(t *testing.T) {
 	}
 }
 
+// util/execution.rb:386 removes HOME, USER and LOGNAME from every child it
+// runs; a command Ruby runs through IO.popen instead (crontab's write, cft:86)
+// inherits them, which KeepUserEnv reproduces. The locale override applies
+// either way (D-95).
+func TestRunArgvWithKeepUserEnv(t *testing.T) {
+	t.Setenv("HOME", "/home/spine")
+	t.Setenv("USER", "spine")
+	t.Setenv("LOGNAME", "spine")
+	t.Setenv("LANG", "de_DE.UTF-8")
+	for _, keep := range []bool{false, true} {
+		code, out, err := RunArgvWith(context.Background(), ArgvOpts{KeepUserEnv: keep}, "/usr/bin/env")
+		if err != nil || code != 0 {
+			t.Fatalf("keep=%v: got (%d, %v), want (0, nil)", keep, code, err)
+		}
+		lines := strings.Split(out, "\n")
+		for _, kv := range []string{"HOME=/home/spine", "USER=spine", "LOGNAME=spine"} {
+			if got, want := countOf(lines, kv), map[bool]int{false: 0, true: 1}[keep]; got != want {
+				t.Errorf("keep=%v: %s appears %d times in the child env, want %d", keep, kv, got, want)
+			}
+		}
+		if countOf(lines, "LANG=C") != 1 || countOf(lines, "LANG=de_DE.UTF-8") != 0 {
+			t.Errorf("keep=%v: the locale override is missing from %q", keep, out)
+		}
+	}
+}
+
 func countOf(lines []string, s string) int {
 	n := 0
 	for _, l := range lines {
@@ -477,5 +503,84 @@ func TestArgvRunnersRedactAStartFailureOfAMarkedCommand(t *testing.T) {
 				t.Errorf("err = %v, want %q", err, tc.want)
 			}
 		})
+	}
+}
+
+func TestRubyWhich(t *testing.T) {
+	only := func(paths ...string) func(string) bool {
+		return func(p string) bool { return slices.Contains(paths, p) }
+	}
+	for _, tc := range []struct {
+		name, bin, path string
+		exe             func(string) bool
+		want            string
+		ok              bool
+	}{
+		{"absolute name ignores PATH", "/opt/x/tool", "/bin", only("/opt/x/tool", "/bin/tool"), "/opt/x/tool", true},
+		{"absolute name not executable", "/opt/x/tool", "/opt/x", only("/bin/tool"), "", false},
+		{"on PATH", "sysctl", "/bin", only("/bin/sysctl"), "/bin/sysctl", true},
+		{"appended /usr/sbin", "sysctl", "/bin", only("/usr/sbin/sysctl"), "/usr/sbin/sysctl", true},
+		{"appended /sbin", "sysctl", "/bin", only("/sbin/sysctl"), "/sbin/sysctl", true},
+		{"PATH order", "sysctl", "/bin:/sbin:/usr/sbin", only("/usr/sbin/sysctl", "/sbin/sysctl"), "/sbin/sysctl", true},
+		{"/usr/sbin before /sbin", "sysctl", "/bin", only("/usr/sbin/sysctl", "/sbin/sysctl"), "/usr/sbin/sysctl", true},
+		{"PATH first", "sysctl", "/opt/x", only("/opt/x/sysctl", "/usr/sbin/sysctl"), "/opt/x/sysctl", true},
+		{"name is a parameter", "crontab", "/bin", only("/usr/sbin/crontab", "/bin/sysctl"), "/usr/sbin/crontab", true},
+		{"empty entry is /", "sysctl", "/bin::/usr/sbin", only("/sysctl", "/usr/sbin/sysctl"), "/sysctl", true},
+		{"empty PATH starts with /", "sysctl", "", only("/sysctl", "/usr/sbin/sysctl"), "/sysctl", true},
+		{"empty PATH reaches /usr/sbin", "sysctl", "", only("/usr/sbin/sysctl"), "/usr/sbin/sysctl", true},
+		{"not found", "sysctl", "/bin", only(), "", false},
+		{"~ entry before a hit delegates", "sysctl", "/bin:~/bin:/usr/sbin", only("/usr/sbin/sysctl"), "", false},
+		{"bare ~ entry delegates", "sysctl", "~", only("/usr/sbin/sysctl"), "", false},
+		{"~ entry after a hit", "sysctl", "/opt/x:~/bin", only("/opt/x/sysctl"), "/opt/x/sysctl", true},
+		{"~ inside an entry is literal", "sysctl", "/opt/a~b", only("/opt/a~b/sysctl"), "/opt/a~b/sysctl", true},
+	} {
+		got, ok := RubyWhich(tc.bin, tc.path, tc.exe)
+		if got != tc.want || ok != tc.ok {
+			t.Errorf("%s: RubyWhich(%q, %q) = %q, %v; want %q, %v", tc.name, tc.bin, tc.path, got, ok, tc.want, tc.ok)
+		}
+	}
+}
+
+func TestRunArgvWithFailOnTruncate(t *testing.T) {
+	withOutputCap(t, 4)
+	ctx := context.Background()
+	for _, tc := range []struct {
+		name, script string
+		fail         bool
+		wantOut      string
+		wantErr      string
+	}{
+		{"over the cap fails", "printf abcde", true, "", "output of '/bin/sh -c printf abcde' exceeded 64 MiB"},
+		{"exactly the cap is kept", "printf abcd", true, "abcd", ""},
+		{"opt-out keeps the cut output", "printf abcde", false, "abcd", ""},
+	} {
+		code, out, err := RunArgvWith(ctx, ArgvOpts{FailOnTruncate: tc.fail}, "/bin/sh", "-c", tc.script)
+		if tc.wantErr == "" && (err != nil || code != 0 || out != tc.wantOut) {
+			t.Errorf("%s: got (%d, %q, %v), want (0, %q, nil)", tc.name, code, out, err, tc.wantOut)
+		}
+		if tc.wantErr != "" && (err == nil || err.Error() != tc.wantErr || out != "") {
+			t.Errorf("%s: got (%q, %v), want error %q", tc.name, out, err, tc.wantErr)
+		}
+	}
+}
+
+// ErrorName replaces the executed name in the error texts only; the Executing
+// line keeps the executed command (D-82).
+func TestRunArgvWithErrorNameNamesTheCommandInErrors(t *testing.T) {
+	withOutputCap(t, 4)
+	ctx, got := debugContext("debug")
+	_, _, err := RunArgvWith(ctx, ArgvOpts{FailOnTruncate: true, ErrorName: "sh"}, "/bin/sh", "-c", "printf abcde")
+	if want := "output of 'sh -c printf abcde' exceeded 64 MiB"; err == nil || err.Error() != want {
+		t.Errorf("over-cap err = %v; want %q", err, want)
+	}
+	if lines := linesAt(*got, "Puppet"); !slices.Equal(lines, []string{"Executing: '/bin/sh -c printf abcde'"}) {
+		t.Errorf("Executing line lost the resolved path: %v", *got)
+	}
+
+	for _, fail := range []bool{true, false} {
+		_, _, err = RunArgvWith(context.Background(), ArgvOpts{FailOnTruncate: fail, ErrorName: "gone"}, "/nonexistent/gone", "-l")
+		if want := "run 'gone -l': fork/exec: no such file or directory"; err == nil || err.Error() != want {
+			t.Errorf("fail=%v: start err = %v; want %q", fail, err, want)
+		}
 	}
 }

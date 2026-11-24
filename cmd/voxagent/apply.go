@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"io"
 	"maps"
 	"os"
 	"runtime"
@@ -45,7 +46,22 @@ type applyOptions struct {
 	console                         *puppetConsole    // prints Puppet console lines; nil prints none
 	providers                       []ral.Provider    // joins the native providers; tests only
 	augeasProbe                     augeas.Probe      // nil -> augeas.HostProbe; tests only
-	environ                         ral.Environ       // nil -> os.Getenv; tests only
+	environ                         ral.Environ       // nil -> os.Getenv; tests only; LookupEnv then reads it, empty meaning unset
+	stderr                          io.Writer         // set by applyCatalog to the scrubbed stderr; a caller of nativeProviders alone gets os.Stderr
+}
+
+// scrubbedStderr writes to the process's stderr through the run's current
+// scrubber, so a native provider that copies a command's output there cannot
+// show a Sensitive value.
+type scrubbedStderr struct {
+	scrubber *atomic.Pointer[redact.Scrubber]
+}
+
+func (w scrubbedStderr) Write(b []byte) (int, error) {
+	if _, err := io.WriteString(os.Stderr, w.scrubber.Load().Scrub(string(b))); err != nil {
+		return 0, err
+	}
+	return len(b), nil
 }
 
 // nativeProviders lists the providers voxagent applies itself for cat: each
@@ -57,9 +73,16 @@ func nativeProviders(cat *catalog.Catalog, o applyOptions, p ral.Platform) (nati
 	if environ == nil {
 		environ = os.Getenv
 	}
+	lookup := os.LookupEnv
+	if o.environ != nil {
+		lookup = func(key string) (string, bool) { v := o.environ(key); return v, v != "" }
+	}
 	tree, session := plugintree.LibdirTree(o.libdir), augeas.NewSession(o.augeasProbe)
 	env := &unit.Env{Catalog: cat, Libdir: o.libdir, Tree: tree, Platform: p, Environ: environ, Command: o.command,
-		Vardir: o.vardir, Sources: o.sources, Augeas: session}
+		Vardir: o.vardir, Sources: o.sources, Augeas: session, LookupEnv: lookup, Stderr: o.stderr}
+	if env.Stderr == nil {
+		env.Stderr = os.Stderr
+	}
 	decision := unit.RouteAll(env, units.All())
 	return append(decision.Providers, o.providers...), decision.Delegated
 }
@@ -102,6 +125,7 @@ func applyCatalog(raw []byte, o applyOptions) (report.Status, *report.Report) {
 		return report.Status{CouldNotRun: true}, nil
 	}
 
+	o.stderr = scrubbedStderr{&current}
 	natives, delegated := nativeProviders(cat, o, ral.HostPlatform)
 	ext, errMsg := ingestExtensions(extensionConfig{ruby: o.ruby, libdir: o.libdir, vardir: o.vardir, level: o.level, disabled: o.noRuby,
 		timeouts: o.timeouts, scrubber: &current}, raw, cat, natives)

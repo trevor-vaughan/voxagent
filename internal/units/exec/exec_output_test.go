@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/voxagent/voxagent/internal/lib/command"
+	"github.com/voxagent/voxagent/internal/lib/rubyvalue"
 )
 
 // Ruby's split(/\n/): trailing empty strings go, interior ones and \r stay
@@ -50,8 +51,8 @@ func TestOutputEncoding(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			getenv := func(k string) string { return tc.env[k] }
-			if got := outputEncoding(getenv); got != tc.want {
-				t.Errorf("outputEncoding = %q, want %q", got, tc.want)
+			if got := rubyvalue.ExternalEncoding(getenv); got != tc.want {
+				t.Errorf("ExternalEncoding = %q, want %q", got, tc.want)
 			}
 		})
 	}

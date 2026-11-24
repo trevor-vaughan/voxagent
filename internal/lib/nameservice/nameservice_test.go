@@ -4,10 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"os"
 	"path/filepath"
 	"reflect"
 	"slices"
+	"strings"
 	"syscall"
 	"testing"
 
@@ -45,6 +47,24 @@ func (f fakeNSS) GroupByID(gid int64) (GroupEntry, bool, error) {
 		}
 	}
 	return GroupEntry{}, false, nil
+}
+
+func (f fakeNSS) UserByID(uid int64) (PasswdEntry, bool, error) {
+	for _, u := range f.sortedUsers() {
+		if u.UID == uid {
+			return u, true, nil
+		}
+	}
+	return PasswdEntry{}, false, nil
+}
+
+func (f fakeNSS) AllUsers() ([]PasswdEntry, error) { return f.sortedUsers(), nil }
+
+// sortedUsers gives the name-keyed map a stable enumeration order.
+func (f fakeNSS) sortedUsers() []PasswdEntry {
+	all := slices.Collect(maps.Values(f.users))
+	slices.SortFunc(all, func(a, b PasswdEntry) int { return strings.Compare(a.Name, b.Name) })
+	return all
 }
 
 func (f fakeNSS) GroupList(user string, _ int64) ([]int64, error) { return f.grouplst[user], nil }
@@ -175,6 +195,215 @@ type failingNSS struct{ fakeNSS }
 func (failingNSS) Group(string) (GroupEntry, bool, error) {
 	return GroupEntry{}, false, fmt.Errorf("boom")
 }
+
+func mustUID(t *testing.T, ctx context.Context, ns NameService, v any) (int64, bool) {
+	t.Helper()
+	uid, ok, err := PosixUID(ctx, ns, v, false)
+	if err != nil {
+		t.Fatalf("PosixUID(%v): %v", v, err)
+	}
+	return uid, ok
+}
+
+func TestPosixUIDName(t *testing.T) {
+	ctx, msgs := debugCtx()
+	ns := fakeNSS{users: map[string]PasswdEntry{"u4": {Name: "u4", UID: 4}}}
+	if uid, ok := mustUID(t, ctx, ns, "u4"); !ok || uid != 4 {
+		t.Fatalf("got %d, %v", uid, ok)
+	}
+	if len(*msgs) != 0 {
+		t.Errorf("unexpected debug: %v", *msgs)
+	}
+	if _, ok := mustUID(t, ctx, ns, "nope"); ok {
+		t.Error("unknown name resolved")
+	}
+}
+
+func TestPosixUIDIntegerWithoutUserIsUnresolved(t *testing.T) {
+	ctx, _ := debugCtx()
+	ns := fakeNSS{users: map[string]PasswdEntry{"u4": {Name: "u4", UID: 4}}}
+	for _, v := range []any{int64(1234), int64(-1), int64(1 << 40), int64(4294967291)} {
+		if uid, ok := mustUID(t, ctx, ns, v); ok {
+			t.Errorf("%v resolved to %d", v, uid)
+		}
+	}
+	if uid, ok := mustUID(t, ctx, ns, int64(4)); !ok || uid != 4 {
+		t.Errorf("int64(4): got %d, %v", uid, ok)
+	}
+}
+
+func TestPosixUIDNumericStringIsInteger(t *testing.T) {
+	ctx, _ := debugCtx()
+	ns := fakeNSS{users: map[string]PasswdEntry{"u74": {Name: "u74", UID: 74}}}
+	if uid, ok := mustUID(t, ctx, ns, "74"); !ok || uid != 74 {
+		t.Fatalf("got %d, %v", uid, ok)
+	}
+	if _, ok := mustUID(t, ctx, ns, "75"); ok {
+		t.Error("75 resolved")
+	}
+}
+
+func TestPosixUIDHexNameIsNumber(t *testing.T) {
+	ctx, _ := debugCtx()
+	ns := fakeNSS{users: map[string]PasswdEntry{"u31": {Name: "u31", UID: 31}}}
+	if uid, ok := mustUID(t, ctx, ns, "0x1f"); !ok || uid != 31 {
+		t.Fatalf("got %d, %v", uid, ok)
+	}
+}
+
+func TestPosixUIDMultipleEntries(t *testing.T) {
+	ctx, msgs := debugCtx()
+	ns := fakeNSS{users: map[string]PasswdEntry{"a": {Name: "a", UID: 5}, "b": {Name: "b", UID: 5}}}
+	if uid, ok := mustUID(t, ctx, ns, "b"); !ok || uid != 5 {
+		t.Fatalf("got %d, %v", uid, ok)
+	}
+	want := []string{"Multiple entries found for resource: 'passwd' with uid: 5"}
+	if !reflect.DeepEqual(*msgs, want) {
+		t.Errorf("debug = %q; want %q", *msgs, want)
+	}
+}
+
+// uidByIDFirst makes UserByID answer with a fixed alias, as an NSS source that
+// disagrees with getpwnam would.
+type uidByIDFirst struct{ fakeNSS }
+
+func (b uidByIDFirst) UserByID(uid int64) (PasswdEntry, bool, error) {
+	if uid == 5 {
+		return PasswdEntry{Name: "a", UID: 6}, true, nil
+	}
+	return b.fakeNSS.UserByID(uid)
+}
+
+func TestPosixUIDSearchesAllEntries(t *testing.T) {
+	// "b" -> uid 5 -> getpwuid(5) is "a", whose own uid is 6, not 5.
+	ctx, msgs := debugCtx()
+	ns := uidByIDFirst{fakeNSS{users: map[string]PasswdEntry{"a": {Name: "a", UID: 6}, "b": {Name: "b", UID: 5}}}}
+	uid, ok := mustUID(t, ctx, ns, "b")
+	if !ok || uid != 5 {
+		t.Fatalf("got %d, %v", uid, ok)
+	}
+	want := []string{"The value retrieved: 'a' is different than the required state: 'b', searching in all entries"}
+	if !reflect.DeepEqual(*msgs, want) {
+		t.Errorf("debug = %q; want %q", *msgs, want)
+	}
+}
+
+func TestPosixUIDSearchFindsNothing(t *testing.T) {
+	ctx, msgs := debugCtx()
+	ns := noUserEnum{uidByIDFirst{fakeNSS{users: map[string]PasswdEntry{"b": {Name: "b", UID: 5}}}}}
+	if uid, ok := mustUID(t, ctx, ns, "b"); ok {
+		t.Fatalf("resolved to %d", uid)
+	}
+	if len(*msgs) != 1 {
+		t.Errorf("debug = %q", *msgs)
+	}
+}
+
+type noUserEnum struct{ uidByIDFirst }
+
+func (noUserEnum) AllUsers() ([]PasswdEntry, error) { return nil, nil }
+
+func TestPosixUIDRedactsSensitiveValue(t *testing.T) {
+	ctx, msgs := debugCtx()
+	ns := uidByIDFirst{fakeNSS{users: map[string]PasswdEntry{"a": {Name: "a", UID: 6}, "b": {Name: "b", UID: 5}}}}
+	if _, ok, err := PosixUID(ctx, ns, "b", true); err != nil || !ok {
+		t.Fatalf("ok %v, err %v", ok, err)
+	}
+	for _, m := range *msgs {
+		if strings.Contains(m, "'a'") || strings.Contains(m, "'b'") {
+			t.Errorf("sensitive value leaked: %q", m)
+		}
+	}
+}
+
+func TestPosixUIDPropagatesErrors(t *testing.T) {
+	ctx, _ := debugCtx()
+	known := fakeNSS{users: map[string]PasswdEntry{"x": {Name: "x", UID: 1}}}
+	for name, ns := range map[string]NameService{"User": failingUserNSS{known}, "UserByID": failingUserByIDNSS{known}} {
+		for _, v := range []any{"x", int64(1)} {
+			if _, _, err := PosixUID(ctx, ns, v, false); err == nil {
+				t.Errorf("%s failing, v=%v: error swallowed", name, v)
+			}
+		}
+	}
+	ns := failingAllUsersNSS{uidByIDFirst{fakeNSS{users: map[string]PasswdEntry{"b": {Name: "b", UID: 5}}}}}
+	if _, _, err := PosixUID(ctx, ns, "b", false); err == nil {
+		t.Error("AllUsers error swallowed")
+	}
+}
+
+// countingNSS counts every lookup that reaches it.
+type countingNSS struct {
+	fakeNSS
+	calls *int
+}
+
+func (c countingNSS) User(name string) (PasswdEntry, bool, error) {
+	*c.calls++
+	return c.fakeNSS.User(name)
+}
+
+func (c countingNSS) UserByID(uid int64) (PasswdEntry, bool, error) {
+	*c.calls++
+	return c.fakeNSS.UserByID(uid)
+}
+
+func (c countingNSS) AllUsers() ([]PasswdEntry, error) {
+	*c.calls++
+	return c.fakeNSS.AllUsers()
+}
+
+func TestPosixUIDOutOfRangeMakesNoLookup(t *testing.T) {
+	ctx, _ := debugCtx()
+	var calls int
+	ns := countingNSS{fakeNSS{users: map[string]PasswdEntry{"u": {Name: "u", UID: 4}}}, &calls}
+	for _, v := range []any{int64(-1), int64(1 << 40), int64(4294967291), "-1", "4294967291"} {
+		if uid, ok, err := PosixUID(ctx, ns, v, false); ok || err != nil {
+			t.Errorf("PosixUID(%v) = %d, %v, %v", v, uid, ok, err)
+		}
+	}
+	if calls != 0 {
+		t.Errorf("%d lookups for out-of-range ids", calls)
+	}
+}
+
+// userWithoutName finds uid 7 by id but its name has no entry by name, as a
+// source whose getpwuid and getpwnam disagree would.
+type userWithoutName struct{ fakeNSS }
+
+func (userWithoutName) UserByID(uid int64) (PasswdEntry, bool, error) {
+	if uid == 7 {
+		return PasswdEntry{Name: "ghost", UID: 7}, true, nil
+	}
+	return PasswdEntry{}, false, nil
+}
+
+func TestPosixUIDIDFoundButNameLookupMissing(t *testing.T) {
+	ctx, msgs := debugCtx()
+	if uid, ok := mustUID(t, ctx, userWithoutName{}, int64(7)); ok {
+		t.Fatalf("resolved to %d", uid)
+	}
+	want := []string{"Multiple entries found for resource: 'passwd' with uid: "}
+	if !reflect.DeepEqual(*msgs, want) {
+		t.Errorf("debug = %q; want %q", *msgs, want)
+	}
+}
+
+type failingUserNSS struct{ fakeNSS }
+
+func (failingUserNSS) User(string) (PasswdEntry, bool, error) {
+	return PasswdEntry{}, false, fmt.Errorf("boom")
+}
+
+type failingUserByIDNSS struct{ fakeNSS }
+
+func (failingUserByIDNSS) UserByID(int64) (PasswdEntry, bool, error) {
+	return PasswdEntry{}, false, fmt.Errorf("boom")
+}
+
+type failingAllUsersNSS struct{ uidByIDFirst }
+
+func (failingAllUsersNSS) AllUsers() ([]PasswdEntry, error) { return nil, fmt.Errorf("boom") }
 
 func TestGroupsOfKeepsGrouplistOrder(t *testing.T) {
 	ns := fakeNSS{

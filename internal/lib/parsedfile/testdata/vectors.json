@@ -1,0 +1,3426 @@
+{
+  "cases": [
+    {
+      "name": "lines-0",
+      "grammar": "split",
+      "op": "lines",
+      "text": "",
+      "want": {
+        "lines": [
+
+        ]
+      }
+    },
+    {
+      "name": "lines-1",
+      "grammar": "split",
+      "op": "lines",
+      "text": "\n",
+      "want": {
+        "lines": [
+
+        ]
+      }
+    },
+    {
+      "name": "lines-2",
+      "grammar": "split",
+      "op": "lines",
+      "text": "\n\na\n\n",
+      "want": {
+        "lines": [
+          "",
+          "",
+          "a"
+        ]
+      }
+    },
+    {
+      "name": "lines-3",
+      "grammar": "split",
+      "op": "lines",
+      "text": "a\r\nb",
+      "want": {
+        "lines": [
+          "a\r",
+          "b"
+        ]
+      }
+    },
+    {
+      "name": "lines-4",
+      "grammar": "split",
+      "op": "lines",
+      "text": "a\n\nb\n\n",
+      "want": {
+        "lines": [
+          "a",
+          "",
+          "b"
+        ]
+      }
+    },
+    {
+      "name": "lines-5",
+      "grammar": "split",
+      "op": "lines",
+      "text": "\n\n",
+      "want": {
+        "lines": [
+
+        ]
+      }
+    },
+    {
+      "name": "lines-6",
+      "grammar": "split",
+      "op": "lines",
+      "text": "a",
+      "want": {
+        "lines": [
+          "a"
+        ]
+      }
+    },
+    {
+      "name": "lines-7",
+      "grammar": "split",
+      "op": "lines",
+      "text": "a\n",
+      "want": {
+        "lines": [
+          "a"
+        ]
+      }
+    },
+    {
+      "name": "lines-8",
+      "grammar": "split",
+      "op": "lines",
+      "text": "\na",
+      "want": {
+        "lines": [
+          "",
+          "a"
+        ]
+      }
+    },
+    {
+      "name": "lines-9",
+      "grammar": "split",
+      "op": "lines",
+      "text": "a\n\n\nb",
+      "want": {
+        "lines": [
+          "a",
+          "",
+          "",
+          "b"
+        ]
+      }
+    },
+    {
+      "name": "lines-10",
+      "grammar": "split",
+      "op": "lines",
+      "text": "\r\n",
+      "want": {
+        "lines": [
+          "\r"
+        ]
+      }
+    },
+    {
+      "name": "lines-11",
+      "grammar": "split",
+      "op": "lines",
+      "text": "a\nb\n",
+      "want": {
+        "lines": [
+          "a",
+          "b"
+        ]
+      }
+    },
+    {
+      "name": "split-plain",
+      "grammar": "split",
+      "op": "parse",
+      "text": "foo  bar baz",
+      "want": {
+        "records": [
+          {
+            "type": "r",
+            "line": "",
+            "fields": {
+              "a": {
+                "s": "foo"
+              },
+              "b": {
+                "s": "bar"
+              },
+              "c": {
+                "s": "baz"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "split-rollup",
+      "grammar": "split",
+      "op": "parse",
+      "text": "foo bar baz qux",
+      "want": {
+        "records": [
+          {
+            "type": "r",
+            "line": "",
+            "fields": {
+              "a": {
+                "s": "foo"
+              },
+              "b": {
+                "s": "bar"
+              },
+              "c": {
+                "s": "baz qux"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "split-rollup-spaces",
+      "grammar": "split",
+      "op": "parse",
+      "text": "a b c d  e\tf",
+      "want": {
+        "records": [
+          {
+            "type": "r",
+            "line": "",
+            "fields": {
+              "a": {
+                "s": "a"
+              },
+              "b": {
+                "s": "b"
+              },
+              "c": {
+                "s": "c d e f"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "split-leading-shift",
+      "grammar": "split",
+      "op": "parse",
+      "text": " foo",
+      "want": {
+        "records": [
+          {
+            "type": "r",
+            "line": "",
+            "fields": {
+              "a": {
+                "absent": true
+              },
+              "b": {
+                "s": "foo"
+              },
+              "c": {
+                "absent": true
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "split-leading-tab-shift",
+      "grammar": "split",
+      "op": "parse",
+      "text": "\tfoo bar",
+      "want": {
+        "records": [
+          {
+            "type": "r",
+            "line": "",
+            "fields": {
+              "a": {
+                "absent": true
+              },
+              "b": {
+                "s": "foo"
+              },
+              "c": {
+                "s": "bar"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "split-one",
+      "grammar": "split",
+      "op": "parse",
+      "text": "foo",
+      "want": {
+        "records": [
+          {
+            "type": "r",
+            "line": "",
+            "fields": {
+              "a": {
+                "s": "foo"
+              },
+              "b": {
+                "absent": true
+              },
+              "c": {
+                "absent": true
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "split-empty",
+      "grammar": "split",
+      "op": "parse",
+      "text": "",
+      "want": {
+        "records": [
+
+        ]
+      }
+    },
+    {
+      "name": "split-blank-line",
+      "grammar": "split",
+      "op": "parse",
+      "text": "foo\n\nbar",
+      "want": {
+        "records": [
+          {
+            "type": "r",
+            "line": "",
+            "fields": {
+              "a": {
+                "s": "foo"
+              },
+              "b": {
+                "absent": true
+              },
+              "c": {
+                "absent": true
+              }
+            }
+          },
+          {
+            "type": "r",
+            "line": "",
+            "fields": {
+              "a": {
+                "absent": true
+              },
+              "b": {
+                "absent": true
+              },
+              "c": {
+                "absent": true
+              }
+            }
+          },
+          {
+            "type": "r",
+            "line": "",
+            "fields": {
+              "a": {
+                "s": "bar"
+              },
+              "b": {
+                "absent": true
+              },
+              "c": {
+                "absent": true
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "split-spaces-only",
+      "grammar": "split",
+      "op": "parse",
+      "text": "   ",
+      "want": {
+        "records": [
+          {
+            "type": "r",
+            "line": "",
+            "fields": {
+              "a": {
+                "absent": true
+              },
+              "b": {
+                "absent": true
+              },
+              "c": {
+                "absent": true
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "split-cr",
+      "grammar": "split",
+      "op": "parse",
+      "text": "a b\r",
+      "want": {
+        "records": [
+          {
+            "type": "r",
+            "line": "",
+            "fields": {
+              "a": {
+                "s": "a"
+              },
+              "b": {
+                "s": "b"
+              },
+              "c": {
+                "absent": true
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "split-crlf",
+      "grammar": "split",
+      "op": "parse",
+      "text": "a b c\r\nd",
+      "want": {
+        "records": [
+          {
+            "type": "r",
+            "line": "",
+            "fields": {
+              "a": {
+                "s": "a"
+              },
+              "b": {
+                "s": "b"
+              },
+              "c": {
+                "s": "c"
+              }
+            }
+          },
+          {
+            "type": "r",
+            "line": "",
+            "fields": {
+              "a": {
+                "s": "d"
+              },
+              "b": {
+                "absent": true
+              },
+              "c": {
+                "absent": true
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "split-comment",
+      "grammar": "split",
+      "op": "parse",
+      "text": "# c\nfoo",
+      "want": {
+        "records": [
+          {
+            "type": "comment",
+            "line": "# c",
+            "fields": {
+            }
+          },
+          {
+            "type": "r",
+            "line": "",
+            "fields": {
+              "a": {
+                "s": "foo"
+              },
+              "b": {
+                "absent": true
+              },
+              "c": {
+                "absent": true
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "split-trailing-ws",
+      "grammar": "split",
+      "op": "parse",
+      "text": "a b c  ",
+      "want": {
+        "records": [
+          {
+            "type": "r",
+            "line": "",
+            "fields": {
+              "a": {
+                "s": "a"
+              },
+              "b": {
+                "s": "b"
+              },
+              "c": {
+                "s": "c"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "split-two-leading",
+      "grammar": "split",
+      "op": "parse",
+      "text": "  a b c d",
+      "want": {
+        "records": [
+          {
+            "type": "r",
+            "line": "",
+            "fields": {
+              "a": {
+                "absent": true
+              },
+              "b": {
+                "s": "a"
+              },
+              "c": {
+                "s": "b c d"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "colon-rollup",
+      "grammar": "colon",
+      "op": "parse",
+      "text": "1:2:3:4",
+      "want": {
+        "records": [
+          {
+            "type": "c",
+            "line": "",
+            "fields": {
+              "x": {
+                "s": "1"
+              },
+              "y": {
+                "s": "2 3 4"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "colon-lead-empty",
+      "grammar": "colon",
+      "op": "parse",
+      "text": ":2",
+      "want": {
+        "records": [
+          {
+            "type": "c",
+            "line": "",
+            "fields": {
+              "x": {
+                "absent": true
+              },
+              "y": {
+                "s": "2"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "colon-one",
+      "grammar": "colon",
+      "op": "parse",
+      "text": "1",
+      "want": {
+        "records": [
+          {
+            "type": "c",
+            "line": "",
+            "fields": {
+              "x": {
+                "s": "1"
+              },
+              "y": {
+                "absent": true
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "colon-empty-mid",
+      "grammar": "colon",
+      "op": "parse",
+      "text": "1::2",
+      "want": {
+        "records": [
+          {
+            "type": "c",
+            "line": "",
+            "fields": {
+              "x": {
+                "s": "1"
+              },
+              "y": {
+                "s": "absent 2"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "colon-only-seps",
+      "grammar": "colon",
+      "op": "parse",
+      "text": "::",
+      "want": {
+        "records": [
+          {
+            "type": "c",
+            "line": "",
+            "fields": {
+              "x": {
+                "absent": true
+              },
+              "y": {
+                "absent": true
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "colon-trailing",
+      "grammar": "colon",
+      "op": "parse",
+      "text": "1:2:",
+      "want": {
+        "records": [
+          {
+            "type": "c",
+            "line": "",
+            "fields": {
+              "x": {
+                "s": "1"
+              },
+              "y": {
+                "s": "2"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "colon-trailing2",
+      "grammar": "colon",
+      "op": "parse",
+      "text": "1:2::",
+      "want": {
+        "records": [
+          {
+            "type": "c",
+            "line": "",
+            "fields": {
+              "x": {
+                "s": "1"
+              },
+              "y": {
+                "s": "2"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "colon-empty-in-rollup",
+      "grammar": "colon",
+      "op": "parse",
+      "text": "1:2::3",
+      "want": {
+        "records": [
+          {
+            "type": "c",
+            "line": "",
+            "fields": {
+              "x": {
+                "s": "1"
+              },
+              "y": {
+                "s": "2  3"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "colon-lead-rollup",
+      "grammar": "colon",
+      "op": "parse",
+      "text": ":a:b:c",
+      "want": {
+        "records": [
+          {
+            "type": "c",
+            "line": "",
+            "fields": {
+              "x": {
+                "absent": true
+              },
+              "y": {
+                "s": "a b c"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "colon-absent-then-rollup",
+      "grammar": "colon",
+      "op": "parse",
+      "text": "a::b::c",
+      "want": {
+        "records": [
+          {
+            "type": "c",
+            "line": "",
+            "fields": {
+              "x": {
+                "s": "a"
+              },
+              "y": {
+                "s": "absent b  c"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "tabjoin-rollup",
+      "grammar": "tabjoin",
+      "op": "parse",
+      "text": "a\tb\tc\td",
+      "want": {
+        "records": [
+          {
+            "type": "t",
+            "line": "",
+            "fields": {
+              "a": {
+                "s": "a"
+              },
+              "b": {
+                "s": "b"
+              },
+              "c": {
+                "s": "c\td"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "tabjoin-spaces-kept",
+      "grammar": "tabjoin",
+      "op": "parse",
+      "text": "a  b",
+      "want": {
+        "records": [
+          {
+            "type": "t",
+            "line": "",
+            "fields": {
+              "a": {
+                "s": "a  b"
+              },
+              "b": {
+                "absent": true
+              },
+              "c": {
+                "absent": true
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "tabjoin-empty-field",
+      "grammar": "tabjoin",
+      "op": "parse",
+      "text": "a\t\tc",
+      "want": {
+        "records": [
+          {
+            "type": "t",
+            "line": "",
+            "fields": {
+              "a": {
+                "s": "a"
+              },
+              "b": {
+                "absent": true
+              },
+              "c": {
+                "s": "c"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "tabjoin-lead-tab",
+      "grammar": "tabjoin",
+      "op": "parse",
+      "text": "\ta\tb",
+      "want": {
+        "records": [
+          {
+            "type": "t",
+            "line": "",
+            "fields": {
+              "a": {
+                "absent": true
+              },
+              "b": {
+                "s": "a"
+              },
+              "c": {
+                "s": "b"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "match-both",
+      "grammar": "match",
+      "op": "parse",
+      "text": "a b",
+      "want": {
+        "records": [
+          {
+            "type": "m",
+            "line": "",
+            "fields": {
+              "x": {
+                "s": "a"
+              },
+              "y": {
+                "s": "b"
+              },
+              "z": null
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "match-optional-missing",
+      "grammar": "match",
+      "op": "parse",
+      "text": "a",
+      "want": {
+        "records": [
+          {
+            "type": "m",
+            "line": "",
+            "fields": {
+              "x": {
+                "s": "a"
+              },
+              "y": null,
+              "z": null
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "match-three",
+      "grammar": "match",
+      "op": "parse",
+      "text": "a b c",
+      "want": {
+        "error": "Could not parse line \"a b c\" (line: 2)"
+      }
+    },
+    {
+      "name": "match-one-word",
+      "grammar": "match",
+      "op": "parse",
+      "text": "ab",
+      "want": {
+        "records": [
+          {
+            "type": "m",
+            "line": "",
+            "fields": {
+              "x": {
+                "s": "ab"
+              },
+              "y": null,
+              "z": null
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "match-two-spaces",
+      "grammar": "match",
+      "op": "parse",
+      "text": "a  b",
+      "want": {
+        "error": "Could not parse line \"a  b\" (line: 2)"
+      }
+    },
+    {
+      "name": "match-empty",
+      "grammar": "match",
+      "op": "parse",
+      "text": "x\n\ny",
+      "want": {
+        "error": "Could not parse line \"\" (line: 3)"
+      }
+    },
+    {
+      "name": "match-two-lines",
+      "grammar": "match",
+      "op": "parse",
+      "text": "a b\nc d",
+      "want": {
+        "records": [
+          {
+            "type": "m",
+            "line": "",
+            "fields": {
+              "x": {
+                "s": "a"
+              },
+              "y": {
+                "s": "b"
+              },
+              "z": null
+            }
+          },
+          {
+            "type": "m",
+            "line": "",
+            "fields": {
+              "x": {
+                "s": "c"
+              },
+              "y": {
+                "s": "d"
+              },
+              "z": null
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "match-first-bad",
+      "grammar": "match",
+      "op": "parse",
+      "text": "1\nzz",
+      "want": {
+        "records": [
+          {
+            "type": "m",
+            "line": "",
+            "fields": {
+              "x": {
+                "s": "1"
+              },
+              "y": null,
+              "z": null
+            }
+          },
+          {
+            "type": "m",
+            "line": "",
+            "fields": {
+              "x": {
+                "s": "zz"
+              },
+              "y": null,
+              "z": null
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "match-last-bad",
+      "grammar": "match",
+      "op": "parse",
+      "text": "a\nb\n!!!",
+      "want": {
+        "error": "Could not parse line \"!!!\" (line: 4)"
+      }
+    },
+    {
+      "name": "match-inspect-tab-quote",
+      "grammar": "match",
+      "op": "parse",
+      "text": "a\tb \"q\"",
+      "want": {
+        "error": "Could not parse line \"a\\tb \\\"q\\\"\" (line: 2)"
+      }
+    },
+    {
+      "name": "match-inspect-nonascii",
+      "grammar": "match",
+      "op": "parse",
+      "text": "é !",
+      "want": {
+        "error": "Could not parse line \"é !\" (line: 2)"
+      }
+    },
+    {
+      "name": "match-inspect-interp",
+      "grammar": "match",
+      "op": "parse",
+      "text": "#{x}",
+      "want": {
+        "error": "Could not parse line \"\\#{x}\" (line: 2)"
+      }
+    },
+    {
+      "name": "match-inspect-backslash",
+      "grammar": "match",
+      "op": "parse",
+      "text": "a\\b c",
+      "want": {
+        "error": "Could not parse line \"a\\\\b c\" (line: 2)"
+      }
+    },
+    {
+      "name": "match-inspect-cr",
+      "grammar": "match",
+      "op": "parse",
+      "text": "a b\r",
+      "want": {
+        "error": "Could not parse line \"a b\\r\" (line: 2)"
+      }
+    },
+    {
+      "name": "matchabs-star-first",
+      "grammar": "matchabs",
+      "op": "parse",
+      "text": "* x",
+      "want": {
+        "records": [
+          {
+            "type": "m",
+            "line": "",
+            "fields": {
+              "x": {
+                "absent": true
+              },
+              "y": {
+                "s": "x"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "matchabs-star-second",
+      "grammar": "matchabs",
+      "op": "parse",
+      "text": "a *",
+      "want": {
+        "records": [
+          {
+            "type": "m",
+            "line": "",
+            "fields": {
+              "x": {
+                "s": "a"
+              },
+              "y": {
+                "absent": true
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "matchabs-plain",
+      "grammar": "matchabs",
+      "op": "parse",
+      "text": "a x",
+      "want": {
+        "records": [
+          {
+            "type": "m",
+            "line": "",
+            "fields": {
+              "x": {
+                "s": "a"
+              },
+              "y": {
+                "s": "x"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "matchabs-empty-second",
+      "grammar": "matchabs",
+      "op": "parse",
+      "text": "a ",
+      "want": {
+        "records": [
+          {
+            "type": "m",
+            "line": "",
+            "fields": {
+              "x": {
+                "s": "a"
+              },
+              "y": {
+                "s": ""
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "matchabs-empty-first",
+      "grammar": "matchabs",
+      "op": "parse",
+      "text": " a",
+      "want": {
+        "records": [
+          {
+            "type": "m",
+            "line": "",
+            "fields": {
+              "x": {
+                "s": ""
+              },
+              "y": {
+                "s": "a"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "matchabs-both-star",
+      "grammar": "matchabs",
+      "op": "parse",
+      "text": "* *",
+      "want": {
+        "records": [
+          {
+            "type": "m",
+            "line": "",
+            "fields": {
+              "x": {
+                "absent": true
+              },
+              "y": {
+                "absent": true
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "matchempty-empty-second",
+      "grammar": "matchempty",
+      "op": "parse",
+      "text": "a ",
+      "want": {
+        "records": [
+          {
+            "type": "m",
+            "line": "",
+            "fields": {
+              "x": {
+                "s": "a"
+              },
+              "y": {
+                "absent": true
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "matchempty-empty-first",
+      "grammar": "matchempty",
+      "op": "parse",
+      "text": " a",
+      "want": {
+        "records": [
+          {
+            "type": "m",
+            "line": "",
+            "fields": {
+              "x": {
+                "absent": true
+              },
+              "y": {
+                "s": "a"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "matchempty-plain",
+      "grammar": "matchempty",
+      "op": "parse",
+      "text": "a x",
+      "want": {
+        "records": [
+          {
+            "type": "m",
+            "line": "",
+            "fields": {
+              "x": {
+                "s": "a"
+              },
+              "y": {
+                "s": "x"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "order-first",
+      "grammar": "order",
+      "op": "parse",
+      "text": "a",
+      "want": {
+        "records": [
+          {
+            "type": "c1",
+            "line": "a",
+            "fields": {
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "order-third",
+      "grammar": "order",
+      "op": "parse",
+      "text": "b",
+      "want": {
+        "records": [
+          {
+            "type": "c3",
+            "line": "b",
+            "fields": {
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "order-both",
+      "grammar": "order",
+      "op": "parse",
+      "text": "ab",
+      "want": {
+        "records": [
+          {
+            "type": "c1",
+            "line": "ab",
+            "fields": {
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "order-none",
+      "grammar": "order",
+      "op": "parse",
+      "text": "z",
+      "want": {
+        "error": "Could not parse line \"z\" (line: 2)"
+      }
+    },
+    {
+      "name": "order-order",
+      "grammar": "order",
+      "op": "parse",
+      "text": "b\na\nab",
+      "want": {
+        "records": [
+          {
+            "type": "c3",
+            "line": "b",
+            "fields": {
+            }
+          },
+          {
+            "type": "c1",
+            "line": "a",
+            "fields": {
+            }
+          },
+          {
+            "type": "c1",
+            "line": "ab",
+            "fields": {
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "order-empty",
+      "grammar": "order",
+      "op": "parse",
+      "text": "",
+      "want": {
+        "records": [
+
+        ]
+      }
+    },
+    {
+      "name": "hook-post-parse",
+      "grammar": "hook",
+      "op": "parse",
+      "text": "x y",
+      "want": {
+        "records": [
+          {
+            "type": "h",
+            "line": "",
+            "fields": {
+              "a": {
+                "s": "x"
+              },
+              "b": {
+                "s": "y"
+              },
+              "seen": {
+                "s": "yes"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "hook-rollup",
+      "grammar": "hook",
+      "op": "parse",
+      "text": "x y z",
+      "want": {
+        "records": [
+          {
+            "type": "h",
+            "line": "",
+            "fields": {
+              "a": {
+                "s": "x"
+              },
+              "b": {
+                "s": "y z"
+              },
+              "seen": {
+                "s": "yes"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "pregen-parse",
+      "grammar": "pregen",
+      "op": "parse",
+      "text": "q",
+      "want": {
+        "records": [
+          {
+            "type": "t",
+            "line": "q",
+            "fields": {
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "pregen-empty-line",
+      "grammar": "pregen",
+      "op": "parse",
+      "text": "a\n\nb",
+      "want": {
+        "error": "Could not parse line \"\" (line: 3)"
+      }
+    },
+    {
+      "name": "cron-name",
+      "grammar": "cron",
+      "op": "parse",
+      "text": "# Puppet Name: foo",
+      "want": {
+        "records": [
+          {
+            "type": "comment",
+            "line": "# Puppet Name: foo",
+            "fields": {
+              "name": {
+                "s": "foo"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "cron-name-trailing-space",
+      "grammar": "cron",
+      "op": "parse",
+      "text": "# Puppet Name: foo  ",
+      "want": {
+        "records": [
+          {
+            "type": "comment",
+            "line": "# Puppet Name: foo  ",
+            "fields": {
+              "name": {
+                "s": "foo  "
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "cron-name-anywhere",
+      "grammar": "cron",
+      "op": "parse",
+      "text": "x # Puppet Name: foo",
+      "want": {
+        "error": "Could not parse line \"x # Puppet Name: foo\" (line: 2)"
+      }
+    },
+    {
+      "name": "cron-name-empty-no",
+      "grammar": "cron",
+      "op": "parse",
+      "text": "# Puppet Name:",
+      "want": {
+        "records": [
+          {
+            "type": "comment",
+            "line": "# Puppet Name:",
+            "fields": {
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "cron-plain",
+      "grammar": "cron",
+      "op": "parse",
+      "text": "# plain comment",
+      "want": {
+        "records": [
+          {
+            "type": "comment",
+            "line": "# plain comment",
+            "fields": {
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "cron-indented",
+      "grammar": "cron",
+      "op": "parse",
+      "text": "  # indented",
+      "want": {
+        "records": [
+          {
+            "type": "comment",
+            "line": "  # indented",
+            "fields": {
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "cron-blank",
+      "grammar": "cron",
+      "op": "parse",
+      "text": "",
+      "want": {
+        "records": [
+
+        ]
+      }
+    },
+    {
+      "name": "cron-blank-lines",
+      "grammar": "cron",
+      "op": "parse",
+      "text": "a=b\n\n\n* * * * * x",
+      "want": {
+        "records": [
+          {
+            "type": "environment",
+            "line": "a=b",
+            "fields": {
+            }
+          },
+          {
+            "type": "blank",
+            "line": "",
+            "fields": {
+            }
+          },
+          {
+            "type": "blank",
+            "line": "",
+            "fields": {
+            }
+          },
+          {
+            "type": "crontab",
+            "line": "",
+            "fields": {
+              "command": {
+                "s": "x"
+              },
+              "special": {
+                "absent": true
+              },
+              "minute": {
+                "absent": true
+              },
+              "hour": {
+                "absent": true
+              },
+              "monthday": {
+                "absent": true
+              },
+              "month": {
+                "absent": true
+              },
+              "weekday": {
+                "absent": true
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "cron-spaces",
+      "grammar": "cron",
+      "op": "parse",
+      "text": "   ",
+      "want": {
+        "records": [
+          {
+            "type": "blank",
+            "line": "   ",
+            "fields": {
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "cron-env",
+      "grammar": "cron",
+      "op": "parse",
+      "text": "A=1",
+      "want": {
+        "records": [
+          {
+            "type": "environment",
+            "line": "A=1",
+            "fields": {
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "cron-env-spaced",
+      "grammar": "cron",
+      "op": "parse",
+      "text": " PATH = /bin",
+      "want": {
+        "records": [
+          {
+            "type": "environment",
+            "line": " PATH = /bin",
+            "fields": {
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "cron-env-star",
+      "grammar": "cron",
+      "op": "parse",
+      "text": "FOO=* * * * * x",
+      "want": {
+        "records": [
+          {
+            "type": "environment",
+            "line": "FOO=* * * * * x",
+            "fields": {
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "cron-env-mail",
+      "grammar": "cron",
+      "op": "parse",
+      "text": "MAILTO=a@b.c",
+      "want": {
+        "records": [
+          {
+            "type": "environment",
+            "line": "MAILTO=a@b.c",
+            "fields": {
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "cron-job",
+      "grammar": "cron",
+      "op": "parse",
+      "text": "* * * * * /bin/true",
+      "want": {
+        "records": [
+          {
+            "type": "crontab",
+            "line": "",
+            "fields": {
+              "command": {
+                "s": "/bin/true"
+              },
+              "special": {
+                "absent": true
+              },
+              "minute": {
+                "absent": true
+              },
+              "hour": {
+                "absent": true
+              },
+              "monthday": {
+                "absent": true
+              },
+              "month": {
+                "absent": true
+              },
+              "weekday": {
+                "absent": true
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "cron-job-fields",
+      "grammar": "cron",
+      "op": "parse",
+      "text": "*/5 0-4 1,2 jan mon-fri cmd arg",
+      "want": {
+        "records": [
+          {
+            "type": "crontab",
+            "line": "",
+            "fields": {
+              "command": {
+                "s": "cmd arg"
+              },
+              "special": {
+                "absent": true
+              },
+              "minute": {
+                "list": [
+                  "*/5"
+                ]
+              },
+              "hour": {
+                "list": [
+                  "0-4"
+                ]
+              },
+              "monthday": {
+                "list": [
+                  "1",
+                  "2"
+                ]
+              },
+              "month": {
+                "list": [
+                  "jan"
+                ]
+              },
+              "weekday": {
+                "list": [
+                  "mon-fri"
+                ]
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "cron-special",
+      "grammar": "cron",
+      "op": "parse",
+      "text": "@daily /bin/x",
+      "want": {
+        "records": [
+          {
+            "type": "crontab",
+            "line": "",
+            "fields": {
+              "command": {
+                "s": "/bin/x"
+              },
+              "minute": {
+                "absent": true
+              },
+              "hour": {
+                "absent": true
+              },
+              "monthday": {
+                "absent": true
+              },
+              "month": {
+                "absent": true
+              },
+              "weekday": {
+                "absent": true
+              },
+              "special": {
+                "s": "daily"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "cron-special-lead",
+      "grammar": "cron",
+      "op": "parse",
+      "text": " @x y",
+      "want": {
+        "records": [
+          {
+            "type": "crontab",
+            "line": "",
+            "fields": {
+              "command": {
+                "s": "y"
+              },
+              "minute": {
+                "absent": true
+              },
+              "hour": {
+                "absent": true
+              },
+              "monthday": {
+                "absent": true
+              },
+              "month": {
+                "absent": true
+              },
+              "weekday": {
+                "absent": true
+              },
+              "special": {
+                "s": "x"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "cron-special-only",
+      "grammar": "cron",
+      "op": "parse",
+      "text": "@reboot",
+      "want": {
+        "error": "Could not parse line \"@reboot\" (line: 2)"
+      }
+    },
+    {
+      "name": "cron-short",
+      "grammar": "cron",
+      "op": "parse",
+      "text": "5 4 * * *",
+      "want": {
+        "error": "Could not parse line \"5 4 * * *\" (line: 2)"
+      }
+    },
+    {
+      "name": "cron-zero-pad",
+      "grammar": "cron",
+      "op": "parse",
+      "text": "05 04 * * 1,2,3 x",
+      "want": {
+        "records": [
+          {
+            "type": "crontab",
+            "line": "",
+            "fields": {
+              "command": {
+                "s": "x"
+              },
+              "special": {
+                "absent": true
+              },
+              "minute": {
+                "list": [
+                  "05"
+                ]
+              },
+              "hour": {
+                "list": [
+                  "04"
+                ]
+              },
+              "monthday": {
+                "absent": true
+              },
+              "month": {
+                "absent": true
+              },
+              "weekday": {
+                "list": [
+                  "1",
+                  "2",
+                  "3"
+                ]
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "cron-spacey",
+      "grammar": "cron",
+      "op": "parse",
+      "text": "* * * * *   cmd  with   spaces  ",
+      "want": {
+        "records": [
+          {
+            "type": "crontab",
+            "line": "",
+            "fields": {
+              "command": {
+                "s": "cmd  with   spaces  "
+              },
+              "special": {
+                "absent": true
+              },
+              "minute": {
+                "absent": true
+              },
+              "hour": {
+                "absent": true
+              },
+              "monthday": {
+                "absent": true
+              },
+              "month": {
+                "absent": true
+              },
+              "weekday": {
+                "absent": true
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "cron-tab-lead",
+      "grammar": "cron",
+      "op": "parse",
+      "text": "\t* * * * * cmd",
+      "want": {
+        "records": [
+          {
+            "type": "crontab",
+            "line": "",
+            "fields": {
+              "command": {
+                "s": "cmd"
+              },
+              "special": {
+                "absent": true
+              },
+              "minute": {
+                "absent": true
+              },
+              "hour": {
+                "absent": true
+              },
+              "monthday": {
+                "absent": true
+              },
+              "month": {
+                "absent": true
+              },
+              "weekday": {
+                "absent": true
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "cron-job-comment",
+      "grammar": "cron",
+      "op": "parse",
+      "text": "* * * * * # Puppet Name: x",
+      "want": {
+        "records": [
+          {
+            "type": "crontab",
+            "line": "",
+            "fields": {
+              "command": {
+                "s": "# Puppet Name: x"
+              },
+              "special": {
+                "absent": true
+              },
+              "minute": {
+                "absent": true
+              },
+              "hour": {
+                "absent": true
+              },
+              "monthday": {
+                "absent": true
+              },
+              "month": {
+                "absent": true
+              },
+              "weekday": {
+                "absent": true
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "cron-empty-elems",
+      "grammar": "cron",
+      "op": "parse",
+      "text": "1,,2 ,1 , 1, * x y",
+      "want": {
+        "records": [
+          {
+            "type": "crontab",
+            "line": "",
+            "fields": {
+              "command": {
+                "s": "x y"
+              },
+              "special": {
+                "absent": true
+              },
+              "minute": {
+                "list": [
+                  "1",
+                  "",
+                  "2"
+                ]
+              },
+              "hour": {
+                "list": [
+                  "",
+                  "1"
+                ]
+              },
+              "monthday": {
+                "list": [
+
+                ]
+              },
+              "month": {
+                "list": [
+                  "1"
+                ]
+              },
+              "weekday": {
+                "absent": true
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "cron-names",
+      "grammar": "cron",
+      "op": "parse",
+      "text": "Mon,Tue jan * * * x",
+      "want": {
+        "records": [
+          {
+            "type": "crontab",
+            "line": "",
+            "fields": {
+              "command": {
+                "s": "x"
+              },
+              "special": {
+                "absent": true
+              },
+              "minute": {
+                "list": [
+                  "Mon",
+                  "Tue"
+                ]
+              },
+              "hour": {
+                "list": [
+                  "jan"
+                ]
+              },
+              "monthday": {
+                "absent": true
+              },
+              "month": {
+                "absent": true
+              },
+              "weekday": {
+                "absent": true
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "cron-cr",
+      "grammar": "cron",
+      "op": "parse",
+      "text": "* * * * * a\r",
+      "want": {
+        "records": [
+          {
+            "type": "crontab",
+            "line": "",
+            "fields": {
+              "command": {
+                "s": "a\r"
+              },
+              "special": {
+                "absent": true
+              },
+              "minute": {
+                "absent": true
+              },
+              "hour": {
+                "absent": true
+              },
+              "monthday": {
+                "absent": true
+              },
+              "month": {
+                "absent": true
+              },
+              "weekday": {
+                "absent": true
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "cron-at-alone",
+      "grammar": "cron",
+      "op": "parse",
+      "text": "@ x",
+      "want": {
+        "error": "Could not parse line \"@ x\" (line: 2)"
+      }
+    },
+    {
+      "name": "cron-two-jobs",
+      "grammar": "cron",
+      "op": "parse",
+      "text": "# Puppet Name: a\n* * * * * x\n@hourly y\n",
+      "want": {
+        "records": [
+          {
+            "type": "comment",
+            "line": "# Puppet Name: a",
+            "fields": {
+              "name": {
+                "s": "a"
+              }
+            }
+          },
+          {
+            "type": "crontab",
+            "line": "",
+            "fields": {
+              "command": {
+                "s": "x"
+              },
+              "special": {
+                "absent": true
+              },
+              "minute": {
+                "absent": true
+              },
+              "hour": {
+                "absent": true
+              },
+              "monthday": {
+                "absent": true
+              },
+              "month": {
+                "absent": true
+              },
+              "weekday": {
+                "absent": true
+              }
+            }
+          },
+          {
+            "type": "crontab",
+            "line": "",
+            "fields": {
+              "command": {
+                "s": "y"
+              },
+              "minute": {
+                "absent": true
+              },
+              "hour": {
+                "absent": true
+              },
+              "monthday": {
+                "absent": true
+              },
+              "month": {
+                "absent": true
+              },
+              "weekday": {
+                "absent": true
+              },
+              "special": {
+                "s": "hourly"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "cron-crlf",
+      "grammar": "cron",
+      "op": "parse",
+      "text": "A=1\r\n* * * * * x\r\n",
+      "want": {
+        "records": [
+          {
+            "type": "environment",
+            "line": "A=1\r",
+            "fields": {
+            }
+          },
+          {
+            "type": "crontab",
+            "line": "",
+            "fields": {
+              "command": {
+                "s": "x\r"
+              },
+              "special": {
+                "absent": true
+              },
+              "minute": {
+                "absent": true
+              },
+              "hour": {
+                "absent": true
+              },
+              "monthday": {
+                "absent": true
+              },
+              "month": {
+                "absent": true
+              },
+              "weekday": {
+                "absent": true
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "cron-bad",
+      "grammar": "cron",
+      "op": "parse",
+      "text": "- - - -",
+      "want": {
+        "error": "Could not parse line \"- - - -\" (line: 2)"
+      }
+    },
+    {
+      "name": "split-full",
+      "grammar": "split",
+      "op": "to_line",
+      "record": {
+        "type": "r",
+        "fields": {
+          "a": {
+            "s": "foo"
+          },
+          "b": {
+            "s": "bar"
+          },
+          "c": {
+            "s": "baz"
+          }
+        }
+      },
+      "want": {
+        "line": "foo bar baz"
+      }
+    },
+    {
+      "name": "split-trailing-absent",
+      "grammar": "split",
+      "op": "to_line",
+      "record": {
+        "type": "r",
+        "fields": {
+          "a": {
+            "s": "foo"
+          },
+          "b": {
+            "absent": true
+          },
+          "c": {
+            "absent": true
+          }
+        }
+      },
+      "want": {
+        "line": "foo"
+      }
+    },
+    {
+      "name": "split-trailing-missing",
+      "grammar": "split",
+      "op": "to_line",
+      "record": {
+        "type": "r",
+        "fields": {
+          "a": {
+            "s": "foo"
+          }
+        }
+      },
+      "want": {
+        "line": "foo"
+      }
+    },
+    {
+      "name": "split-mid-absent",
+      "grammar": "split",
+      "op": "to_line",
+      "record": {
+        "type": "r",
+        "fields": {
+          "a": {
+            "s": "foo"
+          },
+          "b": {
+            "absent": true
+          },
+          "c": {
+            "s": "x"
+          }
+        }
+      },
+      "want": {
+        "line": "foo  x"
+      }
+    },
+    {
+      "name": "split-nil-optional",
+      "grammar": "split",
+      "op": "to_line",
+      "record": {
+        "type": "r",
+        "fields": {
+          "a": {
+            "s": "foo"
+          },
+          "b": null,
+          "c": {
+            "s": "x"
+          }
+        }
+      },
+      "want": {
+        "line": "foo  x"
+      }
+    },
+    {
+      "name": "split-required-missing",
+      "grammar": "split",
+      "op": "to_line",
+      "record": {
+        "type": "r",
+        "fields": {
+          "b": {
+            "s": "x"
+          },
+          "c": {
+            "s": "y"
+          }
+        }
+      },
+      "want": {
+        "error": "Field 'a' is required"
+      }
+    },
+    {
+      "name": "split-required-nil",
+      "grammar": "split",
+      "op": "to_line",
+      "record": {
+        "type": "r",
+        "fields": {
+          "a": null,
+          "b": {
+            "s": "x"
+          }
+        }
+      },
+      "want": {
+        "error": "Field 'a' is required"
+      }
+    },
+    {
+      "name": "split-required-absent",
+      "grammar": "split",
+      "op": "to_line",
+      "record": {
+        "type": "r",
+        "fields": {
+          "a": {
+            "absent": true
+          },
+          "b": {
+            "s": "x"
+          }
+        }
+      },
+      "want": {
+        "error": "Field 'a' is required"
+      }
+    },
+    {
+      "name": "split-required-absent-list",
+      "grammar": "split",
+      "op": "to_line",
+      "record": {
+        "type": "r",
+        "fields": {
+          "a": {
+            "list": [
+              {
+                "absent": true
+              }
+            ]
+          },
+          "b": {
+            "s": "x"
+          }
+        }
+      },
+      "want": {
+        "error": "Field 'a' is required"
+      }
+    },
+    {
+      "name": "split-optional-absent-list",
+      "grammar": "split",
+      "op": "to_line",
+      "record": {
+        "type": "r",
+        "fields": {
+          "a": {
+            "s": "foo"
+          },
+          "b": {
+            "list": [
+              {
+                "absent": true
+              }
+            ]
+          },
+          "c": {
+            "s": "z"
+          }
+        }
+      },
+      "want": {
+        "line": "foo  z"
+      }
+    },
+    {
+      "name": "split-empty-string-is-value",
+      "grammar": "split",
+      "op": "to_line",
+      "record": {
+        "type": "r",
+        "fields": {
+          "a": {
+            "s": ""
+          },
+          "b": {
+            "s": "bar"
+          },
+          "c": {
+            "s": "baz"
+          }
+        }
+      },
+      "want": {
+        "line": " bar baz"
+      }
+    },
+    {
+      "name": "split-empty-required",
+      "grammar": "split",
+      "op": "to_line",
+      "record": {
+        "type": "r",
+        "fields": {
+          "a": {
+            "s": ""
+          },
+          "b": {
+            "absent": true
+          },
+          "c": {
+            "absent": true
+          }
+        }
+      },
+      "want": {
+        "line": ""
+      }
+    },
+    {
+      "name": "split-list",
+      "grammar": "split",
+      "op": "to_line",
+      "record": {
+        "type": "r",
+        "fields": {
+          "a": {
+            "s": "foo"
+          },
+          "b": {
+            "list": [
+              "x",
+              "y"
+            ]
+          },
+          "c": {
+            "s": "z"
+          }
+        }
+      },
+      "want": {
+        "line": "foo [\"x\", \"y\"] z"
+      }
+    },
+    {
+      "name": "split-list-absent-string",
+      "grammar": "split",
+      "op": "to_line",
+      "record": {
+        "type": "r",
+        "fields": {
+          "a": {
+            "s": "x"
+          },
+          "b": {
+            "list": [
+              "absent"
+            ]
+          },
+          "c": {
+            "s": "z"
+          }
+        }
+      },
+      "want": {
+        "line": "x [\"absent\"] z"
+      }
+    },
+    {
+      "name": "split-list-empty",
+      "grammar": "split",
+      "op": "to_line",
+      "record": {
+        "type": "r",
+        "fields": {
+          "a": {
+            "s": "foo"
+          },
+          "b": {
+            "list": [
+
+            ]
+          },
+          "c": {
+            "s": "z"
+          }
+        }
+      },
+      "want": {
+        "line": "foo [] z"
+      }
+    },
+    {
+      "name": "split-trailing-ws-stripped",
+      "grammar": "split",
+      "op": "to_line",
+      "record": {
+        "type": "r",
+        "fields": {
+          "a": {
+            "s": "x"
+          },
+          "b": {
+            "s": "y"
+          },
+          "c": {
+            "s": "z  "
+          }
+        }
+      },
+      "want": {
+        "line": "x y z"
+      }
+    },
+    {
+      "name": "split-unknown-type",
+      "grammar": "split",
+      "op": "to_line",
+      "record": {
+        "type": "zz",
+        "fields": {
+          "a": {
+            "s": "x"
+          }
+        }
+      },
+      "want": {
+        "error": "Invalid record type :zz"
+      }
+    },
+    {
+      "name": "split-text",
+      "grammar": "split",
+      "op": "to_line",
+      "record": {
+        "type": "comment",
+        "line": "# hi"
+      },
+      "want": {
+        "line": "# hi"
+      }
+    },
+    {
+      "name": "split-text-empty",
+      "grammar": "split",
+      "op": "to_line",
+      "record": {
+        "type": "comment",
+        "line": ""
+      },
+      "want": {
+        "line": ""
+      }
+    },
+    {
+      "name": "lead-absent-first",
+      "grammar": "lead",
+      "op": "to_line",
+      "record": {
+        "type": "l",
+        "fields": {
+          "a": {
+            "absent": true
+          },
+          "b": {
+            "s": "k"
+          }
+        }
+      },
+      "want": {
+        "line": "k"
+      }
+    },
+    {
+      "name": "lead-plain",
+      "grammar": "lead",
+      "op": "to_line",
+      "record": {
+        "type": "l",
+        "fields": {
+          "a": {
+            "s": "3"
+          },
+          "b": {
+            "s": "sym"
+          }
+        }
+      },
+      "want": {
+        "line": "3 sym"
+      }
+    },
+    {
+      "name": "lead-spaces",
+      "grammar": "lead",
+      "op": "to_line",
+      "record": {
+        "type": "l",
+        "fields": {
+          "a": {
+            "s": "  "
+          },
+          "b": {
+            "s": "k"
+          }
+        }
+      },
+      "want": {
+        "line": "k"
+      }
+    },
+    {
+      "name": "lead-required-b",
+      "grammar": "lead",
+      "op": "to_line",
+      "record": {
+        "type": "l",
+        "fields": {
+          "a": {
+            "s": "x"
+          },
+          "b": {
+            "absent": true
+          }
+        }
+      },
+      "want": {
+        "error": "Field 'b' is required"
+      }
+    },
+    {
+      "name": "tabjoin-mid-absent",
+      "grammar": "tabjoin",
+      "op": "to_line",
+      "record": {
+        "type": "t",
+        "fields": {
+          "a": {
+            "s": "x"
+          },
+          "b": {
+            "absent": true
+          },
+          "c": {
+            "s": "z"
+          }
+        }
+      },
+      "want": {
+        "line": "x\t\tz"
+      }
+    },
+    {
+      "name": "tabjoin-all-absent",
+      "grammar": "tabjoin",
+      "op": "to_line",
+      "record": {
+        "type": "t",
+        "fields": {
+          "a": {
+            "s": "x"
+          },
+          "b": {
+            "absent": true
+          },
+          "c": {
+            "absent": true
+          }
+        }
+      },
+      "want": {
+        "line": "x\t\t"
+      }
+    },
+    {
+      "name": "hook-verbatim",
+      "grammar": "hook",
+      "op": "to_line",
+      "record": {
+        "type": "h",
+        "fields": {
+          "a": {
+            "s": "x"
+          },
+          "b": {
+            "s": "y"
+          }
+        }
+      },
+      "want": {
+        "line": "<x|y>  "
+      }
+    },
+    {
+      "name": "hook-no-required-check",
+      "grammar": "hook",
+      "op": "to_line",
+      "record": {
+        "type": "h",
+        "fields": {
+          "a": {
+            "s": "x"
+          }
+        }
+      },
+      "want": {
+        "line": "<x|>  "
+      }
+    },
+    {
+      "name": "pregen-text",
+      "grammar": "pregen",
+      "op": "to_line",
+      "record": {
+        "type": "t",
+        "line": "q"
+      },
+      "want": {
+        "line": "Xq"
+      }
+    },
+    {
+      "name": "pregen-twice-independent",
+      "grammar": "pregen",
+      "op": "to_line",
+      "record": {
+        "type": "t",
+        "line": ""
+      },
+      "want": {
+        "line": "X"
+      }
+    },
+    {
+      "name": "matchabs-absent-text",
+      "grammar": "matchabs",
+      "op": "to_line",
+      "record": {
+        "type": "m",
+        "fields": {
+          "x": {
+            "absent": true
+          },
+          "y": {
+            "s": "y"
+          }
+        }
+      },
+      "want": {
+        "line": "* y"
+      }
+    },
+    {
+      "name": "matchabs-star-string",
+      "grammar": "matchabs",
+      "op": "to_line",
+      "record": {
+        "type": "m",
+        "fields": {
+          "x": {
+            "s": "*"
+          },
+          "y": {
+            "s": "y"
+          }
+        }
+      },
+      "want": {
+        "line": "* y"
+      }
+    },
+    {
+      "name": "cron-named-job",
+      "grammar": "cron",
+      "op": "to_line",
+      "record": {
+        "type": "crontab",
+        "fields": {
+          "name": {
+            "s": "n"
+          },
+          "minute": {
+            "list": [
+              "5"
+            ]
+          },
+          "hour": {
+            "absent": true
+          },
+          "monthday": {
+            "absent": true
+          },
+          "month": {
+            "absent": true
+          },
+          "weekday": {
+            "absent": true
+          },
+          "special": {
+            "absent": true
+          },
+          "command": {
+            "s": "/bin/x"
+          }
+        }
+      },
+      "want": {
+        "line": "# Puppet Name: n\n5 * * * * /bin/x"
+      }
+    },
+    {
+      "name": "cron-special",
+      "grammar": "cron",
+      "op": "to_line",
+      "record": {
+        "type": "crontab",
+        "fields": {
+          "name": {
+            "s": "n"
+          },
+          "special": {
+            "s": "daily"
+          },
+          "command": {
+            "s": "/bin/x"
+          },
+          "minute": {
+            "absent": true
+          }
+        }
+      },
+      "want": {
+        "line": "# Puppet Name: n\n@daily /bin/x"
+      }
+    },
+    {
+      "name": "cron-lists",
+      "grammar": "cron",
+      "op": "to_line",
+      "record": {
+        "type": "crontab",
+        "fields": {
+          "minute": {
+            "list": [
+              "0",
+              "30"
+            ]
+          },
+          "hour": {
+            "list": [
+              "1"
+            ]
+          },
+          "monthday": {
+            "absent": true
+          },
+          "month": {
+            "list": [
+              "jan",
+              "feb"
+            ]
+          },
+          "weekday": {
+            "list": [
+              "1-5"
+            ]
+          },
+          "special": {
+            "absent": true
+          },
+          "command": {
+            "s": "c a"
+          }
+        }
+      },
+      "want": {
+        "line": "0,30 1 * jan,feb 1-5 c a"
+      }
+    },
+    {
+      "name": "cron-string-fields",
+      "grammar": "cron",
+      "op": "to_line",
+      "record": {
+        "type": "crontab",
+        "fields": {
+          "minute": {
+            "s": "*/5"
+          },
+          "hour": {
+            "s": "2"
+          },
+          "monthday": {
+            "s": "1"
+          },
+          "month": {
+            "s": "3"
+          },
+          "weekday": {
+            "s": "4"
+          },
+          "command": {
+            "s": "c"
+          }
+        }
+      },
+      "want": {
+        "line": "*/5 2 1 3 4 c"
+      }
+    },
+    {
+      "name": "cron-environment",
+      "grammar": "cron",
+      "op": "to_line",
+      "record": {
+        "type": "crontab",
+        "fields": {
+          "name": {
+            "s": "n"
+          },
+          "environment": {
+            "list": [
+              "A=1",
+              "B=2"
+            ]
+          },
+          "minute": {
+            "list": [
+              "1"
+            ]
+          },
+          "hour": {
+            "absent": true
+          },
+          "monthday": {
+            "absent": true
+          },
+          "month": {
+            "absent": true
+          },
+          "weekday": {
+            "absent": true
+          },
+          "special": {
+            "absent": true
+          },
+          "command": {
+            "s": "c"
+          }
+        }
+      },
+      "want": {
+        "line": "# Puppet Name: n\nA=1\nB=2\n1 * * * * c"
+      }
+    },
+    {
+      "name": "cron-env-absent",
+      "grammar": "cron",
+      "op": "to_line",
+      "record": {
+        "type": "crontab",
+        "fields": {
+          "name": {
+            "s": "n"
+          },
+          "environment": {
+            "absent": true
+          },
+          "minute": {
+            "list": [
+              "1"
+            ]
+          },
+          "hour": {
+            "absent": true
+          },
+          "monthday": {
+            "absent": true
+          },
+          "month": {
+            "absent": true
+          },
+          "weekday": {
+            "absent": true
+          },
+          "special": {
+            "absent": true
+          },
+          "command": {
+            "s": "c"
+          }
+        }
+      },
+      "want": {
+        "line": "# Puppet Name: n\n1 * * * * c"
+      }
+    },
+    {
+      "name": "cron-no-name",
+      "grammar": "cron",
+      "op": "to_line",
+      "record": {
+        "type": "crontab",
+        "fields": {
+          "minute": {
+            "list": [
+              "1"
+            ]
+          },
+          "hour": {
+            "absent": true
+          },
+          "monthday": {
+            "absent": true
+          },
+          "month": {
+            "absent": true
+          },
+          "weekday": {
+            "absent": true
+          },
+          "special": {
+            "absent": true
+          },
+          "command": {
+            "s": "c"
+          }
+        }
+      },
+      "want": {
+        "line": "1 * * * * c"
+      }
+    },
+    {
+      "name": "cron-missing-command",
+      "grammar": "cron",
+      "op": "to_line",
+      "record": {
+        "type": "crontab",
+        "fields": {
+          "minute": {
+            "list": [
+              "1"
+            ]
+          }
+        }
+      },
+      "want": {
+        "line": "1 * * * * *"
+      }
+    },
+    {
+      "name": "cron-special-absent",
+      "grammar": "cron",
+      "op": "to_line",
+      "record": {
+        "type": "crontab",
+        "fields": {
+          "special": {
+            "absent": true
+          },
+          "minute": {
+            "list": [
+              "1"
+            ]
+          },
+          "command": {
+            "s": "c"
+          }
+        }
+      },
+      "want": {
+        "line": "1 * * * * c"
+      }
+    },
+    {
+      "name": "cron-comment",
+      "grammar": "cron",
+      "op": "to_line",
+      "record": {
+        "type": "comment",
+        "line": "# Puppet Name: x",
+        "fields": {
+          "name": {
+            "s": "x"
+          }
+        }
+      },
+      "want": {
+        "line": "# Puppet Name: x"
+      }
+    },
+    {
+      "name": "cron-linebreak-command",
+      "grammar": "cron",
+      "op": "to_line",
+      "record": {
+        "type": "crontab",
+        "fields": {
+          "minute": {
+            "list": [
+              "1"
+            ]
+          },
+          "hour": {
+            "absent": true
+          },
+          "monthday": {
+            "absent": true
+          },
+          "month": {
+            "absent": true
+          },
+          "weekday": {
+            "absent": true
+          },
+          "special": {
+            "absent": true
+          },
+          "command": {
+            "s": "true\n* * * * * x"
+          }
+        }
+      },
+      "want": {
+        "line": "1 * * * * true\n* * * * * x"
+      }
+    },
+    {
+      "name": "split-none",
+      "grammar": "split",
+      "op": "to_file",
+      "records": [
+
+      ],
+      "want": {
+        "text": "\n"
+      }
+    },
+    {
+      "name": "split-one",
+      "grammar": "split",
+      "op": "to_file",
+      "records": [
+        {
+          "type": "r",
+          "fields": {
+            "a": {
+              "s": "a"
+            },
+            "b": {
+              "s": "b"
+            },
+            "c": {
+              "s": "c"
+            }
+          }
+        }
+      ],
+      "want": {
+        "text": "a b c\n"
+      }
+    },
+    {
+      "name": "split-two",
+      "grammar": "split",
+      "op": "to_file",
+      "records": [
+        {
+          "type": "comment",
+          "line": "# c"
+        },
+        {
+          "type": "r",
+          "fields": {
+            "a": {
+              "s": "a"
+            },
+            "b": {
+              "absent": true
+            },
+            "c": {
+              "absent": true
+            }
+          }
+        }
+      ],
+      "want": {
+        "text": "# c\na\n"
+      }
+    },
+    {
+      "name": "split-empty-text",
+      "grammar": "split",
+      "op": "to_file",
+      "records": [
+        {
+          "type": "comment",
+          "line": ""
+        }
+      ],
+      "want": {
+        "text": "\n"
+      }
+    },
+    {
+      "name": "split-bad-record",
+      "grammar": "split",
+      "op": "to_file",
+      "records": [
+        {
+          "type": "comment",
+          "line": "# c"
+        },
+        {
+          "type": "r",
+          "fields": {
+            "b": {
+              "s": "x"
+            }
+          }
+        }
+      ],
+      "want": {
+        "error": "Field 'a' is required"
+      }
+    },
+    {
+      "name": "split-unknown",
+      "grammar": "split",
+      "op": "to_file",
+      "records": [
+        {
+          "type": "zz"
+        }
+      ],
+      "want": {
+        "error": "Invalid record type :zz"
+      }
+    },
+    {
+      "name": "pregen-two",
+      "grammar": "pregen",
+      "op": "to_file",
+      "records": [
+        {
+          "type": "t",
+          "line": "a"
+        },
+        {
+          "type": "t",
+          "line": "b"
+        }
+      ],
+      "want": {
+        "text": "Xa\nXb\n"
+      }
+    },
+    {
+      "name": "cron-mixed",
+      "grammar": "cron",
+      "op": "to_file",
+      "records": [
+        {
+          "type": "comment",
+          "line": "# Puppet Name: x",
+          "fields": {
+            "name": {
+              "s": "x"
+            }
+          }
+        },
+        {
+          "type": "crontab",
+          "fields": {
+            "minute": {
+              "list": [
+                "1"
+              ]
+            },
+            "hour": {
+              "absent": true
+            },
+            "monthday": {
+              "absent": true
+            },
+            "month": {
+              "absent": true
+            },
+            "weekday": {
+              "absent": true
+            },
+            "special": {
+              "absent": true
+            },
+            "command": {
+              "s": "c"
+            }
+          }
+        },
+        {
+          "type": "blank",
+          "line": ""
+        },
+        {
+          "type": "environment",
+          "line": "A=1"
+        }
+      ],
+      "want": {
+        "text": "# Puppet Name: x\n1 * * * * c\n\nA=1\n"
+      }
+    },
+    {
+      "name": "cron-none",
+      "grammar": "cron",
+      "op": "to_file",
+      "records": [
+
+      ],
+      "want": {
+        "text": "\n"
+      }
+    }
+  ]
+}

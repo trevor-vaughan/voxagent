@@ -133,35 +133,6 @@ func TestRubyWhitespace(t *testing.T) {
 	}
 }
 
-func TestResolveSysctl(t *testing.T) {
-	only := func(paths ...string) func(string) bool {
-		return func(p string) bool { return slices.Contains(paths, p) }
-	}
-	for _, tc := range []struct {
-		name, path string
-		exe        func(string) bool
-		want       string
-		ok         bool
-	}{
-		{"appended /usr/sbin", "/bin", only("/usr/sbin/sysctl"), "/usr/sbin/sysctl", true},
-		{"PATH order", "/bin:/sbin:/usr/sbin", only("/usr/sbin/sysctl", "/sbin/sysctl"), "/sbin/sysctl", true},
-		{"/usr/sbin before /sbin", "/bin", only("/usr/sbin/sysctl", "/sbin/sysctl"), "/usr/sbin/sysctl", true},
-		{"PATH first", "/opt/x", only("/opt/x/sysctl", "/usr/sbin/sysctl"), "/opt/x/sysctl", true},
-		{"empty entry is /", "/bin::/usr/sbin", only("/sysctl", "/usr/sbin/sysctl"), "/sysctl", true},
-		{"empty PATH starts with /", "", only("/sysctl", "/usr/sbin/sysctl"), "/sysctl", true},
-		{"absent", "/bin", only(), "", false},
-		{"~ entry before a hit delegates", "/bin:~/bin:/usr/sbin", only("/usr/sbin/sysctl"), "", false},
-		{"bare ~ entry delegates", "~", only("/usr/sbin/sysctl"), "", false},
-		{"~ entry after a hit", "/opt/x:~/bin", only("/opt/x/sysctl"), "/opt/x/sysctl", true},
-		{"~ inside an entry is literal", "/opt/a~b", only("/opt/a~b/sysctl"), "/opt/a~b/sysctl", true},
-	} {
-		got, ok := resolveSysctl(tc.path, tc.exe)
-		if got != tc.want || ok != tc.ok {
-			t.Errorf("%s: resolveSysctl(%q) = %q, %v; want %q, %v", tc.name, tc.path, got, ok, tc.want, tc.ok)
-		}
-	}
-}
-
 // 01e: no title is in the file; -e names the three live keys.
 func TestSysctlPrefetchReplays01e(t *testing.T) {
 	augeastest.WithVersionMemo(t, map[string]bool{})

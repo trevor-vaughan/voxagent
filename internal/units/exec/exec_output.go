@@ -9,6 +9,7 @@ import (
 
 	"github.com/voxagent/voxagent/internal/catalog"
 	"github.com/voxagent/voxagent/internal/lib/command"
+	"github.com/voxagent/voxagent/internal/lib/rubyvalue"
 )
 
 // logoutputMode reads Exec's logoutput (type/exec.rb:271, newvalues(:true,
@@ -53,7 +54,7 @@ func outputNotices(mode string, failed bool, output string, redact bool) ([]stri
 	if redact {
 		return []string{"[output redacted]"}, nil
 	}
-	enc := outputEncoding(os.Getenv)
+	enc := rubyvalue.ExternalEncoding(os.Getenv)
 	valid := utf8.ValidString(output)
 	if enc == "US-ASCII" {
 		valid = !strings.ContainsFunc(output, func(c rune) bool { return c >= utf8.RuneSelf })
@@ -62,25 +63,4 @@ func outputNotices(mode string, failed bool, output string, redact bool) ([]stri
 		return nil, fmt.Errorf("invalid byte sequence in %s", enc)
 	}
 	return command.SplitOutput(output), nil
-}
-
-// outputEncoding is Ruby's Encoding.default_external for the locale: the
-// codeset of the first set, non-empty one of LC_ALL, LC_CTYPE and LANG. A
-// UTF-8 codeset (UTF-8 or utf8, any case) is "UTF-8"; anything else, no
-// codeset, C and POSIX included, is "US-ASCII". Ruby would use any other
-// codeset as its own encoding; voxagent treats it as US-ASCII (D-79).
-func outputEncoding(getenv func(string) string) string {
-	for _, name := range []string{"LC_ALL", "LC_CTYPE", "LANG"} {
-		locale := getenv(name)
-		if locale == "" {
-			continue
-		}
-		_, codeset, _ := strings.Cut(locale, ".")
-		codeset, _, _ = strings.Cut(codeset, "@")
-		if strings.EqualFold(codeset, "UTF-8") || strings.EqualFold(codeset, "utf8") {
-			return "UTF-8"
-		}
-		return "US-ASCII"
-	}
-	return "US-ASCII"
 }

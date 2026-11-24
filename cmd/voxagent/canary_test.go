@@ -39,6 +39,8 @@ func canaryBase(typ, dir string) (title string, params map[string]any) {
 		return filepath.Join(dir, "canary-concat_file"), map[string]any{}
 	case "concat_fragment":
 		return "canary-concat_fragment", map[string]any{"target": filepath.Join(dir, "canary-concat-target"), "content": "x\n"}
+	case "cron":
+		return "canary-cron", map[string]any{"command": "/bin/true"}
 	case "exec":
 		return "canary-exec", map[string]any{"command": "/bin/true", "cwd": dir}
 	case "file":
@@ -74,7 +76,7 @@ func canaryBase(typ, dir string) (title string, params map[string]any) {
 // in voxagent records namevars.
 var canaryNamevars = map[string]string{
 	"augeas": "name", "ssh_config": "name", "sshd_config": "name", "sshd_config_subsystem": "name", "sysctl": "name",
-	"concat_file": "path", "concat_fragment": "name", "exec": "command", "file": "path", "group": "name",
+	"concat_file": "path", "concat_fragment": "name", "cron": "name", "exec": "command", "file": "path", "group": "name",
 	"notify": "name", "package": "name", "service": "name", "user": "name",
 	"vox_conf": "name", "vox_deep": "name", "vox_die": "name", "vox_evalgen": "name", "vox_gen": "name",
 	"vox_prefetch": "name", "vox_rapi": "name", "vox_secret": "name", "vox_selfref": "name", "vox_titled": "name",

@@ -45,18 +45,23 @@
 #
 # sysctl, ssh_config, sshd_config and sshd_config_subsystem are here for the
 # same reasons: voxagent applies them natively over openvox's libaugeas, sysctl
-# shells out, and their cases change /etc. That half runs last, on an image
-# derived from this one with the packages the four manage; tests/spine/augeas/
-# g5.sh holds it and says how. It alone returns 2 under rootful podman.
+# shells out, and their cases change /etc. That half runs after concat's, on
+# an image derived from this one with the packages the four manage;
+# tests/spine/augeas/g5.sh holds it and says how. It alone returns 2 under rootful podman.
+#
+# cron is here because voxagent applies it natively: its provider shells out
+# to `crontab` and its cases change root's and other users' crontabs. That
+# half runs after the augeas half, on an image derived from this one with
+# cronie, which this one lacks; tests/spine/cron/g5.sh holds it and says how.
 #
 # The comparator and the allowlist are `gatekit compare-reports` and
 # tests/spine/allowlist.json, used unchanged. A second comparator would be a
 # second thing to keep in step with Ruby.
 #
 #   0  the reports agree outside the allowlist and the walk order agrees, for
-#      the live run, for the account cases' noop run, and for every concat
-#      and augeas case's live, rerun and noop runs (or both agents refuse its
-#      catalog alike), and every compared end state agrees
+#      the live run, for the account cases' noop run, and for every concat,
+#      augeas and cron case's live, rerun and noop runs (or both agents refuse
+#      its catalog alike), and every compared end state agrees
 #   1  they diverge -- a result about voxagent
 #   2  the comparison could not run
 set -uo pipefail
@@ -76,7 +81,7 @@ IMAGE="${IMAGE:-localhost/fleet-node-el:latest}"
 #
 # Deliberately NOT a second pinning mechanism: one constant per gate, the same
 # shape, so a rebuild trips both in the same recognisable way.
-WANT_PUPPET="${WANT_PUPPET:-8.33.0}"
+WANT_PUPPET="${WANT_PUPPET:-8.34.0}"
 
 # The four package fixtures. Every one of them is measured against the image
 # below before anything is applied, because a package fixture whose starting
@@ -218,6 +223,10 @@ require_fresh report-diff-container "$ROOT" "$VOXAGENT" "$GATEKIT"
 . "$HERE/augeas/image.sh" || exit 2
 # shellcheck source=augeas/g5.sh
 . "$HERE/augeas/g5.sh" || exit 2
+# shellcheck source=cron/image.sh
+. "$HERE/cron/image.sh" || exit 2
+# shellcheck source=cron/g5.sh
+. "$HERE/cron/g5.sh" || exit 2
 
 got_puppet="$(podman run --rm "$IMAGE" /opt/puppetlabs/bin/puppet --version 2>/dev/null)" || {
   echo "report-diff-container: cannot read the image's puppet version" >&2
@@ -250,7 +259,8 @@ fi
 WORK="$(mktemp -d)" || exit 2
 trap 'rm -rf "$WORK"; podman rm -f -t 0 "$RUBY_SIDE" "$GO_SIDE" "$COMPILER" "$RUBY_NOOP" "$GO_NOOP" \
   concat-compile-$$ concat-{ruby,voxagent}-{live,noop}-$$ \
-  augeas-compile-$$ augeas-{ruby,voxagent}-{live,noop}-$$ >/dev/null 2>&1' EXIT
+  augeas-compile-$$ augeas-{ruby,voxagent}-{live,noop}-$$ \
+  cron-compile-$$ cron-{ruby,voxagent}-{live,noop}-$$ >/dev/null 2>&1' EXIT
 
 if ! podman run --rm "$IMAGE" sh -c "
   if ! $SEED_LATEST; then
@@ -985,4 +995,8 @@ concat_rc=$?
 augeas_gate
 augeas_rc=$?
 [ "$augeas_rc" -gt "$rc" ] && rc=$augeas_rc
+
+cron_gate
+cron_rc=$?
+[ "$cron_rc" -gt "$rc" ] && rc=$cron_rc
 exit "$rc"

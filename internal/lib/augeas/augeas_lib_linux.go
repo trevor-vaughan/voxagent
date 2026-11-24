@@ -95,6 +95,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"math"
+	"slices"
 	"strings"
 	"sync"
 	"syscall"
@@ -110,19 +111,25 @@ const augeasLibPath = "/opt/puppetlabs/puppet/lib/libaugeas.so.0"
 // augeasVersion is the only /augeas/version the binding accepts.
 const augeasVersion = "1.15.0"
 
-// rubyAugeasFiles are openvox 8.33.0's ruby-augeas files under the Ruby lib
-// root, whose return-value mapping Aug reimplements; rubyAugeasDigests
-// are their measured sha256 values, in the same order (spec §0 row 1).
+// rubyAugeasFiles are openvox's ruby-augeas files under the Ruby lib root,
+// whose return-value mapping Aug reimplements; rubyAugeasDigests are their
+// measured sha256 values, in the same order (spec §0 row 1). A file may have
+// more than one: openvox 8.34.0 rebuilt _augeas.so from the same source
+// (same size, symbols and NEEDED; only the debuglink name differs), so
+// 8.33.0's and 8.34.0's are both measured.
 var rubyAugeasFiles = [3]string{
 	"vendor_ruby/augeas.rb",
 	"vendor_ruby/augeas/facade.rb",
 	"vendor_ruby/3.2.0/x86_64-linux/_augeas.so",
 }
 
-var rubyAugeasDigests = [3]string{
-	"004aeafc201010bd3ed0ee419874b23446719abffda44386433aa729c585790c",
-	"5b042f632619df3e72d8c8020fd312c33cc9fff49e9973966fd57c34c39caed3",
-	"c5bd6e8f3536cdfd61a54d649a70c1c9c3bc32459f8b2fcfd261c735b9c54108",
+var rubyAugeasDigests = [3][]string{
+	{"004aeafc201010bd3ed0ee419874b23446719abffda44386433aa729c585790c"},
+	{"5b042f632619df3e72d8c8020fd312c33cc9fff49e9973966fd57c34c39caed3"},
+	{
+		"c5bd6e8f3536cdfd61a54d649a70c1c9c3bc32459f8b2fcfd261c735b9c54108", // 8.33.0
+		"0876b250bdb8adbb8ca6fc88d8a3bbf77338c23f5958a80e52872f6533762468", // 8.34.0
+	},
 }
 
 // Probe reports whether the native augeas types can run, and over which
@@ -176,8 +183,8 @@ func probeAugeas(rubyRoot string) (lib Lib, reason string, ok bool) {
 			return nil, fmt.Sprintf("ruby-augeas %s: %v", rel, err), false
 		}
 		sum := sha256.Sum256(b)
-		if got := hex.EncodeToString(sum[:]); got != rubyAugeasDigests[i] {
-			return nil, fmt.Sprintf("ruby-augeas %s has sha256 %s, not the measured %s", rel, got, rubyAugeasDigests[i]), false
+		if got := hex.EncodeToString(sum[:]); !slices.Contains(rubyAugeasDigests[i], got) {
+			return nil, fmt.Sprintf("ruby-augeas %s has sha256 %s, not the measured %s", rel, got, strings.Join(rubyAugeasDigests[i], " or ")), false
 		}
 	}
 	augeasOnce.Do(func() { augeasLoaded, augeasReason = loadAugeas() })

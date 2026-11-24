@@ -8,6 +8,7 @@ import (
 	"errors"
 	"strings"
 
+	"github.com/voxagent/voxagent/internal/lib/command"
 	"github.com/voxagent/voxagent/internal/lib/rubyvalue"
 	"github.com/voxagent/voxagent/internal/ral"
 	"github.com/voxagent/voxagent/internal/unit"
@@ -100,7 +101,7 @@ func (unitImpl) Route(env *unit.Env) unit.Decision {
 	if !ral.MeasuredRelease(env.Platform) {
 		return delegate("the platform is not RHEL family 10 or later (Fedora excluded)")
 	}
-	cmd, ok := resolveSysctl(env.Environ("PATH"), env.Platform.Executable)
+	cmd, ok := command.RubyWhich("sysctl", env.Environ("PATH"), env.Platform.Executable)
 	if !ok {
 		return delegate("no executable sysctl on PATH, /usr/sbin or /sbin")
 	}

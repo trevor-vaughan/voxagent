@@ -1,6 +1,7 @@
 # shellcheck shell=bash
 # Sourced by report-diff-simp.sh (and report-diff-container.sh, for
-# simp_modules, concat_fingerprints and augeasproviders_fingerprints): the
+# simp_modules, concat_fingerprints, augeasproviders_fingerprints and
+# cron_core_fingerprints): the
 # steps of the SIMP acceptance gate that touch podman, one function per step.
 # Every function returns 2 on any failure, with a message naming the cause,
 # because each failure means the comparison could not run, never that the
@@ -298,6 +299,31 @@ augeasproviders_fingerprints() {
     got="${got%% *}"
     if [ "$got" != "${sums[$file]}" ]; then
       echo "$gate: $libdir/$file is not the measured augeasproviders file (sha256 ${got:-unreadable}, want ${sums[$file]})" >&2
+      return 2
+    fi
+  done
+}
+
+# cron_core_fingerprints GATE LIBDIR
+#
+# Returns 0 when LIBDIR carries puppetlabs-cron_core 2.1.0's type, provider
+# and filetype files with their sha256, the release voxagent routes cron on
+# (internal/units/cron_core/manifest.go; cron design §0, §2). Otherwise it
+# names the file and returns 2: a changed pin would send cron to the extension
+# host, and the gate would compare Ruby with Ruby while looking green. GATE
+# prefixes the messages.
+cron_core_fingerprints() {
+  local gate="$1" libdir="$2" file got
+  local -A sums=(
+    [puppet/type/cron.rb]=a5f7712895d0370077b24e8cfcd47ab16f57e4df9016257258fa7b01168a903c
+    [puppet/provider/cron/crontab.rb]=e823f00e5155c87d2f2acaedf109be12c0b13b3781e6bc05d7285f1cdc4dba4a
+    [puppet/provider/cron/filetype.rb]=f82a87886c2ff0b72a0e43ebd0bb6edecda0362ddcbc672bc51245f2b88266ce
+  )
+  for file in "${!sums[@]}"; do
+    got="$(sha256sum "$libdir/$file" 2>/dev/null)"
+    got="${got%% *}"
+    if [ "$got" != "${sums[$file]}" ]; then
+      echo "$gate: $libdir/$file is not cron_core 2.1.0's (sha256 ${got:-unreadable}, want ${sums[$file]})" >&2
       return 2
     fi
   done

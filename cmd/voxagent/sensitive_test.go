@@ -42,6 +42,10 @@ type leakCase struct {
 	// build, whose shadow-utils are fakes, so no host account is touched, and
 	// are skipped where user is not native.
 	fakeShadow bool
+	// fakeCrontab cases apply a native Cron with a fake crontab first on PATH
+	// (fakeCrontab), so no host crontab is read or changed; they are skipped
+	// where cron is not native.
+	fakeCrontab bool
 	// seed prepares pre-existing state under dir before the run.
 	seed      func(t *testing.T, dir string)
 	resources func(dir string) []map[string]any
@@ -287,6 +291,13 @@ func leakCases() []leakCase {
 				markedResource("User", "nobody", map[string]any{"comment": "D8SECRET-User-comment-change"}, "comment"),
 			}
 		}},
+		// A Sensitive command: the fake crontab echoes the written crontab, so
+		// the D-95 copy of a write's output to stderr carries the marker.
+		{name: "cron-command", fakeCrontab: true, resources: func(dir string) []map[string]any {
+			return []map[string]any{
+				markedResource("Cron", "voxagent-leak-cron", map[string]any{"command": "/bin/true D8SECRET-Cron-command", "minute": "5"}, "command"),
+			}
+		}},
 		// A Sensitive fragment under each measured concat version, in a file
 		// that applies and in one whose validate_cmd fails after printing the
 		// file it validated, so the content reaches the validator's output.
@@ -322,6 +333,30 @@ func concatLeakResources(dir string) []map[string]any {
 func pid1IsNotSystemd() bool {
 	comm, err := os.ReadFile("/proc/1/comm")
 	return err != nil || !strings.Contains(string(comm), "systemd")
+}
+
+// fakeCrontab puts a fake crontab first on PATH for the test and returns the
+// file holding what it was last given to write. The fake keeps one crontab per
+// user (none until written, as the real one says), and prints back whatever it
+// is given on stdin, as a crontab writing into a terminal might.
+func fakeCrontab(t *testing.T) (written string) {
+	t.Helper()
+	dir := t.TempDir()
+	state := filepath.Join(dir, "state")
+	script := `state='` + state + `'
+mkdir -p "$state"
+user=self
+if [ "$1" = -u ]; then user=$2; shift 2; fi
+case "$1" in
+-l) if [ -f "$state/$user" ]; then cat "$state/$user"; else echo "no crontab for $user" >&2; exit 1; fi ;;
+-) tee "$state/$user" ;;
+esac
+`
+	if err := os.WriteFile(filepath.Join(dir, "crontab"), []byte("#!/bin/sh\n"+script), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", dir+string(os.PathListSeparator)+os.Getenv("PATH"))
+	return state
 }
 
 // fakeShadowBinary builds voxagent with its shadow-utils search path linked
@@ -408,6 +443,14 @@ func TestNoSensitiveMarkerLeaks(t *testing.T) {
 						t.Skip("user is not native on this host")
 					}
 					bin = shadowBin
+				}
+				var cronState string
+				if tc.fakeCrontab {
+					cronState = fakeCrontab(t)
+					probe := &catalog.Catalog{Resources: []catalog.Resource{{Type: "Cron", Title: "probe"}}}
+					if natives, _ := nativeProviders(probe, applyOptions{command: "apply"}, ral.HostPlatform); len(natives) == 0 {
+						t.Skip("cron is not native on this host")
+					}
 				}
 				var stdout, stderr string
 				var code int
@@ -510,6 +553,21 @@ func TestNoSensitiveMarkerLeaks(t *testing.T) {
 					}
 					if debug && kind != "noop" && !strings.Contains(stdout, "Executing: '[redacted]'") {
 						t.Errorf("--debug: no Executing: '[redacted]' line; stdout:\n%s", stdout)
+					}
+				}
+				if tc.fakeCrontab && kind != "noop" {
+					// The write ran, so the marker reached crontab's stdin and
+					// came back through the copy to stderr, scrubbed.
+					written, err := os.ReadDir(cronState)
+					if err != nil || len(written) == 0 {
+						t.Fatalf("the fake crontab was never written: %v\nstdout:\n%s\nstderr:\n%s", err, stdout, stderr)
+					}
+					got, err := os.ReadFile(filepath.Join(cronState, written[0].Name()))
+					if err != nil || !strings.Contains(string(got), "D8SECRET-Cron-command") {
+						t.Errorf("the crontab written lacks the command: %q, %v", got, err)
+					}
+					if !strings.Contains(stderr, "# Puppet Name: voxagent-leak-cron") {
+						t.Errorf("the write's output was not copied to stderr:\n%s", stderr)
 					}
 				}
 				if tc.name == "user-comment" && kind != "noop" {

@@ -1,0 +1,12 @@
+Unmodified copies of the cron_core files whose digests identify the two
+measured releases, used as test fixtures.
+Upstream (Puppet, Inc.): https://github.com/puppetlabs/puppetlabs-cron_core
+Licensed under the Apache License, Version 2.0 (see /LICENSE.md and /NOTICE).
+
+cron_core-1.3.0/lib/puppet/...   the release openvox 8.33.0 vendors
+cron_core-2.1.0/lib/puppet/...   the release SIMP pins (tests/spine/simp/modules.pin)
+Each holds puppet/type/cron.rb, puppet/provider/cron/crontab.rb and
+puppet/provider/cron/filetype.rb.
+
+Do not edit: TestFixturesMatchManifest requires each file's sha256 to equal the
+digest in ../manifest.go.

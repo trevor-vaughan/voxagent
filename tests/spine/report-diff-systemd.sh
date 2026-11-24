@@ -46,7 +46,7 @@ BASE_IMAGE="${BASE_IMAGE:-localhost/fleet-node-el:latest}"
 # The same pin, and the same tripwire, as report-diff-container.sh: the base
 # installs openvox-agent unversioned, so a rebuild floats the oracle, and exit 2
 # beats a green run measured against a reference nobody reviewed.
-WANT_PUPPET="${WANT_PUPPET:-8.33.0}"
+WANT_PUPPET="${WANT_PUPPET:-8.34.0}"
 
 RUBY_SIDE="systemd-ruby-$$"
 GO_SIDE="systemd-go-$$"

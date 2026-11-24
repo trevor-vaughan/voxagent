@@ -9,6 +9,7 @@ import (
 	"io/fs"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"slices"
 	"strconv"
 	"strings"
@@ -120,16 +121,35 @@ type ArgvOpts struct {
 	// the tool may echo ("invalid comment 'x'"). It is separate from Redact: a
 	// command that carries no marked value has nothing to hide in its output.
 	RedactOutput bool
+	// FailOnTruncate makes output beyond OutputCap an error ("output of
+	// <command> exceeded 64 MiB") instead of the D-80 warning with the cut
+	// output, for a caller that must not act on a partial result, such as a
+	// crontab read that a later write would shorten.
+	FailOnTruncate bool
+	// KeepUserEnv leaves HOME, USER and LOGNAME in the child's environment,
+	// for a command Ruby runs through IO.popen, which inherits them, rather
+	// than Execution.execute, which removes them (util/execution.rb:386). The
+	// locale override still applies (D-95).
+	KeepUserEnv bool
+	// ErrorName, when set, names the command in error texts and the truncation
+	// warning in place of the executed name, as Ruby's command string does for
+	// a name it resolved (D-82). The Executing line keeps the executed name,
+	// and a start failure names only its cause (as withoutCommandName does).
+	ErrorName string
 }
 
 // RunArgvWith is RunArgv for a command Puppet runs through Puppet::Util::
 // Execution.execute with the locale override (util/execution.rb:372-377): the
 // locale variables are removed and LANG=C, LC_ALL=C set, so a tool's messages
-// are the C locale's. o gives its stdin and whether it is logged redacted.
+// are the C locale's, and the UserEnvVars are removed unless o.KeepUserEnv. o
+// gives its stdin and whether it is logged redacted.
 func RunArgvWith(ctx context.Context, o ArgvOpts, name string, args ...string) (int, string, error) {
 	line := strings.Join(append([]string{name}, args...), " ")
 	cmd := exec.CommandContext(ctx, name, args...)
-	env := WithoutUserEnv(os.Environ())
+	env := os.Environ()
+	if !o.KeepUserEnv {
+		env = WithoutUserEnv(env)
+	}
 	cmd.Env = make([]string, 0, len(env)+2)
 	for _, kv := range env {
 		varName, _, _ := strings.Cut(kv, "=")
@@ -141,7 +161,29 @@ func RunArgvWith(ctx context.Context, o ArgvOpts, name string, args ...string) (
 	if o.Stdin != nil {
 		cmd.Stdin = bytes.NewReader(o.Stdin)
 	}
-	return RunLogged(ctx, cmd, QuoteOrRedact(line, o.Redact), rubyvalue.RedactIf(o.Redact, "%s", line))
+	shown := line
+	if o.ErrorName != "" {
+		shown = strings.Join(append([]string{o.ErrorName}, args...), " ")
+	}
+	what := QuoteOrRedact(shown, o.Redact)
+	var code int
+	var out string
+	var err error
+	if !o.FailOnTruncate {
+		code, out, err = RunLogged(ctx, cmd, what, rubyvalue.RedactIf(o.Redact, "%s", line))
+	} else {
+		// RunLogged's debug line, then a capped run that fails on truncation.
+		runlog.Debugf(ctx, "Puppet", "Executing: '%s'", rubyvalue.RedactIf(o.Redact, "%s", line))
+		var truncated bool
+		code, out, truncated, err = runCapturingToFile(cmd, what, (*exec.Cmd).Run)
+		if err == nil && truncated {
+			return 0, "", fmt.Errorf("output of %s exceeded 64 MiB", what)
+		}
+	}
+	if o.ErrorName != "" {
+		err = withoutCommandName(what, err)
+	}
+	return code, out, err
 }
 
 // ShadowRunner is how the user and group providers run shadow-utils commands;
@@ -391,4 +433,38 @@ type ExecRunner struct{}
 // warning when cut (RunCapped); the exit-code and error contract is unchanged.
 func (ExecRunner) Run(ctx context.Context, name string, args ...string) (int, string, error) {
 	return RunArgv(ctx, name, args...)
+}
+
+// RubyWhich is Puppet::Util.which(name) (util.rb:207-243) under the
+// agent's PATH as Puppet extends it (defaults.rb:363-371): /usr/sbin, then
+// /sbin, appended each unless an entry already. Each entry's candidate is
+// File.expand_path(File.join(dir, name)), so an empty entry is "/" and a
+// relative one is under the working directory; the first that executable
+// accepts (a regular executable file) is the command. An entry starting with
+// "~" reached before any hit is expanded by Ruby against HOME (and raises when
+// HOME is unset), so its answer is Ruby's alone: none here. An absolute name
+// skips PATH: it is the command when executable accepts it.
+func RubyWhich(name, path string, executable func(string) bool) (string, bool) {
+	if filepath.IsAbs(name) {
+		if executable(name) {
+			return name, true
+		}
+		return "", false
+	}
+	entries := rubyvalue.SplitPath(path)
+	for _, d := range []string{"/usr/sbin", "/sbin"} {
+		if !slices.Contains(entries, d) {
+			path += ":" + d
+		}
+	}
+	for _, dir := range rubyvalue.SplitPath(path) {
+		if strings.HasPrefix(dir, "~") {
+			return "", false
+		}
+		dest, err := filepath.Abs(dir + "/" + name)
+		if err == nil && executable(dest) {
+			return dest, true
+		}
+	}
+	return "", false
 }

@@ -17,6 +17,18 @@ static int nss_getpwnam(const char *n, struct passwd *e, char *b, size_t l, int 
 	*found = rc == 0 && r != NULL;
 	return rc;
 }
+static int nss_getpwuid(uid_t u, struct passwd *e, char *b, size_t l, int *found) {
+	struct passwd *r = NULL;
+	int rc = getpwuid_r(u, e, b, l, &r);
+	*found = rc == 0 && r != NULL;
+	return rc;
+}
+static int nss_getpwent(struct passwd *e, char *b, size_t l, int *found) {
+	struct passwd *r = NULL;
+	int rc = getpwent_r(e, b, l, &r);
+	*found = rc == 0 && r != NULL;
+	return rc;
+}
 static int nss_getgrnam(const char *n, struct group *e, char *b, size_t l, int *found) {
 	struct group *r = NULL;
 	int rc = getgrnam_r(n, e, b, l, &r);
@@ -74,6 +86,13 @@ func nssLookup(what string, sizeConf C.int, notFound []syscall.Errno, call func(
 	})
 }
 
+func goPasswd(p *C.struct_passwd) PasswdEntry {
+	return PasswdEntry{
+		Name: C.GoString(p.pw_name), UID: int64(p.pw_uid), GID: int64(p.pw_gid),
+		Gecos: C.GoString(p.pw_gecos), Dir: C.GoString(p.pw_dir), Shell: C.GoString(p.pw_shell),
+	}
+}
+
 func goGroup(g *C.struct_group) GroupEntry {
 	e := GroupEntry{Name: C.GoString(g.gr_name), GID: int64(g.gr_gid)}
 	for i := C.int(0); ; i++ {
@@ -95,10 +114,26 @@ func (cNSS) User(name string) (PasswdEntry, bool, error) {
 		var ok C.int
 		rc := C.nss_getpwnam(cname, &pw, buf, size, &ok)
 		if rc == 0 && ok != 0 {
-			out = PasswdEntry{
-				Name: C.GoString(pw.pw_name), UID: int64(pw.pw_uid), GID: int64(pw.pw_gid),
-				Gecos: C.GoString(pw.pw_gecos), Dir: C.GoString(pw.pw_dir), Shell: C.GoString(pw.pw_shell),
-			}
+			out = goPasswd(&pw)
+		}
+		return rc, ok != 0
+	})
+	return out, found, err
+}
+
+// UserByID treats an id outside uid_t as absent rather than truncating it into
+// a different user.
+func (cNSS) UserByID(uid int64) (PasswdEntry, bool, error) {
+	if uid < 0 || uid > 1<<32-1 {
+		return PasswdEntry{}, false, nil
+	}
+	var out PasswdEntry
+	var pw C.struct_passwd
+	found, err := nssLookup(fmt.Sprintf("getpwuid_r %d", uid), C._SC_GETPW_R_SIZE_MAX, notFoundPW, func(buf *C.char, size C.size_t) (C.int, bool) {
+		var ok C.int
+		rc := C.nss_getpwuid(C.uid_t(uid), &pw, buf, size, &ok)
+		if rc == 0 && ok != 0 {
+			out = goPasswd(&pw)
 		}
 		return rc, ok != 0
 	})
@@ -195,6 +230,35 @@ func (cNSS) AllGroups() ([]GroupEntry, error) {
 			rc := C.nss_getgrent(&gr, buf, size, &ok)
 			if rc == 0 && ok != 0 {
 				entry = goGroup(&gr)
+			}
+			return rc, ok != 0
+		})
+		if err != nil {
+			return nil, err
+		}
+		if !found {
+			return all, nil
+		}
+		all = append(all, entry)
+	}
+}
+
+func (cNSS) AllUsers() ([]PasswdEntry, error) {
+	nssEnumMu.Lock()
+	defer nssEnumMu.Unlock()
+	C.setpwent()
+	defer C.endpwent()
+	var all []PasswdEntry
+	for {
+		var pw C.struct_passwd
+		var entry PasswdEntry
+		// getpwent_r signals the end with ENOENT, which nssLookup reports as
+		// "no entry"; ERANGE retries the same position with a bigger buffer.
+		found, err := nssLookup("getpwent_r", C._SC_GETPW_R_SIZE_MAX, []syscall.Errno{syscall.ENOENT}, func(buf *C.char, size C.size_t) (C.int, bool) {
+			var ok C.int
+			rc := C.nss_getpwent(&pw, buf, size, &ok)
+			if rc == 0 && ok != 0 {
+				entry = goPasswd(&pw)
 			}
 			return rc, ok != 0
 		})

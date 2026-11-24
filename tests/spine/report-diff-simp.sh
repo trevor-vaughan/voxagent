@@ -18,7 +18,8 @@
 # extension host: both are native on this catalog (concat design §1). The
 # same holds for sysctl, ssh_config, sshd_config, sshd_config_subsystem and
 # augeas, against the fifteen augeas fingerprints (augeas design §1 item 5;
-# augeas generic design §1 item 4).
+# augeas generic design §1 item 4), and for cron, against cron_core 2.1.0's
+# three fingerprints (cron design §1 item 6).
 # The merged libdir holds SIMP's ssh.aug and resolv.aug in augeas/lenses, so
 # the 49 Ssh_config resources take the custom-lens path. Its Sysctl coverage
 # is mostly the failure path: rootless, the real `sysctl -w` is refused for 62
@@ -89,7 +90,7 @@ FIXTURE="$HERE/simp"
 # The same pin, and the same tripwire, as report-diff-container.sh: the base
 # installs openvox-agent unversioned, so a rebuild floats the oracle, and exit 2
 # beats a green run measured against a reference nobody reviewed.
-WANT_PUPPET="${WANT_PUPPET:-8.33.0}"
+WANT_PUPPET="${WANT_PUPPET:-8.34.0}"
 
 COMPILER="simp-compile-$$"
 if [ "$DERIVE" = 1 ]; then
@@ -208,6 +209,9 @@ concat_fingerprints report-diff-simp "$WORK/libdir" 9.1.0 || exit 2
 # augeas_core 2.1.0, whose fifteen files route sysctl, ssh_config, sshd_config,
 # sshd_config_subsystem and augeas natively (augeas design §1 item 5).
 augeasproviders_fingerprints report-diff-simp "$WORK/libdir" || exit 2
+# Likewise puppetlabs-cron_core 2.1.0, whose three files route cron natively
+# (cron design §1 item 6).
+cron_core_fingerprints report-diff-simp "$WORK/libdir" || exit 2
 
 mkdir -p "$WORK/compile" || exit 2
 simp_boot "$COMPILER" "$IMAGE" || exit 2
@@ -356,6 +360,13 @@ case $? in
     ;;
 esac
 
+# Both checks below read apply.out; grep exits 2 for a file it cannot read,
+# which an `if` would take for "no match" and pass.
+if [ ! -r "$WORK/$LABEL_B/apply.out" ]; then
+  echo "report-diff-simp: $WORK/$LABEL_B/apply.out is missing or unreadable, cannot check for delegation to the extension host" >&2
+  exit 2
+fi
+
 # Native concat: voxagent names every type it delegates, and concat must not
 # be one of them.
 if grep -E '^voxagent: [0-9]+ concat_(file|fragment) resource\(s\) applied via extension host' \
@@ -364,14 +375,14 @@ if grep -E '^voxagent: [0-9]+ concat_(file|fragment) resource\(s\) applied via e
   rc=1
 fi
 
-# Native augeasproviders types and augeas: none of the five may be among them
-# either.
+# Native augeasproviders types, augeas and cron (the four Cron resources, with
+# cron_core 2.1.0 in the libdir): none of the six may be among them either.
 # The catalog's Sysctl coverage is mostly of the failure path: rootless, the
 # real `sysctl -w` is refused, so the success paths (`-w` succeeding, then the
 # save) are gated only by G5's shim cases.
-if grep -E '^voxagent: [0-9]+ (sysctl|ssh_config|sshd_config|sshd_config_subsystem|augeas) resource\(s\) applied via extension host' \
+if grep -E '^voxagent: [0-9]+ (sysctl|ssh_config|sshd_config|sshd_config_subsystem|augeas|cron) resource\(s\) applied via extension host' \
   "$WORK/$LABEL_B/apply.out" >&2; then
-  echo "report-diff-simp: voxagent applied an augeasproviders type or augeas through the extension host, not natively" >&2
+  echo "report-diff-simp: voxagent applied an augeasproviders type, augeas or cron through the extension host, not natively" >&2
   rc=1
 fi
 

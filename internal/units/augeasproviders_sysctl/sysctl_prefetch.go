@@ -2,8 +2,6 @@ package augeasproviderssysctl
 
 import (
 	"context"
-	"path/filepath"
-	"slices"
 	"strings"
 
 	"github.com/voxagent/voxagent/internal/catalog"
@@ -135,33 +133,6 @@ func parseSysctlE(out string) []string {
 		keys = append(keys, rubyvalue.Strip(key))
 	}
 	return keys
-}
-
-// resolveSysctl is Puppet::Util.which("sysctl") (util.rb:207-243) under the
-// agent's PATH as Puppet extends it (defaults.rb:363-371): /usr/sbin, then
-// /sbin, appended each unless an entry already. Each entry's candidate is
-// File.expand_path(File.join(dir, "sysctl")), so an empty entry is "/" and a
-// relative one is under the working directory; the first that executable
-// accepts (a regular executable file) is the command. An entry starting with
-// "~" reached before any hit is expanded by Ruby against HOME (and raises when
-// HOME is unset), so its answer is Ruby's alone: none here.
-func resolveSysctl(path string, executable func(string) bool) (string, bool) {
-	entries := rubyvalue.SplitPath(path)
-	for _, d := range []string{"/usr/sbin", "/sbin"} {
-		if !slices.Contains(entries, d) {
-			path += ":" + d
-		}
-	}
-	for _, dir := range rubyvalue.SplitPath(path) {
-		if strings.HasPrefix(dir, "~") {
-			return "", false
-		}
-		dest, err := filepath.Abs(dir + "/sysctl")
-		if err == nil && executable(dest) {
-			return dest, true
-		}
-	}
-	return "", false
 }
 
 // rubyChomp is String#chomp: one trailing "\r\n", "\n" or "\r" removed.

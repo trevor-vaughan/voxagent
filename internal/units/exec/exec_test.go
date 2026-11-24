@@ -1502,8 +1502,8 @@ func TestExecMarkedReturnsValueFreeErrorIsKept(t *testing.T) {
 	}
 }
 
-// setLocale sets the only locale variable outputEncoding will see as set. The
-// tests that call it cannot be parallel: t.Setenv refuses them.
+// setLocale sets the only locale variable rubyvalue.ExternalEncoding will see
+// as set. The tests that call it cannot be parallel: t.Setenv refuses them.
 func setLocale(t *testing.T, lang string) {
 	t.Helper()
 	t.Setenv("LC_ALL", "")

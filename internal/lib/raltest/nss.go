@@ -1,8 +1,14 @@
 package raltest
 
-import "github.com/voxagent/voxagent/internal/lib/nameservice"
+import (
+	"maps"
+	"slices"
+	"strings"
 
-// FakeNSS is an in-memory nameservice.NameService; Groups keeps enumeration order.
+	"github.com/voxagent/voxagent/internal/lib/nameservice"
+)
+
+// FakeNSS is an in-memory nameservice.NameService; Groups keeps enumeration order; AllUsers is by name.
 type FakeNSS struct {
 	Users    map[string]nameservice.PasswdEntry
 	Groups   []nameservice.GroupEntry
@@ -12,6 +18,24 @@ type FakeNSS struct {
 func (f FakeNSS) User(name string) (nameservice.PasswdEntry, bool, error) {
 	u, ok := f.Users[name]
 	return u, ok, nil
+}
+
+func (f FakeNSS) UserByID(uid int64) (nameservice.PasswdEntry, bool, error) {
+	for _, u := range f.sortedUsers() {
+		if u.UID == uid {
+			return u, true, nil
+		}
+	}
+	return nameservice.PasswdEntry{}, false, nil
+}
+
+func (f FakeNSS) AllUsers() ([]nameservice.PasswdEntry, error) { return f.sortedUsers(), nil }
+
+// sortedUsers gives the name-keyed Users map a stable enumeration order.
+func (f FakeNSS) sortedUsers() []nameservice.PasswdEntry {
+	all := slices.Collect(maps.Values(f.Users))
+	slices.SortFunc(all, func(a, b nameservice.PasswdEntry) int { return strings.Compare(a.Name, b.Name) })
+	return all
 }
 
 func (f FakeNSS) Shadow(string) (nameservice.ShadowEntry, bool, error) {

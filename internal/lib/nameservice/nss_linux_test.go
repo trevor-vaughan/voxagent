@@ -100,8 +100,41 @@ func TestCNSSAgainstRealEntries(t *testing.T) {
 	if _, found, err := ns.User("voxnsstest-missing"); found || err != nil {
 		t.Errorf("user(missing) = %v, %v", found, err)
 	}
+	byUID, found, err := ns.UserByID(u.UID)
+	if err != nil || !found || byUID != want {
+		t.Errorf("userByID(%d) = %+v, %v, %v; want %+v", u.UID, byUID, found, err, want)
+	}
+	rootEntry, found, err := ns.UserByID(0)
+	if err != nil || !found || rootEntry.Name != "root" {
+		t.Errorf("userByID(0) = %+v, %v, %v; want root", rootEntry, found, err)
+	}
+	allUsers, err := ns.AllUsers()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, e := range []PasswdEntry{want, rootEntry} {
+		if !slices.Contains(allUsers, e) {
+			t.Errorf("allUsers lacks %+v", e)
+		}
+	}
+	if _, found, err := ns.UserByID(1<<32 - 2); found || err != nil {
+		t.Errorf("userByID(unused) = %v, %v", found, err)
+	}
 	if _, found, err := ns.GroupByID(1 << 40); found || err != nil {
 		t.Errorf("groupByID(huge) = %v, %v", found, err)
+	}
+}
+
+// TestCNSSUserByIDOutOfRange needs no root: ids that do not fit uid_t are
+// absent, not truncated into another uid (-(1<<32) would wrap to 0, root). That
+// no libc call is made cannot be observed from here (the shims are C), but a
+// call with the truncated id would find root, so a found result would show it;
+// the no-call contract is asserted through PosixUID with a counting fake.
+func TestCNSSUserByIDOutOfRange(t *testing.T) {
+	for _, uid := range []int64{-1, 1 << 32, -(1 << 32)} {
+		if e, found, err := (cNSS{}).UserByID(uid); found || err != nil || e != (PasswdEntry{}) {
+			t.Errorf("userByID(%d) = %+v, %v, %v", uid, e, found, err)
+		}
 	}
 }
 
@@ -134,7 +167,7 @@ func TestCNSSGroupLargerThanInitialBuffer(t *testing.T) {
 		_ = exec.Command("groupdel", group+"after").Run()
 	})
 	// ~10 KiB of gr_mem, then a small group the enumeration must still reach.
-	appendGroupLines(t, fmt.Sprintf("%s:x:61900:%s\n%safter:x:61901:\n", group, strings.Join(members, ","), group))
+	appendLines(t, "/etc/group", fmt.Sprintf("%s:x:61900:%s\n%safter:x:61901:\n", group, strings.Join(members, ","), group))
 
 	ns := cNSS{}
 	byName, found, err := ns.Group(group)
@@ -154,6 +187,40 @@ func TestCNSSGroupLargerThanInitialBuffer(t *testing.T) {
 		t.Fatalf("allGroups lost the large group (index %d)", i)
 	}
 	if i+1 >= len(all) || all[i+1].Name != group+"after" {
+		t.Fatal("enumeration did not resume after the retried entry")
+	}
+}
+
+// TestCNSSPasswdLargerThanInitialBuffer makes a passwd entry whose gecos exceeds
+// the starting buffer, so getpwnam_r, getpwuid_r and getpwent_r must hit ERANGE
+// and retry (spec §5.1).
+func TestCNSSPasswdLargerThanInitialBuffer(t *testing.T) {
+	rootOrSkip(t)
+	const user = "voxnssbigpw"
+	gecos := strings.Repeat("x", 10000)
+	t.Cleanup(func() { _ = exec.Command("userdel", user).Run() })
+	// A small entry after it proves the enumeration resumes where it retried.
+	appendLines(t, "/etc/passwd", fmt.Sprintf("%s:x:61900:61900:%s:/nonexistent:/sbin/nologin\n%safter:x:61901:61901::/nonexistent:/sbin/nologin\n", user, gecos, user))
+	t.Cleanup(func() { _ = exec.Command("userdel", user+"after").Run() })
+
+	ns := cNSS{}
+	byName, found, err := ns.User(user)
+	if err != nil || !found || byName.Gecos != gecos {
+		t.Fatalf("user: found %v, err %v, gecos length %d", found, err, len(byName.Gecos))
+	}
+	byID, found, err := ns.UserByID(61900)
+	if err != nil || !found || byID != byName {
+		t.Fatalf("userByID: found %v, err %v, gecos length %d", found, err, len(byID.Gecos))
+	}
+	all, err := ns.AllUsers()
+	if err != nil {
+		t.Fatal(err)
+	}
+	i := slices.Index(all, byName)
+	if i < 0 {
+		t.Fatalf("allUsers lost the large entry")
+	}
+	if i+1 >= len(all) || all[i+1].Name != user+"after" {
 		t.Fatal("enumeration did not resume after the retried entry")
 	}
 }
@@ -178,7 +245,7 @@ func TestCNSSUserInMoreThan256Groups(t *testing.T) {
 	for i, n := range names {
 		fmt.Fprintf(&lines, "%s:x:%d:%s\n", n, 61000+i, user)
 	}
-	appendGroupLines(t, lines.String())
+	appendLines(t, "/etc/group", lines.String())
 	mustRun(t, "useradd", "-M", "-N", user)
 
 	ns := cNSS{}
@@ -196,16 +263,17 @@ func TestCNSSUserInMoreThan256Groups(t *testing.T) {
 	}
 }
 
-// appendGroupLines adds raw group(5) lines in one write; groupadd per entry is
-// too slow for hundreds, and gpasswd needs the members to exist as users.
-func appendGroupLines(t *testing.T, lines string) {
+// appendLines adds raw passwd(5) or group(5) lines to path in one write;
+// groupadd per entry is too slow for hundreds, and gpasswd needs the members to
+// exist as users.
+func appendLines(t *testing.T, path, lines string) {
 	t.Helper()
-	f, err := os.OpenFile("/etc/group", os.O_APPEND|os.O_WRONLY, 0)
+	f, err := os.OpenFile(path, os.O_APPEND|os.O_WRONLY, 0)
 	if err != nil {
 		t.Fatal(err)
 	}
 	_, werr := f.WriteString(lines)
 	if cerr := f.Close(); werr != nil || cerr != nil {
-		t.Fatalf("append /etc/group: %v %v", werr, cerr)
+		t.Fatalf("append %s: %v %v", path, werr, cerr)
 	}
 }

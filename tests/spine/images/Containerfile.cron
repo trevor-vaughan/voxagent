@@ -1,0 +1,7 @@
+# The node the cron measurements (2026-11-22) and G5's cron half run on: the
+# G5 base plus cronie, which provides /usr/bin/crontab. fleet-node-el has no
+# crontab, so Ruby's cron provider is unsuitable there (M4). openvox is the
+# base's own, which tests/spine/cron/image.sh checks after every build.
+# Building it needs the CentOS Stream mirrors.
+FROM localhost/fleet-node-el:latest
+RUN dnf -y install cronie && dnf clean all

@@ -136,6 +136,15 @@ Every attribute either type declares is accepted, and those its provider
 does not support (`forcelocal`, and the Solaris, AIX, BSD and macOS ones) are ignored, as
 Puppet ignores them. Everywhere else `user` and `group` need the extension
 host, and `--no-ruby` refuses a catalog that has them.
+`cron` (puppetlabs-cron_core, the `crontab` provider) is applied natively, through `crontab -l` and
+`crontab -`, on a RHEL-family host of major release 10 or later that is not Fedora, with `crontab` on `PATH`,
+`/usr/sbin` or `/sbin`, when no `cron` names a `provider` other than `crontab`, and the libdir holds no cron_core
+(openvox's vendored 1.3.0 applies) or holds cron_core 1.3.0 or 2.1.0 (identified by the digests of its type and two
+provider files). Every `cron` attribute is accepted. A `Resources` resource that may purge `cron`, and a few value
+shapes Ruby fails with Ruby-version-specific texts (a non-String `command`, and under 1.3.0 a time-field element that is not a String or Integer and an
+`environment` entry that is not a String), send the type to the extension host. Elsewhere `cron` needs the extension
+host, and `--no-ruby` refuses a catalog that has it. `--debug` logs why. Values are written as Puppet writes them:
+a line break in a `cron` value becomes extra crontab lines, as under Puppet.
 `concat_file` and `concat_fragment` (puppetlabs-concat) are applied natively
 when the synced module under `--libdir` is release 9.1.0 or 10.0.1 (voxagent
 identifies it by the digests of its two type files) and every one of them in the
@@ -565,7 +574,7 @@ task dev:report-diff-extension  # the same for Tier 3 types, run through the ext
 task dev:idempotence         # a second apply must change nothing
 task dev:derive-run-to-run   # re-measure report-diff's allowlist against Ruby
 task dev:state-diff          # both agents, two containers, same resulting state
-task dev:report-diff-container  # the report comparison for package, exec, user and group, in a container
+task dev:report-diff-container  # the report comparison for package, exec, user, group, concat, the Augeas types and cron, in a container
 task dev:report-diff-systemd    # the report comparison for service, in a systemd container
 task dev:report-diff-simp       # both agents apply the public SIMP catalog, in systemd containers
 task dev:augeas-lib             # the libaugeas binding against openvox's real library, in a container
@@ -581,7 +590,11 @@ gates one at a time: concurrent runs coincided with flakes in the SIMP gate's
 polkit start and systemd boot. `dev:report-diff-container` also runs the Augeas types' half, on an
 image derived from the same base (`tests/spine/images/Containerfile.augeas`,
 built on first use; a cold build needs the network), and that half, like
-`dev:report-diff-simp`, refuses to run under a rootful podman. The container report
+`dev:report-diff-simp`, refuses to run under a rootful podman. It then runs cron's half
+(`tests/spine/cron/g5.sh`) on `localhost/cron-measure-el`, the same base plus cronie
+(`tests/spine/images/Containerfile.cron`, also built on first use): 21 cases,
+each applied live, rerun and under `--noop` by both agents, with the end state of the crontabs compared,
+and one catalog both agents must refuse alike. The container report
 differential exists because the host is not a valid oracle for `package` or for
 `exec`, and for one underlying reason: the host's Ruby cannot fork under Puppet.
 So Puppet's `dnf` provider confines itself out and falls back to `dnfmodule`,

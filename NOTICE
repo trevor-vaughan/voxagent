@@ -40,4 +40,20 @@ puppet_x/augeas/util/parser.rb and puppet/feature/augeas.rb) are redistributed
 unmodified as test fixtures under internal/units/augeas_core/testdata; they remain
 under the Apache License, Version 2.0, a copy of which is in LICENSE.md.
 
+voxagent's native cron (internal/units/cron_core) reproduces the behaviour and
+messages of Puppet, Inc.'s puppetlabs-cron_core 1.3.0 and 2.1.0 (Apache-2.0).
+The three files per release whose digests voxagent checks (puppet/type/cron.rb,
+puppet/provider/cron/crontab.rb and puppet/provider/cron/filetype.rb) are
+redistributed unmodified as test fixtures under
+internal/units/cron_core/testdata; they remain under the Apache License,
+Version 2.0, a copy of which is in LICENSE.md.
+
+voxagent's native cron and its shared ParsedFile engine (internal/lib/parsedfile)
+likewise reproduce the behaviour and messages of openvox 8.33.0's
+lib/puppet/util/fileparsing.rb (Apache-2.0). The
+ParsedFile spec fixture parsedfile_simple.txt of that
+release is redistributed unmodified as a test fixture under
+internal/lib/parsedfile/testdata; it remains under the Apache License, Version
+2.0, a copy of which is in LICENSE.md.
+
 Licensed under the Apache License, Version 2.0; see LICENSE.md.

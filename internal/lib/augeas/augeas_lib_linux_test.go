@@ -30,7 +30,7 @@ func TestProbeAugeasRefusesUnmeasuredRubyAugeas(t *testing.T) {
 	}
 	lib, reason, ok := probeAugeas(root)
 	want := "ruby-augeas vendor_ruby/augeas.rb has sha256 "
-	if ok || lib != nil || !strings.HasPrefix(reason, want) || !strings.Contains(reason, rubyAugeasDigests[0]) {
+	if ok || lib != nil || !strings.HasPrefix(reason, want) || !strings.Contains(reason, rubyAugeasDigests[0][0]) {
 		t.Fatalf("probeAugeas = %v, %q, %v; want %q... naming the measured digest", lib, reason, ok, want)
 	}
 }

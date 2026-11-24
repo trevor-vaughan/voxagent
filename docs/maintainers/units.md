@@ -6,7 +6,7 @@ unit is, how units are laid out and routed, and how to add one. Go citations are
 ## What a unit is
 
 A unit is a Go package under `internal/units/<name>` that reproduces one Ruby origin: either Puppet itself (one unit per
-core type: `exec`, `file`, `group`, `notify`, `package`, `service`, `user`) or one Ruby module (`concat`, `augeas_core`,
+core type: `exec`, `file`, `group`, `notify`, `package`, `service`, `user`) or one Ruby module (`concat`, `cron_core`, `augeas_core`,
 `augeasproviders_sysctl`, `augeasproviders_ssh`). `augeasproviders_core` is a library unit: it serves no type, and holds
 the run object, mixin and fingerprinted files its two dependents share. A unit supplies two things through
 `unit.Unit` (`internal/unit/unit.go`):
@@ -59,8 +59,9 @@ Consequences worth knowing before you move code:
 | `rubyvalue` | Ruby/Puppet value rendering and coercion (`Inspect`, `Integer()` parsing), parameter access, `UnimplementedValue` |
 | `puppetpath` | Puppet's clean-absolute-path and file-mode rules, used by `file`, `concat`, `exec`, `augeasproviders_core` and `ral` (`augeas_checks.go`) |
 | `sources` | the per-resource `Sources` context value |
-| `command` | running external commands, output capping, shadow and argv runners, `ExecFailure`, executable checks |
-| `nameservice` | libc NSS access through cgo (`nss_linux.go`) for `user` and `group` |
+| `command` | running external commands, output capping, shadow and argv runners, `ExecFailure`, executable checks, `RubyWhich` (`Puppet::Util.which`, shared by sysctl and cron) |
+| `nameservice` | libc NSS access through cgo (`nss_linux.go`) for `user`, `group` and `cron` (`PosixUID`, `UserByID`, `AllUsers`) |
+| `parsedfile` | Puppet's ParsedFile engine: a line grammar, per-run records, targets, and the crontab and flat filetypes. It knows no catalog or unit; `cron_core` is its one consumer (`docs/maintainers/apply-spine.md`, "`cron` and the ParsedFile engine") |
 | `plugintree` | `LibdirTree`, reading the plugin tree under `--libdir` |
 | `augeas` | the libaugeas `dlopen` probe and `Session` (the probe is made at most once per run) |
 | `raltest` | test support: fakes, catalog builders, the libaugeas trace replay (`trace.go`). Never imports `ral` or a unit |
@@ -102,7 +103,8 @@ delegates the rest. `TestManifestsWellFormed` refuses a manifest with neither a 
 
 `cmd/voxagent/apply.go:nativeProviders` builds one `unit.Env` per run (catalog, `Libdir`, `Tree` from
 `plugintree.LibdirTree`, `Platform`, `Environ`, `Command`, `Vardir`, `Sources`, and `Augeas`, a `*augeas.Session` over the
-run's libaugeas probe) and calls `unit.RouteAll(env, units.All())`.
+run's libaugeas probe, `LookupEnv`, `os.LookupEnv` over the agent's environment, and `Stderr`, the scrubbed stream a native
+provider copies a command's output to) and calls `unit.RouteAll(env, units.All())`.
 
 `RouteAll` (`internal/unit/route.go`) sorts units by name, calls each `Route` once, concatenates the providers in that
 order and merges the `Delegated` maps. It panics if two units delegate the same type, because that is a bug in the
@@ -137,13 +139,19 @@ Each unit's remaining checks are its own, and every failure is a `Delegated` rea
   `purge_ssh_keys`. `user` requires `group`, whose helpers it calls.
 - `augeas_core`, `augeasproviders_sysctl`, `augeasproviders_ssh`: fingerprints, then provider directory
   (`ral.AugeasProviderDir`), then the environment (`ral.AugeasRunChecks`: no `AUGEAS_*`/`LD_*` override, clean
-  `--libdir`), then the probe, then value shapes, then (sysctl) the measured release (`ral.MeasuredRelease`) and an executable `sysctl` on `PATH`, `/usr/sbin` or `/sbin` (`resolveSysctl`: `PATH` entries first, then those two, first executable wins). The probe comes after the
+  `--libdir`), then the probe, then value shapes, then (sysctl) the measured release (`ral.MeasuredRelease`) and an executable `sysctl` on `PATH`, `/usr/sbin` or `/sbin` (`command.RubyWhich`: `PATH` entries first, then those two, first executable wins). The probe comes after the
   environment checks so libaugeas never reads an `AUGEAS_*` override. `Env.Augeas.Probe()` makes the probe at most once
   per run however many types hold, and the sysctl and ssh units get one shared run from `core.SharedRun(env.Augeas, libdir)`
   (`augeasproviders_core/augeas_mixin.go`, whose `Run.EndRun` closes every handle).
+- `cron_core`: the measured platform (`ral.MeasuredRelease`), an executable `crontab` (`command.RubyWhich`: `PATH` entries
+  first, then `/usr/sbin` and `/sbin`, first executable wins, a `~` entry before a hit delegates), a `provider` other than
+  `crontab` (`group.ForeignProvider`; the unit requires `group`), the plugin tree (none of the three files is the vendored
+  1.3.0, else `MatchFiles` for 1.3.0 or 2.1.0, and no second provider file under `puppet/provider/cron/`), a `Resources`
+  purge of `cron`, then value shapes (`rubyvalue.UnimplementedValue`). The release it found is passed to the provider
+  (`cron_core/manifest.go:Route`, `pluginRelease`). It also reads `Env.LookupEnv` and `Env.Stderr`, which no other unit uses.
 - `exec`, `file`, `notify`, `package`, `service`: native on every run.
 
-D-87, D-89 and D-91 in [apply-spine.md](apply-spine.md) say what is measured and why each condition delegates.
+D-87, D-89, D-91 and D-94 in [apply-spine.md](apply-spine.md) say what is measured and why each condition delegates.
 
 ## Versioning and changelog
 

@@ -50,6 +50,51 @@ func Inspect(s string) string {
 	return b.String()
 }
 
+// ExternalEncoding is Ruby's Encoding.default_external for the locale: the
+// codeset of the first set, non-empty one of LC_ALL, LC_CTYPE and LANG. A
+// UTF-8 codeset (UTF-8 or utf8, any case) is "UTF-8"; anything else, no
+// codeset, C and POSIX included, is "US-ASCII". Ruby would use any other
+// codeset as its own encoding; voxagent treats it as US-ASCII (D-79).
+func ExternalEncoding(getenv func(string) string) string {
+	for _, name := range []string{"LC_ALL", "LC_CTYPE", "LANG"} {
+		locale := getenv(name)
+		if locale == "" {
+			continue
+		}
+		_, codeset, _ := strings.Cut(locale, ".")
+		codeset, _, _ = strings.Cut(codeset, "@")
+		if strings.EqualFold(codeset, "UTF-8") || strings.EqualFold(codeset, "utf8") {
+			return "UTF-8"
+		}
+		return "US-ASCII"
+	}
+	return "US-ASCII"
+}
+
+// InspectIn is String#inspect when Encoding.default_external is encoding
+// ("UTF-8" or "US-ASCII", as ExternalEncoding returns). Under "US-ASCII" Ruby
+// escapes each character it cannot show: every non-ASCII character as \uXXXX
+// (uppercase hex), or \u{XXXXX} above U+FFFF (measured with ruby 3.4.9 under
+// LANG=C: "\uFF11", "\u00E9", "\u{1F600}"). Under "UTF-8" it is Inspect.
+func InspectIn(s, encoding string) string {
+	quoted := Inspect(s)
+	if encoding != "US-ASCII" {
+		return quoted
+	}
+	var b strings.Builder
+	for _, r := range quoted {
+		switch {
+		case r < utf8.RuneSelf:
+			b.WriteRune(r)
+		case r > 0xFFFF:
+			fmt.Fprintf(&b, `\u{%X}`, r)
+		default:
+			fmt.Fprintf(&b, `\u%04X`, r)
+		}
+	}
+	return b.String()
+}
+
 var rubyEscapes = map[rune]string{
 	'\n': `\n`, '\t': `\t`, '\r': `\r`, '\f': `\f`, '\v': `\v`, '\b': `\b`, '\a': `\a`, '\x1b': `\e`,
 }
@@ -122,12 +167,19 @@ func Float(f float64) string {
 // invalidInteger is the start of Integer's error, before the value it repeats.
 const invalidInteger = "invalid value for Integer(): "
 
+// bignumError is Integer's invalid-value error for a literal beyond int64,
+// which also matches strconv.ErrRange under errors.Is.
+type bignumError struct{ error }
+
+func (bignumError) Is(target error) bool { return target == strconv.ErrRange }
+
 // Integer is Kernel#Integer(String) (Ruby's rb_str_to_inum with badcheck):
 // surrounding whitespace, an optional sign, a 0b/0o/0d/0x prefix (any case) or a
 // bare leading 0 for octal, and single underscores between digits. Puppet
 // relies on it in get_posix_value (util/posix.rb:174), so a group named "0x1f"
-// is the number 31. A value that does not fit int64 is rejected with the same
-// error; no id in this slice can be that large.
+// is the number 31. A well-formed literal that does not fit int64 is a Ruby
+// Bignum: the error wraps strconv.ErrRange (cron's numfix accepts it); every
+// other bad value gets the invalid-value error.
 func Integer(s string) (int64, error) {
 	invalid := fmt.Errorf(invalidInteger+"%q", s)
 	body := strings.Trim(s, " \t\n\v\f\r")
@@ -158,17 +210,63 @@ func Integer(s string) (int64, error) {
 	}
 	digits := strings.ReplaceAll(body, "_", "")
 	for i := 0; i < len(digits); i++ {
-		c := digits[i]
-		if c >= '0' && c <= '9' || c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' {
+		d, err := strconv.ParseInt(digits[i:i+1], 36, 64)
+		if err == nil && d < int64(base) {
 			continue
 		}
 		return 0, invalid
 	}
 	n, err := strconv.ParseInt(sign+digits, base, 64)
+	if errors.Is(err, strconv.ErrRange) {
+		return 0, bignumError{invalid}
+	}
 	if err != nil {
 		return 0, invalid
 	}
 	return n, nil
+}
+
+// ToI is String#to_i (rb_str_to_inum with badcheck off, base 10): ASCII
+// whitespace skipped, one optional sign, an optional 0d/0D prefix when a digit
+// follows it, then decimal digits with single underscores between digits,
+// stopping at the first other character. No digits is 0; a value beyond int64
+// saturates at its bound.
+func ToI(s string) int64 {
+	i := 0
+	for i < len(s) && strings.IndexByte(" \t\n\v\f\r", s[i]) >= 0 {
+		i++
+	}
+	negative := false
+	if i < len(s) && (s[i] == '+' || s[i] == '-') {
+		negative = s[i] == '-'
+		i++
+	}
+	if i+2 < len(s) && s[i] == '0' && (s[i+1] == 'd' || s[i+1] == 'D') && s[i+2] >= '0' && s[i+2] <= '9' {
+		i += 2
+	}
+	var digits []byte
+	for ; i < len(s); i++ {
+		c := s[i]
+		if c >= '0' && c <= '9' {
+			digits = append(digits, c)
+			continue
+		}
+		if c == '_' && len(digits) > 0 && i+1 < len(s) && s[i+1] >= '0' && s[i+1] <= '9' {
+			continue
+		}
+		break
+	}
+	if len(digits) == 0 {
+		return 0
+	}
+	if negative {
+		digits = append([]byte{'-'}, digits...)
+	}
+	n, err := strconv.ParseInt(string(digits), 10, 64)
+	if err != nil && !errors.Is(err, strconv.ErrRange) {
+		return 0
+	}
+	return n
 }
 
 // Strip is String#strip: NUL and ASCII whitespace from both ends.
