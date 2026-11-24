@@ -1,0 +1,20 @@
+docs/usage/voxdiff.md
+  s_87888b7b678da1::t_64fd0f0793d0f6 7,33-36,42-44
+  s_87888b7b678da1::t_57dff449300770 45
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "0170f4d9e8b96cefc5ea6be4f0ca8c44c5be0979",
+  "prompts": {},
+  "sessions": {
+    "s_87888b7b678da1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "39cc1b4e-b00b-4987-9657-3212be8ef9f3",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "LLM (riotbox) <llm@riotbox>"
+    }
+  }
+}
