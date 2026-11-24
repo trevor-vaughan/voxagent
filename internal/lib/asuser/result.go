@@ -29,6 +29,7 @@ const (
 	StepClose        Step = "close"         // write: closing the target failed
 	StepRelabel      Step = "relabel"       // write succeeded, the SELinux relabel failed
 	StepChmod        Step = "chmod"         // chmod failed
+	StepTmpdir       Step = "tmpdir"        // write: no temporary directory (TempDir)
 )
 
 // maxResult is the longest result line ParseResult accepts, newline included.
@@ -39,7 +40,7 @@ const maxResult = 64
 const maxErrno = 4095
 
 // Result is an op's outcome: its Step and, for a failure, the errno (1-4095);
-// 0 for ok and mkdir-created.
+// 0 for ok, mkdir-created and tmpdir (Ruby's failure there has no errno).
 type Result struct {
 	Step  Step
 	Errno syscall.Errno
@@ -61,10 +62,10 @@ func (r Result) ExitCode() int {
 }
 
 // valid says whether r is a result an op can produce: a known step with no
-// errno for ok and mkdir-created, an errno in 1-4095 for every other.
+// errno for ok, mkdir-created and tmpdir, an errno in 1-4095 for every other.
 func (r Result) valid() bool {
 	switch r.Step {
-	case StepOK, StepMkdirCreated:
+	case StepOK, StepMkdirCreated, StepTmpdir:
 		return r.Errno == 0
 	case StepMkdir, StepTempfile, StepOpen, StepCopy, StepClose, StepRelabel, StepChmod:
 		return r.Errno >= 1 && r.Errno <= maxErrno

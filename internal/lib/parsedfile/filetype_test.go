@@ -675,6 +675,7 @@ func TestFlatWriteErrorTexts(t *testing.T) {
 		{WriteFailure{"open", syscall.EACCES}, pre + "Permission denied @ rb_sysopen - " + p},
 		{WriteFailure{"copy", syscall.EDQUOT}, pre + "Disk quota exceeded - write"},
 		{WriteFailure{"close", syscall.EIO}, pre + "Input/output error - close"},
+		{WriteFailure{"tmpdir", 0}, pre + "could not find a temporary directory"},
 	}
 	for _, tc := range tests {
 		err := FlatWriteError(p, tc.f)

@@ -39,6 +39,10 @@ type backup struct {
 	// force, follow and recurse are the resource's own (can_backup?,
 	// remove_backup, perform_backup_with_bucket).
 	force, follow, recurse bool
+	// flat is set for a flat filetype's backup (file.BucketBackup): its
+	// dipper reads the path as one file, so a directory is refused with
+	// syscall.EISDIR instead of having the files below it backed up.
+	flat bool
 	// redact is set when the catalog lists backup as Sensitive: errors show
 	// value as [redacted] (D-78: Ruby prints it).
 	redact bool
@@ -185,6 +189,7 @@ func (b *backup) local(fsys fileSystem, path string) error {
 // backupSwapWindow, when set by a test, runs in a tree copy between an
 // entry's lstat and its open (at "lstat") and after a directory is opened and
 // checked (at "open"): the windows in which it can be swapped for a link.
+// BucketBackup runs it at "lstat" between its own checks and toBucket's.
 var backupSwapWindow func(at, path string)
 
 // copyTree is FileUtils.cp_r(src, dst, preserve: true) with its default
@@ -522,6 +527,9 @@ func (b *backup) toBucket(fsys fileSystem, path string) error {
 		}
 		return b.bucketFile(in, path)
 	case fi.IsDir():
+		if b.flat {
+			return syscall.EISDIR
+		}
 		if b.recurse {
 			return nil
 		}

@@ -542,6 +542,11 @@ func TestSakFlushSteps(t *testing.T) {
 		}, err: func(_, keys string) string {
 			return "Puppet::Util::FileType::FileTypeFlat could not write " + keys + ": No space left on device - write"
 		}, logged: true, creating: true, flushing: true, ops: []string{"mkdir", "write"}},
+		{name: "no temporary directory", answers: func(_, keys string) map[string]asuser.Result {
+			return map[string]asuser.Result{"write " + keys: {Step: asuser.StepTmpdir}}
+		}, err: func(_, keys string) string {
+			return "Puppet::Util::FileType::FileTypeFlat could not write " + keys + ": could not find a temporary directory"
+		}, logged: true, creating: true, flushing: true, ops: []string{"mkdir", "write"}},
 		{name: "chmod refused", answers: func(_, keys string) map[string]asuser.Result {
 			return map[string]asuser.Result{"chmod " + keys: {Step: asuser.StepChmod, Errno: syscall.EPERM}}
 		}, err: func(_, keys string) string { return "Operation not permitted @ apply2files - " + keys }, creating: true, flushing: true,

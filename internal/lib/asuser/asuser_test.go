@@ -145,6 +145,105 @@ func TestMkdirFailure(t *testing.T) {
 	}
 }
 
+// tempDirCandidates sets TMPDIR, TMP and TEMP ("" is unset, as Ruby skips
+// an empty one) and the fixed candidates after them for one test.
+func tempDirCandidates(t *testing.T, tmpdir, tmp, temp string, fixed ...string) {
+	t.Helper()
+	for name, v := range map[string]string{"TMPDIR": tmpdir, "TMP": tmp, "TEMP": temp} {
+		t.Setenv(name, v)
+	}
+	old := tempDirFallbacks
+	tempDirFallbacks = fixed
+	t.Cleanup(func() { tempDirFallbacks = old })
+}
+
+// mkdirMode makes a directory below base with exactly mode (no umask).
+func mkdirMode(t *testing.T, base, name string, mode os.FileMode) string {
+	t.Helper()
+	d := filepath.Join(base, name)
+	if err := os.Mkdir(d, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(d, mode); err != nil {
+		t.Fatal(err)
+	}
+	return d
+}
+
+// TempDir is Ruby 3.2's Dir.tmpdir (tmpdir.rb:21-39) for the effective
+// user: the first of TMPDIR, TMP, TEMP, then the fixed candidates, that is a
+// directory it may write by its mode bits and is not world-writable without
+// the sticky bit. Measured in the oracle image as user nobody under
+// SUIDManager.asuser: an unwritable or world-writable TMPDIR falls to /tmp.
+func TestTempDir(t *testing.T) {
+	if os.Geteuid() == 0 {
+		t.Skip("root may write any directory (rb_stat_w)")
+	}
+	base := t.TempDir()
+	ok := mkdirMode(t, base, "ok", 0o700)
+	ok2 := mkdirMode(t, base, "ok2", 0o700)
+	unwritable := mkdirMode(t, base, "unwritable", 0o500)
+	world := mkdirMode(t, base, "world", 0o777)
+	sticky := mkdirMode(t, base, "sticky", 0o777|os.ModeSticky)
+	file := filepath.Join(base, "file")
+	if err := os.WriteFile(file, nil, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	missing := filepath.Join(base, "missing")
+	tests := []struct {
+		name              string
+		tmpdir, tmp, temp string
+		fixed             []string
+		want              string
+	}{
+		{"TMPDIR first", ok, ok2, ok2, []string{ok2}, ok},
+		{"unwritable TMPDIR, next candidate", unwritable, ok, "", nil, ok},
+		{"world-writable without sticky skipped", world, "", ok, nil, ok},
+		{"world-writable with sticky accepted", sticky, ok, "", nil, sticky},
+		{"not a directory skipped", file, ok, "", nil, ok},
+		{"missing skipped", missing, "", "", []string{ok}, ok},
+		{"empty variables skipped", "", "", "", []string{ok}, ok},
+		{"fixed candidates in order", unwritable, "", "", []string{world, ok2, ok}, ok2},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			tempDirCandidates(t, tc.tmpdir, tc.tmp, tc.temp, tc.fixed...)
+			got, err := TempDir()
+			if err != nil || got != tc.want {
+				t.Errorf("TempDir = %q, %v; want %q", got, err, tc.want)
+			}
+		})
+	}
+}
+
+// A relative candidate is expanded against the working directory, as
+// File.expand_path does: "." is the working directory itself.
+func TestTempDirRelative(t *testing.T) {
+	base := t.TempDir()
+	sub := mkdirMode(t, base, "sub", 0o700)
+	t.Chdir(base)
+	tempDirCandidates(t, "sub", "", "")
+	if got, err := TempDir(); err != nil || got != sub {
+		t.Errorf("TempDir = %q, %v; want %q", got, err, sub)
+	}
+	tempDirCandidates(t, "", "", "", ".")
+	if got, err := TempDir(); err != nil || got != base {
+		t.Errorf("TempDir(.) = %q, %v; want %q", got, err, base)
+	}
+}
+
+// With no candidate left, the error is Dir.tmpdir's ArgumentError text.
+func TestTempDirNoneFound(t *testing.T) {
+	if os.Geteuid() == 0 {
+		t.Skip("root may write any directory (rb_stat_w)")
+	}
+	unwritable := mkdirMode(t, t.TempDir(), "unwritable", 0o500)
+	tempDirCandidates(t, unwritable, "", "", unwritable)
+	if got, err := TempDir(); err == nil || err.Error() != "could not find a temporary directory" {
+		t.Errorf("TempDir = %q, %v; want could not find a temporary directory", got, err)
+	}
+}
+
 func TestWrite(t *testing.T) {
 	ctx, logs := recordingCtx()
 	p := filepath.Join(t.TempDir(), "authorized_keys")

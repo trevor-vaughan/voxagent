@@ -257,10 +257,12 @@ func (f *flat) Read(ctx context.Context) (string, error) {
 // WriteFailure is the step of the flat write that failed and its errno, for a
 // failure FlatWriteError can render: "tempfile" (creating, writing or
 // chmodding the temp file), "open" (opening the target), "copy" (copying onto
-// it) or "close" (closing it). Write's errors for these steps carry one,
-// reachable by errors.As, so the asuser helper can report a failure as
-// <step> <errno> and its parent can render Write's text without any text from
-// the helper (spec §3.4).
+// it), "close" (closing it), or "tmpdir", errno 0, which only the asuser
+// helper reports: Ruby's Dir.tmpdir found no temporary directory for the user
+// ("could not find a temporary directory", measured in the oracle image).
+// Write's errors for its steps carry one, reachable by errors.As, so the
+// asuser helper can report a failure as <step> <errno> and its parent can
+// render Write's text without any text from the helper (spec §3.4).
 type WriteFailure struct {
 	Step  string
 	Errno syscall.Errno
@@ -279,8 +281,11 @@ func (e *writeError) Unwrap() error { return e.failure }
 
 // FlatWriteError is the error Write returns, unlogged, for f on path. It is
 // the text Write produces for that step and errno: Write uses the same
-// formatter. A target that is a directory, where Write names the copy it
-// opens rather than path, never reaches the asuser helper (spec §6.3 item 5).
+// formatter, except for an "open" failure on a directory: a directory target
+// fails the prefetch (spec §6.3 item 5), but its user can swap one in after
+// that, and then the helper's write opens a copy named after its temp file
+// inside it, as Write does. Write's text names that copy; this one names path,
+// since the helper reports no name (D-101).
 func FlatWriteError(path string, f WriteFailure) error {
 	return flatWriteFailure(path, path, f.Step, f.Errno)
 }
@@ -288,7 +293,8 @@ func FlatWriteError(path string, f WriteFailure) error {
 // flatWriteFailure renders a failed step of the flat write on path, which
 // opened dest: the errno as RubyErrno has it, alone for "tempfile" (and any
 // other step), with rb_sysopen and dest for the open, and the syscall for the copy and the close ("No space left on device
-// - write", measured with ruby 3.4.9 on /dev/full). The error carries the
+// - write", measured with ruby 3.4.9 on /dev/full); "tmpdir" is Dir.tmpdir's
+// text alone. The error carries the
 // step's WriteFailure, with Errno 0 for an errno-less error, which none of the
 // os calls Write makes returns.
 func flatWriteFailure(path, dest, step string, err error) error {
@@ -300,6 +306,8 @@ func flatWriteFailure(path, dest, step string, err error) error {
 		detail = RubyErrno(err, "", "") + " - write"
 	case "close":
 		detail = RubyErrno(err, "", "") + " - close"
+	case "tmpdir":
+		detail = "could not find a temporary directory"
 	default:
 		detail = RubyErrno(err, "", "")
 	}

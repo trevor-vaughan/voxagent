@@ -21,6 +21,7 @@ func TestResultRoundTrip(t *testing.T) {
 		{Result{StepClose, syscall.EIO}, 1},
 		{Result{StepChmod, syscall.EPERM}, 1},
 		{Result{StepChmod, 4095}, 1},
+		{Result{StepTmpdir, 0}, 1},
 	}
 	for _, tc := range tests {
 		line := tc.r.String() + "\n"
@@ -51,6 +52,8 @@ func TestParseResultRefuses(t *testing.T) {
 		{"errno 0 on relabel", "relabel 0\n", 0},
 		{"errno on ok", "ok 13\n", 0},
 		{"errno on mkdir-created", "mkdir-created 1\n", 0},
+		{"errno on tmpdir", "tmpdir 13\n", 1},
+		{"exit 0 with tmpdir", "tmpdir 0\n", 0},
 		{"errno above 4095", "open 4096\n", 1},
 		{"negative errno", "open -13\n", 1},
 		{"plus sign", "open +13\n", 1},

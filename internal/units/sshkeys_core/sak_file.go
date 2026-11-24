@@ -123,7 +123,8 @@ func (f *sakFile) Write(ctx context.Context, text string) error {
 		return logged(err)
 	}
 	r, err := d.helper(ctx, []string{"write", "--encoding", f.encoding, f.path}, []byte(text),
-		asuser.StepOK, asuser.StepRelabel, asuser.StepTempfile, asuser.StepOpen, asuser.StepCopy, asuser.StepClose)
+		asuser.StepOK, asuser.StepRelabel, asuser.StepTempfile, asuser.StepOpen, asuser.StepCopy, asuser.StepClose,
+		asuser.StepTmpdir)
 	if err != nil {
 		return err
 	}

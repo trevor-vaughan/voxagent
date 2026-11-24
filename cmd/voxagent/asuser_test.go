@@ -113,6 +113,27 @@ func TestAsuserOps(t *testing.T) {
 	}
 }
 
+// The write's temp file goes where Ruby's Dir.tmpdir would put it for the
+// helper's user: a TMPDIR the user cannot write is passed over.
+func TestAsuserWriteUnwritableTmpdir(t *testing.T) {
+	if os.Geteuid() == 0 {
+		t.Skip("the helper refuses root")
+	}
+	base := t.TempDir()
+	tmpdir := filepath.Join(base, "tmp")
+	if err := os.Mkdir(tmpdir, 0o500); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("TMPDIR", tmpdir)
+	keys := filepath.Join(base, "authorized_keys")
+	if stdout, _, code := runAsuser(t, "ssh-rsa AAAA k\n", "write", "--encoding", "UTF-8", keys); stdout != "ok 0\n" || code != 0 {
+		t.Errorf("write = %q exit %d; want ok 0", stdout, code)
+	}
+	if b, _ := os.ReadFile(keys); string(b) != "ssh-rsa AAAA k\n" {
+		t.Errorf("keys = %q", b)
+	}
+}
+
 // Text the encoding cannot take has no result: nothing printed, exit 2, the
 // target untouched. The parent checks the encoding before it starts the write.
 func TestAsuserWriteEncodingFailure(t *testing.T) {
@@ -230,6 +251,25 @@ func TestAsuserRootRootOnlyDir(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(rootDir, "new")); err == nil {
 		t.Error("the helper created a file in a root-only directory")
+	}
+}
+
+// Root's TMPDIR only root may write (pam_tmpdir's /tmp/user/0) reaches the
+// helper, which passes it over for the next candidate as Ruby's Dir.tmpdir
+// does for the dropped user, so the write succeeds.
+func TestAsuserRootRootOnlyTmpdir(t *testing.T) {
+	cred, userDir, rootDir := rootFixture(t)
+	tmpdir := filepath.Join(rootDir, "tmp")
+	if err := os.Mkdir(tmpdir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("TMPDIR", tmpdir)
+	keys := filepath.Join(userDir, "authorized_keys")
+	if r := startHelper(t, cred, "ssh-rsa AAAA k\n", "write", "--encoding", "UTF-8", keys); r != (asuser.Result{Step: asuser.StepOK}) {
+		t.Fatalf("write = %v; want ok 0", r)
+	}
+	if b, _ := os.ReadFile(keys); string(b) != "ssh-rsa AAAA k\n" {
+		t.Errorf("keys = %q", b)
 	}
 }
 

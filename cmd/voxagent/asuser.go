@@ -24,7 +24,9 @@ var asuserEuid = os.Geteuid
 // op's result line ("<step> <errno>") and exits 0 or 1 as asuser.ParseResult
 // expects. It refuses euid 0 ("asuser: refusing to run as root", exit 2), and
 // any other invocation, or text the encoding cannot take (which the parent
-// checks before it starts the write), gets exit 2 and no output.
+// checks before it starts the write), gets exit 2 and no output. The write's
+// temp file is created in asuser.TempDir; when there is none the result is
+// "tmpdir 0".
 func asuserCommand(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	if asuserEuid() == 0 {
 		fmt.Fprintln(stderr, "asuser: refusing to run as root")
@@ -39,6 +41,16 @@ func asuserCommand(args []string, stdin io.Reader, stdout, stderr io.Writer) int
 	case len(args) == 4 && args[0] == "write" && args[1] == "--encoding":
 		text, err := io.ReadAll(stdin)
 		if err != nil {
+			return 2
+		}
+		// The temp file goes in the directory Ruby's Dir.tmpdir picks for this
+		// user, not root's TMPDIR as given (D-101).
+		dir, err := asuser.TempDir()
+		if err != nil {
+			r = asuser.Result{Step: asuser.StepTmpdir}
+			break
+		}
+		if err := os.Setenv("TMPDIR", dir); err != nil {
 			return 2
 		}
 		if r, err = asuser.Write(context.Background(), args[3], args[2], string(text), file.Relabel); err != nil {

@@ -127,6 +127,66 @@ func TestBucketBackupFailureIsAnError(t *testing.T) {
 	}
 }
 
+// A directory is not backed up file by file, as a file resource's is: Ruby's
+// dipper reads the path as one file and fails (measured in the oracle image,
+// puppet/file_bucket/dipper.rb backup), after its checksum line.
+func TestBucketBackupOfADirectoryIsRubysEISDIR(t *testing.T) {
+	dir, vardir := t.TempDir(), t.TempDir()
+	target := filepath.Join(dir, "authorized_keys")
+	if err := os.Mkdir(target, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	mustWrite(t, filepath.Join(target, "secret"), "secret\n")
+	ctx, logs := flatLogs(t)
+	err := BucketBackup(vardir)(ctx, target)
+	want := "Could not back up " + target + ": Is a directory @ io_fread - " + target
+	if err == nil || err.Error() != want {
+		t.Errorf("err = %v, want %q", err, want)
+	}
+	if len(*logs) != 1 || (*logs)[0].Message != "Computing checksum on file "+target {
+		t.Errorf("logs = %+v, want only the checksum line", *logs)
+	}
+	if _, err := os.Lstat(filepath.Join(vardir, "clientbucket")); !os.IsNotExist(err) {
+		t.Errorf("a directory's files were bucketed (%v)", err)
+	}
+}
+
+// A regular target swapped for a directory after BucketBackup's checks is
+// refused the same way: nothing below the directory reaches the bucket.
+func TestBucketBackupNeverDescendsIntoASwappedInDirectory(t *testing.T) {
+	dir, vardir := t.TempDir(), t.TempDir()
+	target := filepath.Join(dir, "authorized_keys")
+	mustWrite(t, target, "key\n")
+	resolved, descended := realPath(t, target), false
+	backupSwapWindow = func(at, path string) {
+		switch {
+		case at == "lstat" && path == resolved:
+			if err := os.Remove(path); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.Mkdir(path, 0o700); err != nil {
+				t.Fatal(err)
+			}
+			mustWrite(t, filepath.Join(path, "secret"), "secret\n")
+		case at == "open":
+			descended = true
+		}
+	}
+	t.Cleanup(func() { backupSwapWindow = nil })
+	ctx, _ := flatLogs(t)
+	err := BucketBackup(vardir)(ctx, target)
+	want := "Could not back up " + target + ": Is a directory @ io_fread - " + target
+	if err == nil || err.Error() != want {
+		t.Errorf("err = %v, want %q", err, want)
+	}
+	if descended {
+		t.Error("the backup opened the swapped-in directory")
+	}
+	if _, err := os.Lstat(shardDir(vardir, sha("secret\n"))); !os.IsNotExist(err) {
+		t.Errorf("a file below the swapped-in directory was bucketed (%v)", err)
+	}
+}
+
 func TestBucketBackupTwiceKeepsOneRecord(t *testing.T) {
 	dir, vardir := t.TempDir(), t.TempDir()
 	target := filepath.Join(dir, "hosts")

@@ -25,7 +25,9 @@ import (
 // All are source Puppet. A missing target, or a link to nothing, is no backup
 // and logs nothing. The path recorded in the entry is the resolved one, so a
 // link's target is what the bucket names (M5); the checksum line shows the
-// path as given.
+// path as given. A directory -- there, or swapped in after these checks -- is
+// never descended into: it fails as Ruby's dipper read of it does, "Could not
+// back up <path>: Is a directory @ io_fread - <path>", after the checksum line.
 func BucketBackup(vardir string) func(ctx context.Context, path string) error {
 	return func(ctx context.Context, path string) error {
 		fi, err := os.Stat(path)
@@ -35,20 +37,26 @@ func BucketBackup(vardir string) func(ctx context.Context, path string) error {
 		if err != nil {
 			return err
 		}
-		if !fi.Mode().IsRegular() {
+		if !fi.Mode().IsRegular() && !fi.IsDir() {
 			return nil
 		}
 		resolved, err := filepath.EvalSymlinks(path)
 		if err != nil {
 			return err
 		}
+		if backupSwapWindow != nil {
+			backupSwapWindow("lstat", resolved)
+		}
 		logger := runlog.From(ctx)
 		logger.Log("info", "Puppet", "Computing checksum on file "+path)
-		b := &backup{value: defaultBucket, vardir: vardir,
+		b := &backup{value: defaultBucket, vardir: vardir, flat: true,
 			log: func(level, message string) { logger.Log(level, "Puppet", message) }}
 		err = b.toBucket(osFS{}, resolved)
 		for _, w := range b.warnings {
 			logger.Log("warning", w.Source, w.Message)
+		}
+		if errors.Is(err, syscall.EISDIR) {
+			return fmt.Errorf("Could not back up %s: Is a directory @ io_fread - %s", path, path)
 		}
 		return err
 	}
