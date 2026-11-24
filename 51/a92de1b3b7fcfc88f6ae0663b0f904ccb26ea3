@@ -1,0 +1,19 @@
+docs/maintainers/apply-spine.md
+  s_31d6f266b5a088::t_7dd3b53aa8de69 469-512
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "51a92de1b3b7fcfc88f6ae0663b0f904ccb26ea3",
+  "prompts": {},
+  "sessions": {
+    "s_31d6f266b5a088": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-a25e2495285617dc9",
+        "model": "unknown"
+      },
+      "human_author": "LLM (riotbox) <llm@riotbox>"
+    }
+  }
+}
