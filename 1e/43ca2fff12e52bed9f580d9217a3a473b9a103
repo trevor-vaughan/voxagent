@@ -1,0 +1,68 @@
+internal/units/notify/manifest.go
+  s_a5ae08ab9db009::t_91f4bb1b524885 11-18
+internal/units/package/manifest.go
+  s_a5ae08ab9db009::t_91f4bb1b524885 11-18
+internal/units/service/manifest.go
+  s_a5ae08ab9db009::t_91f4bb1b524885 11-18
+internal/units/user/manifest.go
+  s_a5ae08ab9db009::t_45c1d0345ca27d 18
+  s_a5ae08ab9db009::t_91f4bb1b524885 20-27
+README.md
+  s_a5ae08ab9db009::t_b5103b26a9034d 33-34,59-65
+cmd/voxagent/testdata/units.golden.json
+  s_a5ae08ab9db009::t_45c1d0345ca27d 17-23,69-75,116-122,200-206,250-256,323-329,396-402,420-426,444-450,471-477,518-524,591-597,615-621,639-645,668-674,757-763
+internal/units/augeas_core/manifest.go
+  s_a5ae08ab9db009::t_91f4bb1b524885 30-36
+internal/units/augeasproviders_sysctl/manifest.go
+  s_a5ae08ab9db009::t_91f4bb1b524885 24-30
+  s_a5ae08ab9db009::t_45c1d0345ca27d 22
+internal/units/group/manifest.go
+  s_a5ae08ab9db009::t_45c1d0345ca27d 16
+  s_a5ae08ab9db009::t_91f4bb1b524885 18-25
+internal/units/augeasproviders_core/manifest.go
+  s_a5ae08ab9db009::t_91f4bb1b524885 16-22
+internal/units/host_core/manifest.go
+  s_a5ae08ab9db009::t_45c1d0345ca27d 26
+  s_a5ae08ab9db009::t_91f4bb1b524885 28-34
+docs/maintainers/units.md
+  s_a5ae08ab9db009::t_b5103b26a9034d 88,197,214,220-226
+  s_a5ae08ab9db009::t_fbc0ce10bce15b 219
+internal/units/cron_core/manifest.go
+  s_a5ae08ab9db009::t_45c1d0345ca27d 27
+  s_a5ae08ab9db009::t_91f4bb1b524885 29-35
+internal/unit/unit.go
+  s_a5ae08ab9db009::t_91f4bb1b524885 19-28,31-33
+  s_a5ae08ab9db009::t_9f4e2377fe3a29 34
+internal/units/exec/manifest.go
+  s_a5ae08ab9db009::t_91f4bb1b524885 12-19
+internal/units/file/manifest.go
+  s_a5ae08ab9db009::t_91f4bb1b524885 12-19
+internal/units/sshkeys_core/manifest.go
+  s_a5ae08ab9db009::t_45c1d0345ca27d 31
+  s_a5ae08ab9db009::t_91f4bb1b524885 33-39
+internal/units/augeasproviders_ssh/manifest.go
+  s_a5ae08ab9db009::t_91f4bb1b524885 42-48
+internal/units/mount_core/manifest.go
+  s_a5ae08ab9db009::t_91f4bb1b524885 31-37
+  s_a5ae08ab9db009::t_45c1d0345ca27d 29
+internal/units/concat/manifest.go
+  s_a5ae08ab9db009::t_91f4bb1b524885 14-20
+internal/units/units_test.go
+  s_a5ae08ab9db009::t_690821a2d77521 21,329-332,344-351,376-378
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "1e43ca2fff12e52bed9f580d9217a3a473b9a103",
+  "prompts": {},
+  "sessions": {
+    "s_a5ae08ab9db009": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2c38b644-c932-4d6d-958b-f95b9f72ad0a",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "peiriannydd <peiriannydd@gmail.com>"
+    }
+  }
+}
