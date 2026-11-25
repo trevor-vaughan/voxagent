@@ -1,0 +1,21 @@
+docs/dev/testing.md
+  s_899ccb442a62f2::t_517458476100ac 18,30-32,48-50
+scripts/demo.sh
+  s_899ccb442a62f2::t_057e603b038a15 16
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "92ba579ff07f0f259d0c30a7d6b53f1d68770295",
+  "prompts": {},
+  "sessions": {
+    "s_899ccb442a62f2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "48b19532-1b8b-4ab5-8e84-363b4469ce06",
+        "model": "unknown"
+      },
+      "human_author": "LLM (riotbox) <llm@riotbox>"
+    }
+  }
+}
