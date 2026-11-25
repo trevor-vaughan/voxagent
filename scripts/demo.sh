@@ -13,6 +13,8 @@
 #
 # Requires on PATH: go, vhs, ttyd, ffmpeg, jq (the tape uses jq on screen).
 set -euo pipefail
+# Required by the dev:noclobber check in every script under scripts/.
+set +C
 
 if [[ $# -ne 3 ]]; then
 	echo "usage: demo.sh <root_dir> <tape> <output_gif>" >&2
