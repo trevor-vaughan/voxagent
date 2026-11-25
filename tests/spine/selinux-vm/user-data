@@ -26,6 +26,6 @@ runcmd:
     - -ec
     - |
       curl -fsSL -o /root/openvox8-release.rpm https://yum.voxpupuli.org/openvox8-release-el-10.noarch.rpm
-      echo 'f0615f3bc0d5f1ec1740f794abfe8da545519dba96d88dfcd945a2032798df3a  /root/openvox8-release.rpm' | sha256sum -c -
+      echo 'b01e0f50eca222e2efe0e1b249cb52f4151221cbca8064633ec849f211c1badb  /root/openvox8-release.rpm' | sha256sum -c -
       dnf -y install /root/openvox8-release.rpm
       dnf -y install openvox-agent-8.29.0 libselinux-utils dosfstools

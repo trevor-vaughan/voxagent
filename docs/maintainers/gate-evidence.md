@@ -838,7 +838,7 @@ This host has no `/dev/kvm`, and RHEL's `qemu-kvm` omits TCG, so the
 gate emulates a VM with Fedora's QEMU (`-accel tcg`), from the image
 `tests/spine/selinux-vm/Containerfile` builds (Fedora 44, pinned by digest). The
 guest is the CentOS Stream 10 GenericCloud image
-`CentOS-Stream-GenericCloud-10-20260930.0.x86_64.qcow2`, pinned by the SHA256
+`CentOS-Stream-GenericCloud-10-20261124.0.x86_64.qcow2`, pinned by the SHA256
 CentOS publishes and verified on every run. It is downloaded once to
 `${XDG_CACHE_HOME:-~/.cache}/voxagent/selinux-vm` (override with
 `SELINUX_VM_CACHE`), outside the tree because it is 1 GiB; each run writes only

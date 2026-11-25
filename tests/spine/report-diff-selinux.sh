@@ -43,9 +43,9 @@ EVIDENCE="${EVIDENCE:-$ROOT/.test-output/spine}"
 IMAGE="${IMAGE:-localhost/voxagent-selinux-vm:latest}"
 CACHE="${SELINUX_VM_CACHE:-${XDG_CACHE_HOME:-$HOME/.cache}/voxagent/selinux-vm}"
 
-VM_IMAGE=CentOS-Stream-GenericCloud-10-20260930.0.x86_64.qcow2
+VM_IMAGE=CentOS-Stream-GenericCloud-10-20261124.0.x86_64.qcow2
 VM_IMAGE_URL="https://cloud.centos.org/centos/10-stream/x86_64/images/$VM_IMAGE"
-VM_IMAGE_SHA256=42bd0c8f58574c25a549f134887936347d3e38e3401a20388fad532db1a243c0
+VM_IMAGE_SHA256=66de9ff6dbfee457c672c005778d8b6e37c6e01260af31135b6830e02613889c
 
 # user-data installs exactly this version; reading it back is the tripwire for
 # a repository that served something else.
