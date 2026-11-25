@@ -59,10 +59,11 @@ jobs:
       # -race is refused.
       # rubygem-racc: Puppet's parser needs racc, a bundled gem the dnf ruby omits;
       # the RPM avoids building the gem's C extension (needs ruby-devel, make).
+      # diffutils: the spine gates diff their outputs; the image has no diff.
       - name: Install system packages
         run: |
           dnf install -y epel-release
-          dnf install -y git tar gzip ruby rubygem-racc ShellCheck gcc
+          dnf install -y git tar gzip ruby rubygem-racc ShellCheck gcc diffutils
           git config --global --add safe.directory "$GITHUB_WORKSPACE"
 
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
