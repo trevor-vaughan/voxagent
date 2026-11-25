@@ -1,20 +1,19 @@
 .github/workflows/ci.yml
-  s_2b7f143b353719::t_35481474fc0657 59,126-127,130
-  s_2b7f143b353719::t_309d06550c0980 54-55
+  s_7a274cf530949f::t_25478d1e4e0eed 54-55,59,126-127,130
 ---
 {
   "schema_version": "authorship/3.0.0",
-  "git_ai_version": "1.7.6",
+  "git_ai_version": "1.7.5",
   "base_commit_sha": "ef2c7d178db2f9adf95c834aa4ee5de858f7a37b",
   "prompts": {},
   "sessions": {
-    "s_2b7f143b353719": {
+    "s_7a274cf530949f": {
       "agent_id": {
         "tool": "claude",
-        "id": "c3ba65cb-58a7-4ff3-b82d-d2412fcfc260",
-        "model": "claude-sonnet-5-5"
+        "id": "s_7a274cf530949f",
+        "model": "unknown"
       },
-      "human_author": null
+      "human_author": "Trevor Vaughan <peiriannydd@gmail.com>"
     }
   }
 }
