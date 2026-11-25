@@ -1,0 +1,52 @@
+docs/dev/testing.md
+  s_ed53e58861c9b4::t_7f9a4efeca24a6 15-17,19-29,33-35,39-41
+  s_899ccb442a62f2::t_517458476100ac 18,30-32,48-50
+  s_ed53e58861c9b4::t_6c32e43f2f5780 42-43
+  s_ed53e58861c9b4::t_af396f75d36c1b 44-47,51-56
+  s_ed53e58861c9b4::t_37be95f51eb0ec 36-38
+.github/workflows/ci.yml
+  s_ed53e58861c9b4::t_4472f74538e4d0 102-130
+  s_ed53e58861c9b4::t_d9c641f3dbcb2c 79-92
+  s_ed53e58861c9b4::t_d3d06a4ced8adc 64
+  s_ed53e58861c9b4::t_8d857bde6261d6 10
+  s_ed53e58861c9b4::t_596a2271744cc2 1-4,12-63,65-78,93-101,131-152,157-174
+  s_ed53e58861c9b4::t_35bb562700e488 7-9,11
+  s_ed53e58861c9b4::t_a6e8dde8691225 5-6
+  s_ed53e58861c9b4::t_57282dbd9025f4 153-156
+.github/workflows/dependabot-auto-merge.yml
+  s_ed53e58861c9b4::t_44a4a77b4fdeff 25-32
+  s_ed53e58861c9b4::t_670fb1bdd94173 1-24,33-48
+.github/workflows/gates-containers.yml
+  s_ed53e58861c9b4::t_739108e1dde80f 9-12
+  s_ed53e58861c9b4::t_feb17c9374d1dd 1-8,13-91
+.github/dependabot.yml
+  s_ed53e58861c9b4::t_1ef8aa6f72fff2 1-8,14-16
+  s_ed53e58861c9b4::t_9a248212c86012 9-13
+scripts/demo.sh
+  s_899ccb442a62f2::t_057e603b038a15 16
+  s_ed53e58861c9b4::t_81a5c689fa4789 17
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4f2f44962bd225e7d9ea191faff29398aed2cbca",
+  "prompts": {},
+  "sessions": {
+    "s_899ccb442a62f2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "48b19532-1b8b-4ab5-8e84-363b4469ce06",
+        "model": "unknown"
+      },
+      "human_author": "LLM (riotbox) <llm@riotbox>"
+    },
+    "s_ed53e58861c9b4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "520111c0-5c41-4383-a5e3-344a85bd0248",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "LLM (riotbox) <llm@riotbox>"
+    }
+  }
+}
