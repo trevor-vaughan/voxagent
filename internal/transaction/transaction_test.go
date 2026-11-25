@@ -1193,6 +1193,45 @@ func TestEveryFailedPropertyLogsAtTheResourceAndAtPuppet(t *testing.T) {
 	}
 }
 
+// The Puppet-sourced log precedes the resource/property one. Ruby's
+// resource_harness.rb:149 Puppet.log_exception runs in the rescue, while the
+// event's send_log runs later, in the ensure clause at :172. On the ensure
+// path property.rb:496's log_exception fires earlier still, inside the sync.
+// Measured on openvox 8.34.0: both "Error: Could not set ..." lines print
+// before ".../ensure: change from ... failed: ...", and for a failed owner
+// "Error: Could not find user ..." prints before ".../owner: change from".
+func TestFailedPropertyLogsAtPuppetBeforeTheResource(t *testing.T) {
+	for _, tc := range []struct {
+		shape    string
+		property string
+	}{
+		{"ensure", "ensure"},
+		{"mixed", "owner"},
+	} {
+		t.Run(tc.shape, func(t *testing.T) {
+			var applied, refreshed []string
+			tx := txWithFailChange(&applied, &refreshed,
+				map[string]string{"File[/f]": tc.shape})
+
+			c := &catalog.Catalog{Resources: []catalog.Resource{
+				{Type: "File", Title: "/f", File: "/etc/site.pp", Line: 6},
+			}}
+			rep := runCatalog(t, tx, c)
+
+			var sources []string
+			for _, l := range rep.Logs {
+				if l.Level == "err" {
+					sources = append(sources, l.Source)
+				}
+			}
+			want := []string{"Puppet", "/File[/f]/" + tc.property}
+			if !slices.Equal(sources, want) {
+				t.Errorf("err log sources = %q, want %q", sources, want)
+			}
+		})
+	}
+}
+
 // add_event credits its two counters differently, and conflating them is
 // invisible until a resource has both kinds of event.
 //
@@ -3349,6 +3388,7 @@ func TestPropertyNoticesPrecedeTheChangeLine(t *testing.T) {
 		{"propertynoticesfail", []string{
 			"notice /Exec[e] path notice",
 			"notice /Exec[e]/returns a",
+			"err Puppet 'x' returned 2 instead of one of [0]",
 			"err /Exec[e]/returns change from 'notrun' to ['0'] failed: 'x' returned 2 instead of one of [0]",
 		}},
 	} {

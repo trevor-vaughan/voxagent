@@ -741,12 +741,11 @@ func (w *walk) apply(provider ral.Provider, s subject, propagate bool) result {
 					Status: "failure",
 					Time:   now,
 				})
-				// event.send_log, at the resource path PLUS the property --
-				// the convention the success path below already uses.
-				w.rep.Log("err", source+"/"+ch.Property, message)
 				// resource_harness.rb:149 Puppet.log_exception(detail) fires
 				// for EVERY property failure, at source "Puppet", carrying the
-				// detail alone. For a non-ensure property detail.original is
+				// detail alone. It runs in the rescue, so it precedes the
+				// event's send_log, which runs in the ensure clause at :172.
+				// For a non-ensure property detail.original is
 				// nil, so format_exception yields detail.to_s with no
 				// "Wrapped exception:" line -- which is exactly ch.Err.
 				//
@@ -759,8 +758,12 @@ func (w *walk) apply(provider ral.Provider, s subject, propagate bool) result {
 				// `original` and the message embeds a newline and a "Wrapped
 				// exception:" line. That chain rendering is deliberately not
 				// reproduced: Go has no analogue, and fabricating the text
-				// would assert nothing.
+				// would assert nothing. Both Ruby logs precede send_log: :496
+				// fires inside the sync, :149 in its rescue.
 				w.rep.Log("err", "Puppet", ch.Err.Error())
+				// event.send_log, at the resource path PLUS the property --
+				// the convention the success path below already uses.
+				w.rep.Log("err", source+"/"+ch.Property, message)
 				status.Failed = true
 				continue
 			}
