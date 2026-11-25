@@ -1,0 +1,25 @@
+.github/workflows/ci.yml
+  s_9054d7b8cee5bb::t_27f39cfc0d3e32 62,66
+tests/spine/report-diff.sh
+  s_9054d7b8cee5bb::t_f52226e4fca29c 204-206
+tests/spine/report-diff-extension.sh
+  s_9054d7b8cee5bb::t_1af0dbdf137b7e 196-198
+tests/spine/derive-run-to-run.sh
+  s_9054d7b8cee5bb::t_a5285df1737b33 69-71
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "75ce1e6a9407dc0d9c385ad50edd0d5fdff8f5e6",
+  "prompts": {},
+  "sessions": {
+    "s_9054d7b8cee5bb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3c2dfda2-1e1b-47cb-905a-9bbbe62f4baa",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "LLM (riotbox) <llm@riotbox>"
+    }
+  }
+}
