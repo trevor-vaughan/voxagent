@@ -1,0 +1,21 @@
+tests/spine/report-diff-selinux.sh
+  s_9b3387a816663f::t_b20776f69e0d3d 46,48
+docs/maintainers/gate-evidence.md
+  s_9b3387a816663f::t_b20776f69e0d3d 841
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "b73fe5e16e479bf63091cf01a835731fbfaca0c6",
+  "prompts": {},
+  "sessions": {
+    "s_9b3387a816663f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "59ec5dca-ddb2-42a6-9b76-d9787d71f2ce",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "LLM (riotbox) <llm@riotbox>"
+    }
+  }
+}
