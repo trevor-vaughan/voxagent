@@ -1,0 +1,37 @@
+.github/workflows/gates-containers.yml
+  s_ed53e58861c9b4::t_739108e1dde80f 9-12
+  s_ed53e58861c9b4::t_feb17c9374d1dd 1-8,13-91
+scripts/demo.sh
+  s_ed53e58861c9b4::t_81a5c689fa4789 16
+.github/dependabot.yml
+  s_ed53e58861c9b4::t_1ef8aa6f72fff2 1-11
+docs/dev/testing.md
+  s_ed53e58861c9b4::t_7f9a4efeca24a6 15-34,38-40
+  s_ed53e58861c9b4::t_6c32e43f2f5780 41-42
+  s_ed53e58861c9b4::t_37be95f51eb0ec 35-37
+.github/workflows/ci.yml
+  s_ed53e58861c9b4::t_57282dbd9025f4 153-156
+  s_ed53e58861c9b4::t_d3d06a4ced8adc 64
+  s_ed53e58861c9b4::t_35bb562700e488 7-9,11
+  s_ed53e58861c9b4::t_4472f74538e4d0 102-130
+  s_ed53e58861c9b4::t_d9c641f3dbcb2c 79-92
+  s_ed53e58861c9b4::t_596a2271744cc2 1-4,12-63,65-78,93-101,131-152,157-174
+  s_ed53e58861c9b4::t_8d857bde6261d6 10
+  s_ed53e58861c9b4::t_a6e8dde8691225 5-6
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "eee407280325bf979b7827278de1a4c22cd784a3",
+  "prompts": {},
+  "sessions": {
+    "s_ed53e58861c9b4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "520111c0-5c41-4383-a5e3-344a85bd0248",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "LLM (riotbox) <llm@riotbox>"
+    }
+  }
+}
