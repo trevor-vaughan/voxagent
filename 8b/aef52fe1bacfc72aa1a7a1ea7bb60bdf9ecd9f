@@ -1,0 +1,25 @@
+internal/transaction/transaction_test.go
+  s_9b3387a816663f::t_c2d46017684fb5 1196-1226,1228-1234
+  s_9b3387a816663f::t_8229dda0cb5e6a 1227
+  s_9b3387a816663f::t_252b6d17c621de 3391
+internal/transaction/transaction.go
+  s_9b3387a816663f::t_715e4bcaf67209 746
+  s_9b3387a816663f::t_af4816a6d5197d 761-762,764-766
+  s_9b3387a816663f::t_4227d8562ce66e 747-748
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8baef52fe1bacfc72aa1a7a1ea7bb60bdf9ecd9f",
+  "prompts": {},
+  "sessions": {
+    "s_9b3387a816663f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "59ec5dca-ddb2-42a6-9b76-d9787d71f2ce",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "LLM (riotbox) <llm@riotbox>"
+    }
+  }
+}
