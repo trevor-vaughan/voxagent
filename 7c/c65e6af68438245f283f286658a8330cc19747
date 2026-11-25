@@ -1,0 +1,21 @@
+.github/workflows/dependabot-auto-merge.yml
+  s_ed53e58861c9b4::t_44a4a77b4fdeff 25-32
+docs/dev/testing.md
+  s_ed53e58861c9b4::t_249160ef465662 47
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "7cc65e6af68438245f283f286658a8330cc19747",
+  "prompts": {},
+  "sessions": {
+    "s_ed53e58861c9b4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "520111c0-5c41-4383-a5e3-344a85bd0248",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "LLM (riotbox) <llm@riotbox>"
+    }
+  }
+}
