@@ -1,0 +1,271 @@
+tests/spine/inifile/cases/setting-utf8-valid/files
+  s_324b42d9c67464::t_08f842a11a5b07 1-2
+tests/spine/inifile/cases/setting-sensitive-update/seed.sh
+  s_324b42d9c67464::t_08f842a11a5b07 1
+tests/spine/inifile/cases/setting-650-create-update/files
+  s_324b42d9c67464::t_08f842a11a5b07 1
+tests/spine/inifile/g5.sh
+  s_324b42d9c67464::t_5afbcbe3de922e 1-303,305-351
+  s_324b42d9c67464::t_37677fcdbbd20d 304
+tests/spine/inifile/cases/section-create/module
+  s_324b42d9c67464::t_08f842a11a5b07 1
+tests/spine/inifile/cases/subsetting-sensitive/site.pp
+  s_324b42d9c67464::t_08f842a11a5b07 1
+tests/spine/inifile/cases/refreshonly-only-notifier/seed.sh
+  s_324b42d9c67464::t_08f842a11a5b07 1
+tests/spine/inifile/cases/invalid-utf8/seed.sh
+  s_324b42d9c67464::t_08f842a11a5b07 1-2
+tests/spine/inifile/cases/section-remove-nonempty-and-custom/module
+  s_324b42d9c67464::t_08f842a11a5b07 1
+tests/spine/inifile/cases/subsetting-delete-if-empty/seed.sh
+  s_324b42d9c67464::t_08f842a11a5b07 1
+tests/spine/inifile/cases/refreshonly-absent-missing-section/seed.sh
+  s_324b42d9c67464::t_08f842a11a5b07 1
+tests/spine/inifile/cases/force-new-false/files
+  s_324b42d9c67464::t_08f842a11a5b07 1
+tests/spine/inifile/cases/refreshonly-absent-present/files
+  s_324b42d9c67464::t_08f842a11a5b07 1-2
+tests/spine/inifile/cases/setting-absent-insync/site.pp
+  s_324b42d9c67464::t_08f842a11a5b07 1-2
+tests/spine/inifile/cases/setting-sensitive-update/files
+  s_324b42d9c67464::t_08f842a11a5b07 1
+tests/spine/inifile/cases/refreshonly-notifier/site.pp
+  s_324b42d9c67464::t_08f842a11a5b07 1-3
+tests/spine/inifile/cases/section-insync/files
+  s_324b42d9c67464::t_08f842a11a5b07 1
+tests/spine/inifile/cases/setting-sensitive/site.pp
+  s_324b42d9c67464::t_08f842a11a5b07 1
+tests/spine/inifile/cases/setting-update/site.pp
+  s_324b42d9c67464::t_08f842a11a5b07 1
+tests/spine/inifile/cases/unwritable-ro-mount/site.pp
+  s_324b42d9c67464::t_08f842a11a5b07 1-2
+tests/spine/inifile/cases/subsetting-exact-match/site.pp
+  s_324b42d9c67464::t_08f842a11a5b07 1-3
+tests/spine/inifile/cases/setting-sensitive/files
+  s_324b42d9c67464::t_08f842a11a5b07 1
+tests/spine/inifile/cases/two-settings-one-file/files
+  s_324b42d9c67464::t_08f842a11a5b07 1
+tests/spine/inifile/cases/section-create/files
+  s_324b42d9c67464::t_08f842a11a5b07 1
+tests/spine/inifile/cases/unwritable-dir-at-path/site.pp
+  s_324b42d9c67464::t_08f842a11a5b07 1
+tests/spine/inifile/cases/subsetting-quote-char/seed.sh
+  s_324b42d9c67464::t_08f842a11a5b07 1
+tests/spine/inifile/cases/unreadable-chmod/seed.sh
+  s_324b42d9c67464::t_08f842a11a5b07 1
+tests/spine/inifile/cases/subsetting-exact-match/files
+  s_324b42d9c67464::t_08f842a11a5b07 1
+tests/spine/inifile/cases/subsetting-absent-no-delete-if-empty/seed.sh
+  s_324b42d9c67464::t_08f842a11a5b07 1
+tests/spine/inifile/cases/subsetting-sensitive/files
+  s_324b42d9c67464::t_08f842a11a5b07 1
+tests/spine/inifile/cases/section-remove-nonempty-and-custom/files
+  s_324b42d9c67464::t_08f842a11a5b07 1
+tests/spine/inifile/cases/subsetting-empty-value-exists/files
+  s_324b42d9c67464::t_08f842a11a5b07 1
+tests/spine/inifile/cases/section-insync/site.pp
+  s_324b42d9c67464::t_08f842a11a5b07 1-2
+tests/spine/inifile/cases/section-insync/seed.sh
+  s_324b42d9c67464::t_08f842a11a5b07 1
+tests/spine/inifile/cases/subsetting-quote-char/files
+  s_324b42d9c67464::t_08f842a11a5b07 1
+tests/spine/inifile/cases/invalid-utf8/files
+  s_324b42d9c67464::t_08f842a11a5b07 1-2
+tests/spine/inifile/cases/subsetting-delete-if-empty/site.pp
+  s_324b42d9c67464::t_08f842a11a5b07 1-2
+tests/spine/inifile/cases/subsetting-create-change-remove/files
+  s_324b42d9c67464::t_08f842a11a5b07 1
+tests/spine/inifile/cases/d105-unpatched-insync/files
+  s_324b42d9c67464::t_08f842a11a5b07 1
+tests/spine/inifile/cases/setting-section-only/seed.sh
+  s_324b42d9c67464::t_08f842a11a5b07 1
+tests/spine/inifile/cases/setting-sensitive-update/site.pp
+  s_324b42d9c67464::t_08f842a11a5b07 1-2
+tests/spine/inifile/cases/refreshonly-absent-missing-file/files
+  s_324b42d9c67464::t_08f842a11a5b07 1-2
+tests/spine/inifile/cases/section-remove-nonempty-and-custom/site.pp
+  s_324b42d9c67464::t_08f842a11a5b07 1-2
+tests/spine/inifile/cases/setting-650-create-update/module
+  s_324b42d9c67464::t_08f842a11a5b07 1
+tests/spine/inifile/cases/section-remove/seed.sh
+  s_324b42d9c67464::t_08f842a11a5b07 1
+tests/spine/inifile/cases/setting-absent/site.pp
+  s_324b42d9c67464::t_08f842a11a5b07 1
+tests/spine/inifile/cases/section-remove/files
+  s_324b42d9c67464::t_08f842a11a5b07 1
+tests/spine/inifile/cases/setting-absent/seed.sh
+  s_324b42d9c67464::t_08f842a11a5b07 1
+tests/spine/inifile/cases/setting-absent-insync/files
+  s_324b42d9c67464::t_08f842a11a5b07 1-2
+tests/spine/inifile/cases/setting-commented-insert/seed.sh
+  s_324b42d9c67464::t_08f842a11a5b07 1
+tests/spine/inifile/cases/setting-custom-syntax/site.pp
+  s_324b42d9c67464::t_08f842a11a5b07 1-2
+tests/spine/inifile/cases/setting-duplicate-keys/files
+  s_324b42d9c67464::t_08f842a11a5b07 1
+tests/spine/inifile/cases/subsetting-delete-if-empty-false-explicit/files
+  s_324b42d9c67464::t_08f842a11a5b07 1
+tests/spine/inifile/cases/refreshonly-absent-present/site.pp
+  s_324b42d9c67464::t_08f842a11a5b07 1-2
+tests/spine/inifile/cases/setting-custom-syntax/seed.sh
+  s_324b42d9c67464::t_08f842a11a5b07 1
+tests/spine/inifile/cases/refreshonly-absent-missing-section/files
+  s_324b42d9c67464::t_08f842a11a5b07 1-2
+tests/spine/inifile/cases/subsetting-quote-char/site.pp
+  s_324b42d9c67464::t_08f842a11a5b07 1-2
+tests/spine/inifile/cases/setting-commented-insert/files
+  s_324b42d9c67464::t_08f842a11a5b07 1
+tests/spine/inifile/cases/section-insync/module
+  s_324b42d9c67464::t_08f842a11a5b07 1
+tests/spine/inifile/cases/setting-custom-syntax/files
+  s_324b42d9c67464::t_08f842a11a5b07 1
+tests/spine/inifile/cases/subsetting-empty-value-exists/site.pp
+  s_324b42d9c67464::t_08f842a11a5b07 1
+tests/spine/inifile/cases/setting-utf8-valid/seed.sh
+  s_324b42d9c67464::t_08f842a11a5b07 1-2
+tests/spine/inifile/cases/setting-create-new-file/files
+  s_324b42d9c67464::t_08f842a11a5b07 1
+tests/spine/inifile/cases/unwritable-ro-mount/podmanargs
+  s_324b42d9c67464::t_08f842a11a5b07 1
+tests/spine/inifile/cases/unwritable-dir-at-path/seed.sh
+  s_324b42d9c67464::t_08f842a11a5b07 1
+tests/spine/inifile/cases/refreshonly-absent-present/seed.sh
+  s_324b42d9c67464::t_08f842a11a5b07 1
+tests/spine/inifile/cases/refreshonly-notifier/seed.sh
+  s_324b42d9c67464::t_08f842a11a5b07 1
+tests/spine/inifile/cases/subsetting-create-change-remove/seed.sh
+  s_324b42d9c67464::t_08f842a11a5b07 1
+tests/spine/inifile/cases/setting-update/files
+  s_324b42d9c67464::t_08f842a11a5b07 1
+tests/spine/inifile/cases/setting-650-create-update/seed.sh
+  s_324b42d9c67464::t_08f842a11a5b07 1
+tests/spine/simp/lib.sh
+  s_324b42d9c67464::t_679472a6346f52 264-303
+tests/spine/inifile/cases/setting-commented-insert/site.pp
+  s_324b42d9c67464::t_08f842a11a5b07 1
+tests/spine/inifile/cases/two-settings-one-file/site.pp
+  s_324b42d9c67464::t_08f842a11a5b07 1-2
+tests/spine/inifile/cases/unreadable-chmod/site.pp
+  s_324b42d9c67464::t_08f842a11a5b07 1
+tests/spine/inifile/cases/setting-duplicate-keys/site.pp
+  s_324b42d9c67464::t_08f842a11a5b07 1
+tests/spine/inifile/cases/invalid-utf8/site.pp
+  s_324b42d9c67464::t_08f842a11a5b07 1-2
+tests/spine/inifile/cases/refreshonly-notifier/files
+  s_324b42d9c67464::t_08f842a11a5b07 1
+tests/spine/inifile/cases/subsetting-delete-if-empty/files
+  s_324b42d9c67464::t_08f842a11a5b07 1
+tests/spine/inifile/cases/subsetting-absent-no-delete-if-empty/site.pp
+  s_324b42d9c67464::t_08f842a11a5b07 1
+tests/spine/inifile/cases/subsetting-absent-no-delete-if-empty/files
+  s_324b42d9c67464::t_08f842a11a5b07 1
+tests/spine/inifile/cases/subsetting-create-change-remove/site.pp
+  s_324b42d9c67464::t_08f842a11a5b07 1-3
+tests/spine/inifile/cases/setting-update/seed.sh
+  s_324b42d9c67464::t_08f842a11a5b07 1
+tests/spine/inifile/cases/setting-section-only/site.pp
+  s_324b42d9c67464::t_08f842a11a5b07 1-2
+tests/spine/inifile/cases/subsetting-delete-if-empty-false-explicit/seed.sh
+  s_324b42d9c67464::t_08f842a11a5b07 1
+tests/spine/inifile/cases/subsetting-650-create-change-remove/seed.sh
+  s_324b42d9c67464::t_08f842a11a5b07 1
+tests/spine/inifile/cases/section-remove/site.pp
+  s_324b42d9c67464::t_08f842a11a5b07 1
+tests/spine/inifile/cases/d105-unpatched-outofsync/seed.sh
+  s_324b42d9c67464::t_08f842a11a5b07 1
+tests/spine/inifile/cases/subsetting-650-create-change-remove/files
+  s_324b42d9c67464::t_08f842a11a5b07 1
+tests/spine/inifile/cases/d105-unpatched-outofsync/files
+  s_324b42d9c67464::t_08f842a11a5b07 1
+tests/spine/inifile/cases/unwritable-ro-mount/rodir/m.ini
+  s_324b42d9c67464::t_08f842a11a5b07 1-2
+tests/spine/inifile/cases/setting-absent/files
+  s_324b42d9c67464::t_08f842a11a5b07 1
+tests/spine/inifile/cases/missing-parent/site.pp
+  s_324b42d9c67464::t_08f842a11a5b07 1
+tests/spine/inifile/cases/subsetting-empty-value-exists/seed.sh
+  s_324b42d9c67464::t_08f842a11a5b07 1
+tests/spine/inifile/cases/setting-650-create-update/site.pp
+  s_324b42d9c67464::t_08f842a11a5b07 1-3
+tests/spine/inifile/cases/d105-unpatched-insync/site.pp
+  s_324b42d9c67464::t_08f842a11a5b07 1-2
+tests/spine/inifile/cases/subsetting-insert-types/seed.sh
+  s_324b42d9c67464::t_08f842a11a5b07 1
+tests/spine/inifile/cases/force-new-false/seed.sh
+  s_324b42d9c67464::t_08f842a11a5b07 1
+tests/spine/inifile/cases/subsetting-insert-types/files
+  s_324b42d9c67464::t_08f842a11a5b07 1
+tests/spine/inifile/cases/d105-unpatched-insync/seed.sh
+  s_324b42d9c67464::t_08f842a11a5b07 1
+fleet/bin/vendor.sh
+  s_324b42d9c67464::t_4da4e36160b95f 112
+tests/spine/inifile/cases/subsetting-650-create-change-remove/module
+  s_324b42d9c67464::t_08f842a11a5b07 1
+tests/spine/inifile/cases/setting-utf8-valid/site.pp
+  s_324b42d9c67464::t_08f842a11a5b07 1-2
+tests/spine/inifile/cases/missing-parent/files
+  s_324b42d9c67464::t_08f842a11a5b07 1
+tests/spine/report-diff-container.sh
+  s_324b42d9c67464::t_5afbcbe3de922e 253-254,309,1048-1050
+  s_324b42d9c67464::t_37677fcdbbd20d 46-50
+  s_324b42d9c67464::t_d128cbd2316e00 1051
+tests/spine/inifile/cases/subsetting-insert-types/site.pp
+  s_324b42d9c67464::t_4e76a70184586e 5
+  s_324b42d9c67464::t_08f842a11a5b07 1-4
+tests/spine/inifile/cases/unreadable-chmod/files
+  s_324b42d9c67464::t_08f842a11a5b07 1
+tests/spine/inifile/cases/section-create/seed.sh
+  s_324b42d9c67464::t_08f842a11a5b07 1
+tests/spine/inifile/cases/section-remove/module
+  s_324b42d9c67464::t_08f842a11a5b07 1
+tests/spine/inifile/cases/d105-unpatched-outofsync/site.pp
+  s_324b42d9c67464::t_08f842a11a5b07 1
+tests/spine/inifile/cases/refreshonly-absent-missing-section/site.pp
+  s_324b42d9c67464::t_08f842a11a5b07 1-2
+tests/spine/inifile/cases/setting-absent-insync/seed.sh
+  s_324b42d9c67464::t_08f842a11a5b07 1
+tests/spine/inifile/cases/setting-duplicate-keys/seed.sh
+  s_324b42d9c67464::t_08f842a11a5b07 1
+tests/spine/inifile/cases/section-remove-nonempty-and-custom/seed.sh
+  s_324b42d9c67464::t_08f842a11a5b07 1
+tests/spine/inifile/cases/unwritable-dir-at-path/files
+  s_324b42d9c67464::t_08f842a11a5b07 1
+tests/spine/inifile/cases/subsetting-delete-if-empty-false-explicit/site.pp
+  s_324b42d9c67464::t_08f842a11a5b07 1
+tests/spine/inifile/cases/refreshonly-only-notifier/site.pp
+  s_324b42d9c67464::t_08f842a11a5b07 1-2
+tests/spine/inifile/cases/setting-section-only/files
+  s_324b42d9c67464::t_08f842a11a5b07 1-2
+tests/spine/inifile/cases/subsetting-exact-match/seed.sh
+  s_324b42d9c67464::t_08f842a11a5b07 1
+tests/spine/inifile/cases/subsetting-650-create-change-remove/site.pp
+  s_324b42d9c67464::t_08f842a11a5b07 1-3
+tests/spine/inifile/cases/setting-create-new-file/site.pp
+  s_324b42d9c67464::t_08f842a11a5b07 1
+tests/spine/inifile/cases/unwritable-ro-mount/files
+  s_324b42d9c67464::t_08f842a11a5b07 1-2
+tests/spine/inifile/cases/force-new-false/site.pp
+  s_324b42d9c67464::t_08f842a11a5b07 1-2
+tests/spine/inifile/cases/refreshonly-absent-missing-file/site.pp
+  s_324b42d9c67464::t_08f842a11a5b07 1-2
+tests/spine/inifile/cases/refreshonly-only-notifier/files
+  s_324b42d9c67464::t_08f842a11a5b07 1-2
+tests/spine/inifile/cases/section-create/site.pp
+  s_324b42d9c67464::t_08f842a11a5b07 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "4d7db020e609a93a56b056419026ff8d2de06b5d",
+  "prompts": {},
+  "sessions": {
+    "s_324b42d9c67464": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d1c9d111-fc57-44dc-89e3-234e7699fbc6",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "LLM (riotbox) <llm@riotbox>"
+    }
+  }
+}
