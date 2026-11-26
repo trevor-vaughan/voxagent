@@ -1,0 +1,26 @@
+internal/units/tidy/tidy_generate_test.go
+  s_97f2bd43ca07f6::t_93463cbf933e62 1-477,481,485-486,488-493,496-498,500,502-503,505-551
+  s_97f2bd43ca07f6::t_f1bbcdd63deff4 478-480,482-484,487,494-495,499,501,504
+internal/units/tidy/tidy_generate.go
+  s_97f2bd43ca07f6::t_a8f3ea6fb9d88a 9,126-127,406,411-419
+  s_97f2bd43ca07f6::t_2b0ae6cf0e50fd 1-8,10-125,128-270,274,278-281,287,293-303,307-405,407-410,420-444
+  s_97f2bd43ca07f6::t_9f2883a2595f15 271-273,275-277,282-286,288-292,304-306
+cmd/voxagent/tidy_test.go
+  s_97f2bd43ca07f6::t_8cb6fdd4bc3ef6 1-82
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "fe8ecd89c5a777075b3b04e83f6b0b6a10d4e7e9",
+  "prompts": {},
+  "sessions": {
+    "s_97f2bd43ca07f6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c9967bb3-7e0d-43bf-9da0-78c58bffe4f1",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "LLM (riotbox) <llm@riotbox>"
+    }
+  }
+}
