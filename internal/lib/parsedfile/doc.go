@@ -14,5 +14,5 @@
 //
 // The package is a library: it knows nothing of catalogs or units. Patterns
 // are Go regexp (RE2); never write \s or \S in one, as Ruby's \s includes \v
-// and RE2's does not. Use Space and NotSpace.
+// and RE2's does not. Use rubyregexp.Space and NotSpace.
 package parsedfile

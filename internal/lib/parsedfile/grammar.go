@@ -8,6 +8,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/voxagent/voxagent/internal/lib/rubyregexp"
 	"github.com/voxagent/voxagent/internal/lib/rubyvalue"
 )
 
@@ -110,7 +111,7 @@ type LineType struct {
 // reservedFields are the names a record type cannot use as fields (fp:39).
 var reservedFields = []string{"record_type", "target", "on_disk"}
 
-var defaultSeparator = regexp.MustCompile(Space + `+`)
+var defaultSeparator = regexp.MustCompile(rubyregexp.Space + `+`)
 
 type lineType struct {
 	LineType

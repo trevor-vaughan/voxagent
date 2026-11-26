@@ -13,6 +13,8 @@ import (
 	"time"
 
 	"github.com/voxagent/voxagent/internal/lib/parsedfile"
+	"github.com/voxagent/voxagent/internal/lib/rubyregexp"
+	"github.com/voxagent/voxagent/internal/lib/rubyvalue"
 	"github.com/voxagent/voxagent/internal/runlog"
 )
 
@@ -33,17 +35,17 @@ const (
 
 // The crontab grammar's patterns (prov:9-98). A grammar pattern sees one line,
 // which holds no "\n", so RE2's text anchors equal Ruby's line anchors; \s is
-// parsedfile.Space and \S parsedfile.NotSpace (spec 3.4).
+// rubyregexp.Space and \S rubyregexp.NotSpace (spec 3.4).
 var (
-	commentLine     = regexp.MustCompile(`^` + parsedfile.Space + `*#`)                                                                                                                                   // prov:9
-	puppetNameLine  = regexp.MustCompile(`Puppet Name: (.+)` + parsedfile.Space + `*$`)                                                                                                                   // prov:10
-	blankLine       = regexp.MustCompile(`^` + parsedfile.Space + `*$`)                                                                                                                                   // prov:13
-	environmentText = regexp.MustCompile(`^` + parsedfile.Space + `*\w+` + parsedfile.Space + `*=`)                                                                                                       // prov:15
-	jobLine         = regexp.MustCompile(`^` + parsedfile.Space + `*(@\w+|` + strings.Repeat(parsedfile.NotSpace+`+`+parsedfile.Space+`+`, 4) + parsedfile.NotSpace + `+)` + parsedfile.Space + `+(.+)$`) // prov:34
-	specialTime     = regexp.MustCompile(`@(` + parsedfile.NotSpace + `+)`)                                                                                                                               // prov:39
-	fiveWordTime    = regexp.MustCompile(`(` + parsedfile.NotSpace + `+)` + strings.Repeat(parsedfile.Space+`+(`+parsedfile.NotSpace+`+)`, 4))                                                            // prov:47
+	commentLine     = regexp.MustCompile(`^` + rubyregexp.Space + `*#`)                                                                                                                                   // prov:9
+	puppetNameLine  = regexp.MustCompile(`Puppet Name: (.+)` + rubyregexp.Space + `*$`)                                                                                                                   // prov:10
+	blankLine       = regexp.MustCompile(`^` + rubyregexp.Space + `*$`)                                                                                                                                   // prov:13
+	environmentText = regexp.MustCompile(`^` + rubyregexp.Space + `*\w+` + rubyregexp.Space + `*=`)                                                                                                       // prov:15
+	jobLine         = regexp.MustCompile(`^` + rubyregexp.Space + `*(@\w+|` + strings.Repeat(rubyregexp.NotSpace+`+`+rubyregexp.Space+`+`, 4) + rubyregexp.NotSpace + `+)` + rubyregexp.Space + `+(.+)$`) // prov:34
+	specialTime     = regexp.MustCompile(`@(` + rubyregexp.NotSpace + `+)`)                                                                                                                               // prov:39
+	fiveWordTime    = regexp.MustCompile(`(` + rubyregexp.NotSpace + `+)` + strings.Repeat(rubyregexp.Space+`+(`+rubyregexp.NotSpace+`+)`, 4))                                                            // prov:47
 	commaSeparator  = regexp.MustCompile(`,`)
-	whitespaceRun   = regexp.MustCompile(parsedfile.Space + `+`)
+	whitespaceRun   = regexp.MustCompile(rubyregexp.Space + `+`)
 )
 
 // nativeHeader is the vixie cron header (prov:138-140), dropped from the text
@@ -348,12 +350,12 @@ func withSpoolTargets(ctx context.Context, spoolDir string, base []string) ([]st
 	}
 	dir, err := os.Open(spoolDir)
 	if err != nil {
-		return nil, errors.New(parsedfile.RubyErrno(err, "dir_initialize", spoolDir))
+		return nil, errors.New(rubyvalue.Errno(err, "dir_initialize", spoolDir))
 	}
 	defer dir.Close()
 	names, err := dir.Readdirnames(-1)
 	if err != nil {
-		return nil, errors.New(parsedfile.RubyErrno(err, "dir_initialize", spoolDir))
+		return nil, errors.New(rubyvalue.Errno(err, "dir_initialize", spoolDir))
 	}
 	targets := slices.Clone(base)
 	for _, name := range names {

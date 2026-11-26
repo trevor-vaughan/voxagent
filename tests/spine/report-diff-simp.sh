@@ -27,7 +27,10 @@
 # the default capabilities refuse `mount -o remount`, so every remount fails
 # alike on both sides. Tidy is a core type, with no files to fingerprint, and
 # is native too (tidy design §1 item 5): the catalog's Tidy resources must not
-# be among the types voxagent applies via the extension host.
+# be among the types voxagent applies via the extension host. Likewise
+# ini_setting, ini_subsetting and ini_section, against puppetlabs-inifile
+# 6.5.0's fingerprints (inifile design §1 acceptance); the pin has no
+# ini_section, which only 6.6.x ships.
 # The merged libdir holds SIMP's ssh.aug and resolv.aug in augeas/lenses, so
 # the 49 Ssh_config resources take the custom-lens path. Its Sysctl coverage
 # is mostly the failure path: rootless, the real `sysctl -w` is refused for 62
@@ -226,6 +229,9 @@ cron_core_fingerprints report-diff-simp "$WORK/libdir" || exit 2
 host_core_fingerprints report-diff-simp "$WORK/libdir" || exit 2
 mount_core_fingerprints report-diff-simp "$WORK/libdir" || exit 2
 sshkeys_core_fingerprints report-diff-simp "$WORK/libdir" || exit 2
+# Likewise puppetlabs-inifile 6.5.0, whose files route ini_setting and
+# ini_subsetting natively (inifile design §2).
+inifile_fingerprints report-diff-simp "$WORK/libdir" 6.5.0 || exit 2
 
 mkdir -p "$WORK/compile" || exit 2
 simp_boot "$COMPILER" "$IMAGE" || exit 2
@@ -407,6 +413,15 @@ fi
 if grep -E '^voxagent: [0-9]+ tidy resource\(s\) applied via extension host' \
   "$WORK/$LABEL_B/apply.out" >&2; then
   echo "report-diff-simp: voxagent applied tidy through the extension host, not natively" >&2
+  rc=1
+fi
+
+# Native inifile types: with puppetlabs-inifile 6.5.0 in the libdir the
+# catalog's Ini_setting resources must not be delegated either (inifile
+# design §1). Ini_subsetting and ini_section are named too: none may be.
+if grep -E '^voxagent: [0-9]+ ini_(setting|subsetting|section) resource\(s\) applied via extension host' \
+  "$WORK/$LABEL_B/apply.out" >&2; then
+  echo "report-diff-simp: voxagent applied an inifile type through the extension host, not natively" >&2
   rc=1
 fi
 

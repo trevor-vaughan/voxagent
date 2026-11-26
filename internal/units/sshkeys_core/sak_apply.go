@@ -257,16 +257,16 @@ func (s Sak) flushTrusted(ctx context.Context, run *parsedfile.Run, rec *parsedf
 	}
 	f, err := os.Open(target)
 	if err != nil {
-		return errors.New(parsedfile.RubyErrno(err, "rb_sysopen", target))
+		return errors.New(rubyvalue.Errno(err, "rb_sysopen", target))
 	}
 	defer f.Close()
 	// PosixUID and PosixGID bound ids to 0..4294967290, which int holds on
 	// every 64-bit platform this provider runs on (spec §0: RHEL 10).
 	if err := f.Chown(int(uid), int(gid)); err != nil {
-		return errors.New(parsedfile.RubyErrno(err, "rb_file_chown", target))
+		return errors.New(rubyvalue.Errno(err, "rb_file_chown", target))
 	}
 	if err := f.Chmod(0o600); err != nil {
-		return errors.New(parsedfile.RubyErrno(err, "rb_file_chmod", target))
+		return errors.New(rubyvalue.Errno(err, "rb_file_chmod", target))
 	}
 	return nil
 }

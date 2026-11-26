@@ -49,6 +49,12 @@ func canaryBase(typ, dir string) (title string, params map[string]any) {
 		return "voxcanary", map[string]any{"ensure": "present"}
 	case "host":
 		return "voxcanary", map[string]any{"ip": "127.0.0.1", "target": filepath.Join(dir, "hosts")}
+	case "ini_section":
+		return "voxcanary", map[string]any{"path": filepath.Join(dir, "canary.ini")}
+	case "ini_setting":
+		return "voxcanary", map[string]any{"path": filepath.Join(dir, "canary.ini"), "section": "s", "setting": "k", "value": "v"}
+	case "ini_subsetting":
+		return "voxcanary", map[string]any{"path": filepath.Join(dir, "canary.ini"), "section": "s", "setting": "k", "subsetting": "a", "value": "v"}
 	case "mount":
 		return "/mnt/voxcanary", map[string]any{"device": "/dev/null", "fstype": "ext4", "target": filepath.Join(dir, "fstab")}
 	case "notify":
@@ -88,7 +94,7 @@ func canaryBase(typ, dir string) (title string, params map[string]any) {
 // in voxagent records namevars.
 var canaryNamevars = map[string]string{
 	"augeas": "name", "ssh_config": "name", "sshd_config": "name", "sshd_config_subsystem": "name", "sysctl": "name",
-	"concat_file": "path", "concat_fragment": "name", "cron": "name", "exec": "command", "file": "path", "group": "name", "host": "name", "mount": "name",
+	"concat_file": "path", "concat_fragment": "name", "cron": "name", "exec": "command", "file": "path", "group": "name", "host": "name", "ini_section": "name", "ini_setting": "name", "ini_subsetting": "name", "mount": "name",
 	"notify": "name", "package": "name", "service": "name", "ssh_authorized_key": "name", "sshkey": "name", "tidy": "path", "user": "name",
 	"vox_conf": "name", "vox_deep": "name", "vox_die": "name", "vox_evalgen": "name", "vox_gen": "name",
 	"vox_prefetch": "name", "vox_rapi": "name", "vox_secret": "name", "vox_selfref": "name", "vox_titled": "name",
@@ -165,7 +171,7 @@ func canaryLibdir(t *testing.T) string {
 	if err := os.Remove(filepath.Join(core, "puppet", "feature", "augeas.rb")); err != nil {
 		t.Fatal(err)
 	}
-	return augeasLibdir(t, core, concatModuleLib(t, concat.Concat1001))
+	return augeasLibdir(t, core, concatModuleLib(t, concat.Concat1001), inifileModuleLib(t, "6.6.1"))
 }
 
 // TestSensitiveCanarySweep marks every parameter of every native type, one

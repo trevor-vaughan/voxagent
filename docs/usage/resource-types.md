@@ -175,6 +175,46 @@ run, removing a file below it fails instead of following the link (D-104 in
 `docs/maintainers/apply-spine.md`). The confinement starts at `path`: a
 directory above it is not protected, as under Puppet.
 
+`ini_setting`, `ini_subsetting` and `ini_section` (puppetlabs-inifile, its `ruby` provider) are applied
+natively on any host. The libdir must hold puppetlabs-inifile 6.5.0, 6.6.0 or 6.6.1 (openvox ships none, so an empty libdir sends all
+three types to the host), identified by the digests of each type's files. `ini_section` exists from
+6.6.0 on; a 6.5.0 tree with an `ini_section` in the catalog sends that type to the host. Every attribute each type
+declares is accepted. `show_diff` is accepted and has no effect: voxagent shows no diffs, so values appear as
+`[redacted sensitive information]`, as under Puppet with the global `show_diff` off. A `Sensitive` value is
+redacted as Puppet redacts it.
+
+Each type is decided on its own, and goes to the Ruby extension host when:
+
+- the libdir's files for the type match none of the three releases (the reason names the file), or its provider
+  directory holds a `.rb` other than `ruby.rb`;
+- a resource of the type sets `provider` to anything but `ruby`;
+- a resource holds a value shape the native parser does not implement;
+- a resource has a line break in `section`, `setting`, `subsetting`, a `value` element, `key_val_separator`,
+  `section_prefix`, `section_suffix`, `subsetting_separator`, `subsetting_key_val_separator` or `insert_value`
+  (the section name of an `ini_section` counts; Ruby's `^` and `$` are line anchors, not measured);
+- an `ini_setting` or `ini_subsetting` has a `key_val_separator` containing any of `\+*?()|[]{}^$-&`, which Ruby
+  interpolates into its regexps unescaped and RE2 reads differently;
+- an `ini_subsetting` has a `subsetting_separator` that is not valid UTF-8, starts with a letter, digit or
+  underscore, or has any of `\[]^-&` after its first character (Ruby reads those as regexp syntax), or
+  `insert_type => index` with an `insert_value` at or below -2^63 (a conservative bound), where Ruby raises on a
+  bignum;
+- a resource has `ensure => []`, which leaves Ruby with no ensure value to manage (not measured), or an
+  `ini_subsetting` leaves `setting` or `subsetting` unset (Ruby holds nil there, not measured).
+
+`--no-ruby` refuses a catalog that has a delegated type, and `--debug` logs why. As under Puppet, the file is read
+whole and written in place, following a symlink, and its encoding follows the agent's locale: with `LANG` unset a
+byte of 0x80 or more fails the resource (`invalid byte sequence in US-ASCII`); under a UTF-8 locale only invalid
+UTF-8 does.
+
+Where Ruby's behaviour looks like a bug, voxagent keeps it. Removing the last subsetting of a setting deletes the
+setting's line even with `delete_if_empty => false`; a CRLF file never matches the desired value, so the resource
+changes on every run; and duplicate keys in a section are collapsed into one line written where the last copy was.
+
+`ini_section` is the one deliberate difference (D-105 in `docs/maintainers/apply-spine.md`). The shipped 6.6.0 and
+6.6.1 type fails every `ini_section` with `Invalid parameter refreshonly(:refreshonly)` and changes nothing.
+voxagent instead creates, removes or leaves the section, as upstream pull request 581 intends; the type declares no
+`refreshonly`, so a resource that sets it is refused before anything is applied.
+
 `sysctl`, `ssh_config`, `sshd_config` and `sshd_config_subsystem`
 (augeasproviders_sysctl and augeasproviders_ssh) are applied natively, through
 the libaugeas 1.15.0 that openvox bundles

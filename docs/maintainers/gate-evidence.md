@@ -532,6 +532,15 @@ that voxagent's `applied via extension host` lines name none of `sysctl`,
 `/etc/modprobe.d/blacklist.conf` have equal
 content, mode and owner on both sides.
 
+The gate also checks that the merged libdir carries puppetlabs-inifile 6.5.0's eight fingerprints
+(`inifile_fingerprints` in `tests/spine/simp/lib.sh`), and that voxagent's `applied via extension host` lines name none
+of `ini_setting`, `ini_subsetting` and `ini_section`. The catalog holds 20 `Ini_setting` resources and no other
+inifile type. The inifile slice's run (2026-11-26, `task dev:report-diff-simp` in the delegated cgroup) exited 0 with
+`12782 leaves compared, 0 divergent`, `walk order agrees over 340 resources` and `reports agree outside the
+allowlist`. The gate prints no `applied via extension host` line on success, so the remaining 15 host resources
+(`docs/maintainers/not-implemented.md`) were counted from the voxagent run's lines with a throwaway instrumented copy
+of the script.
+
 The merged libdir holds SIMP's `ssh.aug`
 and `resolv.aug` in `augeas/lenses`, so the 49 `Ssh_config` resources take the
 loadpath branch. The `Sysctl` coverage is mostly the failure path: rootless, the
@@ -799,6 +808,32 @@ contract is 1.3.0's, to hold that voxagent routes that release natively.
   `compare-order`'s walk order.
 - **Native, not delegated.** voxagent's output must not name `mount` among the types `applied via extension host`.
 - **Errors.** As the cron half. The half runs after the sak half.
+
+## G5's inifile half
+
+`dev:report-diff-container` ends with an `inifile` half (`tests/spine/inifile/g5.sh`, sourced by the script). Every
+case is a directory under `tests/spine/inifile/cases/` (40): a `site.pp`, a `files` list of the paths whose end state is
+compared, an optional `seed.sh`, and optionally `module` (`650`, `661` or `661p`, default `661`), `podmanargs` and a
+`rodir/`. Most are measurements M1-M8 of the inifile plan, run verbatim; `setting-650-create-update` and
+`subsetting-650-create-change-remove` run against 6.5.0.
+
+- **Trees.** `650` is puppetlabs-inifile 6.5.0 from the SIMP gate's module cache (no `ini_section`), `661` is 6.6.1 from
+  `fleet/.vendor` (`task fleet:vendor`), `661p` is `661` with upstream PR 581's `lib/` hunk
+  (`tests/spine/inifile/581-lib.diff`) applied. Each tree's files are checked against `inifile_fingerprints`
+  (`tests/spine/simp/lib.sh`) before the half runs, and the patched `ini_section` type against its sha256 prefix.
+  voxagent always reads `650` or `661`, whose digests it routes on; Ruby reads the case's `module`, which is `661p` for the
+  `ini_section` cases so both agents apply the type as PR 581 intends (D-105).
+- **Per case.** Compiled once by the image's openvox, then applied by each agent in a fresh container: live, a rerun
+  in the same container, and `--noop` from a fresh seeded container. Each run's reports go through
+  `compare-reports` and `compare-order` against the unchanged allowlist (no entry was added for inifile; the three
+  types' `metrics.time.values.<type>.value` are allowlisted as run-to-run), and the end state of every `files` path
+  (type, mode, size, `cat -A`) is compared, so a `--noop` that wrote or a write that differs by a byte fails.
+- **The two D-105 cases** (`d105-unpatched-insync`, `d105-unpatched-outofsync`) run Ruby on the unpatched `661`, where
+  every `ini_section` fails with `Invalid parameter refreshonly(:refreshonly)`. No report comparison can agree there, so
+  `ini_d105_judge` asserts the difference: Ruby fails and leaves the file, voxagent applies as PR 581 intends.
+- **Native, not delegated.** voxagent's output must not name an inifile type among the types `applied via extension host`.
+- **Environment.** Cases `unreadable-chmod`, `unwritable-dir-at-path` and `unwritable-ro-mount` cover the read and write
+  failure texts; `invalid-utf8` and `setting-utf8-valid` the locale-dependent encoding.
 
 **Run the gates one at a time.** Concurrent gate runs on one machine
 coincided with flakes in the SIMP gate's polkit start and systemd boot. The

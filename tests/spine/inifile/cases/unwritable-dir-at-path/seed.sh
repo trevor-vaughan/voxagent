@@ -1,0 +1,1 @@
+mkdir /etc/m.ini

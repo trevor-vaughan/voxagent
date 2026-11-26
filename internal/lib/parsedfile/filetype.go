@@ -15,6 +15,7 @@ import (
 
 	"github.com/voxagent/voxagent/internal/lib/command"
 	"github.com/voxagent/voxagent/internal/lib/nameservice"
+	"github.com/voxagent/voxagent/internal/lib/rubyvalue"
 	"github.com/voxagent/voxagent/internal/runlog"
 )
 
@@ -179,23 +180,6 @@ func logged(ctx context.Context, err error) error {
 	return err
 }
 
-// RubyErrno renders err as Ruby's SystemCallError does: strerror text with
-// its first letter capitalised, then "@ <fn> - <path>" when fn is given.
-func RubyErrno(err error, fn, path string) string {
-	var errno syscall.Errno
-	if !errors.As(err, &errno) {
-		return err.Error()
-	}
-	text := errno.Error()
-	if text != "" {
-		text = strings.ToUpper(text[:1]) + text[1:]
-	}
-	if fn == "" {
-		return text
-	}
-	return fmt.Sprintf("%s @ %s - %s", text, fn, path)
-}
-
 type flat struct {
 	path        string
 	defaultMode fs.FileMode
@@ -236,7 +220,7 @@ func (f *flat) Read(ctx context.Context) (string, error) {
 		return "", nil
 	}
 	fail := func(err error, fn string) (string, error) {
-		return "", logged(ctx, fmt.Errorf("%s could not read %s: %s", flatClass, f.path, RubyErrno(err, fn, f.path)))
+		return "", logged(ctx, fmt.Errorf("%s could not read %s: %s", flatClass, f.path, rubyvalue.Errno(err, fn, f.path)))
 	}
 	file, err := os.Open(f.path)
 	if err != nil {
@@ -291,7 +275,7 @@ func FlatWriteError(path string, f WriteFailure) error {
 }
 
 // flatWriteFailure renders a failed step of the flat write on path, which
-// opened dest: the errno as RubyErrno has it, alone for "tempfile" (and any
+// opened dest: the errno as rubyvalue.Errno has it, alone for "tempfile" (and any
 // other step), with rb_sysopen and dest for the open, and the syscall for the copy and the close ("No space left on device
 // - write", measured with ruby 3.4.9 on /dev/full); "tmpdir" is Dir.tmpdir's
 // text alone. The error carries the
@@ -301,15 +285,15 @@ func flatWriteFailure(path, dest, step string, err error) error {
 	var detail string
 	switch step {
 	case "open":
-		detail = RubyErrno(err, "rb_sysopen", dest)
+		detail = rubyvalue.Errno(err, "rb_sysopen", dest)
 	case "copy":
-		detail = RubyErrno(err, "", "") + " - write"
+		detail = rubyvalue.Errno(err, "", "") + " - write"
 	case "close":
-		detail = RubyErrno(err, "", "") + " - close"
+		detail = rubyvalue.Errno(err, "", "") + " - close"
 	case "tmpdir":
 		detail = "could not find a temporary directory"
 	default:
-		detail = RubyErrno(err, "", "")
+		detail = rubyvalue.Errno(err, "", "")
 	}
 	var errno syscall.Errno
 	errors.As(err, &errno)

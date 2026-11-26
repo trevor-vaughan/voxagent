@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/voxagent/voxagent/internal/lib/parsedfile"
+	"github.com/voxagent/voxagent/internal/lib/rubyregexp"
 	"github.com/voxagent/voxagent/internal/runlog"
 )
 
@@ -15,23 +16,23 @@ import (
 // kt:169-174). A grammar pattern sees one line, which holds no "\n", so RE2's
 // text anchors equal Ruby's line anchors (the RTS is (?m): it is applied to the
 // generated line, which can hold line breaks, and Ruby's sub finds the first
-// line start followed by whitespace, fp:353-361); \s is parsedfile.Space (spec 4.5).
+// line start followed by whitespace, fp:353-361); \s is rubyregexp.Space (spec 4.5).
 var (
-	sakCommentText = regexp.MustCompile(`^` + parsedfile.Space + `*#`)             // kp:11
-	sakBlankText   = regexp.MustCompile(`^` + parsedfile.Space + `*$`)             // kp:12
-	sakRTS         = regexp.MustCompile(`(?m)^` + parsedfile.Space + `+`)          // kp:17, 34
+	sakCommentText = regexp.MustCompile(`^` + rubyregexp.Space + `*#`)             // kp:11
+	sakBlankText   = regexp.MustCompile(`^` + rubyregexp.Space + `*$`)             // kp:12
+	sakRTS         = regexp.MustCompile(`(?m)^` + rubyregexp.Space + `+`)          // kp:17, 34
 	sakKeyV1       = regexp.MustCompile(`^(?:(.+) )?(\d+) (\d+) (\d+)(?: (.+))?$`) // kp:35
 
 	// kt:169-174's REGEX: the x flag drops the layout whitespace of the
 	// alternation, the space in [^ ] is kept, and the dots of the .com types
 	// stay unescaped as Ruby has them.
-	sakKeyLine = regexp.MustCompile(`^(?:(.+)` + parsedfile.Space + `+)?(` + strings.Join([]string{
+	sakKeyLine = regexp.MustCompile(`^(?:(.+)` + rubyregexp.Space + `+)?(` + strings.Join([]string{
 		"ssh-dss", "ssh-ed25519", "ssh-rsa", "ecdsa-sha2-nistp256", "ecdsa-sha2-nistp384", "ecdsa-sha2-nistp521",
 		"ecdsa-sk", "ed25519-sk", "sk-ecdsa-sha2-nistp256@openssh.com", "sk-ssh-ed25519@openssh.com",
 		"ssh-rsa-cert-v01@openssh.com", "ssh-ed25519-cert-v01@openssh.com", "ssh-dss-cert-v01@openssh.com",
 		"ecdsa-sha2-nistp256-cert-v01@openssh.com", "ecdsa-sha2-nistp384-cert-v01@openssh.com",
 		"ecdsa-sha2-nistp521-cert-v01@openssh.com",
-	}, "|") + `)` + parsedfile.Space + `+([^ ]+)` + parsedfile.Space + `*(.*)$`)
+	}, "|") + `)` + rubyregexp.Space + `+([^ ]+)` + rubyregexp.Space + `*(.*)$`)
 
 	// parse_options' scanner patterns (kp:111-121), each anchored where the
 	// StringScanner is.

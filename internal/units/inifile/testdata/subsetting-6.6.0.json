@@ -1,0 +1,5119 @@
+{
+  "openvox": "8.34.0",
+  "ruby": "3.2.11",
+  "cases": [
+    {
+      "name": "nil-value",
+      "ctor": {
+        "value": null,
+        "sep": " ",
+        "quote": "",
+        "kvs": ""
+      },
+      "ops": [
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": ""
+        },
+        {
+          "op": "get_subsetting_value",
+          "args": [
+            "a",
+            false
+          ],
+          "result": null
+        },
+        {
+          "op": "get_subsetting_value",
+          "args": [
+            "a",
+            true
+          ],
+          "result": null
+        }
+      ]
+    },
+    {
+      "name": "empty-value",
+      "ctor": {
+        "value": "",
+        "sep": " ",
+        "quote": "",
+        "kvs": ""
+      },
+      "ops": [
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": ""
+        },
+        {
+          "op": "get_subsetting_value",
+          "args": [
+            "a",
+            false
+          ],
+          "result": null
+        },
+        {
+          "op": "add_subsetting",
+          "args": [
+            "a",
+            "1",
+            false,
+            "end",
+            null
+          ],
+          "result": null
+        },
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "a1"
+        }
+      ]
+    },
+    {
+      "name": "plain-value",
+      "ctor": {
+        "value": "-Xms256m -Xmx512m -XX:+UseG1GC",
+        "sep": " ",
+        "quote": "",
+        "kvs": ""
+      },
+      "ops": [
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "-Xms256m -Xmx512m -XX:+UseG1GC"
+        }
+      ]
+    },
+    {
+      "name": "double-quoted",
+      "ctor": {
+        "value": "\"-Xms256m -Xmx512m -XX:+UseG1GC\"",
+        "sep": " ",
+        "quote": "",
+        "kvs": ""
+      },
+      "ops": [
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "\"-Xms256m -Xmx512m -XX:+UseG1GC\""
+        }
+      ]
+    },
+    {
+      "name": "single-quoted",
+      "ctor": {
+        "value": "'-Xms256m -Xmx512m -XX:+UseG1GC'",
+        "sep": " ",
+        "quote": "",
+        "kvs": ""
+      },
+      "ops": [
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "'-Xms256m -Xmx512m -XX:+UseG1GC'"
+        }
+      ]
+    },
+    {
+      "name": "empty-double-quotes",
+      "ctor": {
+        "value": "\"\"",
+        "sep": " ",
+        "quote": "",
+        "kvs": ""
+      },
+      "ops": [
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "\"\""
+        },
+        {
+          "op": "add_subsetting",
+          "args": [
+            "a",
+            "1",
+            false,
+            "end",
+            null
+          ],
+          "result": null
+        },
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "\"a1\""
+        }
+      ]
+    },
+    {
+      "name": "empty-single-quotes",
+      "ctor": {
+        "value": "''",
+        "sep": " ",
+        "quote": "",
+        "kvs": ""
+      },
+      "ops": [
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "''"
+        },
+        {
+          "op": "add_subsetting",
+          "args": [
+            "a",
+            "1",
+            false,
+            "end",
+            null
+          ],
+          "result": null
+        },
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "'a1'"
+        }
+      ]
+    },
+    {
+      "name": "lone-double-quote",
+      "ctor": {
+        "value": "\"",
+        "sep": " ",
+        "quote": "",
+        "kvs": ""
+      },
+      "ctor_error": {
+        "class": "NoMethodError",
+        "message": "undefined method `scan' for nil:NilClass"
+      },
+      "ops": [
+
+      ]
+    },
+    {
+      "name": "lone-single-quote",
+      "ctor": {
+        "value": "'",
+        "sep": " ",
+        "quote": "",
+        "kvs": ""
+      },
+      "ctor_error": {
+        "class": "NoMethodError",
+        "message": "undefined method `scan' for nil:NilClass"
+      },
+      "ops": [
+
+      ]
+    },
+    {
+      "name": "mismatched-quotes",
+      "ctor": {
+        "value": "\"a b'",
+        "sep": " ",
+        "quote": "",
+        "kvs": ""
+      },
+      "ops": [
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "\"a b'"
+        }
+      ]
+    },
+    {
+      "name": "leading-quote-only",
+      "ctor": {
+        "value": "\"a b",
+        "sep": " ",
+        "quote": "",
+        "kvs": ""
+      },
+      "ops": [
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "\"a b"
+        }
+      ]
+    },
+    {
+      "name": "trailing-quote-only",
+      "ctor": {
+        "value": "a b\"",
+        "sep": " ",
+        "quote": "",
+        "kvs": ""
+      },
+      "ops": [
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "a b\""
+        }
+      ]
+    },
+    {
+      "name": "quote-inside",
+      "ctor": {
+        "value": "a \"b c\" d",
+        "sep": " ",
+        "quote": "",
+        "kvs": ""
+      },
+      "ops": [
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "a \"b c\" d"
+        }
+      ]
+    },
+    {
+      "name": "default-quote-double-unquoted",
+      "ctor": {
+        "value": "a b",
+        "sep": " ",
+        "quote": "\"",
+        "kvs": ""
+      },
+      "ops": [
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "\"a b\""
+        },
+        {
+          "op": "add_subsetting",
+          "args": [
+            "c",
+            null,
+            false,
+            "end",
+            null
+          ],
+          "result": null
+        },
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "\"a b c\""
+        }
+      ]
+    },
+    {
+      "name": "default-quote-single-unquoted",
+      "ctor": {
+        "value": "a b",
+        "sep": " ",
+        "quote": "'",
+        "kvs": ""
+      },
+      "ops": [
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "'a b'"
+        },
+        {
+          "op": "add_subsetting",
+          "args": [
+            "c",
+            null,
+            false,
+            "end",
+            null
+          ],
+          "result": null
+        },
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "'a b c'"
+        }
+      ]
+    },
+    {
+      "name": "default-quote-double-empty-value",
+      "ctor": {
+        "value": "",
+        "sep": " ",
+        "quote": "\"",
+        "kvs": ""
+      },
+      "ops": [
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "\"\""
+        },
+        {
+          "op": "add_subsetting",
+          "args": [
+            "c",
+            null,
+            false,
+            "end",
+            null
+          ],
+          "result": null
+        },
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "\"c\""
+        }
+      ]
+    },
+    {
+      "name": "default-quote-nil-value",
+      "ctor": {
+        "value": null,
+        "sep": " ",
+        "quote": "\"",
+        "kvs": ""
+      },
+      "ops": [
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "\"\""
+        },
+        {
+          "op": "add_subsetting",
+          "args": [
+            "c",
+            null,
+            false,
+            "end",
+            null
+          ],
+          "result": null
+        },
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "\"c\""
+        }
+      ]
+    },
+    {
+      "name": "default-quote-nil-value-single",
+      "ctor": {
+        "value": null,
+        "sep": " ",
+        "quote": "'",
+        "kvs": ""
+      },
+      "ops": [
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "''"
+        },
+        {
+          "op": "add_subsetting",
+          "args": [
+            "c",
+            null,
+            false,
+            "end",
+            null
+          ],
+          "result": null
+        },
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "'c'"
+        }
+      ]
+    },
+    {
+      "name": "default-quote-overridden-by-value",
+      "ctor": {
+        "value": "'a b'",
+        "sep": " ",
+        "quote": "\"",
+        "kvs": ""
+      },
+      "ops": [
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "'a b'"
+        },
+        {
+          "op": "add_subsetting",
+          "args": [
+            "c",
+            null,
+            false,
+            "end",
+            null
+          ],
+          "result": null
+        },
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "'a b c'"
+        }
+      ]
+    },
+    {
+      "name": "default-quote-same-as-value",
+      "ctor": {
+        "value": "\"a b\"",
+        "sep": " ",
+        "quote": "\"",
+        "kvs": ""
+      },
+      "ops": [
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "\"a b\""
+        },
+        {
+          "op": "add_subsetting",
+          "args": [
+            "c",
+            null,
+            false,
+            "end",
+            null
+          ],
+          "result": null
+        },
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "\"a b c\""
+        }
+      ]
+    },
+    {
+      "name": "default-quote-lone-quote",
+      "ctor": {
+        "value": "\"",
+        "sep": " ",
+        "quote": "'",
+        "kvs": ""
+      },
+      "ctor_error": {
+        "class": "NoMethodError",
+        "message": "undefined method `scan' for nil:NilClass"
+      },
+      "ops": [
+
+      ]
+    },
+    {
+      "name": "whitespace-runs",
+      "ctor": {
+        "value": "a   b  c",
+        "sep": " ",
+        "quote": "",
+        "kvs": ""
+      },
+      "ops": [
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "a b c"
+        }
+      ]
+    },
+    {
+      "name": "leading-trailing-space",
+      "ctor": {
+        "value": "  a b  ",
+        "sep": " ",
+        "quote": "",
+        "kvs": ""
+      },
+      "ops": [
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "a b"
+        }
+      ]
+    },
+    {
+      "name": "tab-in-value",
+      "ctor": {
+        "value": "a\tb c",
+        "sep": " ",
+        "quote": "",
+        "kvs": ""
+      },
+      "ops": [
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "a\tb c"
+        }
+      ]
+    },
+    {
+      "name": "tab-separator",
+      "ctor": {
+        "value": "a\tb\tc",
+        "sep": "\t",
+        "quote": "",
+        "kvs": ""
+      },
+      "ops": [
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "a\tb\tc"
+        },
+        {
+          "op": "add_subsetting",
+          "args": [
+            "d",
+            null,
+            false,
+            "end",
+            null
+          ],
+          "result": null
+        },
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "a\tb\tc\td"
+        }
+      ]
+    },
+    {
+      "name": "comma-separator",
+      "ctor": {
+        "value": "a,b,c",
+        "sep": ",",
+        "quote": "",
+        "kvs": ""
+      },
+      "ops": [
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "a,b,c"
+        },
+        {
+          "op": "add_subsetting",
+          "args": [
+            "d",
+            null,
+            false,
+            "end",
+            null
+          ],
+          "result": null
+        },
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "a,b,c,d"
+        }
+      ]
+    },
+    {
+      "name": "comma-separator-spaced",
+      "ctor": {
+        "value": "a , b ,c",
+        "sep": ",",
+        "quote": "",
+        "kvs": ""
+      },
+      "ops": [
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "a,b,c"
+        },
+        {
+          "op": "add_subsetting",
+          "args": [
+            "d",
+            null,
+            false,
+            "end",
+            null
+          ],
+          "result": null
+        },
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "a,b,c,d"
+        }
+      ]
+    },
+    {
+      "name": "comma-space-separator",
+      "ctor": {
+        "value": "a, b,c d",
+        "sep": ", ",
+        "quote": "",
+        "kvs": ""
+      },
+      "ops": [
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "a, b, c, d"
+        },
+        {
+          "op": "add_subsetting",
+          "args": [
+            "e",
+            null,
+            false,
+            "end",
+            null
+          ],
+          "result": null
+        },
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "a, b, c, d, e"
+        }
+      ]
+    },
+    {
+      "name": "semicolon-separator",
+      "ctor": {
+        "value": "a;b;c",
+        "sep": ";",
+        "quote": "",
+        "kvs": ""
+      },
+      "ops": [
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "a;b;c"
+        },
+        {
+          "op": "add_subsetting",
+          "args": [
+            "d",
+            null,
+            false,
+            "end",
+            null
+          ],
+          "result": null
+        },
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "a;b;c;d"
+        }
+      ]
+    },
+    {
+      "name": "colon-separator-quoted",
+      "ctor": {
+        "value": "\"/a:/b:/c\"",
+        "sep": ":",
+        "quote": "",
+        "kvs": ""
+      },
+      "ops": [
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "\"/a:/b:/c\""
+        },
+        {
+          "op": "add_subsetting",
+          "args": [
+            "/d",
+            null,
+            false,
+            "end",
+            null
+          ],
+          "result": null
+        },
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "\"/a:/b:/c:/d\""
+        }
+      ]
+    },
+    {
+      "name": "dot-separator-is-not-a-separator",
+      "ctor": {
+        "value": "a.b.c",
+        "sep": ".",
+        "quote": "",
+        "kvs": ""
+      },
+      "ops": [
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "a.b.c"
+        },
+        {
+          "op": "get_subsetting_value",
+          "args": [
+            "a",
+            false
+          ],
+          "result": ".b.c"
+        },
+        {
+          "op": "add_subsetting",
+          "args": [
+            "d",
+            null,
+            false,
+            "end",
+            null
+          ],
+          "result": null
+        },
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "a.b.c.d"
+        }
+      ]
+    },
+    {
+      "name": "empty-separator",
+      "ctor": {
+        "value": "a b",
+        "sep": "",
+        "quote": "",
+        "kvs": ""
+      },
+      "ctor_error": {
+        "class": "RegexpError",
+        "message": "premature end of char-class: /(?:(?:[^\\]|\\.)+)/"
+      },
+      "ops": [
+
+      ]
+    },
+    {
+      "name": "space-letter-separator",
+      "ctor": {
+        "value": "xa yb zc",
+        "sep": " a",
+        "quote": "",
+        "kvs": ""
+      },
+      "ops": [
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "x ayb azc"
+        },
+        {
+          "op": "get_subsetting_value",
+          "args": [
+            "x",
+            false
+          ],
+          "result": ""
+        },
+        {
+          "op": "add_subsetting",
+          "args": [
+            "d",
+            null,
+            false,
+            "end",
+            null
+          ],
+          "result": null
+        },
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "x ayb azc ad"
+        },
+        {
+          "op": "remove_subsetting",
+          "args": [
+            "y",
+            false
+          ],
+          "result": null
+        },
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "x azc ad"
+        }
+      ]
+    },
+    {
+      "name": "backslash-separator",
+      "ctor": {
+        "value": "a\\b\\c",
+        "sep": "\\",
+        "quote": "",
+        "kvs": ""
+      },
+      "ops": [
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "a\\b\\c"
+        },
+        {
+          "op": "add_subsetting",
+          "args": [
+            "d",
+            null,
+            false,
+            "end",
+            null
+          ],
+          "result": null
+        },
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "a\\b\\c\\d"
+        },
+        {
+          "op": "remove_subsetting",
+          "args": [
+            "b",
+            false
+          ],
+          "result": null
+        },
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "a\\c\\d"
+        }
+      ]
+    },
+    {
+      "name": "multibyte-separator",
+      "ctor": {
+        "value": "aéb é c",
+        "sep": "é",
+        "quote": "",
+        "kvs": ""
+      },
+      "ops": [
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "aébéc"
+        },
+        {
+          "op": "add_subsetting",
+          "args": [
+            "d",
+            null,
+            false,
+            "end",
+            null
+          ],
+          "result": null
+        },
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "aébécéd"
+        }
+      ]
+    },
+    {
+      "name": "pipe-separator",
+      "ctor": {
+        "value": "a|b|c",
+        "sep": "|",
+        "quote": "",
+        "kvs": ""
+      },
+      "ops": [
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "a|b|c"
+        },
+        {
+          "op": "add_subsetting",
+          "args": [
+            "d",
+            null,
+            false,
+            "end",
+            null
+          ],
+          "result": null
+        },
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "a|b|c|d"
+        },
+        {
+          "op": "remove_subsetting",
+          "args": [
+            "b",
+            false
+          ],
+          "result": null
+        },
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "a|c|d"
+        }
+      ]
+    },
+    {
+      "name": "separator-not-in-value",
+      "ctor": {
+        "value": "a b c",
+        "sep": ",",
+        "quote": "",
+        "kvs": ""
+      },
+      "ops": [
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "a b c"
+        }
+      ]
+    },
+    {
+      "name": "only-separators",
+      "ctor": {
+        "value": " , ,",
+        "sep": ",",
+        "quote": "",
+        "kvs": ""
+      },
+      "ops": [
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": ","
+        },
+        {
+          "op": "add_subsetting",
+          "args": [
+            "a",
+            null,
+            false,
+            "end",
+            null
+          ],
+          "result": null
+        },
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": ",,a"
+        }
+      ]
+    },
+    {
+      "name": "multibyte-items",
+      "ctor": {
+        "value": "é=1 ü=2",
+        "sep": " ",
+        "quote": "",
+        "kvs": "="
+      },
+      "ops": [
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "é=1 ü=2"
+        },
+        {
+          "op": "get_subsetting_value",
+          "args": [
+            "é",
+            false
+          ],
+          "result": "1"
+        },
+        {
+          "op": "get_subsetting_value",
+          "args": [
+            "ü",
+            false
+          ],
+          "result": "2"
+        },
+        {
+          "op": "add_subsetting",
+          "args": [
+            "é",
+            "3",
+            false,
+            "end",
+            null
+          ],
+          "result": null
+        },
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "é=3 ü=2"
+        }
+      ]
+    },
+    {
+      "name": "newline-in-value",
+      "ctor": {
+        "value": "a\nb c",
+        "sep": " ",
+        "quote": "",
+        "kvs": ""
+      },
+      "ops": [
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "a\nb c"
+        },
+        {
+          "op": "add_subsetting",
+          "args": [
+            "d",
+            null,
+            false,
+            "end",
+            null
+          ],
+          "result": null
+        },
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "a\nb c d"
+        }
+      ]
+    },
+    {
+      "name": "get-prefix-match",
+      "ctor": {
+        "value": "-Xms256m -Xmx512m -XX:+UseG1GC",
+        "sep": " ",
+        "quote": "",
+        "kvs": ""
+      },
+      "ops": [
+        {
+          "op": "get_subsetting_value",
+          "args": [
+            "-Xmx",
+            false
+          ],
+          "result": "512m"
+        },
+        {
+          "op": "get_subsetting_value",
+          "args": [
+            "-Xm",
+            false
+          ],
+          "result": "s256m"
+        },
+        {
+          "op": "get_subsetting_value",
+          "args": [
+            "-Xms",
+            false
+          ],
+          "result": "256m"
+        },
+        {
+          "op": "get_subsetting_value",
+          "args": [
+            "-X",
+            false
+          ],
+          "result": "ms256m"
+        },
+        {
+          "op": "get_subsetting_value",
+          "args": [
+            "-XX:+UseG1GC",
+            false
+          ],
+          "result": ""
+        },
+        {
+          "op": "get_subsetting_value",
+          "args": [
+            "-Xmx512m",
+            false
+          ],
+          "result": ""
+        },
+        {
+          "op": "get_subsetting_value",
+          "args": [
+            "-Xmy",
+            false
+          ],
+          "result": null
+        },
+        {
+          "op": "get_subsetting_value",
+          "args": [
+            "",
+            false
+          ],
+          "result": "-Xms256m"
+        }
+      ]
+    },
+    {
+      "name": "get-exact-match",
+      "ctor": {
+        "value": "-Xms256m -Xmx512m -XX:+UseG1GC",
+        "sep": " ",
+        "quote": "",
+        "kvs": ""
+      },
+      "ops": [
+        {
+          "op": "get_subsetting_value",
+          "args": [
+            "-Xmx",
+            true
+          ],
+          "result": null
+        },
+        {
+          "op": "get_subsetting_value",
+          "args": [
+            "-Xmx512m",
+            true
+          ],
+          "result": true
+        },
+        {
+          "op": "get_subsetting_value",
+          "args": [
+            "-XX:+UseG1GC",
+            true
+          ],
+          "result": true
+        },
+        {
+          "op": "get_subsetting_value",
+          "args": [
+            "-Xm",
+            true
+          ],
+          "result": null
+        },
+        {
+          "op": "get_subsetting_value",
+          "args": [
+            "",
+            true
+          ],
+          "result": null
+        },
+        {
+          "op": "get_subsetting_value",
+          "args": [
+            "-xmx512m",
+            true
+          ],
+          "result": null
+        }
+      ]
+    },
+    {
+      "name": "get-key-val-separator",
+      "ctor": {
+        "value": "a=1 b=2 c=",
+        "sep": " ",
+        "quote": "",
+        "kvs": "="
+      },
+      "ops": [
+        {
+          "op": "get_subsetting_value",
+          "args": [
+            "a",
+            false
+          ],
+          "result": "1"
+        },
+        {
+          "op": "get_subsetting_value",
+          "args": [
+            "b",
+            false
+          ],
+          "result": "2"
+        },
+        {
+          "op": "get_subsetting_value",
+          "args": [
+            "c",
+            false
+          ],
+          "result": ""
+        },
+        {
+          "op": "get_subsetting_value",
+          "args": [
+            "d",
+            false
+          ],
+          "result": null
+        },
+        {
+          "op": "get_subsetting_value",
+          "args": [
+            "a=",
+            false
+          ],
+          "result": null
+        },
+        {
+          "op": "get_subsetting_value",
+          "args": [
+            "a",
+            true
+          ],
+          "result": null
+        },
+        {
+          "op": "get_subsetting_value",
+          "args": [
+            "a=1",
+            true
+          ],
+          "result": true
+        }
+      ]
+    },
+    {
+      "name": "get-key-val-separator-colon-space",
+      "ctor": {
+        "value": "a: 1 b: 2",
+        "sep": " ",
+        "quote": "",
+        "kvs": ": "
+      },
+      "ops": [
+        {
+          "op": "get_subsetting_value",
+          "args": [
+            "a",
+            false
+          ],
+          "result": null
+        },
+        {
+          "op": "get_subsetting_value",
+          "args": [
+            "b",
+            false
+          ],
+          "result": null
+        }
+      ]
+    },
+    {
+      "name": "get-key-val-separator-no-match-without-it",
+      "ctor": {
+        "value": "a1 b2",
+        "sep": " ",
+        "quote": "",
+        "kvs": "="
+      },
+      "ops": [
+        {
+          "op": "get_subsetting_value",
+          "args": [
+            "a",
+            false
+          ],
+          "result": null
+        },
+        {
+          "op": "get_subsetting_value",
+          "args": [
+            "b",
+            false
+          ],
+          "result": null
+        }
+      ]
+    },
+    {
+      "name": "get-first-of-duplicates",
+      "ctor": {
+        "value": "a=1 a=2",
+        "sep": " ",
+        "quote": "",
+        "kvs": "="
+      },
+      "ops": [
+        {
+          "op": "get_subsetting_value",
+          "args": [
+            "a",
+            false
+          ],
+          "result": "1"
+        }
+      ]
+    },
+    {
+      "name": "get-from-nil-value",
+      "ctor": {
+        "value": null,
+        "sep": " ",
+        "quote": "",
+        "kvs": ""
+      },
+      "ops": [
+        {
+          "op": "get_subsetting_value",
+          "args": [
+            "a",
+            false
+          ],
+          "result": null
+        },
+        {
+          "op": "get_subsetting_value",
+          "args": [
+            "a",
+            true
+          ],
+          "result": null
+        }
+      ]
+    },
+    {
+      "name": "get-from-quoted",
+      "ctor": {
+        "value": "\"a=1 b=2\"",
+        "sep": " ",
+        "quote": "",
+        "kvs": "="
+      },
+      "ops": [
+        {
+          "op": "get_subsetting_value",
+          "args": [
+            "b",
+            false
+          ],
+          "result": "2"
+        }
+      ]
+    },
+    {
+      "name": "get-case-sensitive",
+      "ctor": {
+        "value": "Abc=1",
+        "sep": " ",
+        "quote": "",
+        "kvs": "="
+      },
+      "ops": [
+        {
+          "op": "get_subsetting_value",
+          "args": [
+            "abc",
+            false
+          ],
+          "result": null
+        },
+        {
+          "op": "get_subsetting_value",
+          "args": [
+            "Abc",
+            false
+          ],
+          "result": "1"
+        }
+      ]
+    },
+    {
+      "name": "get-empty-subsetting-name",
+      "ctor": {
+        "value": "a=1 =2",
+        "sep": " ",
+        "quote": "",
+        "kvs": "="
+      },
+      "ops": [
+        {
+          "op": "get_subsetting_value",
+          "args": [
+            "",
+            false
+          ],
+          "result": "2"
+        },
+        {
+          "op": "get_subsetting_value",
+          "args": [
+            "",
+            true
+          ],
+          "result": null
+        }
+      ]
+    },
+    {
+      "name": "get-name-longer-than-item",
+      "ctor": {
+        "value": "a",
+        "sep": " ",
+        "quote": "",
+        "kvs": ""
+      },
+      "ops": [
+        {
+          "op": "get_subsetting_value",
+          "args": [
+            "ab",
+            false
+          ],
+          "result": null
+        },
+        {
+          "op": "get_subsetting_value",
+          "args": [
+            "ab",
+            true
+          ],
+          "result": null
+        }
+      ]
+    },
+    {
+      "name": "add-end-default",
+      "ctor": {
+        "value": "a b",
+        "sep": " ",
+        "quote": "",
+        "kvs": ""
+      },
+      "ops": [
+        {
+          "op": "add_subsetting",
+          "args": [
+            "c",
+            null,
+            false,
+            "end",
+            null
+          ],
+          "result": null
+        },
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "a b c"
+        },
+        {
+          "op": "add_subsetting",
+          "args": [
+            "d",
+            "v",
+            false,
+            "end",
+            null
+          ],
+          "result": null
+        },
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "a b c dv"
+        }
+      ]
+    },
+    {
+      "name": "add-with-value-and-separator",
+      "ctor": {
+        "value": "a=1",
+        "sep": " ",
+        "quote": "",
+        "kvs": "="
+      },
+      "ops": [
+        {
+          "op": "add_subsetting",
+          "args": [
+            "b",
+            "2",
+            false,
+            "end",
+            null
+          ],
+          "result": null
+        },
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "a=1 b=2"
+        },
+        {
+          "op": "add_subsetting",
+          "args": [
+            "c",
+            "",
+            false,
+            "end",
+            null
+          ],
+          "result": null
+        },
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "a=1 b=2 c="
+        },
+        {
+          "op": "add_subsetting",
+          "args": [
+            "d",
+            null,
+            false,
+            "end",
+            null
+          ],
+          "result": null
+        },
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "a=1 b=2 c= d="
+        }
+      ]
+    },
+    {
+      "name": "add-value-without-separator",
+      "ctor": {
+        "value": "a",
+        "sep": " ",
+        "quote": "",
+        "kvs": ""
+      },
+      "ops": [
+        {
+          "op": "add_subsetting",
+          "args": [
+            "b",
+            "2",
+            false,
+            "end",
+            null
+          ],
+          "result": null
+        },
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "a b2"
+        },
+        {
+          "op": "add_subsetting",
+          "args": [
+            "c",
+            "x y",
+            false,
+            "end",
+            null
+          ],
+          "result": null
+        },
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "a b2 cx y"
+        }
+      ]
+    },
+    {
+      "name": "add-to-empty",
+      "ctor": {
+        "value": "",
+        "sep": " ",
+        "quote": "",
+        "kvs": "="
+      },
+      "ops": [
+        {
+          "op": "add_subsetting",
+          "args": [
+            "a",
+            "1",
+            false,
+            "end",
+            null
+          ],
+          "result": null
+        },
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "a=1"
+        }
+      ]
+    },
+    {
+      "name": "add-to-nil",
+      "ctor": {
+        "value": null,
+        "sep": " ",
+        "quote": "",
+        "kvs": "="
+      },
+      "ops": [
+        {
+          "op": "add_subsetting",
+          "args": [
+            "a",
+            "1",
+            false,
+            "end",
+            null
+          ],
+          "result": null
+        },
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "a=1"
+        }
+      ]
+    },
+    {
+      "name": "add-to-nil-quoted",
+      "ctor": {
+        "value": null,
+        "sep": " ",
+        "quote": "\"",
+        "kvs": "="
+      },
+      "ops": [
+        {
+          "op": "add_subsetting",
+          "args": [
+            "a",
+            "1",
+            false,
+            "end",
+            null
+          ],
+          "result": null
+        },
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "\"a=1\""
+        }
+      ]
+    },
+    {
+      "name": "add-existing-updates",
+      "ctor": {
+        "value": "a=1 b=2 c=3",
+        "sep": " ",
+        "quote": "",
+        "kvs": "="
+      },
+      "ops": [
+        {
+          "op": "add_subsetting",
+          "args": [
+            "b",
+            "9",
+            false,
+            "end",
+            null
+          ],
+          "result": null
+        },
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "a=1 b=9 c=3"
+        },
+        {
+          "op": "add_subsetting",
+          "args": [
+            "b",
+            null,
+            false,
+            "end",
+            null
+          ],
+          "result": null
+        },
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "a=1 b= c=3"
+        }
+      ]
+    },
+    {
+      "name": "add-existing-updates-all-prefix-matches",
+      "ctor": {
+        "value": "-Xmx1 -Xmy2 -Xmz3",
+        "sep": " ",
+        "quote": "",
+        "kvs": ""
+      },
+      "ops": [
+        {
+          "op": "add_subsetting",
+          "args": [
+            "-Xm",
+            null,
+            false,
+            "end",
+            null
+          ],
+          "result": null
+        },
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "-Xm -Xm -Xm"
+        }
+      ]
+    },
+    {
+      "name": "add-existing-prefix-updates-first-and-duplicates",
+      "ctor": {
+        "value": "a=1 a=2 b=3",
+        "sep": " ",
+        "quote": "",
+        "kvs": "="
+      },
+      "ops": [
+        {
+          "op": "add_subsetting",
+          "args": [
+            "a",
+            "9",
+            false,
+            "end",
+            null
+          ],
+          "result": null
+        },
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "a=9 a=9 b=3"
+        }
+      ]
+    },
+    {
+      "name": "add-prefix-name-is-not-a-different-item",
+      "ctor": {
+        "value": "-Xmx512m",
+        "sep": " ",
+        "quote": "",
+        "kvs": ""
+      },
+      "ops": [
+        {
+          "op": "add_subsetting",
+          "args": [
+            "-Xm",
+            null,
+            false,
+            "end",
+            null
+          ],
+          "result": null
+        },
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "-Xm"
+        },
+        {
+          "op": "add_subsetting",
+          "args": [
+            "-Xmx",
+            null,
+            false,
+            "start",
+            null
+          ],
+          "result": null
+        },
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "-Xmx -Xm"
+        }
+      ]
+    },
+    {
+      "name": "add-exact-does-not-match-prefix",
+      "ctor": {
+        "value": "-Xmx512m",
+        "sep": " ",
+        "quote": "",
+        "kvs": ""
+      },
+      "ops": [
+        {
+          "op": "add_subsetting",
+          "args": [
+            "-Xmx",
+            null,
+            true,
+            "end",
+            null
+          ],
+          "result": null
+        },
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "-Xmx512m -Xmx"
+        }
+      ]
+    },
+    {
+      "name": "add-exact-updates-exact-item",
+      "ctor": {
+        "value": "-Xmx512m a",
+        "sep": " ",
+        "quote": "",
+        "kvs": ""
+      },
+      "ops": [
+        {
+          "op": "add_subsetting",
+          "args": [
+            "-Xmx512m",
+            null,
+            true,
+            "end",
+            null
+          ],
+          "result": null
+        },
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "-Xmx512m a"
+        },
+        {
+          "op": "add_subsetting",
+          "args": [
+            "a",
+            "q",
+            true,
+            "end",
+            null
+          ],
+          "result": null
+        },
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "-Xmx512m aq"
+        }
+      ]
+    },
+    {
+      "name": "add-exact-with-key-val-separator",
+      "ctor": {
+        "value": "a=1 a",
+        "sep": " ",
+        "quote": "",
+        "kvs": "="
+      },
+      "ops": [
+        {
+          "op": "add_subsetting",
+          "args": [
+            "a",
+            "2",
+            true,
+            "end",
+            null
+          ],
+          "result": null
+        },
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "a=1 a=2"
+        }
+      ]
+    },
+    {
+      "name": "add-existing-ignores-insert-type",
+      "ctor": {
+        "value": "a b c",
+        "sep": " ",
+        "quote": "",
+        "kvs": ""
+      },
+      "ops": [
+        {
+          "op": "add_subsetting",
+          "args": [
+            "b",
+            "1",
+            false,
+            "start",
+            null
+          ],
+          "result": null
+        },
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "a b1 c"
+        },
+        {
+          "op": "add_subsetting",
+          "args": [
+            "c",
+            "1",
+            false,
+            "index",
+            "0"
+          ],
+          "result": null
+        },
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "a b1 c1"
+        }
+      ]
+    },
+    {
+      "name": "insert-start",
+      "ctor": {
+        "value": "a b c",
+        "sep": " ",
+        "quote": "",
+        "kvs": ""
+      },
+      "ops": [
+        {
+          "op": "add_subsetting",
+          "args": [
+            "x",
+            null,
+            false,
+            "start",
+            null
+          ],
+          "result": null
+        },
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "x a b c"
+        }
+      ]
+    },
+    {
+      "name": "insert-start-with-insert-value",
+      "ctor": {
+        "value": "a b c",
+        "sep": " ",
+        "quote": "",
+        "kvs": ""
+      },
+      "ops": [
+        {
+          "op": "add_subsetting",
+          "args": [
+            "x",
+            null,
+            false,
+            "start",
+            "b"
+          ],
+          "result": null
+        },
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "x a b c"
+        }
+      ]
+    },
+    {
+      "name": "insert-start-empty-list",
+      "ctor": {
+        "value": "",
+        "sep": " ",
+        "quote": "",
+        "kvs": ""
+      },
+      "ops": [
+        {
+          "op": "add_subsetting",
+          "args": [
+            "x",
+            null,
+            false,
+            "start",
+            null
+          ],
+          "result": null
+        },
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "x"
+        }
+      ]
+    },
+    {
+      "name": "insert-start-nil-list",
+      "ctor": {
+        "value": null,
+        "sep": " ",
+        "quote": "",
+        "kvs": ""
+      },
+      "ops": [
+        {
+          "op": "add_subsetting",
+          "args": [
+            "x",
+            null,
+            false,
+            "start",
+            null
+          ],
+          "result": null
+        },
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "x"
+        }
+      ]
+    },
+    {
+      "name": "insert-end",
+      "ctor": {
+        "value": "a b c",
+        "sep": " ",
+        "quote": "",
+        "kvs": ""
+      },
+      "ops": [
+        {
+          "op": "add_subsetting",
+          "args": [
+            "x",
+            null,
+            false,
+            "end",
+            null
+          ],
+          "result": null
+        },
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "a b c x"
+        }
+      ]
+    },
+    {
+      "name": "insert-end-with-insert-value",
+      "ctor": {
+        "value": "a b c",
+        "sep": " ",
+        "quote": "",
+        "kvs": ""
+      },
+      "ops": [
+        {
+          "op": "add_subsetting",
+          "args": [
+            "x",
+            null,
+            false,
+            "end",
+            "b"
+          ],
+          "result": null
+        },
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "a b c x"
+        }
+      ]
+    },
+    {
+      "name": "insert-end-empty-list",
+      "ctor": {
+        "value": "",
+        "sep": " ",
+        "quote": "",
+        "kvs": ""
+      },
+      "ops": [
+        {
+          "op": "add_subsetting",
+          "args": [
+            "x",
+            null,
+            false,
+            "end",
+            null
+          ],
+          "result": null
+        },
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "x"
+        }
+      ]
+    },
+    {
+      "name": "insert-end-nil-list",
+      "ctor": {
+        "value": null,
+        "sep": " ",
+        "quote": "",
+        "kvs": ""
+      },
+      "ops": [
+        {
+          "op": "add_subsetting",
+          "args": [
+            "x",
+            null,
+            false,
+            "end",
+            null
+          ],
+          "result": null
+        },
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "x"
+        }
+      ]
+    },
+    {
+      "name": "insert-before-first",
+      "ctor": {
+        "value": "a b c",
+        "sep": " ",
+        "quote": "",
+        "kvs": ""
+      },
+      "ops": [
+        {
+          "op": "add_subsetting",
+          "args": [
+            "x",
+            null,
+            false,
+            "before",
+            "a"
+          ],
+          "result": null
+        },
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "x a b c"
+        }
+      ]
+    },
+    {
+      "name": "insert-before-middle",
+      "ctor": {
+        "value": "a b c",
+        "sep": " ",
+        "quote": "",
+        "kvs": ""
+      },
+      "ops": [
+        {
+          "op": "add_subsetting",
+          "args": [
+            "x",
+            null,
+            false,
+            "before",
+            "b"
+          ],
+          "result": null
+        },
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "a x b c"
+        }
+      ]
+    },
+    {
+      "name": "insert-before-last",
+      "ctor": {
+        "value": "a b c",
+        "sep": " ",
+        "quote": "",
+        "kvs": ""
+      },
+      "ops": [
+        {
+          "op": "add_subsetting",
+          "args": [
+            "x",
+            null,
+            false,
+            "before",
+            "c"
+          ],
+          "result": null
+        },
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "a b x c"
+        }
+      ]
+    },
+    {
+      "name": "insert-before-not-found",
+      "ctor": {
+        "value": "a b c",
+        "sep": " ",
+        "quote": "",
+        "kvs": ""
+      },
+      "ops": [
+        {
+          "op": "add_subsetting",
+          "args": [
+            "x",
+            null,
+            false,
+            "before",
+            "zz"
+          ],
+          "result": null
+        },
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "a b c x"
+        }
+      ]
+    },
+    {
+      "name": "insert-before-insert-value-nil",
+      "ctor": {
+        "value": "a b c",
+        "sep": " ",
+        "quote": "",
+        "kvs": ""
+      },
+      "ops": [
+        {
+          "op": "add_subsetting",
+          "args": [
+            "x",
+            null,
+            false,
+            "before",
+            null
+          ],
+          "error": {
+            "class": "NoMethodError",
+            "message": "undefined method `+' for nil:NilClass"
+          }
+        },
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "a b c"
+        }
+      ]
+    },
+    {
+      "name": "insert-before-insert-value-nil-empty-list",
+      "ctor": {
+        "value": "",
+        "sep": " ",
+        "quote": "",
+        "kvs": ""
+      },
+      "ops": [
+        {
+          "op": "add_subsetting",
+          "args": [
+            "x",
+            null,
+            false,
+            "before",
+            null
+          ],
+          "result": null
+        },
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "x"
+        }
+      ]
+    },
+    {
+      "name": "insert-before-insert-value-nil-exact",
+      "ctor": {
+        "value": "a b c",
+        "sep": " ",
+        "quote": "",
+        "kvs": ""
+      },
+      "ops": [
+        {
+          "op": "add_subsetting",
+          "args": [
+            "x",
+            null,
+            true,
+            "before",
+            null
+          ],
+          "result": null
+        },
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "a b c x"
+        }
+      ]
+    },
+    {
+      "name": "insert-before-insert-value-empty",
+      "ctor": {
+        "value": "a b c",
+        "sep": " ",
+        "quote": "",
+        "kvs": ""
+      },
+      "ops": [
+        {
+          "op": "add_subsetting",
+          "args": [
+            "x",
+            null,
+            false,
+            "before",
+            ""
+          ],
+          "result": null
+        },
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "x a b c"
+        }
+      ]
+    },
+    {
+      "name": "insert-before-prefix-matches-first",
+      "ctor": {
+        "value": "k=1 k=2 z",
+        "sep": " ",
+        "quote": "",
+        "kvs": "="
+      },
+      "ops": [
+        {
+          "op": "add_subsetting",
+          "args": [
+            "x",
+            null,
+            false,
+            "before",
+            "k"
+          ],
+          "result": null
+        },
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "x= k=1 k=2 z"
+        }
+      ]
+    },
+    {
+      "name": "insert-before-with-key-val-separator",
+      "ctor": {
+        "value": "a=1 b=2 c=3",
+        "sep": " ",
+        "quote": "",
+        "kvs": "="
+      },
+      "ops": [
+        {
+          "op": "add_subsetting",
+          "args": [
+            "x",
+            "9",
+            false,
+            "before",
+            "b"
+          ],
+          "result": null
+        },
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "a=1 x=9 b=2 c=3"
+        }
+      ]
+    },
+    {
+      "name": "insert-before-key-val-separator-needs-it",
+      "ctor": {
+        "value": "a=1 b=2",
+        "sep": " ",
+        "quote": "",
+        "kvs": "="
+      },
+      "ops": [
+        {
+          "op": "add_subsetting",
+          "args": [
+            "x",
+            "9",
+            false,
+            "before",
+            "a=1"
+          ],
+          "result": null
+        },
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "a=1 b=2 x=9"
+        }
+      ]
+    },
+    {
+      "name": "insert-before-exact",
+      "ctor": {
+        "value": "a b c",
+        "sep": " ",
+        "quote": "",
+        "kvs": ""
+      },
+      "ops": [
+        {
+          "op": "add_subsetting",
+          "args": [
+            "x",
+            null,
+            true,
+            "before",
+            "b"
+          ],
+          "result": null
+        },
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "a x b c"
+        }
+      ]
+    },
+    {
+      "name": "insert-before-exact-needs-whole-item",
+      "ctor": {
+        "value": "a=1 b=2",
+        "sep": " ",
+        "quote": "",
+        "kvs": "="
+      },
+      "ops": [
+        {
+          "op": "add_subsetting",
+          "args": [
+            "x",
+            null,
+            true,
+            "before",
+            "b"
+          ],
+          "result": null
+        },
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "a=1 b=2 x="
+        },
+        {
+          "op": "add_subsetting",
+          "args": [
+            "y",
+            null,
+            true,
+            "before",
+            "b=2"
+          ],
+          "result": null
+        },
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "a=1 y= b=2 x="
+        }
+      ]
+    },
+    {
+      "name": "insert-before-exact-not-found",
+      "ctor": {
+        "value": "a b c",
+        "sep": " ",
+        "quote": "",
+        "kvs": ""
+      },
+      "ops": [
+        {
+          "op": "add_subsetting",
+          "args": [
+            "x",
+            null,
+            true,
+            "before",
+            "zz"
+          ],
+          "result": null
+        },
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "a b c x"
+        }
+      ]
+    },
+    {
+      "name": "insert-before-empty-list",
+      "ctor": {
+        "value": "",
+        "sep": " ",
+        "quote": "",
+        "kvs": ""
+      },
+      "ops": [
+        {
+          "op": "add_subsetting",
+          "args": [
+            "x",
+            null,
+            false,
+            "before",
+            "a"
+          ],
+          "result": null
+        },
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "x"
+        }
+      ]
+    },
+    {
+      "name": "insert-before-nil-list",
+      "ctor": {
+        "value": null,
+        "sep": " ",
+        "quote": "",
+        "kvs": ""
+      },
+      "ops": [
+        {
+          "op": "add_subsetting",
+          "args": [
+            "x",
+            null,
+            false,
+            "before",
+            "a"
+          ],
+          "result": null
+        },
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "x"
+        }
+      ]
+    },
+    {
+      "name": "insert-before-quoted",
+      "ctor": {
+        "value": "\"a b c\"",
+        "sep": " ",
+        "quote": "",
+        "kvs": ""
+      },
+      "ops": [
+        {
+          "op": "add_subsetting",
+          "args": [
+            "x",
+            null,
+            false,
+            "before",
+            "b"
+          ],
+          "result": null
+        },
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "\"a x b c\""
+        }
+      ]
+    },
+    {
+      "name": "insert-before-separator-comma",
+      "ctor": {
+        "value": "a,b,c",
+        "sep": ",",
+        "quote": "",
+        "kvs": ""
+      },
+      "ops": [
+        {
+          "op": "add_subsetting",
+          "args": [
+            "x",
+            null,
+            false,
+            "before",
+            "b"
+          ],
+          "result": null
+        },
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "a,x,b,c"
+        }
+      ]
+    },
+    {
+      "name": "insert-after-first",
+      "ctor": {
+        "value": "a b c",
+        "sep": " ",
+        "quote": "",
+        "kvs": ""
+      },
+      "ops": [
+        {
+          "op": "add_subsetting",
+          "args": [
+            "x",
+            null,
+            false,
+            "after",
+            "a"
+          ],
+          "result": null
+        },
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "a x b c"
+        }
+      ]
+    },
+    {
+      "name": "insert-after-middle",
+      "ctor": {
+        "value": "a b c",
+        "sep": " ",
+        "quote": "",
+        "kvs": ""
+      },
+      "ops": [
+        {
+          "op": "add_subsetting",
+          "args": [
+            "x",
+            null,
+            false,
+            "after",
+            "b"
+          ],
+          "result": null
+        },
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "a b x c"
+        }
+      ]
+    },
+    {
+      "name": "insert-after-last",
+      "ctor": {
+        "value": "a b c",
+        "sep": " ",
+        "quote": "",
+        "kvs": ""
+      },
+      "ops": [
+        {
+          "op": "add_subsetting",
+          "args": [
+            "x",
+            null,
+            false,
+            "after",
+            "c"
+          ],
+          "result": null
+        },
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "a b c x"
+        }
+      ]
+    },
+    {
+      "name": "insert-after-not-found",
+      "ctor": {
+        "value": "a b c",
+        "sep": " ",
+        "quote": "",
+        "kvs": ""
+      },
+      "ops": [
+        {
+          "op": "add_subsetting",
+          "args": [
+            "x",
+            null,
+            false,
+            "after",
+            "zz"
+          ],
+          "result": null
+        },
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "a b c x"
+        }
+      ]
+    },
+    {
+      "name": "insert-after-insert-value-nil",
+      "ctor": {
+        "value": "a b c",
+        "sep": " ",
+        "quote": "",
+        "kvs": ""
+      },
+      "ops": [
+        {
+          "op": "add_subsetting",
+          "args": [
+            "x",
+            null,
+            false,
+            "after",
+            null
+          ],
+          "error": {
+            "class": "NoMethodError",
+            "message": "undefined method `+' for nil:NilClass"
+          }
+        },
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "a b c"
+        }
+      ]
+    },
+    {
+      "name": "insert-after-insert-value-nil-empty-list",
+      "ctor": {
+        "value": "",
+        "sep": " ",
+        "quote": "",
+        "kvs": ""
+      },
+      "ops": [
+        {
+          "op": "add_subsetting",
+          "args": [
+            "x",
+            null,
+            false,
+            "after",
+            null
+          ],
+          "result": null
+        },
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "x"
+        }
+      ]
+    },
+    {
+      "name": "insert-after-insert-value-nil-exact",
+      "ctor": {
+        "value": "a b c",
+        "sep": " ",
+        "quote": "",
+        "kvs": ""
+      },
+      "ops": [
+        {
+          "op": "add_subsetting",
+          "args": [
+            "x",
+            null,
+            true,
+            "after",
+            null
+          ],
+          "result": null
+        },
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "a b c x"
+        }
+      ]
+    },
+    {
+      "name": "insert-after-insert-value-empty",
+      "ctor": {
+        "value": "a b c",
+        "sep": " ",
+        "quote": "",
+        "kvs": ""
+      },
+      "ops": [
+        {
+          "op": "add_subsetting",
+          "args": [
+            "x",
+            null,
+            false,
+            "after",
+            ""
+          ],
+          "result": null
+        },
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "a x b c"
+        }
+      ]
+    },
+    {
+      "name": "insert-after-prefix-matches-first",
+      "ctor": {
+        "value": "k=1 k=2 z",
+        "sep": " ",
+        "quote": "",
+        "kvs": "="
+      },
+      "ops": [
+        {
+          "op": "add_subsetting",
+          "args": [
+            "x",
+            null,
+            false,
+            "after",
+            "k"
+          ],
+          "result": null
+        },
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "k=1 x= k=2 z"
+        }
+      ]
+    },
+    {
+      "name": "insert-after-with-key-val-separator",
+      "ctor": {
+        "value": "a=1 b=2 c=3",
+        "sep": " ",
+        "quote": "",
+        "kvs": "="
+      },
+      "ops": [
+        {
+          "op": "add_subsetting",
+          "args": [
+            "x",
+            "9",
+            false,
+            "after",
+            "b"
+          ],
+          "result": null
+        },
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "a=1 b=2 x=9 c=3"
+        }
+      ]
+    },
+    {
+      "name": "insert-after-key-val-separator-needs-it",
+      "ctor": {
+        "value": "a=1 b=2",
+        "sep": " ",
+        "quote": "",
+        "kvs": "="
+      },
+      "ops": [
+        {
+          "op": "add_subsetting",
+          "args": [
+            "x",
+            "9",
+            false,
+            "after",
+            "a=1"
+          ],
+          "result": null
+        },
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "a=1 b=2 x=9"
+        }
+      ]
+    },
+    {
+      "name": "insert-after-exact",
+      "ctor": {
+        "value": "a b c",
+        "sep": " ",
+        "quote": "",
+        "kvs": ""
+      },
+      "ops": [
+        {
+          "op": "add_subsetting",
+          "args": [
+            "x",
+            null,
+            true,
+            "after",
+            "b"
+          ],
+          "result": null
+        },
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "a b x c"
+        }
+      ]
+    },
+    {
+      "name": "insert-after-exact-needs-whole-item",
+      "ctor": {
+        "value": "a=1 b=2",
+        "sep": " ",
+        "quote": "",
+        "kvs": "="
+      },
+      "ops": [
+        {
+          "op": "add_subsetting",
+          "args": [
+            "x",
+            null,
+            true,
+            "after",
+            "b"
+          ],
+          "result": null
+        },
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "a=1 b=2 x="
+        },
+        {
+          "op": "add_subsetting",
+          "args": [
+            "y",
+            null,
+            true,
+            "after",
+            "b=2"
+          ],
+          "result": null
+        },
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "a=1 b=2 y= x="
+        }
+      ]
+    },
+    {
+      "name": "insert-after-exact-not-found",
+      "ctor": {
+        "value": "a b c",
+        "sep": " ",
+        "quote": "",
+        "kvs": ""
+      },
+      "ops": [
+        {
+          "op": "add_subsetting",
+          "args": [
+            "x",
+            null,
+            true,
+            "after",
+            "zz"
+          ],
+          "result": null
+        },
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "a b c x"
+        }
+      ]
+    },
+    {
+      "name": "insert-after-empty-list",
+      "ctor": {
+        "value": "",
+        "sep": " ",
+        "quote": "",
+        "kvs": ""
+      },
+      "ops": [
+        {
+          "op": "add_subsetting",
+          "args": [
+            "x",
+            null,
+            false,
+            "after",
+            "a"
+          ],
+          "result": null
+        },
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "x"
+        }
+      ]
+    },
+    {
+      "name": "insert-after-nil-list",
+      "ctor": {
+        "value": null,
+        "sep": " ",
+        "quote": "",
+        "kvs": ""
+      },
+      "ops": [
+        {
+          "op": "add_subsetting",
+          "args": [
+            "x",
+            null,
+            false,
+            "after",
+            "a"
+          ],
+          "result": null
+        },
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "x"
+        }
+      ]
+    },
+    {
+      "name": "insert-after-quoted",
+      "ctor": {
+        "value": "\"a b c\"",
+        "sep": " ",
+        "quote": "",
+        "kvs": ""
+      },
+      "ops": [
+        {
+          "op": "add_subsetting",
+          "args": [
+            "x",
+            null,
+            false,
+            "after",
+            "b"
+          ],
+          "result": null
+        },
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "\"a b x c\""
+        }
+      ]
+    },
+    {
+      "name": "insert-after-separator-comma",
+      "ctor": {
+        "value": "a,b,c",
+        "sep": ",",
+        "quote": "",
+        "kvs": ""
+      },
+      "ops": [
+        {
+          "op": "add_subsetting",
+          "args": [
+            "x",
+            null,
+            false,
+            "after",
+            "b"
+          ],
+          "result": null
+        },
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "a,b,x,c"
+        }
+      ]
+    },
+    {
+      "name": "insert-after-uses-first-match",
+      "ctor": {
+        "value": "a b a",
+        "sep": " ",
+        "quote": "",
+        "kvs": ""
+      },
+      "ops": [
+        {
+          "op": "add_subsetting",
+          "args": [
+            "x",
+            null,
+            false,
+            "after",
+            "a"
+          ],
+          "result": null
+        },
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "a x b a"
+        }
+      ]
+    },
+    {
+      "name": "insert-before-uses-first-match",
+      "ctor": {
+        "value": "a b a",
+        "sep": " ",
+        "quote": "",
+        "kvs": ""
+      },
+      "ops": [
+        {
+          "op": "add_subsetting",
+          "args": [
+            "x",
+            null,
+            false,
+            "before",
+            "a"
+          ],
+          "result": null
+        },
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "x a b a"
+        }
+      ]
+    },
+    {
+      "name": "insert-before-the-subsetting-itself-missing",
+      "ctor": {
+        "value": "a b",
+        "sep": " ",
+        "quote": "",
+        "kvs": ""
+      },
+      "ops": [
+        {
+          "op": "add_subsetting",
+          "args": [
+            "b2",
+            null,
+            false,
+            "before",
+            "b"
+          ],
+          "result": null
+        },
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "a b2 b"
+        }
+      ]
+    },
+    {
+      "name": "insert-index-\"0\"",
+      "ctor": {
+        "value": "a b c",
+        "sep": " ",
+        "quote": "",
+        "kvs": ""
+      },
+      "ops": [
+        {
+          "op": "add_subsetting",
+          "args": [
+            "x",
+            null,
+            false,
+            "index",
+            "0"
+          ],
+          "result": null
+        },
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "x a b c"
+        }
+      ]
+    },
+    {
+      "name": "insert-index-\"1\"",
+      "ctor": {
+        "value": "a b c",
+        "sep": " ",
+        "quote": "",
+        "kvs": ""
+      },
+      "ops": [
+        {
+          "op": "add_subsetting",
+          "args": [
+            "x",
+            null,
+            false,
+            "index",
+            "1"
+          ],
+          "result": null
+        },
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "a x b c"
+        }
+      ]
+    },
+    {
+      "name": "insert-index-\"2\"",
+      "ctor": {
+        "value": "a b c",
+        "sep": " ",
+        "quote": "",
+        "kvs": ""
+      },
+      "ops": [
+        {
+          "op": "add_subsetting",
+          "args": [
+            "x",
+            null,
+            false,
+            "index",
+            "2"
+          ],
+          "result": null
+        },
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "a b x c"
+        }
+      ]
+    },
+    {
+      "name": "insert-index-\"3\"",
+      "ctor": {
+        "value": "a b c",
+        "sep": " ",
+        "quote": "",
+        "kvs": ""
+      },
+      "ops": [
+        {
+          "op": "add_subsetting",
+          "args": [
+            "x",
+            null,
+            false,
+            "index",
+            "3"
+          ],
+          "result": null
+        },
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "a b c x"
+        }
+      ]
+    },
+    {
+      "name": "insert-index-\"4\"",
+      "ctor": {
+        "value": "a b c",
+        "sep": " ",
+        "quote": "",
+        "kvs": ""
+      },
+      "ops": [
+        {
+          "op": "add_subsetting",
+          "args": [
+            "x",
+            null,
+            false,
+            "index",
+            "4"
+          ],
+          "result": null
+        },
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "a b c x"
+        }
+      ]
+    },
+    {
+      "name": "insert-index-\"99\"",
+      "ctor": {
+        "value": "a b c",
+        "sep": " ",
+        "quote": "",
+        "kvs": ""
+      },
+      "ops": [
+        {
+          "op": "add_subsetting",
+          "args": [
+            "x",
+            null,
+            false,
+            "index",
+            "99"
+          ],
+          "result": null
+        },
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "a b c x"
+        }
+      ]
+    },
+    {
+      "name": "insert-index-\"-1\"",
+      "ctor": {
+        "value": "a b c",
+        "sep": " ",
+        "quote": "",
+        "kvs": ""
+      },
+      "ops": [
+        {
+          "op": "add_subsetting",
+          "args": [
+            "x",
+            null,
+            false,
+            "index",
+            "-1"
+          ],
+          "result": null
+        },
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "a b c x"
+        }
+      ]
+    },
+    {
+      "name": "insert-index-\"-2\"",
+      "ctor": {
+        "value": "a b c",
+        "sep": " ",
+        "quote": "",
+        "kvs": ""
+      },
+      "ops": [
+        {
+          "op": "add_subsetting",
+          "args": [
+            "x",
+            null,
+            false,
+            "index",
+            "-2"
+          ],
+          "result": null
+        },
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "a b x c"
+        }
+      ]
+    },
+    {
+      "name": "insert-index-\"-3\"",
+      "ctor": {
+        "value": "a b c",
+        "sep": " ",
+        "quote": "",
+        "kvs": ""
+      },
+      "ops": [
+        {
+          "op": "add_subsetting",
+          "args": [
+            "x",
+            null,
+            false,
+            "index",
+            "-3"
+          ],
+          "result": null
+        },
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "a x b c"
+        }
+      ]
+    },
+    {
+      "name": "insert-index-\"-4\"",
+      "ctor": {
+        "value": "a b c",
+        "sep": " ",
+        "quote": "",
+        "kvs": ""
+      },
+      "ops": [
+        {
+          "op": "add_subsetting",
+          "args": [
+            "x",
+            null,
+            false,
+            "index",
+            "-4"
+          ],
+          "result": null
+        },
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "x a b c"
+        }
+      ]
+    },
+    {
+      "name": "insert-index-\"-5\"",
+      "ctor": {
+        "value": "a b c",
+        "sep": " ",
+        "quote": "",
+        "kvs": ""
+      },
+      "ops": [
+        {
+          "op": "add_subsetting",
+          "args": [
+            "x",
+            null,
+            false,
+            "index",
+            "-5"
+          ],
+          "error": {
+            "class": "IndexError",
+            "message": "index -5 too small for array; minimum: -4"
+          }
+        },
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "a b c"
+        }
+      ]
+    },
+    {
+      "name": "insert-index-nil",
+      "ctor": {
+        "value": "a b c",
+        "sep": " ",
+        "quote": "",
+        "kvs": ""
+      },
+      "ops": [
+        {
+          "op": "add_subsetting",
+          "args": [
+            "x",
+            null,
+            false,
+            "index",
+            null
+          ],
+          "result": null
+        },
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "x a b c"
+        }
+      ]
+    },
+    {
+      "name": "insert-index-\"\"",
+      "ctor": {
+        "value": "a b c",
+        "sep": " ",
+        "quote": "",
+        "kvs": ""
+      },
+      "ops": [
+        {
+          "op": "add_subsetting",
+          "args": [
+            "x",
+            null,
+            false,
+            "index",
+            ""
+          ],
+          "result": null
+        },
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "x a b c"
+        }
+      ]
+    },
+    {
+      "name": "insert-index-\"x\"",
+      "ctor": {
+        "value": "a b c",
+        "sep": " ",
+        "quote": "",
+        "kvs": ""
+      },
+      "ops": [
+        {
+          "op": "add_subsetting",
+          "args": [
+            "x",
+            null,
+            false,
+            "index",
+            "x"
+          ],
+          "result": null
+        },
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "x a b c"
+        }
+      ]
+    },
+    {
+      "name": "insert-index-\"2x\"",
+      "ctor": {
+        "value": "a b c",
+        "sep": " ",
+        "quote": "",
+        "kvs": ""
+      },
+      "ops": [
+        {
+          "op": "add_subsetting",
+          "args": [
+            "x",
+            null,
+            false,
+            "index",
+            "2x"
+          ],
+          "result": null
+        },
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "a b x c"
+        }
+      ]
+    },
+    {
+      "name": "insert-index-\" 2\"",
+      "ctor": {
+        "value": "a b c",
+        "sep": " ",
+        "quote": "",
+        "kvs": ""
+      },
+      "ops": [
+        {
+          "op": "add_subsetting",
+          "args": [
+            "x",
+            null,
+            false,
+            "index",
+            " 2"
+          ],
+          "result": null
+        },
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "a b x c"
+        }
+      ]
+    },
+    {
+      "name": "insert-index-\"+2\"",
+      "ctor": {
+        "value": "a b c",
+        "sep": " ",
+        "quote": "",
+        "kvs": ""
+      },
+      "ops": [
+        {
+          "op": "add_subsetting",
+          "args": [
+            "x",
+            null,
+            false,
+            "index",
+            "+2"
+          ],
+          "result": null
+        },
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "a b x c"
+        }
+      ]
+    },
+    {
+      "name": "insert-index-\"1_0\"",
+      "ctor": {
+        "value": "a b c",
+        "sep": " ",
+        "quote": "",
+        "kvs": ""
+      },
+      "ops": [
+        {
+          "op": "add_subsetting",
+          "args": [
+            "x",
+            null,
+            false,
+            "index",
+            "1_0"
+          ],
+          "result": null
+        },
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "a b c x"
+        }
+      ]
+    },
+    {
+      "name": "insert-index-\"0d2\"",
+      "ctor": {
+        "value": "a b c",
+        "sep": " ",
+        "quote": "",
+        "kvs": ""
+      },
+      "ops": [
+        {
+          "op": "add_subsetting",
+          "args": [
+            "x",
+            null,
+            false,
+            "index",
+            "0d2"
+          ],
+          "result": null
+        },
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "a b x c"
+        }
+      ]
+    },
+    {
+      "name": "insert-index-\"1.9\"",
+      "ctor": {
+        "value": "a b c",
+        "sep": " ",
+        "quote": "",
+        "kvs": ""
+      },
+      "ops": [
+        {
+          "op": "add_subsetting",
+          "args": [
+            "x",
+            null,
+            false,
+            "index",
+            "1.9"
+          ],
+          "result": null
+        },
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "a x b c"
+        }
+      ]
+    },
+    {
+      "name": "insert-index-\"0x2\"",
+      "ctor": {
+        "value": "a b c",
+        "sep": " ",
+        "quote": "",
+        "kvs": ""
+      },
+      "ops": [
+        {
+          "op": "add_subsetting",
+          "args": [
+            "x",
+            null,
+            false,
+            "index",
+            "0x2"
+          ],
+          "result": null
+        },
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "x a b c"
+        }
+      ]
+    },
+    {
+      "name": "insert-index-\"-0\"",
+      "ctor": {
+        "value": "a b c",
+        "sep": " ",
+        "quote": "",
+        "kvs": ""
+      },
+      "ops": [
+        {
+          "op": "add_subsetting",
+          "args": [
+            "x",
+            null,
+            false,
+            "index",
+            "-0"
+          ],
+          "result": null
+        },
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "x a b c"
+        }
+      ]
+    },
+    {
+      "name": "insert-index-empty-list",
+      "ctor": {
+        "value": "",
+        "sep": " ",
+        "quote": "",
+        "kvs": ""
+      },
+      "ops": [
+        {
+          "op": "add_subsetting",
+          "args": [
+            "x",
+            null,
+            false,
+            "index",
+            "3"
+          ],
+          "result": null
+        },
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "x"
+        }
+      ]
+    },
+    {
+      "name": "insert-index-nil-list",
+      "ctor": {
+        "value": null,
+        "sep": " ",
+        "quote": "",
+        "kvs": ""
+      },
+      "ops": [
+        {
+          "op": "add_subsetting",
+          "args": [
+            "x",
+            null,
+            false,
+            "index",
+            "3"
+          ],
+          "result": null
+        },
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "x"
+        }
+      ]
+    },
+    {
+      "name": "insert-index-negative-empty-list",
+      "ctor": {
+        "value": "",
+        "sep": " ",
+        "quote": "",
+        "kvs": ""
+      },
+      "ops": [
+        {
+          "op": "add_subsetting",
+          "args": [
+            "x",
+            null,
+            false,
+            "index",
+            "-1"
+          ],
+          "result": null
+        },
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "x"
+        },
+        {
+          "op": "add_subsetting",
+          "args": [
+            "y",
+            null,
+            false,
+            "index",
+            "-3"
+          ],
+          "error": {
+            "class": "IndexError",
+            "message": "index -3 too small for array; minimum: -2"
+          }
+        },
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "x"
+        }
+      ]
+    },
+    {
+      "name": "insert-index-exact",
+      "ctor": {
+        "value": "a b c",
+        "sep": " ",
+        "quote": "",
+        "kvs": ""
+      },
+      "ops": [
+        {
+          "op": "add_subsetting",
+          "args": [
+            "x",
+            null,
+            true,
+            "index",
+            "1"
+          ],
+          "result": null
+        },
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "a x b c"
+        }
+      ]
+    },
+    {
+      "name": "insert-index-quoted",
+      "ctor": {
+        "value": "'a b c'",
+        "sep": " ",
+        "quote": "",
+        "kvs": "="
+      },
+      "ops": [
+        {
+          "op": "add_subsetting",
+          "args": [
+            "x",
+            "v",
+            false,
+            "index",
+            "1"
+          ],
+          "result": null
+        },
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "'a x=v b c'"
+        }
+      ]
+    },
+    {
+      "name": "insert-index-huge",
+      "ctor": {
+        "value": "a b c",
+        "sep": " ",
+        "quote": "",
+        "kvs": ""
+      },
+      "ops": [
+        {
+          "op": "add_subsetting",
+          "args": [
+            "x",
+            null,
+            false,
+            "index",
+            "99999999999999999999999"
+          ],
+          "result": null
+        },
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "a b c x"
+        }
+      ]
+    },
+    {
+      "name": "insert-unknown-type-appends",
+      "ctor": {
+        "value": "a b c",
+        "sep": " ",
+        "quote": "",
+        "kvs": ""
+      },
+      "ops": [
+        {
+          "op": "add_subsetting",
+          "args": [
+            "x",
+            null,
+            false,
+            "bogus",
+            "a"
+          ],
+          "result": null
+        },
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "a b c x"
+        }
+      ]
+    },
+    {
+      "name": "remove-one",
+      "ctor": {
+        "value": "-Xms256m -Xmx512m -XX:+UseG1GC",
+        "sep": " ",
+        "quote": "",
+        "kvs": ""
+      },
+      "ops": [
+        {
+          "op": "remove_subsetting",
+          "args": [
+            "-Xmx",
+            false
+          ],
+          "result": null
+        },
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "-Xms256m -XX:+UseG1GC"
+        }
+      ]
+    },
+    {
+      "name": "remove-prefix-removes-all-matches",
+      "ctor": {
+        "value": "-Xmx1 -Xmy2 -Xmz3",
+        "sep": " ",
+        "quote": "",
+        "kvs": ""
+      },
+      "ops": [
+        {
+          "op": "remove_subsetting",
+          "args": [
+            "-Xm",
+            false
+          ],
+          "result": null
+        },
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": ""
+        }
+      ]
+    },
+    {
+      "name": "remove-prefix-matches-name-and-value",
+      "ctor": {
+        "value": "-Xmx512m -Xms1",
+        "sep": " ",
+        "quote": "",
+        "kvs": ""
+      },
+      "ops": [
+        {
+          "op": "remove_subsetting",
+          "args": [
+            "-Xmx512m",
+            false
+          ],
+          "result": null
+        },
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "-Xms1"
+        }
+      ]
+    },
+    {
+      "name": "remove-exact",
+      "ctor": {
+        "value": "-Xms256m -Xmx512m -XX:+UseG1GC",
+        "sep": " ",
+        "quote": "",
+        "kvs": ""
+      },
+      "ops": [
+        {
+          "op": "remove_subsetting",
+          "args": [
+            "-Xmx512m",
+            true
+          ],
+          "result": null
+        },
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "-Xms256m -XX:+UseG1GC"
+        },
+        {
+          "op": "remove_subsetting",
+          "args": [
+            "-Xms256m",
+            true
+          ],
+          "result": null
+        },
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "-XX:+UseG1GC"
+        }
+      ]
+    },
+    {
+      "name": "remove-exact-does-not-match-prefix",
+      "ctor": {
+        "value": "-Xms256m -Xmx512m -XX:+UseG1GC",
+        "sep": " ",
+        "quote": "",
+        "kvs": ""
+      },
+      "ops": [
+        {
+          "op": "remove_subsetting",
+          "args": [
+            "-Xmx",
+            true
+          ],
+          "result": null
+        },
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "-Xms256m -Xmx512m -XX:+UseG1GC"
+        }
+      ]
+    },
+    {
+      "name": "remove-absent",
+      "ctor": {
+        "value": "-Xms256m -Xmx512m -XX:+UseG1GC",
+        "sep": " ",
+        "quote": "",
+        "kvs": ""
+      },
+      "ops": [
+        {
+          "op": "remove_subsetting",
+          "args": [
+            "-Q",
+            false
+          ],
+          "result": null
+        },
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "-Xms256m -Xmx512m -XX:+UseG1GC"
+        },
+        {
+          "op": "remove_subsetting",
+          "args": [
+            "-Q",
+            true
+          ],
+          "result": null
+        },
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "-Xms256m -Xmx512m -XX:+UseG1GC"
+        }
+      ]
+    },
+    {
+      "name": "remove-duplicates",
+      "ctor": {
+        "value": "a=1 b=2 a=3",
+        "sep": " ",
+        "quote": "",
+        "kvs": "="
+      },
+      "ops": [
+        {
+          "op": "remove_subsetting",
+          "args": [
+            "a",
+            false
+          ],
+          "result": null
+        },
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "b=2"
+        }
+      ]
+    },
+    {
+      "name": "remove-with-key-val-separator",
+      "ctor": {
+        "value": "a=1 ab=2 b=3",
+        "sep": " ",
+        "quote": "",
+        "kvs": "="
+      },
+      "ops": [
+        {
+          "op": "remove_subsetting",
+          "args": [
+            "a",
+            false
+          ],
+          "result": null
+        },
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "ab=2 b=3"
+        }
+      ]
+    },
+    {
+      "name": "remove-key-val-separator-needs-it",
+      "ctor": {
+        "value": "a1 b2",
+        "sep": " ",
+        "quote": "",
+        "kvs": "="
+      },
+      "ops": [
+        {
+          "op": "remove_subsetting",
+          "args": [
+            "a",
+            false
+          ],
+          "result": null
+        },
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "a1 b2"
+        }
+      ]
+    },
+    {
+      "name": "remove-last-leaves-empty",
+      "ctor": {
+        "value": "a",
+        "sep": " ",
+        "quote": "",
+        "kvs": ""
+      },
+      "ops": [
+        {
+          "op": "remove_subsetting",
+          "args": [
+            "a",
+            false
+          ],
+          "result": null
+        },
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": ""
+        }
+      ]
+    },
+    {
+      "name": "remove-last-leaves-empty-quoted",
+      "ctor": {
+        "value": "\"a\"",
+        "sep": " ",
+        "quote": "",
+        "kvs": ""
+      },
+      "ops": [
+        {
+          "op": "remove_subsetting",
+          "args": [
+            "a",
+            false
+          ],
+          "result": null
+        },
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "\"\""
+        }
+      ]
+    },
+    {
+      "name": "remove-last-leaves-empty-default-quote",
+      "ctor": {
+        "value": "a",
+        "sep": " ",
+        "quote": "\"",
+        "kvs": ""
+      },
+      "ops": [
+        {
+          "op": "remove_subsetting",
+          "args": [
+            "a",
+            false
+          ],
+          "result": null
+        },
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "\"\""
+        }
+      ]
+    },
+    {
+      "name": "remove-from-empty",
+      "ctor": {
+        "value": "",
+        "sep": " ",
+        "quote": "",
+        "kvs": ""
+      },
+      "ops": [
+        {
+          "op": "remove_subsetting",
+          "args": [
+            "a",
+            false
+          ],
+          "result": null
+        },
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": ""
+        }
+      ]
+    },
+    {
+      "name": "remove-from-nil",
+      "ctor": {
+        "value": null,
+        "sep": " ",
+        "quote": "",
+        "kvs": ""
+      },
+      "ops": [
+        {
+          "op": "remove_subsetting",
+          "args": [
+            "a",
+            false
+          ],
+          "result": null
+        },
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": ""
+        }
+      ]
+    },
+    {
+      "name": "remove-empty-name-removes-everything",
+      "ctor": {
+        "value": "a b c",
+        "sep": " ",
+        "quote": "",
+        "kvs": ""
+      },
+      "ops": [
+        {
+          "op": "remove_subsetting",
+          "args": [
+            "",
+            false
+          ],
+          "result": null
+        },
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": ""
+        }
+      ]
+    },
+    {
+      "name": "remove-empty-name-exact-removes-nothing",
+      "ctor": {
+        "value": "a b c",
+        "sep": " ",
+        "quote": "",
+        "kvs": ""
+      },
+      "ops": [
+        {
+          "op": "remove_subsetting",
+          "args": [
+            "",
+            true
+          ],
+          "result": null
+        },
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "a b c"
+        }
+      ]
+    },
+    {
+      "name": "remove-then-add",
+      "ctor": {
+        "value": "a=1 b=2",
+        "sep": " ",
+        "quote": "",
+        "kvs": "="
+      },
+      "ops": [
+        {
+          "op": "remove_subsetting",
+          "args": [
+            "a",
+            false
+          ],
+          "result": null
+        },
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "b=2"
+        },
+        {
+          "op": "add_subsetting",
+          "args": [
+            "a",
+            "5",
+            false,
+            "end",
+            null
+          ],
+          "result": null
+        },
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "b=2 a=5"
+        }
+      ]
+    },
+    {
+      "name": "remove-quoted-comma",
+      "ctor": {
+        "value": "\"a,b,c\"",
+        "sep": ",",
+        "quote": "",
+        "kvs": ""
+      },
+      "ops": [
+        {
+          "op": "remove_subsetting",
+          "args": [
+            "b",
+            false
+          ],
+          "result": null
+        },
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "\"a,c\""
+        }
+      ]
+    },
+    {
+      "name": "sequence-add-update-remove",
+      "ctor": {
+        "value": "a=1",
+        "sep": " ",
+        "quote": "",
+        "kvs": "="
+      },
+      "ops": [
+        {
+          "op": "add_subsetting",
+          "args": [
+            "b",
+            "2",
+            false,
+            "end",
+            null
+          ],
+          "result": null
+        },
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "a=1 b=2"
+        },
+        {
+          "op": "add_subsetting",
+          "args": [
+            "b",
+            "3",
+            false,
+            "end",
+            null
+          ],
+          "result": null
+        },
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "a=1 b=3"
+        },
+        {
+          "op": "remove_subsetting",
+          "args": [
+            "a",
+            false
+          ],
+          "result": null
+        },
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "b=3"
+        },
+        {
+          "op": "get_subsetting_value",
+          "args": [
+            "b",
+            false
+          ],
+          "result": "3"
+        },
+        {
+          "op": "get_subsetting_value",
+          "args": [
+            "a",
+            false
+          ],
+          "result": null
+        }
+      ]
+    },
+    {
+      "name": "sequence-get-after-add",
+      "ctor": {
+        "value": null,
+        "sep": " ",
+        "quote": "",
+        "kvs": ""
+      },
+      "ops": [
+        {
+          "op": "add_subsetting",
+          "args": [
+            "-Xmx",
+            "1g",
+            false,
+            "end",
+            null
+          ],
+          "result": null
+        },
+        {
+          "op": "get_subsetting_value",
+          "args": [
+            "-Xmx",
+            false
+          ],
+          "result": "1g"
+        },
+        {
+          "op": "get_subsetting_value",
+          "args": [
+            "-Xmx",
+            true
+          ],
+          "result": null
+        },
+        {
+          "op": "get_subsetting_value",
+          "args": [
+            "-Xmx1g",
+            true
+          ],
+          "result": true
+        },
+        {
+          "op": "get_value",
+          "args": [
+
+          ],
+          "result": "-Xmx1g"
+        }
+      ]
+    }
+  ]
+}

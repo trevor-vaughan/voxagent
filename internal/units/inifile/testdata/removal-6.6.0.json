@@ -1,0 +1,2134 @@
+{
+  "openvox": "8.34.0",
+  "ruby": "3.2.11",
+  "cases": [
+    {
+      "name": "rsec-middle",
+      "encoding": "US-ASCII",
+      "input_b64": "W2FdCnggPSAxCnkgPSAyCgpbYl0KeiA9IDMKCltjXQp3ID0gNAo=",
+      "ctor": {
+        "kvs": " = ",
+        "prefix": "[",
+        "suffix": "]",
+        "indent_char": " ",
+        "indent_width": null
+      },
+      "ops": [
+        {
+          "op": "remove_section",
+          "args": [
+            "b"
+          ],
+          "result": null
+        },
+        {
+          "op": "section_names",
+          "args": [
+
+          ],
+          "result": [
+            "",
+            "a",
+            "c"
+          ]
+        },
+        {
+          "op": "section?",
+          "args": [
+            "b"
+          ],
+          "result": false
+        },
+        {
+          "op": "save",
+          "args": [
+
+          ],
+          "result": null
+        }
+      ],
+      "final_b64": "W2FdCnggPSAxCnkgPSAyCgpbY10KdyA9IDQK"
+    },
+    {
+      "name": "rsec-middle",
+      "encoding": "UTF-8",
+      "input_b64": "W2FdCnggPSAxCnkgPSAyCgpbYl0KeiA9IDMKCltjXQp3ID0gNAo=",
+      "ctor": {
+        "kvs": " = ",
+        "prefix": "[",
+        "suffix": "]",
+        "indent_char": " ",
+        "indent_width": null
+      },
+      "ops": [
+        {
+          "op": "remove_section",
+          "args": [
+            "b"
+          ],
+          "result": null
+        },
+        {
+          "op": "section_names",
+          "args": [
+
+          ],
+          "result": [
+            "",
+            "a",
+            "c"
+          ]
+        },
+        {
+          "op": "section?",
+          "args": [
+            "b"
+          ],
+          "result": false
+        },
+        {
+          "op": "save",
+          "args": [
+
+          ],
+          "result": null
+        }
+      ],
+      "final_b64": "W2FdCnggPSAxCnkgPSAyCgpbY10KdyA9IDQK"
+    },
+    {
+      "name": "rsec-first",
+      "encoding": "US-ASCII",
+      "input_b64": "W2FdCnggPSAxCnkgPSAyCgpbYl0KeiA9IDMKCltjXQp3ID0gNAo=",
+      "ctor": {
+        "kvs": " = ",
+        "prefix": "[",
+        "suffix": "]",
+        "indent_char": " ",
+        "indent_width": null
+      },
+      "ops": [
+        {
+          "op": "remove_section",
+          "args": [
+            "a"
+          ],
+          "result": null
+        },
+        {
+          "op": "section_names",
+          "args": [
+
+          ],
+          "result": [
+            "",
+            "b",
+            "c"
+          ]
+        },
+        {
+          "op": "save",
+          "args": [
+
+          ],
+          "result": null
+        }
+      ],
+      "final_b64": "W2JdCnogPSAzCgpbY10KdyA9IDQK"
+    },
+    {
+      "name": "rsec-first",
+      "encoding": "UTF-8",
+      "input_b64": "W2FdCnggPSAxCnkgPSAyCgpbYl0KeiA9IDMKCltjXQp3ID0gNAo=",
+      "ctor": {
+        "kvs": " = ",
+        "prefix": "[",
+        "suffix": "]",
+        "indent_char": " ",
+        "indent_width": null
+      },
+      "ops": [
+        {
+          "op": "remove_section",
+          "args": [
+            "a"
+          ],
+          "result": null
+        },
+        {
+          "op": "section_names",
+          "args": [
+
+          ],
+          "result": [
+            "",
+            "b",
+            "c"
+          ]
+        },
+        {
+          "op": "save",
+          "args": [
+
+          ],
+          "result": null
+        }
+      ],
+      "final_b64": "W2JdCnogPSAzCgpbY10KdyA9IDQK"
+    },
+    {
+      "name": "rsec-last",
+      "encoding": "US-ASCII",
+      "input_b64": "W2FdCnggPSAxCnkgPSAyCgpbYl0KeiA9IDMKCltjXQp3ID0gNAo=",
+      "ctor": {
+        "kvs": " = ",
+        "prefix": "[",
+        "suffix": "]",
+        "indent_char": " ",
+        "indent_width": null
+      },
+      "ops": [
+        {
+          "op": "remove_section",
+          "args": [
+            "c"
+          ],
+          "result": null
+        },
+        {
+          "op": "section_names",
+          "args": [
+
+          ],
+          "result": [
+            "",
+            "a",
+            "b"
+          ]
+        },
+        {
+          "op": "save",
+          "args": [
+
+          ],
+          "result": null
+        }
+      ],
+      "final_b64": "W2FdCnggPSAxCnkgPSAyCgpbYl0KeiA9IDMKCg=="
+    },
+    {
+      "name": "rsec-last",
+      "encoding": "UTF-8",
+      "input_b64": "W2FdCnggPSAxCnkgPSAyCgpbYl0KeiA9IDMKCltjXQp3ID0gNAo=",
+      "ctor": {
+        "kvs": " = ",
+        "prefix": "[",
+        "suffix": "]",
+        "indent_char": " ",
+        "indent_width": null
+      },
+      "ops": [
+        {
+          "op": "remove_section",
+          "args": [
+            "c"
+          ],
+          "result": null
+        },
+        {
+          "op": "section_names",
+          "args": [
+
+          ],
+          "result": [
+            "",
+            "a",
+            "b"
+          ]
+        },
+        {
+          "op": "save",
+          "args": [
+
+          ],
+          "result": null
+        }
+      ],
+      "final_b64": "W2FdCnggPSAxCnkgPSAyCgpbYl0KeiA9IDMKCg=="
+    },
+    {
+      "name": "rsec-missing",
+      "encoding": "US-ASCII",
+      "input_b64": "W2FdCnggPSAxCnkgPSAyCgpbYl0KeiA9IDMKCltjXQp3ID0gNAo=",
+      "ctor": {
+        "kvs": " = ",
+        "prefix": "[",
+        "suffix": "]",
+        "indent_char": " ",
+        "indent_width": null
+      },
+      "ops": [
+        {
+          "op": "remove_section",
+          "args": [
+            "nope"
+          ],
+          "result": null
+        },
+        {
+          "op": "section_names",
+          "args": [
+
+          ],
+          "result": [
+            "",
+            "a",
+            "b",
+            "c"
+          ]
+        },
+        {
+          "op": "save",
+          "args": [
+
+          ],
+          "result": null
+        }
+      ],
+      "final_b64": "W2FdCnggPSAxCnkgPSAyCgpbYl0KeiA9IDMKCltjXQp3ID0gNAo="
+    },
+    {
+      "name": "rsec-missing",
+      "encoding": "UTF-8",
+      "input_b64": "W2FdCnggPSAxCnkgPSAyCgpbYl0KeiA9IDMKCltjXQp3ID0gNAo=",
+      "ctor": {
+        "kvs": " = ",
+        "prefix": "[",
+        "suffix": "]",
+        "indent_char": " ",
+        "indent_width": null
+      },
+      "ops": [
+        {
+          "op": "remove_section",
+          "args": [
+            "nope"
+          ],
+          "result": null
+        },
+        {
+          "op": "section_names",
+          "args": [
+
+          ],
+          "result": [
+            "",
+            "a",
+            "b",
+            "c"
+          ]
+        },
+        {
+          "op": "save",
+          "args": [
+
+          ],
+          "result": null
+        }
+      ],
+      "final_b64": "W2FdCnggPSAxCnkgPSAyCgpbYl0KeiA9IDMKCltjXQp3ID0gNAo="
+    },
+    {
+      "name": "rsec-missing-file",
+      "encoding": "US-ASCII",
+      "missing": true,
+      "ctor": {
+        "kvs": " = ",
+        "prefix": "[",
+        "suffix": "]",
+        "indent_char": " ",
+        "indent_width": null
+      },
+      "ops": [
+        {
+          "op": "remove_section",
+          "args": [
+            "a"
+          ],
+          "result": null
+        },
+        {
+          "op": "save",
+          "args": [
+
+          ],
+          "result": null
+        }
+      ],
+      "final_b64": ""
+    },
+    {
+      "name": "rsec-missing-file",
+      "encoding": "UTF-8",
+      "missing": true,
+      "ctor": {
+        "kvs": " = ",
+        "prefix": "[",
+        "suffix": "]",
+        "indent_char": " ",
+        "indent_width": null
+      },
+      "ops": [
+        {
+          "op": "remove_section",
+          "args": [
+            "a"
+          ],
+          "result": null
+        },
+        {
+          "op": "save",
+          "args": [
+
+          ],
+          "result": null
+        }
+      ],
+      "final_b64": ""
+    },
+    {
+      "name": "rsec-then-update-later-section",
+      "encoding": "US-ASCII",
+      "input_b64": "W2FdCnggPSAxCnkgPSAyCgpbYl0KeiA9IDMKCltjXQp3ID0gNAo=",
+      "ctor": {
+        "kvs": " = ",
+        "prefix": "[",
+        "suffix": "]",
+        "indent_char": " ",
+        "indent_width": null
+      },
+      "ops": [
+        {
+          "op": "remove_section",
+          "args": [
+            "a"
+          ],
+          "result": null
+        },
+        {
+          "op": "set_value",
+          "args": [
+            "c",
+            "w",
+            " = ",
+            [
+              "7",
+              "8"
+            ]
+          ],
+          "result": null
+        },
+        {
+          "op": "set_value",
+          "args": [
+            "b",
+            "z",
+            " = ",
+            [
+              "9"
+            ]
+          ],
+          "result": null
+        },
+        {
+          "op": "save",
+          "args": [
+
+          ],
+          "result": null
+        }
+      ],
+      "final_b64": "W2JdCnogPSA5CgpbY10KdyA9IDcKdyA9IDgK"
+    },
+    {
+      "name": "rsec-then-update-later-section",
+      "encoding": "UTF-8",
+      "input_b64": "W2FdCnggPSAxCnkgPSAyCgpbYl0KeiA9IDMKCltjXQp3ID0gNAo=",
+      "ctor": {
+        "kvs": " = ",
+        "prefix": "[",
+        "suffix": "]",
+        "indent_char": " ",
+        "indent_width": null
+      },
+      "ops": [
+        {
+          "op": "remove_section",
+          "args": [
+            "a"
+          ],
+          "result": null
+        },
+        {
+          "op": "set_value",
+          "args": [
+            "c",
+            "w",
+            " = ",
+            [
+              "7",
+              "8"
+            ]
+          ],
+          "result": null
+        },
+        {
+          "op": "set_value",
+          "args": [
+            "b",
+            "z",
+            " = ",
+            [
+              "9"
+            ]
+          ],
+          "result": null
+        },
+        {
+          "op": "save",
+          "args": [
+
+          ],
+          "result": null
+        }
+      ],
+      "final_b64": "W2JdCnogPSA5CgpbY10KdyA9IDcKdyA9IDgK"
+    },
+    {
+      "name": "rsec-then-create-same-name",
+      "encoding": "US-ASCII",
+      "input_b64": "W2FdCnggPSAxCnkgPSAyCgpbYl0KeiA9IDMKCltjXQp3ID0gNAo=",
+      "ctor": {
+        "kvs": " = ",
+        "prefix": "[",
+        "suffix": "]",
+        "indent_char": " ",
+        "indent_width": null
+      },
+      "ops": [
+        {
+          "op": "remove_section",
+          "args": [
+            "b"
+          ],
+          "result": null
+        },
+        {
+          "op": "set_value",
+          "args": [
+            "b",
+            "k",
+            " = ",
+            [
+              "v"
+            ]
+          ],
+          "result": null
+        },
+        {
+          "op": "save",
+          "args": [
+
+          ],
+          "result": null
+        }
+      ],
+      "final_b64": "W2FdCnggPSAxCnkgPSAyCgpbY10KdyA9IDQKCltiXQprID0gdgo="
+    },
+    {
+      "name": "rsec-then-create-same-name",
+      "encoding": "UTF-8",
+      "input_b64": "W2FdCnggPSAxCnkgPSAyCgpbYl0KeiA9IDMKCltjXQp3ID0gNAo=",
+      "ctor": {
+        "kvs": " = ",
+        "prefix": "[",
+        "suffix": "]",
+        "indent_char": " ",
+        "indent_width": null
+      },
+      "ops": [
+        {
+          "op": "remove_section",
+          "args": [
+            "b"
+          ],
+          "result": null
+        },
+        {
+          "op": "set_value",
+          "args": [
+            "b",
+            "k",
+            " = ",
+            [
+              "v"
+            ]
+          ],
+          "result": null
+        },
+        {
+          "op": "save",
+          "args": [
+
+          ],
+          "result": null
+        }
+      ],
+      "final_b64": "W2FdCnggPSAxCnkgPSAyCgpbY10KdyA9IDQKCltiXQprID0gdgo="
+    },
+    {
+      "name": "rsec-twice",
+      "encoding": "US-ASCII",
+      "input_b64": "W2FdCnggPSAxCnkgPSAyCgpbYl0KeiA9IDMKCltjXQp3ID0gNAo=",
+      "ctor": {
+        "kvs": " = ",
+        "prefix": "[",
+        "suffix": "]",
+        "indent_char": " ",
+        "indent_width": null
+      },
+      "ops": [
+        {
+          "op": "remove_section",
+          "args": [
+            "b"
+          ],
+          "result": null
+        },
+        {
+          "op": "remove_section",
+          "args": [
+            "b"
+          ],
+          "result": null
+        },
+        {
+          "op": "save",
+          "args": [
+
+          ],
+          "result": null
+        }
+      ],
+      "final_b64": "W2FdCnggPSAxCnkgPSAyCgpbY10KdyA9IDQK"
+    },
+    {
+      "name": "rsec-twice",
+      "encoding": "UTF-8",
+      "input_b64": "W2FdCnggPSAxCnkgPSAyCgpbYl0KeiA9IDMKCltjXQp3ID0gNAo=",
+      "ctor": {
+        "kvs": " = ",
+        "prefix": "[",
+        "suffix": "]",
+        "indent_char": " ",
+        "indent_width": null
+      },
+      "ops": [
+        {
+          "op": "remove_section",
+          "args": [
+            "b"
+          ],
+          "result": null
+        },
+        {
+          "op": "remove_section",
+          "args": [
+            "b"
+          ],
+          "result": null
+        },
+        {
+          "op": "save",
+          "args": [
+
+          ],
+          "result": null
+        }
+      ],
+      "final_b64": "W2FdCnggPSAxCnkgPSAyCgpbY10KdyA9IDQK"
+    },
+    {
+      "name": "rsec-two-sections",
+      "encoding": "US-ASCII",
+      "input_b64": "W2FdCnggPSAxCnkgPSAyCgpbYl0KeiA9IDMKCltjXQp3ID0gNAo=",
+      "ctor": {
+        "kvs": " = ",
+        "prefix": "[",
+        "suffix": "]",
+        "indent_char": " ",
+        "indent_width": null
+      },
+      "ops": [
+        {
+          "op": "remove_section",
+          "args": [
+            "a"
+          ],
+          "result": null
+        },
+        {
+          "op": "remove_section",
+          "args": [
+            "c"
+          ],
+          "result": null
+        },
+        {
+          "op": "section_names",
+          "args": [
+
+          ],
+          "result": [
+            "",
+            "b"
+          ]
+        },
+        {
+          "op": "save",
+          "args": [
+
+          ],
+          "result": null
+        }
+      ],
+      "final_b64": "W2JdCnogPSAzCgo="
+    },
+    {
+      "name": "rsec-two-sections",
+      "encoding": "UTF-8",
+      "input_b64": "W2FdCnggPSAxCnkgPSAyCgpbYl0KeiA9IDMKCltjXQp3ID0gNAo=",
+      "ctor": {
+        "kvs": " = ",
+        "prefix": "[",
+        "suffix": "]",
+        "indent_char": " ",
+        "indent_width": null
+      },
+      "ops": [
+        {
+          "op": "remove_section",
+          "args": [
+            "a"
+          ],
+          "result": null
+        },
+        {
+          "op": "remove_section",
+          "args": [
+            "c"
+          ],
+          "result": null
+        },
+        {
+          "op": "section_names",
+          "args": [
+
+          ],
+          "result": [
+            "",
+            "b"
+          ]
+        },
+        {
+          "op": "save",
+          "args": [
+
+          ],
+          "result": null
+        }
+      ],
+      "final_b64": "W2JdCnogPSAzCgo="
+    },
+    {
+      "name": "rsec-all-sections",
+      "encoding": "US-ASCII",
+      "input_b64": "W2FdCnggPSAxCltiXQp5ID0gMQo=",
+      "ctor": {
+        "kvs": " = ",
+        "prefix": "[",
+        "suffix": "]",
+        "indent_char": " ",
+        "indent_width": null
+      },
+      "ops": [
+        {
+          "op": "remove_section",
+          "args": [
+            "a"
+          ],
+          "result": null
+        },
+        {
+          "op": "remove_section",
+          "args": [
+            "b"
+          ],
+          "result": null
+        },
+        {
+          "op": "section_names",
+          "args": [
+
+          ],
+          "result": [
+            ""
+          ]
+        },
+        {
+          "op": "save",
+          "args": [
+
+          ],
+          "result": null
+        }
+      ],
+      "final_b64": ""
+    },
+    {
+      "name": "rsec-all-sections",
+      "encoding": "UTF-8",
+      "input_b64": "W2FdCnggPSAxCltiXQp5ID0gMQo=",
+      "ctor": {
+        "kvs": " = ",
+        "prefix": "[",
+        "suffix": "]",
+        "indent_char": " ",
+        "indent_width": null
+      },
+      "ops": [
+        {
+          "op": "remove_section",
+          "args": [
+            "a"
+          ],
+          "result": null
+        },
+        {
+          "op": "remove_section",
+          "args": [
+            "b"
+          ],
+          "result": null
+        },
+        {
+          "op": "section_names",
+          "args": [
+
+          ],
+          "result": [
+            ""
+          ]
+        },
+        {
+          "op": "save",
+          "args": [
+
+          ],
+          "result": null
+        }
+      ],
+      "final_b64": ""
+    },
+    {
+      "name": "rsec-global-with-content",
+      "encoding": "US-ASCII",
+      "input_b64": "ZyA9IDEKW2FdCnggPSAxCg==",
+      "ctor": {
+        "kvs": " = ",
+        "prefix": "[",
+        "suffix": "]",
+        "indent_char": " ",
+        "indent_width": null
+      },
+      "ops": [
+        {
+          "op": "remove_section",
+          "args": [
+            ""
+          ],
+          "result": null
+        },
+        {
+          "op": "section_names",
+          "args": [
+
+          ],
+          "result": [
+            "a"
+          ]
+        },
+        {
+          "op": "save",
+          "args": [
+
+          ],
+          "error": {
+            "class": "NoMethodError",
+            "message": "undefined method `empty?' for nil:NilClass"
+          }
+        }
+      ],
+      "final_b64": "ZyA9IDEKW2FdCnggPSAxCg=="
+    },
+    {
+      "name": "rsec-global-with-content",
+      "encoding": "UTF-8",
+      "input_b64": "ZyA9IDEKW2FdCnggPSAxCg==",
+      "ctor": {
+        "kvs": " = ",
+        "prefix": "[",
+        "suffix": "]",
+        "indent_char": " ",
+        "indent_width": null
+      },
+      "ops": [
+        {
+          "op": "remove_section",
+          "args": [
+            ""
+          ],
+          "result": null
+        },
+        {
+          "op": "section_names",
+          "args": [
+
+          ],
+          "result": [
+            "a"
+          ]
+        },
+        {
+          "op": "save",
+          "args": [
+
+          ],
+          "error": {
+            "class": "NoMethodError",
+            "message": "undefined method `empty?' for nil:NilClass"
+          }
+        }
+      ],
+      "final_b64": "ZyA9IDEKW2FdCnggPSAxCg=="
+    },
+    {
+      "name": "rsec-global-empty",
+      "encoding": "US-ASCII",
+      "input_b64": "W2FdCnggPSAxCg==",
+      "ctor": {
+        "kvs": " = ",
+        "prefix": "[",
+        "suffix": "]",
+        "indent_char": " ",
+        "indent_width": null
+      },
+      "ops": [
+        {
+          "op": "remove_section",
+          "args": [
+            ""
+          ],
+          "error": {
+            "class": "NoMethodError",
+            "message": "undefined method `-' for nil:NilClass"
+          }
+        },
+        {
+          "op": "section_names",
+          "args": [
+
+          ],
+          "result": [
+            "",
+            "a"
+          ]
+        },
+        {
+          "op": "save",
+          "args": [
+
+          ],
+          "error": {
+            "class": "NoMethodError",
+            "message": "undefined method `match?' for nil:NilClass"
+          }
+        }
+      ],
+      "final_b64": ""
+    },
+    {
+      "name": "rsec-global-empty",
+      "encoding": "UTF-8",
+      "input_b64": "W2FdCnggPSAxCg==",
+      "ctor": {
+        "kvs": " = ",
+        "prefix": "[",
+        "suffix": "]",
+        "indent_char": " ",
+        "indent_width": null
+      },
+      "ops": [
+        {
+          "op": "remove_section",
+          "args": [
+            ""
+          ],
+          "error": {
+            "class": "NoMethodError",
+            "message": "undefined method `-' for nil:NilClass"
+          }
+        },
+        {
+          "op": "section_names",
+          "args": [
+
+          ],
+          "result": [
+            "",
+            "a"
+          ]
+        },
+        {
+          "op": "save",
+          "args": [
+
+          ],
+          "error": {
+            "class": "NoMethodError",
+            "message": "undefined method `match?' for nil:NilClass"
+          }
+        }
+      ],
+      "final_b64": ""
+    },
+    {
+      "name": "rsec-global-empty-file",
+      "encoding": "US-ASCII",
+      "input_b64": "",
+      "ctor": {
+        "kvs": " = ",
+        "prefix": "[",
+        "suffix": "]",
+        "indent_char": " ",
+        "indent_width": null
+      },
+      "ops": [
+        {
+          "op": "remove_section",
+          "args": [
+            ""
+          ],
+          "error": {
+            "class": "NoMethodError",
+            "message": "undefined method `-' for nil:NilClass"
+          }
+        }
+      ],
+      "final_b64": ""
+    },
+    {
+      "name": "rsec-global-empty-file",
+      "encoding": "UTF-8",
+      "input_b64": "",
+      "ctor": {
+        "kvs": " = ",
+        "prefix": "[",
+        "suffix": "]",
+        "indent_char": " ",
+        "indent_width": null
+      },
+      "ops": [
+        {
+          "op": "remove_section",
+          "args": [
+            ""
+          ],
+          "error": {
+            "class": "NoMethodError",
+            "message": "undefined method `-' for nil:NilClass"
+          }
+        }
+      ],
+      "final_b64": ""
+    },
+    {
+      "name": "rsec-section-only-header",
+      "encoding": "US-ASCII",
+      "input_b64": "W2FdCltiXQp5ID0gMQo=",
+      "ctor": {
+        "kvs": " = ",
+        "prefix": "[",
+        "suffix": "]",
+        "indent_char": " ",
+        "indent_width": null
+      },
+      "ops": [
+        {
+          "op": "remove_section",
+          "args": [
+            "a"
+          ],
+          "result": null
+        },
+        {
+          "op": "save",
+          "args": [
+
+          ],
+          "result": null
+        }
+      ],
+      "final_b64": "W2JdCnkgPSAxCg=="
+    },
+    {
+      "name": "rsec-section-only-header",
+      "encoding": "UTF-8",
+      "input_b64": "W2FdCltiXQp5ID0gMQo=",
+      "ctor": {
+        "kvs": " = ",
+        "prefix": "[",
+        "suffix": "]",
+        "indent_char": " ",
+        "indent_width": null
+      },
+      "ops": [
+        {
+          "op": "remove_section",
+          "args": [
+            "a"
+          ],
+          "result": null
+        },
+        {
+          "op": "save",
+          "args": [
+
+          ],
+          "result": null
+        }
+      ],
+      "final_b64": "W2JdCnkgPSAxCg=="
+    },
+    {
+      "name": "rsec-no-final-newline",
+      "encoding": "US-ASCII",
+      "input_b64": "W2FdCnggPSAxCltiXQp5ID0gMQ==",
+      "ctor": {
+        "kvs": " = ",
+        "prefix": "[",
+        "suffix": "]",
+        "indent_char": " ",
+        "indent_width": null
+      },
+      "ops": [
+        {
+          "op": "remove_section",
+          "args": [
+            "b"
+          ],
+          "result": null
+        },
+        {
+          "op": "save",
+          "args": [
+
+          ],
+          "result": null
+        }
+      ],
+      "final_b64": "W2FdCnggPSAxCg=="
+    },
+    {
+      "name": "rsec-no-final-newline",
+      "encoding": "UTF-8",
+      "input_b64": "W2FdCnggPSAxCltiXQp5ID0gMQ==",
+      "ctor": {
+        "kvs": " = ",
+        "prefix": "[",
+        "suffix": "]",
+        "indent_char": " ",
+        "indent_width": null
+      },
+      "ops": [
+        {
+          "op": "remove_section",
+          "args": [
+            "b"
+          ],
+          "result": null
+        },
+        {
+          "op": "save",
+          "args": [
+
+          ],
+          "result": null
+        }
+      ],
+      "final_b64": "W2FdCnggPSAxCg=="
+    },
+    {
+      "name": "rsec-new-section-in-this-run",
+      "encoding": "US-ASCII",
+      "input_b64": "W2FdCnggPSAxCnkgPSAyCgpbYl0KeiA9IDMKCltjXQp3ID0gNAo=",
+      "ctor": {
+        "kvs": " = ",
+        "prefix": "[",
+        "suffix": "]",
+        "indent_char": " ",
+        "indent_width": null
+      },
+      "ops": [
+        {
+          "op": "set_value",
+          "args": [
+            "n"
+          ],
+          "result": null
+        },
+        {
+          "op": "remove_section",
+          "args": [
+            "n"
+          ],
+          "error": {
+            "class": "NoMethodError",
+            "message": "undefined method `-' for nil:NilClass"
+          }
+        },
+        {
+          "op": "section_names",
+          "args": [
+
+          ],
+          "result": [
+            "",
+            "a",
+            "b",
+            "c",
+            "n"
+          ]
+        },
+        {
+          "op": "save",
+          "args": [
+
+          ],
+          "error": {
+            "class": "NoMethodError",
+            "message": "undefined method `match?' for nil:NilClass"
+          }
+        }
+      ],
+      "final_b64": ""
+    },
+    {
+      "name": "rsec-new-section-in-this-run",
+      "encoding": "UTF-8",
+      "input_b64": "W2FdCnggPSAxCnkgPSAyCgpbYl0KeiA9IDMKCltjXQp3ID0gNAo=",
+      "ctor": {
+        "kvs": " = ",
+        "prefix": "[",
+        "suffix": "]",
+        "indent_char": " ",
+        "indent_width": null
+      },
+      "ops": [
+        {
+          "op": "set_value",
+          "args": [
+            "n"
+          ],
+          "result": null
+        },
+        {
+          "op": "remove_section",
+          "args": [
+            "n"
+          ],
+          "error": {
+            "class": "NoMethodError",
+            "message": "undefined method `-' for nil:NilClass"
+          }
+        },
+        {
+          "op": "section_names",
+          "args": [
+
+          ],
+          "result": [
+            "",
+            "a",
+            "b",
+            "c",
+            "n"
+          ]
+        },
+        {
+          "op": "save",
+          "args": [
+
+          ],
+          "error": {
+            "class": "NoMethodError",
+            "message": "undefined method `match?' for nil:NilClass"
+          }
+        }
+      ],
+      "final_b64": ""
+    },
+    {
+      "name": "rsec-new-section-with-setting-in-this-run",
+      "encoding": "US-ASCII",
+      "input_b64": "W2FdCnggPSAxCnkgPSAyCgpbYl0KeiA9IDMKCltjXQp3ID0gNAo=",
+      "ctor": {
+        "kvs": " = ",
+        "prefix": "[",
+        "suffix": "]",
+        "indent_char": " ",
+        "indent_width": null
+      },
+      "ops": [
+        {
+          "op": "set_value",
+          "args": [
+            "n",
+            "k",
+            " = ",
+            [
+              "v"
+            ]
+          ],
+          "result": null
+        },
+        {
+          "op": "remove_section",
+          "args": [
+            "n"
+          ],
+          "error": {
+            "class": "NoMethodError",
+            "message": "undefined method `-' for nil:NilClass"
+          }
+        },
+        {
+          "op": "section_names",
+          "args": [
+
+          ],
+          "result": [
+            "",
+            "a",
+            "b",
+            "c",
+            "n"
+          ]
+        },
+        {
+          "op": "save",
+          "args": [
+
+          ],
+          "error": {
+            "class": "NoMethodError",
+            "message": "undefined method `match?' for nil:NilClass"
+          }
+        }
+      ],
+      "final_b64": ""
+    },
+    {
+      "name": "rsec-new-section-with-setting-in-this-run",
+      "encoding": "UTF-8",
+      "input_b64": "W2FdCnggPSAxCnkgPSAyCgpbYl0KeiA9IDMKCltjXQp3ID0gNAo=",
+      "ctor": {
+        "kvs": " = ",
+        "prefix": "[",
+        "suffix": "]",
+        "indent_char": " ",
+        "indent_width": null
+      },
+      "ops": [
+        {
+          "op": "set_value",
+          "args": [
+            "n",
+            "k",
+            " = ",
+            [
+              "v"
+            ]
+          ],
+          "result": null
+        },
+        {
+          "op": "remove_section",
+          "args": [
+            "n"
+          ],
+          "error": {
+            "class": "NoMethodError",
+            "message": "undefined method `-' for nil:NilClass"
+          }
+        },
+        {
+          "op": "section_names",
+          "args": [
+
+          ],
+          "result": [
+            "",
+            "a",
+            "b",
+            "c",
+            "n"
+          ]
+        },
+        {
+          "op": "save",
+          "args": [
+
+          ],
+          "error": {
+            "class": "NoMethodError",
+            "message": "undefined method `match?' for nil:NilClass"
+          }
+        }
+      ],
+      "final_b64": ""
+    },
+    {
+      "name": "rsec-dup-headers",
+      "encoding": "US-ASCII",
+      "input_b64": "W2FdCnggPSAxClthXQp5ID0gMgpbYl0KeiA9IDEK",
+      "ctor": {
+        "kvs": " = ",
+        "prefix": "[",
+        "suffix": "]",
+        "indent_char": " ",
+        "indent_width": null
+      },
+      "ops": [
+        {
+          "op": "remove_section",
+          "args": [
+            "a"
+          ],
+          "result": null
+        },
+        {
+          "op": "section_names",
+          "args": [
+
+          ],
+          "result": [
+            "",
+            "a",
+            "b"
+          ]
+        },
+        {
+          "op": "save",
+          "args": [
+
+          ],
+          "error": {
+            "class": "NoMethodError",
+            "message": "undefined method `new_section?' for nil:NilClass"
+          }
+        }
+      ],
+      "final_b64": ""
+    },
+    {
+      "name": "rsec-dup-headers",
+      "encoding": "UTF-8",
+      "input_b64": "W2FdCnggPSAxClthXQp5ID0gMgpbYl0KeiA9IDEK",
+      "ctor": {
+        "kvs": " = ",
+        "prefix": "[",
+        "suffix": "]",
+        "indent_char": " ",
+        "indent_width": null
+      },
+      "ops": [
+        {
+          "op": "remove_section",
+          "args": [
+            "a"
+          ],
+          "result": null
+        },
+        {
+          "op": "section_names",
+          "args": [
+
+          ],
+          "result": [
+            "",
+            "a",
+            "b"
+          ]
+        },
+        {
+          "op": "save",
+          "args": [
+
+          ],
+          "error": {
+            "class": "NoMethodError",
+            "message": "undefined method `new_section?' for nil:NilClass"
+          }
+        }
+      ],
+      "final_b64": ""
+    },
+    {
+      "name": "rsec-dup-headers-then-update",
+      "encoding": "US-ASCII",
+      "input_b64": "W2FdCnggPSAxClthXQp5ID0gMgpbYl0KeiA9IDEK",
+      "ctor": {
+        "kvs": " = ",
+        "prefix": "[",
+        "suffix": "]",
+        "indent_char": " ",
+        "indent_width": null
+      },
+      "ops": [
+        {
+          "op": "remove_section",
+          "args": [
+            "a"
+          ],
+          "result": null
+        },
+        {
+          "op": "set_value",
+          "args": [
+            "b",
+            "z",
+            " = ",
+            [
+              "1",
+              "2"
+            ]
+          ],
+          "result": null
+        },
+        {
+          "op": "save",
+          "args": [
+
+          ],
+          "error": {
+            "class": "NoMethodError",
+            "message": "undefined method `new_section?' for nil:NilClass"
+          }
+        }
+      ],
+      "final_b64": ""
+    },
+    {
+      "name": "rsec-dup-headers-then-update",
+      "encoding": "UTF-8",
+      "input_b64": "W2FdCnggPSAxClthXQp5ID0gMgpbYl0KeiA9IDEK",
+      "ctor": {
+        "kvs": " = ",
+        "prefix": "[",
+        "suffix": "]",
+        "indent_char": " ",
+        "indent_width": null
+      },
+      "ops": [
+        {
+          "op": "remove_section",
+          "args": [
+            "a"
+          ],
+          "result": null
+        },
+        {
+          "op": "set_value",
+          "args": [
+            "b",
+            "z",
+            " = ",
+            [
+              "1",
+              "2"
+            ]
+          ],
+          "result": null
+        },
+        {
+          "op": "save",
+          "args": [
+
+          ],
+          "error": {
+            "class": "NoMethodError",
+            "message": "undefined method `new_section?' for nil:NilClass"
+          }
+        }
+      ],
+      "final_b64": ""
+    },
+    {
+      "name": "rsec-empty-name-header",
+      "encoding": "US-ASCII",
+      "input_b64": "W10KeCA9IDEKW2FdCnkgPSAyCg==",
+      "ctor": {
+        "kvs": " = ",
+        "prefix": "[",
+        "suffix": "]",
+        "indent_char": " ",
+        "indent_width": null
+      },
+      "ops": [
+        {
+          "op": "remove_section",
+          "args": [
+            ""
+          ],
+          "result": null
+        },
+        {
+          "op": "section_names",
+          "args": [
+
+          ],
+          "result": [
+            "",
+            "a"
+          ]
+        },
+        {
+          "op": "save",
+          "args": [
+
+          ],
+          "error": {
+            "class": "NoMethodError",
+            "message": "undefined method `empty?' for nil:NilClass"
+          }
+        }
+      ],
+      "final_b64": "W10KeCA9IDEKW2FdCnkgPSAyCg=="
+    },
+    {
+      "name": "rsec-empty-name-header",
+      "encoding": "UTF-8",
+      "input_b64": "W10KeCA9IDEKW2FdCnkgPSAyCg==",
+      "ctor": {
+        "kvs": " = ",
+        "prefix": "[",
+        "suffix": "]",
+        "indent_char": " ",
+        "indent_width": null
+      },
+      "ops": [
+        {
+          "op": "remove_section",
+          "args": [
+            ""
+          ],
+          "result": null
+        },
+        {
+          "op": "section_names",
+          "args": [
+
+          ],
+          "result": [
+            "",
+            "a"
+          ]
+        },
+        {
+          "op": "save",
+          "args": [
+
+          ],
+          "error": {
+            "class": "NoMethodError",
+            "message": "undefined method `empty?' for nil:NilClass"
+          }
+        }
+      ],
+      "final_b64": "W10KeCA9IDEKW2FdCnkgPSAyCg=="
+    },
+    {
+      "name": "rsec-custom-syntax",
+      "encoding": "US-ASCII",
+      "input_b64": "PGE+CnggPSAxCjxiPgp5ID0gMQo=",
+      "ctor": {
+        "kvs": " = ",
+        "prefix": "<",
+        "suffix": ">",
+        "indent_char": " ",
+        "indent_width": null
+      },
+      "ops": [
+        {
+          "op": "remove_section",
+          "args": [
+            "a"
+          ],
+          "result": null
+        },
+        {
+          "op": "section_names",
+          "args": [
+
+          ],
+          "result": [
+            "",
+            "b"
+          ]
+        },
+        {
+          "op": "save",
+          "args": [
+
+          ],
+          "result": null
+        }
+      ],
+      "final_b64": "PGI+CnkgPSAxCg=="
+    },
+    {
+      "name": "rsec-custom-syntax",
+      "encoding": "UTF-8",
+      "input_b64": "PGE+CnggPSAxCjxiPgp5ID0gMQo=",
+      "ctor": {
+        "kvs": " = ",
+        "prefix": "<",
+        "suffix": ">",
+        "indent_char": " ",
+        "indent_width": null
+      },
+      "ops": [
+        {
+          "op": "remove_section",
+          "args": [
+            "a"
+          ],
+          "result": null
+        },
+        {
+          "op": "section_names",
+          "args": [
+
+          ],
+          "result": [
+            "",
+            "b"
+          ]
+        },
+        {
+          "op": "save",
+          "args": [
+
+          ],
+          "result": null
+        }
+      ],
+      "final_b64": "PGI+CnkgPSAxCg=="
+    },
+    {
+      "name": "rsec-then-reread",
+      "encoding": "US-ASCII",
+      "input_b64": "W2FdCnggPSAxCnkgPSAyCgpbYl0KeiA9IDMKCltjXQp3ID0gNAo=",
+      "ctor": {
+        "kvs": " = ",
+        "prefix": "[",
+        "suffix": "]",
+        "indent_char": " ",
+        "indent_width": null
+      },
+      "ops": [
+        {
+          "op": "remove_section",
+          "args": [
+            "b"
+          ],
+          "result": null
+        },
+        {
+          "op": "save",
+          "args": [
+
+          ],
+          "result": null
+        },
+        {
+          "op": "reopen",
+          "args": [
+
+          ]
+        },
+        {
+          "op": "section_names",
+          "args": [
+
+          ],
+          "result": [
+            "",
+            "a",
+            "c"
+          ]
+        },
+        {
+          "op": "get_value",
+          "args": [
+            "c",
+            "w"
+          ],
+          "result": [
+            "4"
+          ]
+        }
+      ],
+      "final_b64": "W2FdCnggPSAxCnkgPSAyCgpbY10KdyA9IDQK"
+    },
+    {
+      "name": "rsec-then-reread",
+      "encoding": "UTF-8",
+      "input_b64": "W2FdCnggPSAxCnkgPSAyCgpbYl0KeiA9IDMKCltjXQp3ID0gNAo=",
+      "ctor": {
+        "kvs": " = ",
+        "prefix": "[",
+        "suffix": "]",
+        "indent_char": " ",
+        "indent_width": null
+      },
+      "ops": [
+        {
+          "op": "remove_section",
+          "args": [
+            "b"
+          ],
+          "result": null
+        },
+        {
+          "op": "save",
+          "args": [
+
+          ],
+          "result": null
+        },
+        {
+          "op": "reopen",
+          "args": [
+
+          ]
+        },
+        {
+          "op": "section_names",
+          "args": [
+
+          ],
+          "result": [
+            "",
+            "a",
+            "c"
+          ]
+        },
+        {
+          "op": "get_value",
+          "args": [
+            "c",
+            "w"
+          ],
+          "result": [
+            "4"
+          ]
+        }
+      ],
+      "final_b64": "W2FdCnggPSAxCnkgPSAyCgpbY10KdyA9IDQK"
+    },
+    {
+      "name": "rsec-invalid-bytes-fails-at-open",
+      "encoding": "US-ASCII",
+      "input_b64": "W2FdCnggPSD/Cg==",
+      "ctor": {
+        "kvs": " = ",
+        "prefix": "[",
+        "suffix": "]",
+        "indent_char": " ",
+        "indent_width": null
+      },
+      "ops": [
+        {
+          "op": "remove_section",
+          "args": [
+            "a"
+          ],
+          "error": {
+            "class": "ArgumentError",
+            "message": "invalid byte sequence in US-ASCII"
+          }
+        }
+      ],
+      "final_b64": "W2FdCnggPSD/Cg=="
+    },
+    {
+      "name": "rsec-invalid-bytes-fails-at-open",
+      "encoding": "UTF-8",
+      "input_b64": "W2FdCnggPSD/Cg==",
+      "ctor": {
+        "kvs": " = ",
+        "prefix": "[",
+        "suffix": "]",
+        "indent_char": " ",
+        "indent_width": null
+      },
+      "ops": [
+        {
+          "op": "remove_section",
+          "args": [
+            "a"
+          ],
+          "error": {
+            "class": "ArgumentError",
+            "message": "invalid byte sequence in UTF-8"
+          }
+        }
+      ],
+      "final_b64": "W2FdCnggPSD/Cg=="
+    },
+    {
+      "name": "rsec-before-empty-section",
+      "encoding": "US-ASCII",
+      "input_b64": "W2FdCnggPSAxCltlXQpbeF0KayA9IDEK",
+      "ctor": {
+        "kvs": " = ",
+        "prefix": "[",
+        "suffix": "]",
+        "indent_char": " ",
+        "indent_width": null
+      },
+      "ops": [
+        {
+          "op": "remove_section",
+          "args": [
+            "a"
+          ],
+          "result": null
+        },
+        {
+          "op": "set_value",
+          "args": [
+            "x",
+            "k",
+            " = ",
+            [
+              "9"
+            ]
+          ],
+          "result": null
+        },
+        {
+          "op": "save",
+          "args": [
+
+          ],
+          "result": null
+        }
+      ],
+      "final_b64": "W2VdClt4XQprID0gOQo="
+    },
+    {
+      "name": "rsec-before-empty-section",
+      "encoding": "UTF-8",
+      "input_b64": "W2FdCnggPSAxCltlXQpbeF0KayA9IDEK",
+      "ctor": {
+        "kvs": " = ",
+        "prefix": "[",
+        "suffix": "]",
+        "indent_char": " ",
+        "indent_width": null
+      },
+      "ops": [
+        {
+          "op": "remove_section",
+          "args": [
+            "a"
+          ],
+          "result": null
+        },
+        {
+          "op": "set_value",
+          "args": [
+            "x",
+            "k",
+            " = ",
+            [
+              "9"
+            ]
+          ],
+          "result": null
+        },
+        {
+          "op": "save",
+          "args": [
+
+          ],
+          "result": null
+        }
+      ],
+      "final_b64": "W2VdClt4XQprID0gOQo="
+    },
+    {
+      "name": "rsec-empty-section",
+      "encoding": "US-ASCII",
+      "input_b64": "W2FdCnggPSAxCltlXQpbeF0KayA9IDEK",
+      "ctor": {
+        "kvs": " = ",
+        "prefix": "[",
+        "suffix": "]",
+        "indent_char": " ",
+        "indent_width": null
+      },
+      "ops": [
+        {
+          "op": "remove_section",
+          "args": [
+            "e"
+          ],
+          "result": null
+        },
+        {
+          "op": "set_value",
+          "args": [
+            "x",
+            "k",
+            " = ",
+            [
+              "9"
+            ]
+          ],
+          "result": null
+        },
+        {
+          "op": "save",
+          "args": [
+
+          ],
+          "result": null
+        }
+      ],
+      "final_b64": "W2FdCnggPSAxClt4XQprID0gOQo="
+    },
+    {
+      "name": "rsec-empty-section",
+      "encoding": "UTF-8",
+      "input_b64": "W2FdCnggPSAxCltlXQpbeF0KayA9IDEK",
+      "ctor": {
+        "kvs": " = ",
+        "prefix": "[",
+        "suffix": "]",
+        "indent_char": " ",
+        "indent_width": null
+      },
+      "ops": [
+        {
+          "op": "remove_section",
+          "args": [
+            "e"
+          ],
+          "result": null
+        },
+        {
+          "op": "set_value",
+          "args": [
+            "x",
+            "k",
+            " = ",
+            [
+              "9"
+            ]
+          ],
+          "result": null
+        },
+        {
+          "op": "save",
+          "args": [
+
+          ],
+          "result": null
+        }
+      ],
+      "final_b64": "W2FdCnggPSAxClt4XQprID0gOQo="
+    },
+    {
+      "name": "rsec-empty-section-at-eof",
+      "encoding": "US-ASCII",
+      "input_b64": "W2FdCnggPSAxCltlXQo=",
+      "ctor": {
+        "kvs": " = ",
+        "prefix": "[",
+        "suffix": "]",
+        "indent_char": " ",
+        "indent_width": null
+      },
+      "ops": [
+        {
+          "op": "remove_section",
+          "args": [
+            "e"
+          ],
+          "result": null
+        },
+        {
+          "op": "save",
+          "args": [
+
+          ],
+          "result": null
+        }
+      ],
+      "final_b64": "W2FdCnggPSAxCg=="
+    },
+    {
+      "name": "rsec-empty-section-at-eof",
+      "encoding": "UTF-8",
+      "input_b64": "W2FdCnggPSAxCltlXQo=",
+      "ctor": {
+        "kvs": " = ",
+        "prefix": "[",
+        "suffix": "]",
+        "indent_char": " ",
+        "indent_width": null
+      },
+      "ops": [
+        {
+          "op": "remove_section",
+          "args": [
+            "e"
+          ],
+          "result": null
+        },
+        {
+          "op": "save",
+          "args": [
+
+          ],
+          "result": null
+        }
+      ],
+      "final_b64": "W2FdCnggPSAxCg=="
+    }
+  ]
+}

@@ -43,6 +43,11 @@
 # change /etc. That half runs case by case in fresh containers of its own;
 # tests/spine/concat/g5.sh holds it and says how.
 #
+# puppetlabs-inifile's ini_setting, ini_subsetting and ini_section are here
+# for the same reasons: voxagent applies them natively, and their cases change
+# /etc. That half runs after concat's, case by case in fresh containers;
+# tests/spine/inifile/g5.sh holds it and says how.
+#
 # sysctl, ssh_config, sshd_config and sshd_config_subsystem are here for the
 # same reasons: voxagent applies them natively over openvox's libaugeas, sysctl
 # shells out, and their cases change /etc. That half runs after concat's, on
@@ -245,6 +250,8 @@ require_fresh report-diff-container "$ROOT" "$VOXAGENT" "$GATEKIT"
 . "$HERE/g5-case.sh" || exit 2
 # shellcheck source=concat/g5.sh
 . "$HERE/concat/g5.sh" || exit 2
+# shellcheck source=inifile/g5.sh
+. "$HERE/inifile/g5.sh" || exit 2
 # shellcheck source=build-image.sh
 . "$HERE/build-image.sh" || exit 2
 # shellcheck source=augeas/image.sh
@@ -299,6 +306,7 @@ fi
 WORK="$(mktemp -d)" || exit 2
 trap 'rm -rf "$WORK"; podman rm -f -t 0 "$RUBY_SIDE" "$GO_SIDE" "$COMPILER" "$RUBY_NOOP" "$GO_NOOP" \
   concat-compile-$$ concat-{ruby,voxagent}-{live,noop}-$$ \
+  inifile-compile-$$ inifile-{ruby,voxagent}-{live,noop}-$$ \
   augeas-compile-$$ augeas-{ruby,voxagent}-{live,noop}-$$ \
   cron-compile-$$ cron-{ruby,voxagent}-{live,noop}-$$ \
   host-compile-$$ host-{ruby,voxagent}-{live,noop}-$$ \
@@ -1036,6 +1044,10 @@ esac
 concat_gate
 concat_rc=$?
 [ "$concat_rc" -gt "$rc" ] && rc=$concat_rc
+
+ini_gate
+ini_rc=$?
+[ "$ini_rc" -gt "$rc" ] && rc=$ini_rc
 
 augeas_gate
 augeas_rc=$?

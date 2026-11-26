@@ -181,6 +181,9 @@ var nativeFixtures = map[string]catalog.Resource{
 	"file":                  {Type: "File", Title: "/tmp/f"},
 	"group":                 {Type: "Group", Title: "g"},
 	"host":                  {Type: "Host", Title: "h"},
+	"ini_section":           {Type: "Ini_section", Title: "s"},
+	"ini_setting":           {Type: "Ini_setting", Title: "k"},
+	"ini_subsetting":        {Type: "Ini_subsetting", Title: "a", Parameters: map[string]any{"setting": "k", "subsetting": "a"}},
 	"mount":                 {Type: "Mount", Title: "/mnt/m"},
 	"notify":                {Type: "Notify", Title: "n"},
 	"package":               {Type: "Package", Title: "p"},
@@ -237,6 +240,10 @@ func nativeEnv(t *testing.T, p ral.Platform) *unit.Env {
 		if err := copyMissing(libdir, lib); err != nil {
 			t.Fatalf("assembling %s: %v", lib, err)
 		}
+	}
+	// inifile's testdata holds one lib per release; 6.6.1 lists every type.
+	if err := copyMissing(libdir, filepath.Join("inifile", "testdata", "6.6.1", "lib")); err != nil {
+		t.Fatal(err)
 	}
 	cat := &catalog.Catalog{}
 	for _, u := range units.All() {

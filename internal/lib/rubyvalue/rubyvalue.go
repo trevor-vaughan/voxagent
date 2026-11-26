@@ -9,6 +9,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"syscall"
 	"unicode"
 	"unicode/utf8"
 
@@ -491,4 +492,21 @@ func ErrorLocation(file string, line int) string {
 	default:
 		return ""
 	}
+}
+
+// Errno renders err as Ruby's SystemCallError does: strerror text with
+// its first letter capitalised, then "@ <fn> - <path>" when fn is given.
+func Errno(err error, fn, path string) string {
+	var errno syscall.Errno
+	if !errors.As(err, &errno) {
+		return err.Error()
+	}
+	text := errno.Error()
+	if text != "" {
+		text = strings.ToUpper(text[:1]) + text[1:]
+	}
+	if fn == "" {
+		return text
+	}
+	return fmt.Sprintf("%s @ %s - %s", text, fn, path)
 }

@@ -1,6 +1,6 @@
-// Package parsedfiletest holds test support shared by the packages that use
-// internal/lib/parsedfile. It imports only the standard library.
-package parsedfiletest
+// Package rubyregexptest holds test support shared by the packages that use
+// internal/lib/rubyregexp. It imports only the standard library.
+package rubyregexptest
 
 import (
 	"go/ast"
@@ -66,7 +66,7 @@ func NoRubyWhitespaceEscapes(t testing.TB) {
 			t.Fatal(err)
 		}
 		if bad := whitespaceEscapes(t, name, src); len(bad) > 0 {
-			t.Errorf("%s: literals use \\s or \\S (use parsedfile.Space or parsedfile.NotSpace): %q", name, bad)
+			t.Errorf("%s: literals use \\s or \\S (use rubyregexp.Space or rubyregexp.NotSpace): %q", name, bad)
 		}
 	}
 	if scanned == 0 {

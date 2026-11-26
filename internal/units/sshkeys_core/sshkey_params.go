@@ -8,6 +8,7 @@ import (
 
 	"github.com/voxagent/voxagent/internal/catalog"
 	"github.com/voxagent/voxagent/internal/lib/parsedfile"
+	"github.com/voxagent/voxagent/internal/lib/rubyregexp"
 	"github.com/voxagent/voxagent/internal/lib/rubyvalue"
 )
 
@@ -19,9 +20,9 @@ const defaultTarget = "/etc/ssh/ssh_known_hosts"
 const release31 = "3.1.0"
 
 // The type's patterns. Ruby's ^ and $ are line anchors, so every one is (?m)
-// (spec §4); \s is parsedfile.Space because RE2's lacks \v.
+// (spec §4); \s is rubyregexp.Space because RE2's lacks \v.
 var (
-	whitespace = regexp.MustCompile(`(?m)` + parsedfile.Space) // type:63-65, 85, 100
+	whitespace = regexp.MustCompile(`(?m)` + rubyregexp.Space) // type:63-65, 85, 100
 	// The title patterns of type:21-37; the first that matches names the
 	// title's parameters.
 	titleNameType = regexp.MustCompile(`(?m)^(.*?)@(.*)$`)

@@ -1,0 +1,3792 @@
+{
+  "openvox": "8.34.0",
+  "ruby": "3.2.11",
+  "cases": [
+    {
+      "name": "create-new-file",
+      "encoding": "US-ASCII",
+      "missing": true,
+      "params": {
+        "name": "s",
+        "section": "b"
+      },
+      "runs": [
+        {
+          "noop": false,
+          "failed": false,
+          "changed": true,
+          "events": [
+            {
+              "name": "ini_section_created",
+              "property": "ensure",
+              "status": "success",
+              "message": "created",
+              "previous_value": "absent",
+              "desired_value": "present"
+            }
+          ],
+          "err_logs": [
+
+          ],
+          "final_b64": "W2JdCg=="
+        },
+        {
+          "noop": false,
+          "failed": false,
+          "changed": false,
+          "events": [
+
+          ],
+          "err_logs": [
+
+          ],
+          "final_b64": "W2JdCg=="
+        }
+      ]
+    },
+    {
+      "name": "create-new-file",
+      "encoding": "UTF-8",
+      "missing": true,
+      "params": {
+        "name": "s",
+        "section": "b"
+      },
+      "runs": [
+        {
+          "noop": false,
+          "failed": false,
+          "changed": true,
+          "events": [
+            {
+              "name": "ini_section_created",
+              "property": "ensure",
+              "status": "success",
+              "message": "created",
+              "previous_value": "absent",
+              "desired_value": "present"
+            }
+          ],
+          "err_logs": [
+
+          ],
+          "final_b64": "W2JdCg=="
+        },
+        {
+          "noop": false,
+          "failed": false,
+          "changed": false,
+          "events": [
+
+          ],
+          "err_logs": [
+
+          ],
+          "final_b64": "W2JdCg=="
+        }
+      ]
+    },
+    {
+      "name": "create-empty-file",
+      "encoding": "US-ASCII",
+      "input_b64": "",
+      "params": {
+        "name": "s",
+        "section": "b"
+      },
+      "runs": [
+        {
+          "noop": false,
+          "failed": false,
+          "changed": true,
+          "events": [
+            {
+              "name": "ini_section_created",
+              "property": "ensure",
+              "status": "success",
+              "message": "created",
+              "previous_value": "absent",
+              "desired_value": "present"
+            }
+          ],
+          "err_logs": [
+
+          ],
+          "final_b64": "W2JdCg=="
+        },
+        {
+          "noop": false,
+          "failed": false,
+          "changed": false,
+          "events": [
+
+          ],
+          "err_logs": [
+
+          ],
+          "final_b64": "W2JdCg=="
+        }
+      ]
+    },
+    {
+      "name": "create-empty-file",
+      "encoding": "UTF-8",
+      "input_b64": "",
+      "params": {
+        "name": "s",
+        "section": "b"
+      },
+      "runs": [
+        {
+          "noop": false,
+          "failed": false,
+          "changed": true,
+          "events": [
+            {
+              "name": "ini_section_created",
+              "property": "ensure",
+              "status": "success",
+              "message": "created",
+              "previous_value": "absent",
+              "desired_value": "present"
+            }
+          ],
+          "err_logs": [
+
+          ],
+          "final_b64": "W2JdCg=="
+        },
+        {
+          "noop": false,
+          "failed": false,
+          "changed": false,
+          "events": [
+
+          ],
+          "err_logs": [
+
+          ],
+          "final_b64": "W2JdCg=="
+        }
+      ]
+    },
+    {
+      "name": "create-existing-file",
+      "encoding": "US-ASCII",
+      "input_b64": "W2FdCnggPSAxCg==",
+      "params": {
+        "name": "s",
+        "section": "b"
+      },
+      "runs": [
+        {
+          "noop": false,
+          "failed": false,
+          "changed": true,
+          "events": [
+            {
+              "name": "ini_section_created",
+              "property": "ensure",
+              "status": "success",
+              "message": "created",
+              "previous_value": "absent",
+              "desired_value": "present"
+            }
+          ],
+          "err_logs": [
+
+          ],
+          "final_b64": "W2FdCnggPSAxCgpbYl0K"
+        },
+        {
+          "noop": false,
+          "failed": false,
+          "changed": false,
+          "events": [
+
+          ],
+          "err_logs": [
+
+          ],
+          "final_b64": "W2FdCnggPSAxCgpbYl0K"
+        }
+      ]
+    },
+    {
+      "name": "create-existing-file",
+      "encoding": "UTF-8",
+      "input_b64": "W2FdCnggPSAxCg==",
+      "params": {
+        "name": "s",
+        "section": "b"
+      },
+      "runs": [
+        {
+          "noop": false,
+          "failed": false,
+          "changed": true,
+          "events": [
+            {
+              "name": "ini_section_created",
+              "property": "ensure",
+              "status": "success",
+              "message": "created",
+              "previous_value": "absent",
+              "desired_value": "present"
+            }
+          ],
+          "err_logs": [
+
+          ],
+          "final_b64": "W2FdCnggPSAxCgpbYl0K"
+        },
+        {
+          "noop": false,
+          "failed": false,
+          "changed": false,
+          "events": [
+
+          ],
+          "err_logs": [
+
+          ],
+          "final_b64": "W2FdCnggPSAxCgpbYl0K"
+        }
+      ]
+    },
+    {
+      "name": "create-existing-file-no-final-newline",
+      "encoding": "US-ASCII",
+      "input_b64": "W2FdCnggPSAx",
+      "params": {
+        "name": "s",
+        "section": "b"
+      },
+      "runs": [
+        {
+          "noop": false,
+          "failed": false,
+          "changed": true,
+          "events": [
+            {
+              "name": "ini_section_created",
+              "property": "ensure",
+              "status": "success",
+              "message": "created",
+              "previous_value": "absent",
+              "desired_value": "present"
+            }
+          ],
+          "err_logs": [
+
+          ],
+          "final_b64": "W2FdCnggPSAxCgpbYl0K"
+        },
+        {
+          "noop": false,
+          "failed": false,
+          "changed": false,
+          "events": [
+
+          ],
+          "err_logs": [
+
+          ],
+          "final_b64": "W2FdCnggPSAxCgpbYl0K"
+        }
+      ]
+    },
+    {
+      "name": "create-existing-file-no-final-newline",
+      "encoding": "UTF-8",
+      "input_b64": "W2FdCnggPSAx",
+      "params": {
+        "name": "s",
+        "section": "b"
+      },
+      "runs": [
+        {
+          "noop": false,
+          "failed": false,
+          "changed": true,
+          "events": [
+            {
+              "name": "ini_section_created",
+              "property": "ensure",
+              "status": "success",
+              "message": "created",
+              "previous_value": "absent",
+              "desired_value": "present"
+            }
+          ],
+          "err_logs": [
+
+          ],
+          "final_b64": "W2FdCnggPSAxCgpbYl0K"
+        },
+        {
+          "noop": false,
+          "failed": false,
+          "changed": false,
+          "events": [
+
+          ],
+          "err_logs": [
+
+          ],
+          "final_b64": "W2FdCnggPSAxCgpbYl0K"
+        }
+      ]
+    },
+    {
+      "name": "create-after-blank-lines",
+      "encoding": "US-ASCII",
+      "input_b64": "W2FdCnggPSAxCgoK",
+      "params": {
+        "name": "s",
+        "section": "b"
+      },
+      "runs": [
+        {
+          "noop": false,
+          "failed": false,
+          "changed": true,
+          "events": [
+            {
+              "name": "ini_section_created",
+              "property": "ensure",
+              "status": "success",
+              "message": "created",
+              "previous_value": "absent",
+              "desired_value": "present"
+            }
+          ],
+          "err_logs": [
+
+          ],
+          "final_b64": "W2FdCnggPSAxCgoKCltiXQo="
+        }
+      ]
+    },
+    {
+      "name": "create-after-blank-lines",
+      "encoding": "UTF-8",
+      "input_b64": "W2FdCnggPSAxCgoK",
+      "params": {
+        "name": "s",
+        "section": "b"
+      },
+      "runs": [
+        {
+          "noop": false,
+          "failed": false,
+          "changed": true,
+          "events": [
+            {
+              "name": "ini_section_created",
+              "property": "ensure",
+              "status": "success",
+              "message": "created",
+              "previous_value": "absent",
+              "desired_value": "present"
+            }
+          ],
+          "err_logs": [
+
+          ],
+          "final_b64": "W2FdCnggPSAxCgoKCltiXQo="
+        }
+      ]
+    },
+    {
+      "name": "create-with-global-settings",
+      "encoding": "US-ASCII",
+      "input_b64": "ZyA9IDEKW2FdCnggPSAxCg==",
+      "params": {
+        "name": "s",
+        "section": "b"
+      },
+      "runs": [
+        {
+          "noop": false,
+          "failed": false,
+          "changed": true,
+          "events": [
+            {
+              "name": "ini_section_created",
+              "property": "ensure",
+              "status": "success",
+              "message": "created",
+              "previous_value": "absent",
+              "desired_value": "present"
+            }
+          ],
+          "err_logs": [
+
+          ],
+          "final_b64": "ZyA9IDEKW2FdCnggPSAxCgpbYl0K"
+        }
+      ]
+    },
+    {
+      "name": "create-with-global-settings",
+      "encoding": "UTF-8",
+      "input_b64": "ZyA9IDEKW2FdCnggPSAxCg==",
+      "params": {
+        "name": "s",
+        "section": "b"
+      },
+      "runs": [
+        {
+          "noop": false,
+          "failed": false,
+          "changed": true,
+          "events": [
+            {
+              "name": "ini_section_created",
+              "property": "ensure",
+              "status": "success",
+              "message": "created",
+              "previous_value": "absent",
+              "desired_value": "present"
+            }
+          ],
+          "err_logs": [
+
+          ],
+          "final_b64": "ZyA9IDEKW2FdCnggPSAxCgpbYl0K"
+        }
+      ]
+    },
+    {
+      "name": "create-with-comments",
+      "encoding": "US-ASCII",
+      "input_b64": "IyBoZWFkClthXQojIG5vdGUKeCA9IDEKOyB0YWlsCg==",
+      "params": {
+        "name": "s",
+        "section": "b"
+      },
+      "runs": [
+        {
+          "noop": false,
+          "failed": false,
+          "changed": true,
+          "events": [
+            {
+              "name": "ini_section_created",
+              "property": "ensure",
+              "status": "success",
+              "message": "created",
+              "previous_value": "absent",
+              "desired_value": "present"
+            }
+          ],
+          "err_logs": [
+
+          ],
+          "final_b64": "IyBoZWFkClthXQojIG5vdGUKeCA9IDEKOyB0YWlsCgpbYl0K"
+        }
+      ]
+    },
+    {
+      "name": "create-with-comments",
+      "encoding": "UTF-8",
+      "input_b64": "IyBoZWFkClthXQojIG5vdGUKeCA9IDEKOyB0YWlsCg==",
+      "params": {
+        "name": "s",
+        "section": "b"
+      },
+      "runs": [
+        {
+          "noop": false,
+          "failed": false,
+          "changed": true,
+          "events": [
+            {
+              "name": "ini_section_created",
+              "property": "ensure",
+              "status": "success",
+              "message": "created",
+              "previous_value": "absent",
+              "desired_value": "present"
+            }
+          ],
+          "err_logs": [
+
+          ],
+          "final_b64": "IyBoZWFkClthXQojIG5vdGUKeCA9IDEKOyB0YWlsCgpbYl0K"
+        }
+      ]
+    },
+    {
+      "name": "create-crlf-file",
+      "encoding": "US-ASCII",
+      "input_b64": "W2FdDQp4ID0gMQ0K",
+      "params": {
+        "name": "s",
+        "section": "b"
+      },
+      "runs": [
+        {
+          "noop": false,
+          "failed": false,
+          "changed": true,
+          "events": [
+            {
+              "name": "ini_section_created",
+              "property": "ensure",
+              "status": "success",
+              "message": "created",
+              "previous_value": "absent",
+              "desired_value": "present"
+            }
+          ],
+          "err_logs": [
+
+          ],
+          "final_b64": "W2FdDQp4ID0gMQ0KCltiXQo="
+        }
+      ]
+    },
+    {
+      "name": "create-crlf-file",
+      "encoding": "UTF-8",
+      "input_b64": "W2FdDQp4ID0gMQ0K",
+      "params": {
+        "name": "s",
+        "section": "b"
+      },
+      "runs": [
+        {
+          "noop": false,
+          "failed": false,
+          "changed": true,
+          "events": [
+            {
+              "name": "ini_section_created",
+              "property": "ensure",
+              "status": "success",
+              "message": "created",
+              "previous_value": "absent",
+              "desired_value": "present"
+            }
+          ],
+          "err_logs": [
+
+          ],
+          "final_b64": "W2FdDQp4ID0gMQ0KCltiXQo="
+        }
+      ]
+    },
+    {
+      "name": "create-section-defaults-to-name",
+      "encoding": "US-ASCII",
+      "input_b64": "W2FdCnggPSAxCg==",
+      "params": {
+        "name": "viaName"
+      },
+      "runs": [
+        {
+          "noop": false,
+          "failed": false,
+          "changed": true,
+          "events": [
+            {
+              "name": "ini_section_created",
+              "property": "ensure",
+              "status": "success",
+              "message": "created",
+              "previous_value": "absent",
+              "desired_value": "present"
+            }
+          ],
+          "err_logs": [
+
+          ],
+          "final_b64": "W2FdCnggPSAxCgpbdmlhTmFtZV0K"
+        }
+      ]
+    },
+    {
+      "name": "create-section-defaults-to-name",
+      "encoding": "UTF-8",
+      "input_b64": "W2FdCnggPSAxCg==",
+      "params": {
+        "name": "viaName"
+      },
+      "runs": [
+        {
+          "noop": false,
+          "failed": false,
+          "changed": true,
+          "events": [
+            {
+              "name": "ini_section_created",
+              "property": "ensure",
+              "status": "success",
+              "message": "created",
+              "previous_value": "absent",
+              "desired_value": "present"
+            }
+          ],
+          "err_logs": [
+
+          ],
+          "final_b64": "W2FdCnggPSAxCgpbdmlhTmFtZV0K"
+        }
+      ]
+    },
+    {
+      "name": "create-ensure-present-explicit",
+      "encoding": "US-ASCII",
+      "input_b64": "W2FdCnggPSAxCg==",
+      "params": {
+        "name": "s",
+        "section": "b",
+        "ensure": "present"
+      },
+      "runs": [
+        {
+          "noop": false,
+          "failed": false,
+          "changed": true,
+          "events": [
+            {
+              "name": "ini_section_created",
+              "property": "ensure",
+              "status": "success",
+              "message": "created",
+              "previous_value": "absent",
+              "desired_value": "present"
+            }
+          ],
+          "err_logs": [
+
+          ],
+          "final_b64": "W2FdCnggPSAxCgpbYl0K"
+        }
+      ]
+    },
+    {
+      "name": "create-ensure-present-explicit",
+      "encoding": "UTF-8",
+      "input_b64": "W2FdCnggPSAxCg==",
+      "params": {
+        "name": "s",
+        "section": "b",
+        "ensure": "present"
+      },
+      "runs": [
+        {
+          "noop": false,
+          "failed": false,
+          "changed": true,
+          "events": [
+            {
+              "name": "ini_section_created",
+              "property": "ensure",
+              "status": "success",
+              "message": "created",
+              "previous_value": "absent",
+              "desired_value": "present"
+            }
+          ],
+          "err_logs": [
+
+          ],
+          "final_b64": "W2FdCnggPSAxCgpbYl0K"
+        }
+      ]
+    },
+    {
+      "name": "create-name-with-regexp-chars",
+      "encoding": "US-ASCII",
+      "input_b64": "W2FdCnggPSAxCg==",
+      "params": {
+        "name": "s",
+        "section": "a.b[c]*"
+      },
+      "runs": [
+        {
+          "noop": false,
+          "failed": false,
+          "changed": true,
+          "events": [
+            {
+              "name": "ini_section_created",
+              "property": "ensure",
+              "status": "success",
+              "message": "created",
+              "previous_value": "absent",
+              "desired_value": "present"
+            }
+          ],
+          "err_logs": [
+
+          ],
+          "final_b64": "W2FdCnggPSAxCgpbYS5iW2NdKl0K"
+        },
+        {
+          "noop": false,
+          "failed": false,
+          "changed": false,
+          "events": [
+
+          ],
+          "err_logs": [
+
+          ],
+          "final_b64": "W2FdCnggPSAxCgpbYS5iW2NdKl0K"
+        }
+      ]
+    },
+    {
+      "name": "create-name-with-regexp-chars",
+      "encoding": "UTF-8",
+      "input_b64": "W2FdCnggPSAxCg==",
+      "params": {
+        "name": "s",
+        "section": "a.b[c]*"
+      },
+      "runs": [
+        {
+          "noop": false,
+          "failed": false,
+          "changed": true,
+          "events": [
+            {
+              "name": "ini_section_created",
+              "property": "ensure",
+              "status": "success",
+              "message": "created",
+              "previous_value": "absent",
+              "desired_value": "present"
+            }
+          ],
+          "err_logs": [
+
+          ],
+          "final_b64": "W2FdCnggPSAxCgpbYS5iW2NdKl0K"
+        },
+        {
+          "noop": false,
+          "failed": false,
+          "changed": false,
+          "events": [
+
+          ],
+          "err_logs": [
+
+          ],
+          "final_b64": "W2FdCnggPSAxCgpbYS5iW2NdKl0K"
+        }
+      ]
+    },
+    {
+      "name": "create-name-with-spaces",
+      "encoding": "US-ASCII",
+      "input_b64": "W2FdCnggPSAxCg==",
+      "params": {
+        "name": "s",
+        "section": " b c "
+      },
+      "runs": [
+        {
+          "noop": false,
+          "failed": false,
+          "changed": true,
+          "events": [
+            {
+              "name": "ini_section_created",
+              "property": "ensure",
+              "status": "success",
+              "message": "created",
+              "previous_value": "absent",
+              "desired_value": "present"
+            }
+          ],
+          "err_logs": [
+
+          ],
+          "final_b64": "W2FdCnggPSAxCgpbIGIgYyBdCg=="
+        },
+        {
+          "noop": false,
+          "failed": false,
+          "changed": false,
+          "events": [
+
+          ],
+          "err_logs": [
+
+          ],
+          "final_b64": "W2FdCnggPSAxCgpbIGIgYyBdCg=="
+        }
+      ]
+    },
+    {
+      "name": "create-name-with-spaces",
+      "encoding": "UTF-8",
+      "input_b64": "W2FdCnggPSAxCg==",
+      "params": {
+        "name": "s",
+        "section": " b c "
+      },
+      "runs": [
+        {
+          "noop": false,
+          "failed": false,
+          "changed": true,
+          "events": [
+            {
+              "name": "ini_section_created",
+              "property": "ensure",
+              "status": "success",
+              "message": "created",
+              "previous_value": "absent",
+              "desired_value": "present"
+            }
+          ],
+          "err_logs": [
+
+          ],
+          "final_b64": "W2FdCnggPSAxCgpbIGIgYyBdCg=="
+        },
+        {
+          "noop": false,
+          "failed": false,
+          "changed": false,
+          "events": [
+
+          ],
+          "err_logs": [
+
+          ],
+          "final_b64": "W2FdCnggPSAxCgpbIGIgYyBdCg=="
+        }
+      ]
+    },
+    {
+      "name": "create-non-ascii-name",
+      "encoding": "US-ASCII",
+      "input_b64": "W2FdCnggPSAxCg==",
+      "params": {
+        "name": "s",
+        "section": "café"
+      },
+      "runs": [
+        {
+          "noop": false,
+          "failed": false,
+          "changed": true,
+          "events": [
+            {
+              "name": "ini_section_created",
+              "property": "ensure",
+              "status": "success",
+              "message": "created",
+              "previous_value": "absent",
+              "desired_value": "present"
+            }
+          ],
+          "err_logs": [
+
+          ],
+          "final_b64": "W2FdCnggPSAxCgpbY2Fmw6ldCg=="
+        }
+      ]
+    },
+    {
+      "name": "create-non-ascii-name",
+      "encoding": "UTF-8",
+      "input_b64": "W2FdCnggPSAxCg==",
+      "params": {
+        "name": "s",
+        "section": "café"
+      },
+      "runs": [
+        {
+          "noop": false,
+          "failed": false,
+          "changed": true,
+          "events": [
+            {
+              "name": "ini_section_created",
+              "property": "ensure",
+              "status": "success",
+              "message": "created",
+              "previous_value": "absent",
+              "desired_value": "present"
+            }
+          ],
+          "err_logs": [
+
+          ],
+          "final_b64": "W2FdCnggPSAxCgpbY2Fmw6ldCg=="
+        }
+      ]
+    },
+    {
+      "name": "create-in-file-with-non-ascii",
+      "encoding": "US-ASCII",
+      "input_b64": "W2FdCnggPSBjYWbDqQo=",
+      "params": {
+        "name": "s",
+        "section": "b"
+      },
+      "runs": [
+        {
+          "noop": false,
+          "failed": true,
+          "changed": false,
+          "events": [
+            {
+              "name": "resource_error",
+              "property": null,
+              "status": "failure",
+              "message": "invalid byte sequence in US-ASCII",
+              "previous_value": "",
+              "desired_value": ""
+            }
+          ],
+          "err_logs": [
+            "Could not evaluate: invalid byte sequence in US-ASCII"
+          ],
+          "final_b64": "W2FdCnggPSBjYWbDqQo="
+        }
+      ]
+    },
+    {
+      "name": "create-in-file-with-non-ascii",
+      "encoding": "UTF-8",
+      "input_b64": "W2FdCnggPSBjYWbDqQo=",
+      "params": {
+        "name": "s",
+        "section": "b"
+      },
+      "runs": [
+        {
+          "noop": false,
+          "failed": false,
+          "changed": true,
+          "events": [
+            {
+              "name": "ini_section_created",
+              "property": "ensure",
+              "status": "success",
+              "message": "created",
+              "previous_value": "absent",
+              "desired_value": "present"
+            }
+          ],
+          "err_logs": [
+
+          ],
+          "final_b64": "W2FdCnggPSBjYWbDqQoKW2JdCg=="
+        }
+      ]
+    },
+    {
+      "name": "create-in-file-with-invalid-utf8",
+      "encoding": "US-ASCII",
+      "input_b64": "W2FdCnggPSD/Cg==",
+      "params": {
+        "name": "s",
+        "section": "b"
+      },
+      "runs": [
+        {
+          "noop": false,
+          "failed": true,
+          "changed": false,
+          "events": [
+            {
+              "name": "resource_error",
+              "property": null,
+              "status": "failure",
+              "message": "invalid byte sequence in US-ASCII",
+              "previous_value": "",
+              "desired_value": ""
+            }
+          ],
+          "err_logs": [
+            "Could not evaluate: invalid byte sequence in US-ASCII"
+          ],
+          "final_b64": "W2FdCnggPSD/Cg=="
+        }
+      ]
+    },
+    {
+      "name": "create-in-file-with-invalid-utf8",
+      "encoding": "UTF-8",
+      "input_b64": "W2FdCnggPSD/Cg==",
+      "params": {
+        "name": "s",
+        "section": "b"
+      },
+      "runs": [
+        {
+          "noop": false,
+          "failed": true,
+          "changed": false,
+          "events": [
+            {
+              "name": "resource_error",
+              "property": null,
+              "status": "failure",
+              "message": "invalid byte sequence in UTF-8",
+              "previous_value": "",
+              "desired_value": ""
+            }
+          ],
+          "err_logs": [
+            "Could not evaluate: invalid byte sequence in UTF-8"
+          ],
+          "final_b64": "W2FdCnggPSD/Cg=="
+        }
+      ]
+    },
+    {
+      "name": "create-noop",
+      "encoding": "US-ASCII",
+      "input_b64": "W2FdCnggPSAxCg==",
+      "params": {
+        "name": "s",
+        "section": "b"
+      },
+      "runs": [
+        {
+          "noop": true,
+          "failed": false,
+          "changed": false,
+          "events": [
+            {
+              "name": "ini_section_created",
+              "property": "ensure",
+              "status": "noop",
+              "message": "created (noop)",
+              "previous_value": "absent",
+              "desired_value": "present"
+            }
+          ],
+          "err_logs": [
+
+          ],
+          "final_b64": "W2FdCnggPSAxCg=="
+        }
+      ]
+    },
+    {
+      "name": "create-noop",
+      "encoding": "UTF-8",
+      "input_b64": "W2FdCnggPSAxCg==",
+      "params": {
+        "name": "s",
+        "section": "b"
+      },
+      "runs": [
+        {
+          "noop": true,
+          "failed": false,
+          "changed": false,
+          "events": [
+            {
+              "name": "ini_section_created",
+              "property": "ensure",
+              "status": "noop",
+              "message": "created (noop)",
+              "previous_value": "absent",
+              "desired_value": "present"
+            }
+          ],
+          "err_logs": [
+
+          ],
+          "final_b64": "W2FdCnggPSAxCg=="
+        }
+      ]
+    },
+    {
+      "name": "create-noop-new-file",
+      "encoding": "US-ASCII",
+      "missing": true,
+      "params": {
+        "name": "s",
+        "section": "b"
+      },
+      "runs": [
+        {
+          "noop": true,
+          "failed": false,
+          "changed": false,
+          "events": [
+            {
+              "name": "ini_section_created",
+              "property": "ensure",
+              "status": "noop",
+              "message": "created (noop)",
+              "previous_value": "absent",
+              "desired_value": "present"
+            }
+          ],
+          "err_logs": [
+
+          ],
+          "final_b64": null
+        }
+      ]
+    },
+    {
+      "name": "create-noop-new-file",
+      "encoding": "UTF-8",
+      "missing": true,
+      "params": {
+        "name": "s",
+        "section": "b"
+      },
+      "runs": [
+        {
+          "noop": true,
+          "failed": false,
+          "changed": false,
+          "events": [
+            {
+              "name": "ini_section_created",
+              "property": "ensure",
+              "status": "noop",
+              "message": "created (noop)",
+              "previous_value": "absent",
+              "desired_value": "present"
+            }
+          ],
+          "err_logs": [
+
+          ],
+          "final_b64": null
+        }
+      ]
+    },
+    {
+      "name": "create-then-noop-in-sync",
+      "encoding": "US-ASCII",
+      "input_b64": "W2FdCnggPSAxCg==",
+      "params": {
+        "name": "s",
+        "section": "b"
+      },
+      "runs": [
+        {
+          "noop": false,
+          "failed": false,
+          "changed": true,
+          "events": [
+            {
+              "name": "ini_section_created",
+              "property": "ensure",
+              "status": "success",
+              "message": "created",
+              "previous_value": "absent",
+              "desired_value": "present"
+            }
+          ],
+          "err_logs": [
+
+          ],
+          "final_b64": "W2FdCnggPSAxCgpbYl0K"
+        },
+        {
+          "noop": true,
+          "failed": false,
+          "changed": false,
+          "events": [
+
+          ],
+          "err_logs": [
+
+          ],
+          "final_b64": "W2FdCnggPSAxCgpbYl0K"
+        }
+      ]
+    },
+    {
+      "name": "create-then-noop-in-sync",
+      "encoding": "UTF-8",
+      "input_b64": "W2FdCnggPSAxCg==",
+      "params": {
+        "name": "s",
+        "section": "b"
+      },
+      "runs": [
+        {
+          "noop": false,
+          "failed": false,
+          "changed": true,
+          "events": [
+            {
+              "name": "ini_section_created",
+              "property": "ensure",
+              "status": "success",
+              "message": "created",
+              "previous_value": "absent",
+              "desired_value": "present"
+            }
+          ],
+          "err_logs": [
+
+          ],
+          "final_b64": "W2FdCnggPSAxCgpbYl0K"
+        },
+        {
+          "noop": true,
+          "failed": false,
+          "changed": false,
+          "events": [
+
+          ],
+          "err_logs": [
+
+          ],
+          "final_b64": "W2FdCnggPSAxCgpbYl0K"
+        }
+      ]
+    },
+    {
+      "name": "in-sync-present",
+      "encoding": "US-ASCII",
+      "input_b64": "W2FdCnggPSAxCnkgPSAyCgpbYl0KeiA9IDMKCltjXQp3ID0gNAo=",
+      "params": {
+        "name": "s",
+        "section": "b"
+      },
+      "runs": [
+        {
+          "noop": false,
+          "failed": false,
+          "changed": false,
+          "events": [
+
+          ],
+          "err_logs": [
+
+          ],
+          "final_b64": "W2FdCnggPSAxCnkgPSAyCgpbYl0KeiA9IDMKCltjXQp3ID0gNAo="
+        },
+        {
+          "noop": false,
+          "failed": false,
+          "changed": false,
+          "events": [
+
+          ],
+          "err_logs": [
+
+          ],
+          "final_b64": "W2FdCnggPSAxCnkgPSAyCgpbYl0KeiA9IDMKCltjXQp3ID0gNAo="
+        }
+      ]
+    },
+    {
+      "name": "in-sync-present",
+      "encoding": "UTF-8",
+      "input_b64": "W2FdCnggPSAxCnkgPSAyCgpbYl0KeiA9IDMKCltjXQp3ID0gNAo=",
+      "params": {
+        "name": "s",
+        "section": "b"
+      },
+      "runs": [
+        {
+          "noop": false,
+          "failed": false,
+          "changed": false,
+          "events": [
+
+          ],
+          "err_logs": [
+
+          ],
+          "final_b64": "W2FdCnggPSAxCnkgPSAyCgpbYl0KeiA9IDMKCltjXQp3ID0gNAo="
+        },
+        {
+          "noop": false,
+          "failed": false,
+          "changed": false,
+          "events": [
+
+          ],
+          "err_logs": [
+
+          ],
+          "final_b64": "W2FdCnggPSAxCnkgPSAyCgpbYl0KeiA9IDMKCltjXQp3ID0gNAo="
+        }
+      ]
+    },
+    {
+      "name": "in-sync-present-noop",
+      "encoding": "US-ASCII",
+      "input_b64": "W2FdCnggPSAxCnkgPSAyCgpbYl0KeiA9IDMKCltjXQp3ID0gNAo=",
+      "params": {
+        "name": "s",
+        "section": "b"
+      },
+      "runs": [
+        {
+          "noop": true,
+          "failed": false,
+          "changed": false,
+          "events": [
+
+          ],
+          "err_logs": [
+
+          ],
+          "final_b64": "W2FdCnggPSAxCnkgPSAyCgpbYl0KeiA9IDMKCltjXQp3ID0gNAo="
+        }
+      ]
+    },
+    {
+      "name": "in-sync-present-noop",
+      "encoding": "UTF-8",
+      "input_b64": "W2FdCnggPSAxCnkgPSAyCgpbYl0KeiA9IDMKCltjXQp3ID0gNAo=",
+      "params": {
+        "name": "s",
+        "section": "b"
+      },
+      "runs": [
+        {
+          "noop": true,
+          "failed": false,
+          "changed": false,
+          "events": [
+
+          ],
+          "err_logs": [
+
+          ],
+          "final_b64": "W2FdCnggPSAxCnkgPSAyCgpbYl0KeiA9IDMKCltjXQp3ID0gNAo="
+        }
+      ]
+    },
+    {
+      "name": "in-sync-global-settings-and-section",
+      "encoding": "US-ASCII",
+      "input_b64": "ZyA9IDEKW2FdCnggPSAxCg==",
+      "params": {
+        "name": "s",
+        "section": "a"
+      },
+      "runs": [
+        {
+          "noop": false,
+          "failed": false,
+          "changed": false,
+          "events": [
+
+          ],
+          "err_logs": [
+
+          ],
+          "final_b64": "ZyA9IDEKW2FdCnggPSAxCg=="
+        }
+      ]
+    },
+    {
+      "name": "in-sync-global-settings-and-section",
+      "encoding": "UTF-8",
+      "input_b64": "ZyA9IDEKW2FdCnggPSAxCg==",
+      "params": {
+        "name": "s",
+        "section": "a"
+      },
+      "runs": [
+        {
+          "noop": false,
+          "failed": false,
+          "changed": false,
+          "events": [
+
+          ],
+          "err_logs": [
+
+          ],
+          "final_b64": "ZyA9IDEKW2FdCnggPSAxCg=="
+        }
+      ]
+    },
+    {
+      "name": "in-sync-duplicate-headers",
+      "encoding": "US-ASCII",
+      "input_b64": "W2FdCnggPSAxClthXQp5ID0gMgo=",
+      "params": {
+        "name": "s",
+        "section": "a"
+      },
+      "runs": [
+        {
+          "noop": false,
+          "failed": false,
+          "changed": false,
+          "events": [
+
+          ],
+          "err_logs": [
+
+          ],
+          "final_b64": "W2FdCnggPSAxClthXQp5ID0gMgo="
+        }
+      ]
+    },
+    {
+      "name": "in-sync-duplicate-headers",
+      "encoding": "UTF-8",
+      "input_b64": "W2FdCnggPSAxClthXQp5ID0gMgo=",
+      "params": {
+        "name": "s",
+        "section": "a"
+      },
+      "runs": [
+        {
+          "noop": false,
+          "failed": false,
+          "changed": false,
+          "events": [
+
+          ],
+          "err_logs": [
+
+          ],
+          "final_b64": "W2FdCnggPSAxClthXQp5ID0gMgo="
+        }
+      ]
+    },
+    {
+      "name": "in-sync-empty-section",
+      "encoding": "US-ASCII",
+      "input_b64": "W2FdCltiXQp5ID0gMQo=",
+      "params": {
+        "name": "s",
+        "section": "a"
+      },
+      "runs": [
+        {
+          "noop": false,
+          "failed": false,
+          "changed": false,
+          "events": [
+
+          ],
+          "err_logs": [
+
+          ],
+          "final_b64": "W2FdCltiXQp5ID0gMQo="
+        }
+      ]
+    },
+    {
+      "name": "in-sync-empty-section",
+      "encoding": "UTF-8",
+      "input_b64": "W2FdCltiXQp5ID0gMQo=",
+      "params": {
+        "name": "s",
+        "section": "a"
+      },
+      "runs": [
+        {
+          "noop": false,
+          "failed": false,
+          "changed": false,
+          "events": [
+
+          ],
+          "err_logs": [
+
+          ],
+          "final_b64": "W2FdCltiXQp5ID0gMQo="
+        }
+      ]
+    },
+    {
+      "name": "remove-with-settings-inside",
+      "encoding": "US-ASCII",
+      "input_b64": "W2FdCnggPSAxCnkgPSAyCgpbYl0KeiA9IDMKCltjXQp3ID0gNAo=",
+      "params": {
+        "name": "s",
+        "section": "b",
+        "ensure": "absent"
+      },
+      "runs": [
+        {
+          "noop": false,
+          "failed": false,
+          "changed": true,
+          "events": [
+            {
+              "name": "ini_section_removed",
+              "property": "ensure",
+              "status": "success",
+              "message": "removed",
+              "previous_value": "present",
+              "desired_value": "absent"
+            }
+          ],
+          "err_logs": [
+
+          ],
+          "final_b64": "W2FdCnggPSAxCnkgPSAyCgpbY10KdyA9IDQK"
+        },
+        {
+          "noop": false,
+          "failed": false,
+          "changed": false,
+          "events": [
+
+          ],
+          "err_logs": [
+
+          ],
+          "final_b64": "W2FdCnggPSAxCnkgPSAyCgpbY10KdyA9IDQK"
+        }
+      ]
+    },
+    {
+      "name": "remove-with-settings-inside",
+      "encoding": "UTF-8",
+      "input_b64": "W2FdCnggPSAxCnkgPSAyCgpbYl0KeiA9IDMKCltjXQp3ID0gNAo=",
+      "params": {
+        "name": "s",
+        "section": "b",
+        "ensure": "absent"
+      },
+      "runs": [
+        {
+          "noop": false,
+          "failed": false,
+          "changed": true,
+          "events": [
+            {
+              "name": "ini_section_removed",
+              "property": "ensure",
+              "status": "success",
+              "message": "removed",
+              "previous_value": "present",
+              "desired_value": "absent"
+            }
+          ],
+          "err_logs": [
+
+          ],
+          "final_b64": "W2FdCnggPSAxCnkgPSAyCgpbY10KdyA9IDQK"
+        },
+        {
+          "noop": false,
+          "failed": false,
+          "changed": false,
+          "events": [
+
+          ],
+          "err_logs": [
+
+          ],
+          "final_b64": "W2FdCnggPSAxCnkgPSAyCgpbY10KdyA9IDQK"
+        }
+      ]
+    },
+    {
+      "name": "remove-first-section",
+      "encoding": "US-ASCII",
+      "input_b64": "W2FdCnggPSAxCnkgPSAyCgpbYl0KeiA9IDMKCltjXQp3ID0gNAo=",
+      "params": {
+        "name": "s",
+        "section": "a",
+        "ensure": "absent"
+      },
+      "runs": [
+        {
+          "noop": false,
+          "failed": false,
+          "changed": true,
+          "events": [
+            {
+              "name": "ini_section_removed",
+              "property": "ensure",
+              "status": "success",
+              "message": "removed",
+              "previous_value": "present",
+              "desired_value": "absent"
+            }
+          ],
+          "err_logs": [
+
+          ],
+          "final_b64": "W2JdCnogPSAzCgpbY10KdyA9IDQK"
+        }
+      ]
+    },
+    {
+      "name": "remove-first-section",
+      "encoding": "UTF-8",
+      "input_b64": "W2FdCnggPSAxCnkgPSAyCgpbYl0KeiA9IDMKCltjXQp3ID0gNAo=",
+      "params": {
+        "name": "s",
+        "section": "a",
+        "ensure": "absent"
+      },
+      "runs": [
+        {
+          "noop": false,
+          "failed": false,
+          "changed": true,
+          "events": [
+            {
+              "name": "ini_section_removed",
+              "property": "ensure",
+              "status": "success",
+              "message": "removed",
+              "previous_value": "present",
+              "desired_value": "absent"
+            }
+          ],
+          "err_logs": [
+
+          ],
+          "final_b64": "W2JdCnogPSAzCgpbY10KdyA9IDQK"
+        }
+      ]
+    },
+    {
+      "name": "remove-last-section",
+      "encoding": "US-ASCII",
+      "input_b64": "W2FdCnggPSAxCnkgPSAyCgpbYl0KeiA9IDMKCltjXQp3ID0gNAo=",
+      "params": {
+        "name": "s",
+        "section": "c",
+        "ensure": "absent"
+      },
+      "runs": [
+        {
+          "noop": false,
+          "failed": false,
+          "changed": true,
+          "events": [
+            {
+              "name": "ini_section_removed",
+              "property": "ensure",
+              "status": "success",
+              "message": "removed",
+              "previous_value": "present",
+              "desired_value": "absent"
+            }
+          ],
+          "err_logs": [
+
+          ],
+          "final_b64": "W2FdCnggPSAxCnkgPSAyCgpbYl0KeiA9IDMKCg=="
+        }
+      ]
+    },
+    {
+      "name": "remove-last-section",
+      "encoding": "UTF-8",
+      "input_b64": "W2FdCnggPSAxCnkgPSAyCgpbYl0KeiA9IDMKCltjXQp3ID0gNAo=",
+      "params": {
+        "name": "s",
+        "section": "c",
+        "ensure": "absent"
+      },
+      "runs": [
+        {
+          "noop": false,
+          "failed": false,
+          "changed": true,
+          "events": [
+            {
+              "name": "ini_section_removed",
+              "property": "ensure",
+              "status": "success",
+              "message": "removed",
+              "previous_value": "present",
+              "desired_value": "absent"
+            }
+          ],
+          "err_logs": [
+
+          ],
+          "final_b64": "W2FdCnggPSAxCnkgPSAyCgpbYl0KeiA9IDMKCg=="
+        }
+      ]
+    },
+    {
+      "name": "remove-last-section-no-final-newline",
+      "encoding": "US-ASCII",
+      "input_b64": "W2FdCnggPSAxCltiXQp5ID0gMQ==",
+      "params": {
+        "name": "s",
+        "section": "b",
+        "ensure": "absent"
+      },
+      "runs": [
+        {
+          "noop": false,
+          "failed": false,
+          "changed": true,
+          "events": [
+            {
+              "name": "ini_section_removed",
+              "property": "ensure",
+              "status": "success",
+              "message": "removed",
+              "previous_value": "present",
+              "desired_value": "absent"
+            }
+          ],
+          "err_logs": [
+
+          ],
+          "final_b64": "W2FdCnggPSAxCg=="
+        }
+      ]
+    },
+    {
+      "name": "remove-last-section-no-final-newline",
+      "encoding": "UTF-8",
+      "input_b64": "W2FdCnggPSAxCltiXQp5ID0gMQ==",
+      "params": {
+        "name": "s",
+        "section": "b",
+        "ensure": "absent"
+      },
+      "runs": [
+        {
+          "noop": false,
+          "failed": false,
+          "changed": true,
+          "events": [
+            {
+              "name": "ini_section_removed",
+              "property": "ensure",
+              "status": "success",
+              "message": "removed",
+              "previous_value": "present",
+              "desired_value": "absent"
+            }
+          ],
+          "err_logs": [
+
+          ],
+          "final_b64": "W2FdCnggPSAxCg=="
+        }
+      ]
+    },
+    {
+      "name": "remove-only-section",
+      "encoding": "US-ASCII",
+      "input_b64": "W2FdCnggPSAxCg==",
+      "params": {
+        "name": "s",
+        "section": "a",
+        "ensure": "absent"
+      },
+      "runs": [
+        {
+          "noop": false,
+          "failed": false,
+          "changed": true,
+          "events": [
+            {
+              "name": "ini_section_removed",
+              "property": "ensure",
+              "status": "success",
+              "message": "removed",
+              "previous_value": "present",
+              "desired_value": "absent"
+            }
+          ],
+          "err_logs": [
+
+          ],
+          "final_b64": ""
+        },
+        {
+          "noop": false,
+          "failed": false,
+          "changed": false,
+          "events": [
+
+          ],
+          "err_logs": [
+
+          ],
+          "final_b64": ""
+        }
+      ]
+    },
+    {
+      "name": "remove-only-section",
+      "encoding": "UTF-8",
+      "input_b64": "W2FdCnggPSAxCg==",
+      "params": {
+        "name": "s",
+        "section": "a",
+        "ensure": "absent"
+      },
+      "runs": [
+        {
+          "noop": false,
+          "failed": false,
+          "changed": true,
+          "events": [
+            {
+              "name": "ini_section_removed",
+              "property": "ensure",
+              "status": "success",
+              "message": "removed",
+              "previous_value": "present",
+              "desired_value": "absent"
+            }
+          ],
+          "err_logs": [
+
+          ],
+          "final_b64": ""
+        },
+        {
+          "noop": false,
+          "failed": false,
+          "changed": false,
+          "events": [
+
+          ],
+          "err_logs": [
+
+          ],
+          "final_b64": ""
+        }
+      ]
+    },
+    {
+      "name": "remove-empty-section",
+      "encoding": "US-ASCII",
+      "input_b64": "W2FdCltiXQp5ID0gMQo=",
+      "params": {
+        "name": "s",
+        "section": "a",
+        "ensure": "absent"
+      },
+      "runs": [
+        {
+          "noop": false,
+          "failed": false,
+          "changed": true,
+          "events": [
+            {
+              "name": "ini_section_removed",
+              "property": "ensure",
+              "status": "success",
+              "message": "removed",
+              "previous_value": "present",
+              "desired_value": "absent"
+            }
+          ],
+          "err_logs": [
+
+          ],
+          "final_b64": "W2JdCnkgPSAxCg=="
+        }
+      ]
+    },
+    {
+      "name": "remove-empty-section",
+      "encoding": "UTF-8",
+      "input_b64": "W2FdCltiXQp5ID0gMQo=",
+      "params": {
+        "name": "s",
+        "section": "a",
+        "ensure": "absent"
+      },
+      "runs": [
+        {
+          "noop": false,
+          "failed": false,
+          "changed": true,
+          "events": [
+            {
+              "name": "ini_section_removed",
+              "property": "ensure",
+              "status": "success",
+              "message": "removed",
+              "previous_value": "present",
+              "desired_value": "absent"
+            }
+          ],
+          "err_logs": [
+
+          ],
+          "final_b64": "W2JdCnkgPSAxCg=="
+        }
+      ]
+    },
+    {
+      "name": "remove-keeps-global-settings",
+      "encoding": "US-ASCII",
+      "input_b64": "ZyA9IDEKW2FdCnggPSAxCltiXQp5ID0gMQo=",
+      "params": {
+        "name": "s",
+        "section": "a",
+        "ensure": "absent"
+      },
+      "runs": [
+        {
+          "noop": false,
+          "failed": false,
+          "changed": true,
+          "events": [
+            {
+              "name": "ini_section_removed",
+              "property": "ensure",
+              "status": "success",
+              "message": "removed",
+              "previous_value": "present",
+              "desired_value": "absent"
+            }
+          ],
+          "err_logs": [
+
+          ],
+          "final_b64": "ZyA9IDEKW2JdCnkgPSAxCg=="
+        }
+      ]
+    },
+    {
+      "name": "remove-keeps-global-settings",
+      "encoding": "UTF-8",
+      "input_b64": "ZyA9IDEKW2FdCnggPSAxCltiXQp5ID0gMQo=",
+      "params": {
+        "name": "s",
+        "section": "a",
+        "ensure": "absent"
+      },
+      "runs": [
+        {
+          "noop": false,
+          "failed": false,
+          "changed": true,
+          "events": [
+            {
+              "name": "ini_section_removed",
+              "property": "ensure",
+              "status": "success",
+              "message": "removed",
+              "previous_value": "present",
+              "desired_value": "absent"
+            }
+          ],
+          "err_logs": [
+
+          ],
+          "final_b64": "ZyA9IDEKW2JdCnkgPSAxCg=="
+        }
+      ]
+    },
+    {
+      "name": "remove-with-comments-inside",
+      "encoding": "US-ASCII",
+      "input_b64": "W2FdCiMgbm90ZQp4ID0gMQo7IHRhaWwKW2JdCnkgPSAxCg==",
+      "params": {
+        "name": "s",
+        "section": "a",
+        "ensure": "absent"
+      },
+      "runs": [
+        {
+          "noop": false,
+          "failed": false,
+          "changed": true,
+          "events": [
+            {
+              "name": "ini_section_removed",
+              "property": "ensure",
+              "status": "success",
+              "message": "removed",
+              "previous_value": "present",
+              "desired_value": "absent"
+            }
+          ],
+          "err_logs": [
+
+          ],
+          "final_b64": "W2JdCnkgPSAxCg=="
+        }
+      ]
+    },
+    {
+      "name": "remove-with-comments-inside",
+      "encoding": "UTF-8",
+      "input_b64": "W2FdCiMgbm90ZQp4ID0gMQo7IHRhaWwKW2JdCnkgPSAxCg==",
+      "params": {
+        "name": "s",
+        "section": "a",
+        "ensure": "absent"
+      },
+      "runs": [
+        {
+          "noop": false,
+          "failed": false,
+          "changed": true,
+          "events": [
+            {
+              "name": "ini_section_removed",
+              "property": "ensure",
+              "status": "success",
+              "message": "removed",
+              "previous_value": "present",
+              "desired_value": "absent"
+            }
+          ],
+          "err_logs": [
+
+          ],
+          "final_b64": "W2JdCnkgPSAxCg=="
+        }
+      ]
+    },
+    {
+      "name": "remove-duplicate-headers",
+      "encoding": "US-ASCII",
+      "input_b64": "W2FdCnggPSAxClthXQp5ID0gMgpbYl0KeiA9IDEK",
+      "params": {
+        "name": "s",
+        "section": "a",
+        "ensure": "absent"
+      },
+      "runs": [
+        {
+          "noop": false,
+          "failed": true,
+          "changed": false,
+          "events": [
+            {
+              "name": "ini_section_removed",
+              "property": "ensure",
+              "status": "failure",
+              "message": "change from 'present' to 'absent' failed: Could not set 'absent' on ensure: undefined method `new_section?' for nil:NilClass",
+              "previous_value": "present",
+              "desired_value": "absent"
+            }
+          ],
+          "err_logs": [
+            "Could not set 'absent' on ensure: undefined method `new_section?' for nil:NilClass",
+            "Could not set 'absent' on ensure: undefined method `new_section?' for nil:NilClass\nWrapped exception:\nundefined method `new_section?' for nil:NilClass",
+            "change from 'present' to 'absent' failed: Could not set 'absent' on ensure: undefined method `new_section?' for nil:NilClass"
+          ],
+          "final_b64": ""
+        },
+        {
+          "noop": false,
+          "failed": false,
+          "changed": false,
+          "events": [
+
+          ],
+          "err_logs": [
+
+          ],
+          "final_b64": ""
+        }
+      ]
+    },
+    {
+      "name": "remove-duplicate-headers",
+      "encoding": "UTF-8",
+      "input_b64": "W2FdCnggPSAxClthXQp5ID0gMgpbYl0KeiA9IDEK",
+      "params": {
+        "name": "s",
+        "section": "a",
+        "ensure": "absent"
+      },
+      "runs": [
+        {
+          "noop": false,
+          "failed": true,
+          "changed": false,
+          "events": [
+            {
+              "name": "ini_section_removed",
+              "property": "ensure",
+              "status": "failure",
+              "message": "change from 'present' to 'absent' failed: Could not set 'absent' on ensure: undefined method `new_section?' for nil:NilClass",
+              "previous_value": "present",
+              "desired_value": "absent"
+            }
+          ],
+          "err_logs": [
+            "Could not set 'absent' on ensure: undefined method `new_section?' for nil:NilClass",
+            "Could not set 'absent' on ensure: undefined method `new_section?' for nil:NilClass\nWrapped exception:\nundefined method `new_section?' for nil:NilClass",
+            "change from 'present' to 'absent' failed: Could not set 'absent' on ensure: undefined method `new_section?' for nil:NilClass"
+          ],
+          "final_b64": ""
+        },
+        {
+          "noop": false,
+          "failed": false,
+          "changed": false,
+          "events": [
+
+          ],
+          "err_logs": [
+
+          ],
+          "final_b64": ""
+        }
+      ]
+    },
+    {
+      "name": "remove-crlf-file",
+      "encoding": "US-ASCII",
+      "input_b64": "W2FdDQp4ID0gMQ0KW2JdDQp5ID0gMQ0K",
+      "params": {
+        "name": "s",
+        "section": "a",
+        "ensure": "absent"
+      },
+      "runs": [
+        {
+          "noop": false,
+          "failed": false,
+          "changed": true,
+          "events": [
+            {
+              "name": "ini_section_removed",
+              "property": "ensure",
+              "status": "success",
+              "message": "removed",
+              "previous_value": "present",
+              "desired_value": "absent"
+            }
+          ],
+          "err_logs": [
+
+          ],
+          "final_b64": "W2JdDQp5ID0gMQ0K"
+        }
+      ]
+    },
+    {
+      "name": "remove-crlf-file",
+      "encoding": "UTF-8",
+      "input_b64": "W2FdDQp4ID0gMQ0KW2JdDQp5ID0gMQ0K",
+      "params": {
+        "name": "s",
+        "section": "a",
+        "ensure": "absent"
+      },
+      "runs": [
+        {
+          "noop": false,
+          "failed": false,
+          "changed": true,
+          "events": [
+            {
+              "name": "ini_section_removed",
+              "property": "ensure",
+              "status": "success",
+              "message": "removed",
+              "previous_value": "present",
+              "desired_value": "absent"
+            }
+          ],
+          "err_logs": [
+
+          ],
+          "final_b64": "W2JdDQp5ID0gMQ0K"
+        }
+      ]
+    },
+    {
+      "name": "remove-section-with-trailing-blank-lines",
+      "encoding": "US-ASCII",
+      "input_b64": "W2FdCnggPSAxCgogIApbYl0KeSA9IDEK",
+      "params": {
+        "name": "s",
+        "section": "a",
+        "ensure": "absent"
+      },
+      "runs": [
+        {
+          "noop": false,
+          "failed": false,
+          "changed": true,
+          "events": [
+            {
+              "name": "ini_section_removed",
+              "property": "ensure",
+              "status": "success",
+              "message": "removed",
+              "previous_value": "present",
+              "desired_value": "absent"
+            }
+          ],
+          "err_logs": [
+
+          ],
+          "final_b64": "W2JdCnkgPSAxCg=="
+        }
+      ]
+    },
+    {
+      "name": "remove-section-with-trailing-blank-lines",
+      "encoding": "UTF-8",
+      "input_b64": "W2FdCnggPSAxCgogIApbYl0KeSA9IDEK",
+      "params": {
+        "name": "s",
+        "section": "a",
+        "ensure": "absent"
+      },
+      "runs": [
+        {
+          "noop": false,
+          "failed": false,
+          "changed": true,
+          "events": [
+            {
+              "name": "ini_section_removed",
+              "property": "ensure",
+              "status": "success",
+              "message": "removed",
+              "previous_value": "present",
+              "desired_value": "absent"
+            }
+          ],
+          "err_logs": [
+
+          ],
+          "final_b64": "W2JdCnkgPSAxCg=="
+        }
+      ]
+    },
+    {
+      "name": "remove-name-with-regexp-chars",
+      "encoding": "US-ASCII",
+      "input_b64": "W2EuYltjXSpdCnggPSAxClthYl0KeSA9IDEK",
+      "params": {
+        "name": "s",
+        "section": "a.b[c]*",
+        "ensure": "absent"
+      },
+      "runs": [
+        {
+          "noop": false,
+          "failed": false,
+          "changed": true,
+          "events": [
+            {
+              "name": "ini_section_removed",
+              "property": "ensure",
+              "status": "success",
+              "message": "removed",
+              "previous_value": "present",
+              "desired_value": "absent"
+            }
+          ],
+          "err_logs": [
+
+          ],
+          "final_b64": "W2FiXQp5ID0gMQo="
+        }
+      ]
+    },
+    {
+      "name": "remove-name-with-regexp-chars",
+      "encoding": "UTF-8",
+      "input_b64": "W2EuYltjXSpdCnggPSAxClthYl0KeSA9IDEK",
+      "params": {
+        "name": "s",
+        "section": "a.b[c]*",
+        "ensure": "absent"
+      },
+      "runs": [
+        {
+          "noop": false,
+          "failed": false,
+          "changed": true,
+          "events": [
+            {
+              "name": "ini_section_removed",
+              "property": "ensure",
+              "status": "success",
+              "message": "removed",
+              "previous_value": "present",
+              "desired_value": "absent"
+            }
+          ],
+          "err_logs": [
+
+          ],
+          "final_b64": "W2FiXQp5ID0gMQo="
+        }
+      ]
+    },
+    {
+      "name": "remove-non-ascii-name",
+      "encoding": "US-ASCII",
+      "input_b64": "W2NhZsOpXQp4ID0gMQpbYl0KeSA9IDEK",
+      "params": {
+        "name": "s",
+        "section": "café",
+        "ensure": "absent"
+      },
+      "runs": [
+        {
+          "noop": false,
+          "failed": true,
+          "changed": false,
+          "events": [
+            {
+              "name": "resource_error",
+              "property": null,
+              "status": "failure",
+              "message": "invalid byte sequence in US-ASCII",
+              "previous_value": "",
+              "desired_value": ""
+            }
+          ],
+          "err_logs": [
+            "Could not evaluate: invalid byte sequence in US-ASCII"
+          ],
+          "final_b64": "W2NhZsOpXQp4ID0gMQpbYl0KeSA9IDEK"
+        }
+      ]
+    },
+    {
+      "name": "remove-non-ascii-name",
+      "encoding": "UTF-8",
+      "input_b64": "W2NhZsOpXQp4ID0gMQpbYl0KeSA9IDEK",
+      "params": {
+        "name": "s",
+        "section": "café",
+        "ensure": "absent"
+      },
+      "runs": [
+        {
+          "noop": false,
+          "failed": false,
+          "changed": true,
+          "events": [
+            {
+              "name": "ini_section_removed",
+              "property": "ensure",
+              "status": "success",
+              "message": "removed",
+              "previous_value": "present",
+              "desired_value": "absent"
+            }
+          ],
+          "err_logs": [
+
+          ],
+          "final_b64": "W2JdCnkgPSAxCg=="
+        }
+      ]
+    },
+    {
+      "name": "remove-noop",
+      "encoding": "US-ASCII",
+      "input_b64": "W2FdCnggPSAxCnkgPSAyCgpbYl0KeiA9IDMKCltjXQp3ID0gNAo=",
+      "params": {
+        "name": "s",
+        "section": "b",
+        "ensure": "absent"
+      },
+      "runs": [
+        {
+          "noop": true,
+          "failed": false,
+          "changed": false,
+          "events": [
+            {
+              "name": "ini_section_removed",
+              "property": "ensure",
+              "status": "noop",
+              "message": "removed (noop)",
+              "previous_value": "present",
+              "desired_value": "absent"
+            }
+          ],
+          "err_logs": [
+
+          ],
+          "final_b64": "W2FdCnggPSAxCnkgPSAyCgpbYl0KeiA9IDMKCltjXQp3ID0gNAo="
+        }
+      ]
+    },
+    {
+      "name": "remove-noop",
+      "encoding": "UTF-8",
+      "input_b64": "W2FdCnggPSAxCnkgPSAyCgpbYl0KeiA9IDMKCltjXQp3ID0gNAo=",
+      "params": {
+        "name": "s",
+        "section": "b",
+        "ensure": "absent"
+      },
+      "runs": [
+        {
+          "noop": true,
+          "failed": false,
+          "changed": false,
+          "events": [
+            {
+              "name": "ini_section_removed",
+              "property": "ensure",
+              "status": "noop",
+              "message": "removed (noop)",
+              "previous_value": "present",
+              "desired_value": "absent"
+            }
+          ],
+          "err_logs": [
+
+          ],
+          "final_b64": "W2FdCnggPSAxCnkgPSAyCgpbYl0KeiA9IDMKCltjXQp3ID0gNAo="
+        }
+      ]
+    },
+    {
+      "name": "remove-then-noop-in-sync",
+      "encoding": "US-ASCII",
+      "input_b64": "W2FdCnggPSAxCnkgPSAyCgpbYl0KeiA9IDMKCltjXQp3ID0gNAo=",
+      "params": {
+        "name": "s",
+        "section": "b",
+        "ensure": "absent"
+      },
+      "runs": [
+        {
+          "noop": false,
+          "failed": false,
+          "changed": true,
+          "events": [
+            {
+              "name": "ini_section_removed",
+              "property": "ensure",
+              "status": "success",
+              "message": "removed",
+              "previous_value": "present",
+              "desired_value": "absent"
+            }
+          ],
+          "err_logs": [
+
+          ],
+          "final_b64": "W2FdCnggPSAxCnkgPSAyCgpbY10KdyA9IDQK"
+        },
+        {
+          "noop": true,
+          "failed": false,
+          "changed": false,
+          "events": [
+
+          ],
+          "err_logs": [
+
+          ],
+          "final_b64": "W2FdCnggPSAxCnkgPSAyCgpbY10KdyA9IDQK"
+        }
+      ]
+    },
+    {
+      "name": "remove-then-noop-in-sync",
+      "encoding": "UTF-8",
+      "input_b64": "W2FdCnggPSAxCnkgPSAyCgpbYl0KeiA9IDMKCltjXQp3ID0gNAo=",
+      "params": {
+        "name": "s",
+        "section": "b",
+        "ensure": "absent"
+      },
+      "runs": [
+        {
+          "noop": false,
+          "failed": false,
+          "changed": true,
+          "events": [
+            {
+              "name": "ini_section_removed",
+              "property": "ensure",
+              "status": "success",
+              "message": "removed",
+              "previous_value": "present",
+              "desired_value": "absent"
+            }
+          ],
+          "err_logs": [
+
+          ],
+          "final_b64": "W2FdCnggPSAxCnkgPSAyCgpbY10KdyA9IDQK"
+        },
+        {
+          "noop": true,
+          "failed": false,
+          "changed": false,
+          "events": [
+
+          ],
+          "err_logs": [
+
+          ],
+          "final_b64": "W2FdCnggPSAxCnkgPSAyCgpbY10KdyA9IDQK"
+        }
+      ]
+    },
+    {
+      "name": "remove-absent-section",
+      "encoding": "US-ASCII",
+      "input_b64": "W2FdCnggPSAxCnkgPSAyCgpbYl0KeiA9IDMKCltjXQp3ID0gNAo=",
+      "params": {
+        "name": "s",
+        "section": "zz",
+        "ensure": "absent"
+      },
+      "runs": [
+        {
+          "noop": false,
+          "failed": false,
+          "changed": false,
+          "events": [
+
+          ],
+          "err_logs": [
+
+          ],
+          "final_b64": "W2FdCnggPSAxCnkgPSAyCgpbYl0KeiA9IDMKCltjXQp3ID0gNAo="
+        }
+      ]
+    },
+    {
+      "name": "remove-absent-section",
+      "encoding": "UTF-8",
+      "input_b64": "W2FdCnggPSAxCnkgPSAyCgpbYl0KeiA9IDMKCltjXQp3ID0gNAo=",
+      "params": {
+        "name": "s",
+        "section": "zz",
+        "ensure": "absent"
+      },
+      "runs": [
+        {
+          "noop": false,
+          "failed": false,
+          "changed": false,
+          "events": [
+
+          ],
+          "err_logs": [
+
+          ],
+          "final_b64": "W2FdCnggPSAxCnkgPSAyCgpbYl0KeiA9IDMKCltjXQp3ID0gNAo="
+        }
+      ]
+    },
+    {
+      "name": "remove-absent-section-noop",
+      "encoding": "US-ASCII",
+      "input_b64": "W2FdCnggPSAxCnkgPSAyCgpbYl0KeiA9IDMKCltjXQp3ID0gNAo=",
+      "params": {
+        "name": "s",
+        "section": "zz",
+        "ensure": "absent"
+      },
+      "runs": [
+        {
+          "noop": true,
+          "failed": false,
+          "changed": false,
+          "events": [
+
+          ],
+          "err_logs": [
+
+          ],
+          "final_b64": "W2FdCnggPSAxCnkgPSAyCgpbYl0KeiA9IDMKCltjXQp3ID0gNAo="
+        }
+      ]
+    },
+    {
+      "name": "remove-absent-section-noop",
+      "encoding": "UTF-8",
+      "input_b64": "W2FdCnggPSAxCnkgPSAyCgpbYl0KeiA9IDMKCltjXQp3ID0gNAo=",
+      "params": {
+        "name": "s",
+        "section": "zz",
+        "ensure": "absent"
+      },
+      "runs": [
+        {
+          "noop": true,
+          "failed": false,
+          "changed": false,
+          "events": [
+
+          ],
+          "err_logs": [
+
+          ],
+          "final_b64": "W2FdCnggPSAxCnkgPSAyCgpbYl0KeiA9IDMKCltjXQp3ID0gNAo="
+        }
+      ]
+    },
+    {
+      "name": "remove-missing-file",
+      "encoding": "US-ASCII",
+      "missing": true,
+      "params": {
+        "name": "s",
+        "section": "b",
+        "ensure": "absent"
+      },
+      "runs": [
+        {
+          "noop": false,
+          "failed": false,
+          "changed": false,
+          "events": [
+
+          ],
+          "err_logs": [
+
+          ],
+          "final_b64": null
+        }
+      ]
+    },
+    {
+      "name": "remove-missing-file",
+      "encoding": "UTF-8",
+      "missing": true,
+      "params": {
+        "name": "s",
+        "section": "b",
+        "ensure": "absent"
+      },
+      "runs": [
+        {
+          "noop": false,
+          "failed": false,
+          "changed": false,
+          "events": [
+
+          ],
+          "err_logs": [
+
+          ],
+          "final_b64": null
+        }
+      ]
+    },
+    {
+      "name": "remove-empty-file",
+      "encoding": "US-ASCII",
+      "input_b64": "",
+      "params": {
+        "name": "s",
+        "section": "b",
+        "ensure": "absent"
+      },
+      "runs": [
+        {
+          "noop": false,
+          "failed": false,
+          "changed": false,
+          "events": [
+
+          ],
+          "err_logs": [
+
+          ],
+          "final_b64": ""
+        }
+      ]
+    },
+    {
+      "name": "remove-empty-file",
+      "encoding": "UTF-8",
+      "input_b64": "",
+      "params": {
+        "name": "s",
+        "section": "b",
+        "ensure": "absent"
+      },
+      "runs": [
+        {
+          "noop": false,
+          "failed": false,
+          "changed": false,
+          "events": [
+
+          ],
+          "err_logs": [
+
+          ],
+          "final_b64": ""
+        }
+      ]
+    },
+    {
+      "name": "prefix-suffix-create",
+      "encoding": "US-ASCII",
+      "input_b64": "PGE+CnggPSAxCg==",
+      "params": {
+        "name": "s",
+        "section": "b",
+        "section_prefix": "<",
+        "section_suffix": ">"
+      },
+      "runs": [
+        {
+          "noop": false,
+          "failed": false,
+          "changed": true,
+          "events": [
+            {
+              "name": "ini_section_created",
+              "property": "ensure",
+              "status": "success",
+              "message": "created",
+              "previous_value": "absent",
+              "desired_value": "present"
+            }
+          ],
+          "err_logs": [
+
+          ],
+          "final_b64": "PGE+CnggPSAxCgo8Yj4K"
+        },
+        {
+          "noop": false,
+          "failed": false,
+          "changed": false,
+          "events": [
+
+          ],
+          "err_logs": [
+
+          ],
+          "final_b64": "PGE+CnggPSAxCgo8Yj4K"
+        }
+      ]
+    },
+    {
+      "name": "prefix-suffix-create",
+      "encoding": "UTF-8",
+      "input_b64": "PGE+CnggPSAxCg==",
+      "params": {
+        "name": "s",
+        "section": "b",
+        "section_prefix": "<",
+        "section_suffix": ">"
+      },
+      "runs": [
+        {
+          "noop": false,
+          "failed": false,
+          "changed": true,
+          "events": [
+            {
+              "name": "ini_section_created",
+              "property": "ensure",
+              "status": "success",
+              "message": "created",
+              "previous_value": "absent",
+              "desired_value": "present"
+            }
+          ],
+          "err_logs": [
+
+          ],
+          "final_b64": "PGE+CnggPSAxCgo8Yj4K"
+        },
+        {
+          "noop": false,
+          "failed": false,
+          "changed": false,
+          "events": [
+
+          ],
+          "err_logs": [
+
+          ],
+          "final_b64": "PGE+CnggPSAxCgo8Yj4K"
+        }
+      ]
+    },
+    {
+      "name": "prefix-suffix-create-multichar",
+      "encoding": "US-ASCII",
+      "input_b64": "PDxhPj4KeCA9IDEK",
+      "params": {
+        "name": "s",
+        "section": "b",
+        "section_prefix": "<<",
+        "section_suffix": ">>"
+      },
+      "runs": [
+        {
+          "noop": false,
+          "failed": false,
+          "changed": true,
+          "events": [
+            {
+              "name": "ini_section_created",
+              "property": "ensure",
+              "status": "success",
+              "message": "created",
+              "previous_value": "absent",
+              "desired_value": "present"
+            }
+          ],
+          "err_logs": [
+
+          ],
+          "final_b64": "PDxhPj4KeCA9IDEKCjw8Yj4+Cg=="
+        }
+      ]
+    },
+    {
+      "name": "prefix-suffix-create-multichar",
+      "encoding": "UTF-8",
+      "input_b64": "PDxhPj4KeCA9IDEK",
+      "params": {
+        "name": "s",
+        "section": "b",
+        "section_prefix": "<<",
+        "section_suffix": ">>"
+      },
+      "runs": [
+        {
+          "noop": false,
+          "failed": false,
+          "changed": true,
+          "events": [
+            {
+              "name": "ini_section_created",
+              "property": "ensure",
+              "status": "success",
+              "message": "created",
+              "previous_value": "absent",
+              "desired_value": "present"
+            }
+          ],
+          "err_logs": [
+
+          ],
+          "final_b64": "PDxhPj4KeCA9IDEKCjw8Yj4+Cg=="
+        }
+      ]
+    },
+    {
+      "name": "prefix-suffix-remove",
+      "encoding": "US-ASCII",
+      "input_b64": "PGE+CnggPSAxCjxiPgp5ID0gMQo=",
+      "params": {
+        "name": "s",
+        "section": "a",
+        "section_prefix": "<",
+        "section_suffix": ">",
+        "ensure": "absent"
+      },
+      "runs": [
+        {
+          "noop": false,
+          "failed": false,
+          "changed": true,
+          "events": [
+            {
+              "name": "ini_section_removed",
+              "property": "ensure",
+              "status": "success",
+              "message": "removed",
+              "previous_value": "present",
+              "desired_value": "absent"
+            }
+          ],
+          "err_logs": [
+
+          ],
+          "final_b64": "PGI+CnkgPSAxCg=="
+        }
+      ]
+    },
+    {
+      "name": "prefix-suffix-remove",
+      "encoding": "UTF-8",
+      "input_b64": "PGE+CnggPSAxCjxiPgp5ID0gMQo=",
+      "params": {
+        "name": "s",
+        "section": "a",
+        "section_prefix": "<",
+        "section_suffix": ">",
+        "ensure": "absent"
+      },
+      "runs": [
+        {
+          "noop": false,
+          "failed": false,
+          "changed": true,
+          "events": [
+            {
+              "name": "ini_section_removed",
+              "property": "ensure",
+              "status": "success",
+              "message": "removed",
+              "previous_value": "present",
+              "desired_value": "absent"
+            }
+          ],
+          "err_logs": [
+
+          ],
+          "final_b64": "PGI+CnkgPSAxCg=="
+        }
+      ]
+    },
+    {
+      "name": "prefix-suffix-in-sync",
+      "encoding": "US-ASCII",
+      "input_b64": "PGE+CnggPSAxCg==",
+      "params": {
+        "name": "s",
+        "section": "a",
+        "section_prefix": "<",
+        "section_suffix": ">"
+      },
+      "runs": [
+        {
+          "noop": false,
+          "failed": false,
+          "changed": false,
+          "events": [
+
+          ],
+          "err_logs": [
+
+          ],
+          "final_b64": "PGE+CnggPSAxCg=="
+        }
+      ]
+    },
+    {
+      "name": "prefix-suffix-in-sync",
+      "encoding": "UTF-8",
+      "input_b64": "PGE+CnggPSAxCg==",
+      "params": {
+        "name": "s",
+        "section": "a",
+        "section_prefix": "<",
+        "section_suffix": ">"
+      },
+      "runs": [
+        {
+          "noop": false,
+          "failed": false,
+          "changed": false,
+          "events": [
+
+          ],
+          "err_logs": [
+
+          ],
+          "final_b64": "PGE+CnggPSAxCg=="
+        }
+      ]
+    },
+    {
+      "name": "prefix-suffix-regexp-chars-create",
+      "encoding": "US-ASCII",
+      "input_b64": "KGEpCnggPSAxCg==",
+      "params": {
+        "name": "s",
+        "section": "b",
+        "section_prefix": "(",
+        "section_suffix": ")"
+      },
+      "runs": [
+        {
+          "noop": false,
+          "failed": false,
+          "changed": true,
+          "events": [
+            {
+              "name": "ini_section_created",
+              "property": "ensure",
+              "status": "success",
+              "message": "created",
+              "previous_value": "absent",
+              "desired_value": "present"
+            }
+          ],
+          "err_logs": [
+
+          ],
+          "final_b64": "KGEpCnggPSAxCgooYikK"
+        }
+      ]
+    },
+    {
+      "name": "prefix-suffix-regexp-chars-create",
+      "encoding": "UTF-8",
+      "input_b64": "KGEpCnggPSAxCg==",
+      "params": {
+        "name": "s",
+        "section": "b",
+        "section_prefix": "(",
+        "section_suffix": ")"
+      },
+      "runs": [
+        {
+          "noop": false,
+          "failed": false,
+          "changed": true,
+          "events": [
+            {
+              "name": "ini_section_created",
+              "property": "ensure",
+              "status": "success",
+              "message": "created",
+              "previous_value": "absent",
+              "desired_value": "present"
+            }
+          ],
+          "err_logs": [
+
+          ],
+          "final_b64": "KGEpCnggPSAxCgooYikK"
+        }
+      ]
+    },
+    {
+      "name": "prefix-suffix-regexp-chars-remove",
+      "encoding": "US-ASCII",
+      "input_b64": "KGEpCnggPSAxCihiKQp5ID0gMQo=",
+      "params": {
+        "name": "s",
+        "section": "a",
+        "section_prefix": "(",
+        "section_suffix": ")",
+        "ensure": "absent"
+      },
+      "runs": [
+        {
+          "noop": false,
+          "failed": false,
+          "changed": true,
+          "events": [
+            {
+              "name": "ini_section_removed",
+              "property": "ensure",
+              "status": "success",
+              "message": "removed",
+              "previous_value": "present",
+              "desired_value": "absent"
+            }
+          ],
+          "err_logs": [
+
+          ],
+          "final_b64": "KGIpCnkgPSAxCg=="
+        }
+      ]
+    },
+    {
+      "name": "prefix-suffix-regexp-chars-remove",
+      "encoding": "UTF-8",
+      "input_b64": "KGEpCnggPSAxCihiKQp5ID0gMQo=",
+      "params": {
+        "name": "s",
+        "section": "a",
+        "section_prefix": "(",
+        "section_suffix": ")",
+        "ensure": "absent"
+      },
+      "runs": [
+        {
+          "noop": false,
+          "failed": false,
+          "changed": true,
+          "events": [
+            {
+              "name": "ini_section_removed",
+              "property": "ensure",
+              "status": "success",
+              "message": "removed",
+              "previous_value": "present",
+              "desired_value": "absent"
+            }
+          ],
+          "err_logs": [
+
+          ],
+          "final_b64": "KGIpCnkgPSAxCg=="
+        }
+      ]
+    },
+    {
+      "name": "prefix-suffix-default-headers-ignored",
+      "encoding": "US-ASCII",
+      "input_b64": "W2FdCnggPSAxCg==",
+      "params": {
+        "name": "s",
+        "section": "a",
+        "section_prefix": "<",
+        "section_suffix": ">"
+      },
+      "runs": [
+        {
+          "noop": false,
+          "failed": false,
+          "changed": true,
+          "events": [
+            {
+              "name": "ini_section_created",
+              "property": "ensure",
+              "status": "success",
+              "message": "created",
+              "previous_value": "absent",
+              "desired_value": "present"
+            }
+          ],
+          "err_logs": [
+
+          ],
+          "final_b64": "W2FdCnggPSAxCgo8YT4K"
+        }
+      ]
+    },
+    {
+      "name": "prefix-suffix-default-headers-ignored",
+      "encoding": "UTF-8",
+      "input_b64": "W2FdCnggPSAxCg==",
+      "params": {
+        "name": "s",
+        "section": "a",
+        "section_prefix": "<",
+        "section_suffix": ">"
+      },
+      "runs": [
+        {
+          "noop": false,
+          "failed": false,
+          "changed": true,
+          "events": [
+            {
+              "name": "ini_section_created",
+              "property": "ensure",
+              "status": "success",
+              "message": "created",
+              "previous_value": "absent",
+              "desired_value": "present"
+            }
+          ],
+          "err_logs": [
+
+          ],
+          "final_b64": "W2FdCnggPSAxCgo8YT4K"
+        }
+      ]
+    },
+    {
+      "name": "prefix-suffix-empty",
+      "encoding": "US-ASCII",
+      "input_b64": "YQp4ID0gMQo=",
+      "params": {
+        "name": "s",
+        "section": "b",
+        "section_prefix": "",
+        "section_suffix": ""
+      },
+      "runs": [
+        {
+          "noop": false,
+          "failed": false,
+          "changed": true,
+          "events": [
+            {
+              "name": "ini_section_created",
+              "property": "ensure",
+              "status": "success",
+              "message": "created",
+              "previous_value": "absent",
+              "desired_value": "present"
+            }
+          ],
+          "err_logs": [
+
+          ],
+          "final_b64": "YQp4ID0gMQoKYgo="
+        }
+      ]
+    },
+    {
+      "name": "prefix-suffix-empty",
+      "encoding": "UTF-8",
+      "input_b64": "YQp4ID0gMQo=",
+      "params": {
+        "name": "s",
+        "section": "b",
+        "section_prefix": "",
+        "section_suffix": ""
+      },
+      "runs": [
+        {
+          "noop": false,
+          "failed": false,
+          "changed": true,
+          "events": [
+            {
+              "name": "ini_section_created",
+              "property": "ensure",
+              "status": "success",
+              "message": "created",
+              "previous_value": "absent",
+              "desired_value": "present"
+            }
+          ],
+          "err_logs": [
+
+          ],
+          "final_b64": "YQp4ID0gMQoKYgo="
+        }
+      ]
+    },
+    {
+      "name": "named-like-setting-create",
+      "encoding": "US-ASCII",
+      "input_b64": "W2FdCmIgPSAxCg==",
+      "params": {
+        "name": "s",
+        "section": "b"
+      },
+      "runs": [
+        {
+          "noop": false,
+          "failed": false,
+          "changed": true,
+          "events": [
+            {
+              "name": "ini_section_created",
+              "property": "ensure",
+              "status": "success",
+              "message": "created",
+              "previous_value": "absent",
+              "desired_value": "present"
+            }
+          ],
+          "err_logs": [
+
+          ],
+          "final_b64": "W2FdCmIgPSAxCgpbYl0K"
+        },
+        {
+          "noop": false,
+          "failed": false,
+          "changed": false,
+          "events": [
+
+          ],
+          "err_logs": [
+
+          ],
+          "final_b64": "W2FdCmIgPSAxCgpbYl0K"
+        }
+      ]
+    },
+    {
+      "name": "named-like-setting-create",
+      "encoding": "UTF-8",
+      "input_b64": "W2FdCmIgPSAxCg==",
+      "params": {
+        "name": "s",
+        "section": "b"
+      },
+      "runs": [
+        {
+          "noop": false,
+          "failed": false,
+          "changed": true,
+          "events": [
+            {
+              "name": "ini_section_created",
+              "property": "ensure",
+              "status": "success",
+              "message": "created",
+              "previous_value": "absent",
+              "desired_value": "present"
+            }
+          ],
+          "err_logs": [
+
+          ],
+          "final_b64": "W2FdCmIgPSAxCgpbYl0K"
+        },
+        {
+          "noop": false,
+          "failed": false,
+          "changed": false,
+          "events": [
+
+          ],
+          "err_logs": [
+
+          ],
+          "final_b64": "W2FdCmIgPSAxCgpbYl0K"
+        }
+      ]
+    },
+    {
+      "name": "named-like-setting-remove-section-only",
+      "encoding": "US-ASCII",
+      "input_b64": "W2FdCmIgPSAxCltiXQpiID0gMgo=",
+      "params": {
+        "name": "s",
+        "section": "b",
+        "ensure": "absent"
+      },
+      "runs": [
+        {
+          "noop": false,
+          "failed": false,
+          "changed": true,
+          "events": [
+            {
+              "name": "ini_section_removed",
+              "property": "ensure",
+              "status": "success",
+              "message": "removed",
+              "previous_value": "present",
+              "desired_value": "absent"
+            }
+          ],
+          "err_logs": [
+
+          ],
+          "final_b64": "W2FdCmIgPSAxCg=="
+        }
+      ]
+    },
+    {
+      "name": "named-like-setting-remove-section-only",
+      "encoding": "UTF-8",
+      "input_b64": "W2FdCmIgPSAxCltiXQpiID0gMgo=",
+      "params": {
+        "name": "s",
+        "section": "b",
+        "ensure": "absent"
+      },
+      "runs": [
+        {
+          "noop": false,
+          "failed": false,
+          "changed": true,
+          "events": [
+            {
+              "name": "ini_section_removed",
+              "property": "ensure",
+              "status": "success",
+              "message": "removed",
+              "previous_value": "present",
+              "desired_value": "absent"
+            }
+          ],
+          "err_logs": [
+
+          ],
+          "final_b64": "W2FdCmIgPSAxCg=="
+        }
+      ]
+    },
+    {
+      "name": "named-like-setting-absent-when-only-a-setting",
+      "encoding": "US-ASCII",
+      "input_b64": "W2FdCmIgPSAxCg==",
+      "params": {
+        "name": "s",
+        "section": "b",
+        "ensure": "absent"
+      },
+      "runs": [
+        {
+          "noop": false,
+          "failed": false,
+          "changed": false,
+          "events": [
+
+          ],
+          "err_logs": [
+
+          ],
+          "final_b64": "W2FdCmIgPSAxCg=="
+        }
+      ]
+    },
+    {
+      "name": "named-like-setting-absent-when-only-a-setting",
+      "encoding": "UTF-8",
+      "input_b64": "W2FdCmIgPSAxCg==",
+      "params": {
+        "name": "s",
+        "section": "b",
+        "ensure": "absent"
+      },
+      "runs": [
+        {
+          "noop": false,
+          "failed": false,
+          "changed": false,
+          "events": [
+
+          ],
+          "err_logs": [
+
+          ],
+          "final_b64": "W2FdCmIgPSAxCg=="
+        }
+      ]
+    },
+    {
+      "name": "named-like-setting-in-sync",
+      "encoding": "US-ASCII",
+      "input_b64": "W2JdCmIgPSAxCg==",
+      "params": {
+        "name": "s",
+        "section": "b"
+      },
+      "runs": [
+        {
+          "noop": false,
+          "failed": false,
+          "changed": false,
+          "events": [
+
+          ],
+          "err_logs": [
+
+          ],
+          "final_b64": "W2JdCmIgPSAxCg=="
+        }
+      ]
+    },
+    {
+      "name": "named-like-setting-in-sync",
+      "encoding": "UTF-8",
+      "input_b64": "W2JdCmIgPSAxCg==",
+      "params": {
+        "name": "s",
+        "section": "b"
+      },
+      "runs": [
+        {
+          "noop": false,
+          "failed": false,
+          "changed": false,
+          "events": [
+
+          ],
+          "err_logs": [
+
+          ],
+          "final_b64": "W2JdCmIgPSAxCg=="
+        }
+      ]
+    },
+    {
+      "name": "named-like-global-setting",
+      "encoding": "US-ASCII",
+      "input_b64": "YiA9IDEKW2FdCnggPSAxCg==",
+      "params": {
+        "name": "s",
+        "section": "b"
+      },
+      "runs": [
+        {
+          "noop": false,
+          "failed": false,
+          "changed": true,
+          "events": [
+            {
+              "name": "ini_section_created",
+              "property": "ensure",
+              "status": "success",
+              "message": "created",
+              "previous_value": "absent",
+              "desired_value": "present"
+            }
+          ],
+          "err_logs": [
+
+          ],
+          "final_b64": "YiA9IDEKW2FdCnggPSAxCgpbYl0K"
+        }
+      ]
+    },
+    {
+      "name": "named-like-global-setting",
+      "encoding": "UTF-8",
+      "input_b64": "YiA9IDEKW2FdCnggPSAxCg==",
+      "params": {
+        "name": "s",
+        "section": "b"
+      },
+      "runs": [
+        {
+          "noop": false,
+          "failed": false,
+          "changed": true,
+          "events": [
+            {
+              "name": "ini_section_created",
+              "property": "ensure",
+              "status": "success",
+              "message": "created",
+              "previous_value": "absent",
+              "desired_value": "present"
+            }
+          ],
+          "err_logs": [
+
+          ],
+          "final_b64": "YiA9IDEKW2FdCnggPSAxCgpbYl0K"
+        }
+      ]
+    },
+    {
+      "name": "create-missing-parent",
+      "encoding": "US-ASCII",
+      "missing_parent": true,
+      "params": {
+        "name": "s",
+        "section": "b"
+      },
+      "runs": [
+        {
+          "noop": false,
+          "failed": true,
+          "changed": false,
+          "events": [
+            {
+              "name": "ini_section_created",
+              "property": "ensure",
+              "status": "failure",
+              "message": "change from 'absent' to 'present' failed: Could not set 'present' on ensure: No such file or directory @ rb_sysopen - <path>",
+              "previous_value": "absent",
+              "desired_value": "present"
+            }
+          ],
+          "err_logs": [
+            "Could not set 'present' on ensure: No such file or directory @ rb_sysopen - <path>",
+            "Could not set 'present' on ensure: No such file or directory @ rb_sysopen - <path>\nWrapped exception:\nNo such file or directory @ rb_sysopen - <path>",
+            "change from 'absent' to 'present' failed: Could not set 'present' on ensure: No such file or directory @ rb_sysopen - <path>"
+          ],
+          "final_b64": null
+        }
+      ]
+    },
+    {
+      "name": "create-missing-parent",
+      "encoding": "UTF-8",
+      "missing_parent": true,
+      "params": {
+        "name": "s",
+        "section": "b"
+      },
+      "runs": [
+        {
+          "noop": false,
+          "failed": true,
+          "changed": false,
+          "events": [
+            {
+              "name": "ini_section_created",
+              "property": "ensure",
+              "status": "failure",
+              "message": "change from 'absent' to 'present' failed: Could not set 'present' on ensure: No such file or directory @ rb_sysopen - <path>",
+              "previous_value": "absent",
+              "desired_value": "present"
+            }
+          ],
+          "err_logs": [
+            "Could not set 'present' on ensure: No such file or directory @ rb_sysopen - <path>",
+            "Could not set 'present' on ensure: No such file or directory @ rb_sysopen - <path>\nWrapped exception:\nNo such file or directory @ rb_sysopen - <path>",
+            "change from 'absent' to 'present' failed: Could not set 'present' on ensure: No such file or directory @ rb_sysopen - <path>"
+          ],
+          "final_b64": null
+        }
+      ]
+    },
+    {
+      "name": "create-directory-at-path",
+      "encoding": "US-ASCII",
+      "directory": true,
+      "params": {
+        "name": "s",
+        "section": "b"
+      },
+      "runs": [
+        {
+          "noop": false,
+          "failed": true,
+          "changed": false,
+          "events": [
+            {
+              "name": "ini_section_created",
+              "property": "ensure",
+              "status": "failure",
+              "message": "change from 'absent' to 'present' failed: Could not set 'present' on ensure: Is a directory @ rb_sysopen - <path>",
+              "previous_value": "absent",
+              "desired_value": "present"
+            }
+          ],
+          "err_logs": [
+            "Could not set 'present' on ensure: Is a directory @ rb_sysopen - <path>",
+            "Could not set 'present' on ensure: Is a directory @ rb_sysopen - <path>\nWrapped exception:\nIs a directory @ rb_sysopen - <path>",
+            "change from 'absent' to 'present' failed: Could not set 'present' on ensure: Is a directory @ rb_sysopen - <path>"
+          ],
+          "final_b64": null
+        }
+      ]
+    },
+    {
+      "name": "create-directory-at-path",
+      "encoding": "UTF-8",
+      "directory": true,
+      "params": {
+        "name": "s",
+        "section": "b"
+      },
+      "runs": [
+        {
+          "noop": false,
+          "failed": true,
+          "changed": false,
+          "events": [
+            {
+              "name": "ini_section_created",
+              "property": "ensure",
+              "status": "failure",
+              "message": "change from 'absent' to 'present' failed: Could not set 'present' on ensure: Is a directory @ rb_sysopen - <path>",
+              "previous_value": "absent",
+              "desired_value": "present"
+            }
+          ],
+          "err_logs": [
+            "Could not set 'present' on ensure: Is a directory @ rb_sysopen - <path>",
+            "Could not set 'present' on ensure: Is a directory @ rb_sysopen - <path>\nWrapped exception:\nIs a directory @ rb_sysopen - <path>",
+            "change from 'absent' to 'present' failed: Could not set 'present' on ensure: Is a directory @ rb_sysopen - <path>"
+          ],
+          "final_b64": null
+        }
+      ]
+    },
+    {
+      "name": "remove-directory-at-path",
+      "encoding": "US-ASCII",
+      "directory": true,
+      "params": {
+        "name": "s",
+        "section": "b",
+        "ensure": "absent"
+      },
+      "runs": [
+        {
+          "noop": false,
+          "failed": false,
+          "changed": false,
+          "events": [
+
+          ],
+          "err_logs": [
+
+          ],
+          "final_b64": null
+        }
+      ]
+    },
+    {
+      "name": "remove-directory-at-path",
+      "encoding": "UTF-8",
+      "directory": true,
+      "params": {
+        "name": "s",
+        "section": "b",
+        "ensure": "absent"
+      },
+      "runs": [
+        {
+          "noop": false,
+          "failed": false,
+          "changed": false,
+          "events": [
+
+          ],
+          "err_logs": [
+
+          ],
+          "final_b64": null
+        }
+      ]
+    },
+    {
+      "name": "create-missing-parent-noop",
+      "encoding": "US-ASCII",
+      "missing_parent": true,
+      "params": {
+        "name": "s",
+        "section": "b"
+      },
+      "runs": [
+        {
+          "noop": true,
+          "failed": false,
+          "changed": false,
+          "events": [
+            {
+              "name": "ini_section_created",
+              "property": "ensure",
+              "status": "noop",
+              "message": "created (noop)",
+              "previous_value": "absent",
+              "desired_value": "present"
+            }
+          ],
+          "err_logs": [
+
+          ],
+          "final_b64": null
+        }
+      ]
+    },
+    {
+      "name": "create-missing-parent-noop",
+      "encoding": "UTF-8",
+      "missing_parent": true,
+      "params": {
+        "name": "s",
+        "section": "b"
+      },
+      "runs": [
+        {
+          "noop": true,
+          "failed": false,
+          "changed": false,
+          "events": [
+            {
+              "name": "ini_section_created",
+              "property": "ensure",
+              "status": "noop",
+              "message": "created (noop)",
+              "previous_value": "absent",
+              "desired_value": "present"
+            }
+          ],
+          "err_logs": [
+
+          ],
+          "final_b64": null
+        }
+      ]
+    }
+  ]
+}

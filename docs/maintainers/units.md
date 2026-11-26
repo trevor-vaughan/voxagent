@@ -8,7 +8,7 @@ unit is, how units are laid out and routed, and how to add one. Go citations are
 ## What a unit is
 
 A unit is a Go package under `internal/units/<name>` that reproduces one Ruby origin: either Puppet itself (one unit per
-core type: `exec`, `file`, `group`, `notify`, `package`, `service`, `tidy`, `user`) or one Ruby module (`concat`, `cron_core`, `host_core`, `sshkeys_core`, `mount_core`, `augeas_core`,
+core type: `exec`, `file`, `group`, `notify`, `package`, `service`, `tidy`, `user`) or one Ruby module (`concat`, `cron_core`, `host_core`, `inifile`, `sshkeys_core`, `mount_core`, `augeas_core`,
 `augeasproviders_sysctl`, `augeasproviders_ssh`). `augeasproviders_core` is a library unit: it serves no type, and holds
 the run object, mixin and fingerprinted files its two dependents share. A unit supplies two things through
 `unit.Unit` (`internal/unit/unit.go`):
@@ -60,7 +60,9 @@ Consequences worth knowing before you move code:
 
 | Package | Holds |
 |---|---|
-| `rubyvalue` | Ruby/Puppet value rendering and coercion (`Inspect`, `Integer()` parsing), parameter access, `UnimplementedValue` |
+| `rubyvalue` | Ruby/Puppet value rendering and coercion (`Inspect`, `Integer()` parsing), parameter access, `UnimplementedValue`, `Errno` (the message of a Ruby `SystemCallError` for an `os` error) |
+| `rubyregexp` | Ruby's `\s` and `\S` as RE2 fragments (`Space`, `NotSpace`); its `rubyregexptest` subpackage scans for the patterns that must use them; used by `parsedfile` and `inifile` |
+| `rubyfnmatch` | Ruby's `File.fnmatch` for the flag set `tidy`'s `matches` parameter uses |
 | `puppetpath` | Puppet's clean-absolute-path and file-mode rules, used by `file`, `concat`, `exec`, `augeasproviders_core` and `ral` (`augeas_checks.go`) |
 | `suid` | Identity resolution as Ruby's SUIDManager does it: a user and group to a `syscall.Credential`, with Sensitive redaction; used by `exec` and `sshkeys_core` |
 | `asuser` | the `voxagent asuser` helper's three file ops (`Mkdir`, `Write`, `Chmod`), its closed `<step> <errno>` result protocol (`ParseResult`) and `ProcStarter`, which runs it as a user and never as uid 0; used by `sshkeys_core` and `cmd/voxagent` (`docs/maintainers/apply-spine.md`, "Privilege drop") |
@@ -85,7 +87,7 @@ live in `lib`.
 | `Name` | the unit; equals its directory name under `internal/units` |
 | `Version` | the unit's own semver, independent of voxagent's (see "Versioning") |
 | `Source` | `Origin{Implementation, Version}`: the Ruby implementation reproduced. Core units: `puppet` `8.10.0`. Module units: the module name and an empty `Version` (the versions are in `Releases`) |
-| `Oracle` | `Origin` the behaviour was measured against: `openvox` `8.33.0` for every unit but `host_core`, `sshkeys_core` and `mount_core`, measured on `8.34.0` |
+| `Oracle` | `Origin` the behaviour was measured against: `openvox` `8.33.0` for every unit but `host_core`, `sshkeys_core`, `mount_core` and `inifile`, measured on `8.34.0` |
 | `Types` | the catalog types the unit serves, lower case. Empty for a library unit |
 | `Requires` | names of units this one imports; the layering test allows imports of exactly these |
 | `Platforms` | `[]ral.OS` the unit's parity was measured on; never empty. `unit.AnyPlatform` (`[]ral.OS{{ID: "*"}}`, matches without reading os-release) for a unit with no platform limit; `user`, `group`, `augeasproviders_sysctl`, `cron_core`, `host_core`, `sshkeys_core` and `mount_core` declare `{ID: "rhel", Like: true, MinMajor: 10}`: RHEL family (`ID` `rhel`, or `rhel` among `ID_LIKE`'s words), `VERSION_ID`'s major at least 10, not Fedora (it has no `ID_LIKE`). Each unit's routes check its own list with `ral.OnPlatform`, which reads `/etc/os-release` and falls back to `/usr/lib/os-release` when that file does not exist; an unreadable or unparsable os-release matches no entry other than `*` |
@@ -272,6 +274,20 @@ Each unit's remaining checks are its own, and every failure is a `Delegated` rea
   element, a `size` Ruby fails with a `NameError`, a rich value (`rubyvalue.Rich`) and value shapes the parser does not
   port; the first reason delegates every Tidy (`tidy/manifest.go:Route`). Ruby's own refusals stay native. The unit
   requires `file`, whose provider applies and confines the `File`s its `LoadGenerate` adds (D-104).
+- `inifile`, each type (`ini_setting`, `ini_subsetting`, `ini_section`) decided on its own, checked in this order; the
+  first reason found delegates that type's resources (`inifile/inifile.go:Route`, `routeType`):
+  - the plugin tree (`unit.MatchFiles` for the type's files under 6.5.0, 6.6.0 or 6.6.1; `ini_section` has none under 6.5.0),
+    then a provider directory holding a `.rb` but `ruby.rb` (`another <type> provider in libdir`)
+  - a `provider` other than `ruby` (`group.ForeignProvider`; the unit requires `group`; ruling R11)
+  - value shapes (`rubyvalue.UnimplementedValue`)
+  - a line break in a String the regexes or section header see (`lineBreak`; each type's list is `typeRule.lineBreakAttrs`)
+  - then, from `typeRule.hostOnly`: a `key_val_separator` with regexp syntax (`keyValSeparatorSyntax`; R6), and for
+    `ini_subsetting` a `subsetting_separator` or an `insert_value` index the `SettingValue` port does not reproduce
+    (`supportedSeparator`, `supportedInsertIndex`; R8)
+  - A Ruby refusal of a value (a parse error that is not `UnimplementedValue`) stays native: the provider reports it as
+    Ruby does. No platform check (`unit.AnyPlatform`). The three types share the `IniFile` port (`ini_file.go`, `section.go`)
+    and the file's read-then-write path, which follows symlinks and truncates in place, as Ruby does; the file is read
+    fresh by every resource, and its encoding follows the locale (R4). `ini_section` is D-105.
 - `exec`, `file`, `notify`, `package`, `service`: native on every run.
 
 D-87, D-89, D-91, D-94 and D-98 in [apply-spine.md](apply-spine.md) say what is measured and why each condition delegates.
