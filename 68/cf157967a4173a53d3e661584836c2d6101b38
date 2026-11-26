@@ -1,0 +1,25 @@
+internal/units/inifile/setting.go
+  s_324b42d9c67464::t_5c040e18218466 290
+internal/units/inifile/setting_test.go
+  s_324b42d9c67464::t_8bbcde597e9a14 318,469-475
+internal/units/inifile/subsetting.go
+  s_324b42d9c67464::t_f344a0273d0ef8 33-35
+internal/units/inifile/subsetting_test.go
+  s_324b42d9c67464::t_89a7c519bef2f7 5-6,8,93-101,124-138
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "68cf157967a4173a53d3e661584836c2d6101b38",
+  "prompts": {},
+  "sessions": {
+    "s_324b42d9c67464": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d1c9d111-fc57-44dc-89e3-234e7699fbc6",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "LLM (riotbox) <llm@riotbox>"
+    }
+  }
+}
