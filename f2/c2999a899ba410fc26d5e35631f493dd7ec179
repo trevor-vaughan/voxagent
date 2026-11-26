@@ -1,0 +1,23 @@
+internal/units/tidy/testdata/munge.sh
+  s_97f2bd43ca07f6::t_8140a87b2e8eaf 3-4,7-13,15-17
+  s_97f2bd43ca07f6::t_959653bbfbf19c 14
+internal/lib/rubyfnmatch/testdata/gen.sh
+  s_97f2bd43ca07f6::t_8140a87b2e8eaf 3-4,7-13,15-17
+  s_97f2bd43ca07f6::t_959653bbfbf19c 14
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "f2c2999a899ba410fc26d5e35631f493dd7ec179",
+  "prompts": {},
+  "sessions": {
+    "s_97f2bd43ca07f6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c9967bb3-7e0d-43bf-9da0-78c58bffe4f1",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "LLM (riotbox) <llm@riotbox>"
+    }
+  }
+}
