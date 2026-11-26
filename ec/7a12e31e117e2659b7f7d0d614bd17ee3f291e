@@ -1,0 +1,58 @@
+internal/units/inifile/testdata/gen/edits.rb
+  s_324b42d9c67464::t_3a00f6d4a034fc 3-4,7,216
+  s_324b42d9c67464::t_6321f38a657671 128-129
+  s_324b42d9c67464::t_53d0c55e02bc47 1-2,5-6,8-127,130-215
+internal/units/inifile/testdata/edits-6.6.0.json
+  s_324b42d9c67464::t_5c5d95a470d1c7 1-390,392-437,439-4216,4218-4262,4264-4398,4400-4442,4444-10343,10506-14943,14945-14988,14990-17890
+  s_324b42d9c67464::t_3ff5a5ee3536ee 391,438,4217,4263,4399,4443,14944,14989
+  s_324b42d9c67464::t_6321f38a657671 10344-10505
+internal/units/inifile/testdata/removal-6.6.0.json
+  s_324b42d9c67464::t_8c1ed34a0b17a9 1-3880
+internal/units/inifile/testdata/gen/edits_harness.rb
+  s_324b42d9c67464::t_3a00f6d4a034fc 1-117,121-136
+  s_324b42d9c67464::t_3ff5a5ee3536ee 118-120
+internal/units/inifile/ini_file_test.go
+  s_324b42d9c67464::t_b1d1745eadacb2 118-119,208
+  s_324b42d9c67464::t_ba06b2b3b9dbcd 1-117,120-207,209-302
+internal/units/inifile/ini_file.go
+  s_324b42d9c67464::t_153c2e8bada493 179-180,303-305,477-482
+  s_324b42d9c67464::t_6ccbf8c31dba33 1-178,181-302,306-476,483-739
+internal/units/inifile/section.go
+  s_324b42d9c67464::t_16c2d5899b57f6 147
+  s_324b42d9c67464::t_0095e4dbcdb170 1-70,72-75,77-78,80-82,84-91,93-97,99-118,120-125,127-133,135-141,143-146,148-149,151-160
+  s_324b42d9c67464::t_f55ae43c8a50d3 71,76,79,83,92,98,119,126,134,142,150
+internal/units/inifile/testdata/README
+  s_324b42d9c67464::t_335d4beaec451f 22-28
+internal/units/inifile/writepath_test.go
+  s_324b42d9c67464::t_b1d1745eadacb2 1-178
+internal/units/inifile/testdata/edits-6.6.1.json
+  s_324b42d9c67464::t_5c5d95a470d1c7 1-390,392-437,439-4216,4218-4262,4264-4398,4400-4442,4444-10343,10506-14943,14945-14988,14990-17890
+  s_324b42d9c67464::t_3ff5a5ee3536ee 391,438,4217,4263,4399,4443,14944,14989
+  s_324b42d9c67464::t_6321f38a657671 10344-10505
+internal/units/inifile/testdata/gen/removal.rb
+  s_324b42d9c67464::t_8c1ed34a0b17a9 1-68
+internal/units/inifile/testdata/removal-6.6.1.json
+  s_324b42d9c67464::t_8c1ed34a0b17a9 1-3880
+internal/units/inifile/testdata/gen/gen.sh
+  s_324b42d9c67464::t_3a00f6d4a034fc 37
+internal/units/inifile/testdata/edits-6.5.0.json
+  s_324b42d9c67464::t_5c5d95a470d1c7 1-390,392-437,439-4216,4218-4262,4264-4398,4400-4442,4444-10343,10506-14943,14945-14988,14990-17890
+  s_324b42d9c67464::t_3ff5a5ee3536ee 391,438,4217,4263,4399,4443,14944,14989
+  s_324b42d9c67464::t_6321f38a657671 10344-10505
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "ec7a12e31e117e2659b7f7d0d614bd17ee3f291e",
+  "prompts": {},
+  "sessions": {
+    "s_324b42d9c67464": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d1c9d111-fc57-44dc-89e3-234e7699fbc6",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "LLM (riotbox) <llm@riotbox>"
+    }
+  }
+}
