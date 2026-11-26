@@ -1,0 +1,44 @@
+internal/transaction/build.go
+  s_97f2bd43ca07f6::t_357e533a8cfa71 407-424
+internal/ral/loadgen.go
+  s_97f2bd43ca07f6::t_4979b8e6731b0e 3-23,30-32,34
+cmd/voxagent/apply.go
+  s_97f2bd43ca07f6::t_0816da2ccdb61f 189-190,192-194,311-312
+internal/units/concat/concat_generate.go
+  s_97f2bd43ca07f6::t_878f2164333b23 9
+  s_97f2bd43ca07f6::t_f663921a3bbf25 25,28,79,83
+internal/transaction/transaction.go
+  s_97f2bd43ca07f6::t_357e533a8cfa71 313
+internal/catalog/generation.go
+  s_97f2bd43ca07f6::t_4979b8e6731b0e 32-34,47-48,130-131,136-140,158-160,164-166
+cmd/voxagent/loadgen_test.go
+  s_97f2bd43ca07f6::t_15c53084bcc685 4,18,152-224
+  s_97f2bd43ca07f6::t_da70f992df39ca 42,49,52,86
+cmd/voxagent/loadgen.go
+  s_97f2bd43ca07f6::t_0816da2ccdb61f 9-10,15,18-24,37-41,45,48-60,72,79,81
+cmd/voxagent/concat_test.go
+  s_97f2bd43ca07f6::t_da70f992df39ca 274
+internal/units/concat/concat_generate_test.go
+  s_97f2bd43ca07f6::t_f663921a3bbf25 78
+  s_97f2bd43ca07f6::t_41735f63a277a8 65,164,176,216,238
+internal/catalog/generation_test.go
+  s_97f2bd43ca07f6::t_15c53084bcc685 294-318
+cmd/voxagent/sinks_test.go
+  s_97f2bd43ca07f6::t_da70f992df39ca 59,62
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "fcc10e93bc204f4ed7ec47f7851a7d7096cadefc",
+  "prompts": {},
+  "sessions": {
+    "s_97f2bd43ca07f6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c9967bb3-7e0d-43bf-9da0-78c58bffe4f1",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "LLM (riotbox) <llm@riotbox>"
+    }
+  }
+}
