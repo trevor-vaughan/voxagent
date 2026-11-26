@@ -1,0 +1,35 @@
+internal/units/inifile/setting_test.go
+  s_324b42d9c67464::t_db78bf6300e1ee 445,453
+docs/maintainers/apply-spine.md
+  s_324b42d9c67464::t_6fa118b043c66f 219
+internal/units/inifile/section_type.go
+  s_324b42d9c67464::t_84d3c42b93ca5e 1-139
+internal/units/inifile/testdata/section-6.6.1-pr581.json
+  s_324b42d9c67464::t_6e3e40053f5676 1-3792
+internal/units/inifile/testdata/gen/gen.sh
+  s_324b42d9c67464::t_6e3e40053f5676 8,28,30,43
+internal/units/inifile/testdata/gen/section.rb
+  s_324b42d9c67464::t_42fb7164aef564 1-17,19-26,32-158
+  s_324b42d9c67464::t_6e3e40053f5676 18,27-31
+internal/units/inifile/testdata/README
+  s_324b42d9c67464::t_6fa118b043c66f 33-37
+internal/units/inifile/section_type_test.go
+  s_324b42d9c67464::t_db78bf6300e1ee 1-71,73-290
+  s_324b42d9c67464::t_84d3c42b93ca5e 72
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "4a9951054a6bb73f5be03cce26356422c7593c7d",
+  "prompts": {},
+  "sessions": {
+    "s_324b42d9c67464": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d1c9d111-fc57-44dc-89e3-234e7699fbc6",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "LLM (riotbox) <llm@riotbox>"
+    }
+  }
+}
