@@ -1,0 +1,113 @@
+tests/spine/tidy/cases/recurse-all/seed.sh
+  s_97f2bd43ca07f6::t_44aa1c2c88baf9 1-5
+tests/spine/tidy/cases/age-atime-default/site.pp
+  s_97f2bd43ca07f6::t_44aa1c2c88baf9 1-2
+tests/spine/tidy/cases/max-files-string/site.pp
+  s_97f2bd43ca07f6::t_44aa1c2c88baf9 1-2
+tests/spine/tidy/cases/age-atime-default/seed.sh
+  s_97f2bd43ca07f6::t_44aa1c2c88baf9 1-4
+tests/spine/tidy/cases/recurse-08/site.pp
+  s_97f2bd43ca07f6::t_44aa1c2c88baf9 1
+tests/spine/tidy/cases/max-files-exceeded/seed.sh
+  s_97f2bd43ca07f6::t_44aa1c2c88baf9 1-3
+tests/spine/tidy/cases/age-integer/site.pp
+  s_97f2bd43ca07f6::t_44aa1c2c88baf9 1
+tests/spine/tidy/cases/recurse-1/seed.sh
+  s_97f2bd43ca07f6::t_44aa1c2c88baf9 1-5
+tests/spine/tidy/cases/managed-excluded/files
+  s_97f2bd43ca07f6::t_44aa1c2c88baf9 1
+tests/spine/tidy/cases/age-mtime/seed.sh
+  s_97f2bd43ca07f6::t_44aa1c2c88baf9 1-5
+tests/spine/tidy/cases/max-files-string/files
+  s_97f2bd43ca07f6::t_44aa1c2c88baf9 1
+tests/spine/tidy/cases/rmdirs/files
+  s_97f2bd43ca07f6::t_44aa1c2c88baf9 1
+tests/spine/tidy/cases/simple/site.pp
+  s_97f2bd43ca07f6::t_44aa1c2c88baf9 1-2
+tests/spine/tidy/cases/max-files-exceeded/site.pp
+  s_97f2bd43ca07f6::t_44aa1c2c88baf9 1-2
+tests/spine/tidy/cases/recurse-all/files
+  s_97f2bd43ca07f6::t_44aa1c2c88baf9 1
+tests/spine/tidy/cases/two-tidies-overlap/seed.sh
+  s_97f2bd43ca07f6::t_44aa1c2c88baf9 1-6
+tests/spine/report-diff-container.sh
+  s_97f2bd43ca07f6::t_06564f90a350a6 80-83,90,268-269,307-308,1063-1066
+tests/spine/tidy/cases/recurse-all/site.pp
+  s_97f2bd43ca07f6::t_44aa1c2c88baf9 1-2
+tests/spine/tidy/cases/rmdirs/site.pp
+  s_97f2bd43ca07f6::t_44aa1c2c88baf9 1-3
+tests/spine/tidy/cases/age-10/site.pp
+  s_97f2bd43ca07f6::t_44aa1c2c88baf9 1
+tests/spine/tidy/cases/metaparams/seed.sh
+  s_97f2bd43ca07f6::t_44aa1c2c88baf9 1-4
+tests/spine/tidy/cases/simple/files
+  s_97f2bd43ca07f6::t_44aa1c2c88baf9 1
+tests/spine/tidy/cases/size/site.pp
+  s_97f2bd43ca07f6::t_44aa1c2c88baf9 1-2
+tests/spine/tidy/cases/metaparams/files
+  s_97f2bd43ca07f6::t_44aa1c2c88baf9 1
+tests/spine/tidy/cases/recurse-1/files
+  s_97f2bd43ca07f6::t_44aa1c2c88baf9 1
+tests/spine/tidy/cases/missing-path/site.pp
+  s_97f2bd43ca07f6::t_44aa1c2c88baf9 1-2
+tests/spine/tidy/cases/age-mtime/files
+  s_97f2bd43ca07f6::t_44aa1c2c88baf9 1
+tests/spine/tidy/cases/managed-excluded/site.pp
+  s_97f2bd43ca07f6::t_44aa1c2c88baf9 1-4
+tests/spine/tidy/cases/matches-no-recurse/site.pp
+  s_97f2bd43ca07f6::t_44aa1c2c88baf9 1
+tests/spine/tidy/cases/non-utf8/seed.sh
+  s_97f2bd43ca07f6::t_44aa1c2c88baf9 1-4
+tests/spine/tidy/cases/size/seed.sh
+  s_97f2bd43ca07f6::t_44aa1c2c88baf9 1-5
+tests/spine/tidy/cases/metaparams/site.pp
+  s_97f2bd43ca07f6::t_44aa1c2c88baf9 1-2
+tests/spine/tidy/cases/simple/seed.sh
+  s_97f2bd43ca07f6::t_44aa1c2c88baf9 1-4
+tests/spine/tidy/cases/two-tidies-overlap/site.pp
+  s_97f2bd43ca07f6::t_44aa1c2c88baf9 1-3
+tests/spine/tidy/cases/age-atime-default/files
+  s_97f2bd43ca07f6::t_44aa1c2c88baf9 1
+tests/spine/tidy/cases/non-utf8/site.pp
+  s_97f2bd43ca07f6::t_44aa1c2c88baf9 1-2
+tests/spine/tidy/cases/type-bogus/site.pp
+  s_97f2bd43ca07f6::t_44aa1c2c88baf9 1
+tests/spine/tidy/cases/non-utf8/files
+  s_97f2bd43ca07f6::t_44aa1c2c88baf9 1
+tests/spine/tidy/cases/recurse-1/site.pp
+  s_97f2bd43ca07f6::t_44aa1c2c88baf9 1-2
+tests/spine/tidy/cases/managed-excluded/seed.sh
+  s_97f2bd43ca07f6::t_44aa1c2c88baf9 1-5
+tests/spine/tidy/g5.sh
+  s_97f2bd43ca07f6::t_76c180667feaba 1-236
+tests/spine/tidy/cases/age-mtime/site.pp
+  s_97f2bd43ca07f6::t_44aa1c2c88baf9 1-2
+tests/spine/tidy/cases/max-files-string/seed.sh
+  s_97f2bd43ca07f6::t_44aa1c2c88baf9 1-3
+tests/spine/tidy/cases/rmdirs/seed.sh
+  s_97f2bd43ca07f6::t_44aa1c2c88baf9 1-5
+tests/spine/tidy/cases/size/files
+  s_97f2bd43ca07f6::t_44aa1c2c88baf9 1
+tests/spine/tidy/cases/two-tidies-overlap/files
+  s_97f2bd43ca07f6::t_44aa1c2c88baf9 1
+tests/spine/tidy/cases/missing-path/files
+  s_97f2bd43ca07f6::t_44aa1c2c88baf9 1
+tests/spine/tidy/cases/max-files-exceeded/files
+  s_97f2bd43ca07f6::t_44aa1c2c88baf9 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "85e880c7fd0cd9f88174b7b3146f36b65dc26a68",
+  "prompts": {},
+  "sessions": {
+    "s_97f2bd43ca07f6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c9967bb3-7e0d-43bf-9da0-78c58bffe4f1",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "LLM (riotbox) <llm@riotbox>"
+    }
+  }
+}
