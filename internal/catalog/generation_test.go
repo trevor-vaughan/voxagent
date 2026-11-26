@@ -291,3 +291,28 @@ func TestMergeGenerationPlacementRefusesAMissingGenerator(t *testing.T) {
 		t.Fatalf("err = %v, want one naming Concat_file[/nope]", err)
 	}
 }
+
+// PlaceBeforeGenerator puts each new resource right before its generator, in
+// the order the generation returned them, and one generator's children do
+// not move another's.
+func TestMergeGenerationPlaceBeforeGenerator(t *testing.T) {
+	c := &Catalog{Resources: []Resource{
+		{Type: "Notify", Title: "A"}, {Type: "Tidy", Title: "T"}, {Type: "Notify", Title: "B"}, {Type: "Tidy", Title: "U"},
+	}}
+	gen := Generation{
+		Resources: []Resource{{Type: "File", Title: "/x"}, {Type: "File", Title: "/y"}, {Type: "File", Title: "/u"}},
+		Generators: map[string]string{
+			"File[/x]": "Tidy[T]", "File[/y]": "Tidy[T]", "File[/u]": "Tidy[U]"},
+	}
+	if err := MergeGeneration(c, gen, PlaceBeforeGenerator); err != nil {
+		t.Fatal(err)
+	}
+	var got []string
+	for _, r := range c.Resources {
+		got = append(got, r.Ref())
+	}
+	want := []string{"Notify[A]", "File[/x]", "File[/y]", "Tidy[T]", "Notify[B]", "File[/u]", "Tidy[U]"}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("order = %q, want %q", got, want)
+	}
+}

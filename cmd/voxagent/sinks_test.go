@@ -56,10 +56,10 @@ type leakGen struct{ notify.Notify }
 func (leakGen) Type() string     { return "vox_leakgen" }
 func (leakGen) Attrs() ral.Attrs { return ral.NewAttrs() }
 
-func (leakGen) LoadGenerate(_ *catalog.Catalog, r catalog.Resource) (catalog.Generation, error) {
+func (leakGen) LoadGenerate(_ *catalog.Catalog, r catalog.Resource) (ral.LoadGeneration, error) {
 	leak := catalog.Resource{Type: "Vox_leak", Title: "invalid", Tags: []string{"vox_leak"},
 		Parameters: map[string]any{"secret": "SINKSECRET-2"}, SensitiveParameters: []string{"secret"}}
-	return catalog.Generation{Resources: []catalog.Resource{leak}, Generators: map[string]string{leak.Ref(): r.Ref()}}, nil
+	return ral.LoadGeneration{Generation: catalog.Generation{Resources: []catalog.Resource{leak}, Generators: map[string]string{leak.Ref(): r.Ref()}}}, nil
 }
 
 type sinkOutput struct {

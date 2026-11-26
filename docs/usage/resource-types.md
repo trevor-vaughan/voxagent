@@ -150,6 +150,31 @@ that has them. A fragment `order => 2.0` is accepted natively as `2`, but
 refused as Ruby does when the host is loaded for another type in the same
 run.
 
+`tidy` is applied natively on any host. Every attribute it declares is
+accepted: `path`, `recurse`, `max_files`, `matches`, `age`, `size`, `type`,
+`rmdirs` and `backup`. Each path it selects is removed, as under Puppet, by a
+`file` it adds to the catalog with `ensure => absent` and `force => true`, so
+with `rmdirs => true` a selected directory goes with everything in it.
+`backup` is accepted and has no effect: tidied files are never backed up, as
+under Puppet. A value Puppet refuses (an `age` of `'10'`, an Integer `age`, a
+`matches` without `recurse`) is refused before anything is applied, in
+Puppet's words.
+
+Every `tidy` goes to the Ruby extension host when any `tidy` in the catalog
+has a `path` (or, without one, a title) that is not a String, is relative or
+starts with `//`; a `size` that is not a String, or not digits optionally
+followed by a unit word (`'10k'`, `'10kb'`, `'5megabytes'`; the word's first
+letter is the unit); a line break in `age`, `size`, `recurse`, `max_files`,
+`type` or a `matches` element; a `matches` element that is not a String; or a
+rich value or value shape the native parser does not implement. `--no-ruby`
+then refuses the catalog, and `--debug` logs why.
+
+A natively applied `tidy` confines its removals to the directory at its
+`path`: if that directory, or one in it, is replaced by a symlink during the
+run, removing a file below it fails instead of following the link (D-104 in
+`docs/maintainers/apply-spine.md`). The confinement starts at `path`: a
+directory above it is not protected, as under Puppet.
+
 `sysctl`, `ssh_config`, `sshd_config` and `sshd_config_subsystem`
 (augeasproviders_sysctl and augeasproviders_ssh) are applied natively, through
 the libaugeas 1.15.0 that openvox bundles

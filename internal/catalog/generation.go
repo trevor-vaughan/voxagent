@@ -29,6 +29,9 @@ const (
 	PlaceAppend Placement = iota
 	// PlaceAfterGenerator adds each right after its generator.
 	PlaceAfterGenerator
+	// PlaceBeforeGenerator adds each right before its generator, as Ruby
+	// does for a generator that is depthfirst? (transaction/additional_resource_generator.rb:36-50).
+	PlaceBeforeGenerator
 )
 
 // MergeGeneration folds what a load-time generate pass added into c, so the
@@ -41,7 +44,8 @@ const (
 //
 // With PlaceAppend the new resources follow the catalog's; the extension
 // host then reorders them with ApplyOrder. With PlaceAfterGenerator each
-// sits right after its generator, in g.Resources order.
+// sits right after its generator, in g.Resources order; with
+// PlaceBeforeGenerator, right before it.
 //
 // A ref c lacks is a voxagent logic error, reported rather than skipped.
 // g's values are already resolved (ResolveRich), as Decode resolves the
@@ -123,16 +127,17 @@ func MergeGeneration(cat *Catalog, g Generation, p Placement) error {
 		from := cat.Resources[index[generator]]
 		cat.Resources[index[child]].GeneratedFrom = &from
 	}
-	if p == PlaceAfterGenerator {
-		placeAfterGenerators(cat, existing, g.Generators, index)
+	if p == PlaceAfterGenerator || p == PlaceBeforeGenerator {
+		placeByGenerators(cat, existing, g.Generators, index, p == PlaceBeforeGenerator)
 	}
 	return nil
 }
 
-// placeAfterGenerators reorders cat.Resources so each resource from position
-// existing on follows its generator (the existing ones keep their order),
-// in the order they were added; one with no generator goes last.
-func placeAfterGenerators(cat *Catalog, existing int, generators map[string]string, index map[string]int) {
+// placeByGenerators reorders cat.Resources so each resource from position
+// existing on follows its generator, or precedes it when before is set (the
+// existing ones keep their order), in the order they were added; one with no
+// generator goes last.
+func placeByGenerators(cat *Catalog, existing int, generators map[string]string, index map[string]int, before bool) {
 	children := map[int][]int{}
 	var orphans []int
 	for i := existing; i < len(cat.Resources); i++ {
@@ -150,9 +155,14 @@ func placeAfterGenerators(cat *Catalog, existing int, generators map[string]stri
 			return
 		}
 		placed[i] = true
-		out = append(out, cat.Resources[i])
+		if !before {
+			out = append(out, cat.Resources[i])
+		}
 		for _, child := range children[i] {
 			emit(child)
+		}
+		if before {
+			out = append(out, cat.Resources[i])
 		}
 	}
 	for i := 0; i < existing; i++ {
