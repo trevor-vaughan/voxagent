@@ -1,0 +1,29 @@
+internal/lib/rubyfnmatch/testdata/gen.sh
+  s_97f2bd43ca07f6::t_166f11fd3a9afd 1-8
+internal/lib/rubyfnmatch/testdata/fnmatch.json
+  s_97f2bd43ca07f6::t_166f11fd3a9afd 1-20153
+internal/lib/rubyfnmatch/fnmatch_test.go
+  s_97f2bd43ca07f6::t_13abead1ed37bf 1-73
+internal/lib/rubyfnmatch/testdata/gen.rb
+  s_97f2bd43ca07f6::t_166f11fd3a9afd 1-47
+internal/lib/rubyfnmatch/fnmatch.go
+  s_97f2bd43ca07f6::t_13abead1ed37bf 16-22,39-43
+  s_97f2bd43ca07f6::t_0e72f778ac36bf 1-15,23-38,44-247,250-274
+  s_97f2bd43ca07f6::t_061ed56c0efeec 248-249
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "d889db5f71ba5102c79e710a6cd59343f407ab70",
+  "prompts": {},
+  "sessions": {
+    "s_97f2bd43ca07f6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c9967bb3-7e0d-43bf-9da0-78c58bffe4f1",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "LLM (riotbox) <llm@riotbox>"
+    }
+  }
+}
