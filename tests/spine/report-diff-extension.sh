@@ -193,7 +193,9 @@ node default {
 }
 EOF
 
-C=(--confdir "$WORK/conf" --vardir "$WORK/var" --codedir "$WORK/code")
+# publicdir is not derived from vardir: as root it defaults to
+# /opt/puppetlabs/puppet/public, which a gem-installed Puppet cannot create.
+C=(--confdir "$WORK/conf" --vardir "$WORK/var" --codedir "$WORK/code" --publicdir "$WORK/public")
 
 # The compiler needs the libdir as well: vox_value and vox_prefetch live in no
 # module, so it is the only place it can find them.

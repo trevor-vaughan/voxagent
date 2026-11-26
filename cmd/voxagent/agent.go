@@ -110,6 +110,11 @@ func agentCommand(args []string) int {
 // as the process initialises: startup_time runs from it, and so does total.
 var processStart = time.Now()
 
+// afterPrepare is nil outside tests. A test sets it to replace the run's
+// context between Prepare and the signal check, because a real signal cannot
+// be made to land in that window reliably.
+var afterPrepare func(context.Context) context.Context
+
 // runAgent prepares the run, applies the catalog and submits the report. It
 // returns before the caller prints the outcome line, so the sources
 // directory's removal and a failed report submission are reported above it.
@@ -117,7 +122,10 @@ var processStart = time.Now()
 // SIGINT and SIGTERM cancel the run's context, so the deferred removal of the
 // sources directory runs on that exit path too. A signal
 // received before applyCatalog starts -- during Prepare or after it returns --
-// ends the run could-not-run with nothing applied and no report. Applying is
+// ends the run could-not-run with nothing applied and no report. The context
+// is cancelled from another goroutine, so a signal arriving just as Prepare
+// returns may be seen only once applying has started, and is then held as
+// below. Applying is
 // not interruptible (applyCatalog is shared with `apply`, which keeps its
 // default signal behaviour): a signal received once it has started is held
 // until the transaction ends, the report of what was applied is still sent,
@@ -143,6 +151,9 @@ func runAgent(console *puppetConsole, rc agent.RunConfig, o applyOptions) report
 		}
 	}()
 
+	if afterPrepare != nil {
+		ctx = afterPrepare(ctx)
+	}
 	if err := ctx.Err(); err != nil {
 		fmt.Fprintf(os.Stderr, "voxagent: %v; nothing applied\n", context.Cause(ctx))
 		return report.Status{CouldNotRun: true}

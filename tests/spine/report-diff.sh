@@ -201,7 +201,9 @@ node default {
 }
 EOF
 
-C=(--confdir "$WORK/conf" --vardir "$WORK/var" --codedir "$WORK/code")
+# publicdir is not derived from vardir: as root it defaults to
+# /opt/puppetlabs/puppet/public, which a gem-installed Puppet cannot create.
+C=(--confdir "$WORK/conf" --vardir "$WORK/var" --codedir "$WORK/code" --publicdir "$WORK/public")
 
 "$PUPPET" catalog find spine.example --terminus compiler --render-as json \
   --node_name_value spine.example \

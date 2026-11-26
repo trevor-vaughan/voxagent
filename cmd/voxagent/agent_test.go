@@ -1,7 +1,7 @@
 package main
 
 import (
-	"bytes"
+	"context"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
@@ -58,9 +58,6 @@ type fakeServer struct {
 	// is then left unanswered until the client gives up, as is any retry.
 	holdContent chan struct{}
 	holdOnce    sync.Once
-	// catalogHook, when set, answers the catalog request: respond writes and
-	// flushes the catalog.
-	catalogHook func(respond func())
 	report      []byte
 }
 
@@ -206,13 +203,6 @@ func (f *fakeServer) serve(w http.ResponseWriter, r *http.Request) {
 		}
 		w.Header().Set("Content-Type", "application/vnd.puppet.rich+json")
 		w.Header().Set("X-Puppet-Compiler-Name", "puppet")
-		if f.catalogHook != nil {
-			f.catalogHook(func() {
-				w.Write(f.catalog)
-				w.(http.Flusher).Flush()
-			})
-			return
-		}
 		w.Write(f.catalog)
 	case p == "/puppet/v3/file_metadata/modules/m/x", p == "/puppet/v3/file_metadata/"+secretSourceMount:
 		w.Header().Set("Content-Type", "application/json")
@@ -714,12 +704,12 @@ func TestAgentSignalCleansUpAndReportsOutcome(t *testing.T) {
 }
 
 // A signal that lands after Prepare has returned but before the catalog is
-// applied still ends the run could-not-run with nothing applied. The catalog
-// has no puppet: source, so its response is the run's last request: the agent
-// is stopped while the server writes it, then gets SIGTERM and continues, so
-// the signal is pending as the response arrives.
+// applied still ends the run could-not-run with nothing applied. A real signal
+// reaches the run's context through goroutines the main one can outrun, so no
+// subprocess can be made to hit this window reliably; the run is made in
+// process and afterPrepare cancels its context as a delivered signal would.
+// TestAgentSignalCleansUpAndReportsOutcome covers the signal wiring itself.
 func TestAgentSignalBeforeApplyAppliesNothing(t *testing.T) {
-	bin := buildBinary(t)
 	base := agentScratch(t)
 	target := filepath.Join(base, "managed.txt")
 	f := newFakeServer(t, target)
@@ -734,58 +724,43 @@ func TestAgentSignalBeforeApplyAppliesNothing(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	cmd := exec.Command(bin, agentArgs(t, base, f)...)
-	var stderr strings.Builder
-	cmd.Stderr = &stderr
-	started := make(chan int, 1)
-	f.mu.Lock()
-	f.catalogHook = func(respond func()) {
-		pid := <-started
-		if err := syscall.Kill(pid, syscall.SIGSTOP); err != nil {
-			t.Error(err)
-			return
-		}
-		for {
-			stat, err := os.ReadFile(fmt.Sprintf("/proc/%d/stat", pid))
-			if err != nil {
-				t.Error(err)
-				return
-			}
-			// The state follows the parenthesised command name.
-			if fields := strings.Fields(string(stat[bytes.LastIndexByte(stat, ')')+1:])); len(fields) > 0 && fields[0] == "T" {
-				break
-			}
-			time.Sleep(time.Millisecond)
-		}
-		respond()
-		for _, sig := range []syscall.Signal{syscall.SIGTERM, syscall.SIGCONT} {
-			if err := syscall.Kill(pid, sig); err != nil {
-				t.Error(err)
-			}
-		}
+	args := agentArgs(t, base, f)[1:]
+	afterPrepare = func(ctx context.Context) context.Context {
+		ctx, cancel := context.WithCancelCause(ctx)
+		cancel(errors.New("terminated signal received"))
+		return ctx
 	}
-	f.mu.Unlock()
-	if err := cmd.Start(); err != nil {
+	t.Cleanup(func() { afterPrepare = nil })
+	rd, wr, err := os.Pipe()
+	if err != nil {
 		t.Fatal(err)
 	}
-	started <- cmd.Process.Pid
-	done := make(chan error, 1)
-	go func() { done <- cmd.Wait() }()
-	select {
-	case err := <-done:
-		var ee *exec.ExitError
-		if !errors.As(err, &ee) || ee.ExitCode() != 2 {
-			t.Errorf("exit = %v, want 2 (could not run, plain)\n%s", err, stderr.String())
-		}
-	case <-time.After(60 * time.Second):
-		cmd.Process.Kill()
-		t.Fatalf("still running\n%s", stderr.String())
+	// Drained as it is written, so a run that logs more than the pipe holds
+	// does not block.
+	read := make(chan string, 1)
+	go func() {
+		out, _ := io.ReadAll(rd)
+		read <- string(out)
+	}()
+	saved := os.Stderr
+	os.Stderr = wr
+	code := agentCommand(args)
+	os.Stderr = saved
+	if err := wr.Close(); err != nil {
+		t.Fatal(err)
 	}
-	if got := lastLine(stderr.String()); got != "voxagent: outcome=could-not-run" {
-		t.Errorf("last stderr line = %q\n%s", got, stderr.String())
+	stderr := <-read
+	if code != 2 {
+		t.Errorf("exit = %d, want 2 (could not run, plain)\n%s", code, stderr)
+	}
+	if got := lastLine(stderr); got != "voxagent: outcome=could-not-run" {
+		t.Errorf("last stderr line = %q\n%s", got, stderr)
+	}
+	if !strings.Contains(stderr, "voxagent: terminated signal received; nothing applied\n") {
+		t.Errorf("the run did not stop at the check after Prepare:\n%s", stderr)
 	}
 	if _, err := os.Lstat(target); err == nil {
-		t.Errorf("the catalog was applied after the signal\n%s", stderr.String())
+		t.Errorf("the catalog was applied after the signal\n%s", stderr)
 	}
 	assertNoSourcesDir(t, base)
 }
