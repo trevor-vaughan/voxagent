@@ -1,0 +1,19 @@
+internal/units/tidy/tidy_generate.go
+  s_97f2bd43ca07f6::t_0b60aa6d3d53c9 253
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "03856a9610dfa02d3bed5d101079e146f39edf96",
+  "prompts": {},
+  "sessions": {
+    "s_97f2bd43ca07f6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c9967bb3-7e0d-43bf-9da0-78c58bffe4f1",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "LLM (riotbox) <llm@riotbox>"
+    }
+  }
+}
