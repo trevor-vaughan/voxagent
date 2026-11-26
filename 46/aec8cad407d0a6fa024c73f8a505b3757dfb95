@@ -1,0 +1,24 @@
+internal/units/inifile/ini_file.go
+  s_324b42d9c67464::t_558d86924ea339 638
+internal/units/inifile/params.go
+  s_324b42d9c67464::t_f2980d8512e831 459
+internal/units/inifile/setting.go
+  s_324b42d9c67464::t_f35b24f3e452fe 21-24
+  s_324b42d9c67464::t_f2980d8512e831 293
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "46aec8cad407d0a6fa024c73f8a505b3757dfb95",
+  "prompts": {},
+  "sessions": {
+    "s_324b42d9c67464": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d1c9d111-fc57-44dc-89e3-234e7699fbc6",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "LLM (riotbox) <llm@riotbox>"
+    }
+  }
+}
