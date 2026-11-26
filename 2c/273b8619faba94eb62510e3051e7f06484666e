@@ -1,0 +1,19 @@
+docs/maintainers/units.md
+  s_619185bcc2134a::t_6ee836cbc3bb08 302-328
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "2c273b8619faba94eb62510e3051e7f06484666e",
+  "prompts": {},
+  "sessions": {
+    "s_619185bcc2134a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "073de6bf-a980-493a-ae3f-710311a490f3",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "LLM (riotbox) <llm@riotbox>"
+    }
+  }
+}
