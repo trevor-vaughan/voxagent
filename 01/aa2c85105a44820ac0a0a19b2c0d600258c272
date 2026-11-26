@@ -1,0 +1,19 @@
+AGENTS.md
+  s_fd2e97a32cf55f::t_ea087b3b1698ea 11-16
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "01aa2c85105a44820ac0a0a19b2c0d600258c272",
+  "prompts": {},
+  "sessions": {
+    "s_fd2e97a32cf55f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dd1bc40d-9c40-4bfd-b585-e11c9e6358c9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "LLM (riotbox) <llm@riotbox>"
+    }
+  }
+}
