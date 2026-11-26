@@ -1,0 +1,21 @@
+cmd/voxagent/agent_test.go
+  s_9054d7b8cee5bb::t_bb9ef574f54649 749-751
+tests/voxdiff.venom.yml
+  s_9054d7b8cee5bb::t_794e27d96f3a94 107-111
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ad58de7f918c8caa41ae2832a215f5bc30452c3c",
+  "prompts": {},
+  "sessions": {
+    "s_9054d7b8cee5bb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3c2dfda2-1e1b-47cb-905a-9bbbe62f4baa",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "LLM (riotbox) <llm@riotbox>"
+    }
+  }
+}
