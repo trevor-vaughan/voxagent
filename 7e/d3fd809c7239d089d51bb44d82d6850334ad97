@@ -1,0 +1,44 @@
+internal/units/units.go
+  s_324b42d9c67464::t_ec5a2f8c0321af 17,30
+internal/units/inifile/route_test.go
+  s_324b42d9c67464::t_d0b9d6b74cf3ac 1-85,89-320
+  s_324b42d9c67464::t_76a902f18214c9 86-88
+internal/units/inifile/testdata/gen/subsetting.rb
+  s_324b42d9c67464::t_9ed9f8c560aba0 110-114
+internal/units/inifile/testdata/subsetting-6.6.0.json
+  s_324b42d9c67464::t_9ed9f8c560aba0 911-1107
+cmd/voxagent/sensitive_test.go
+  s_324b42d9c67464::t_c6bf09e1248451 10,61-74,350-365,493-494,550-556,558
+cmd/voxagent/canary_test.go
+  s_324b42d9c67464::t_90f032ae39c34a 52-57,97,174
+internal/units/inifile/setting_value.go
+  s_324b42d9c67464::t_7f474e6c26caa0 82-89,180-182
+internal/units/inifile/testdata/subsetting-6.5.0.json
+  s_324b42d9c67464::t_9ed9f8c560aba0 911-1107
+internal/units/inifile/testdata/subsetting-6.6.1.json
+  s_324b42d9c67464::t_9ed9f8c560aba0 911-1107
+cmd/voxagent/testdata/units.golden.json
+  s_324b42d9c67464::t_fea448064f83d9 501-718
+  s_324b42d9c67464::t_35d2b3292ddc85 500
+internal/units/inifile/ini_file.go
+  s_324b42d9c67464::t_7f474e6c26caa0 175,202-209
+  s_324b42d9c67464::t_d270b581f40a3c 210-211
+internal/units/inifile/inifile.go
+  s_324b42d9c67464::t_ec5a2f8c0321af 1-190
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "7ed3fd809c7239d089d51bb44d82d6850334ad97",
+  "prompts": {},
+  "sessions": {
+    "s_324b42d9c67464": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d1c9d111-fc57-44dc-89e3-234e7699fbc6",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "LLM (riotbox) <llm@riotbox>"
+    }
+  }
+}
