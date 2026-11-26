@@ -1,0 +1,30 @@
+internal/units/file/file.go
+  s_97f2bd43ca07f6::t_de0b8376d493d2 1656-1657
+  s_97f2bd43ca07f6::t_4eb9ef0bc8d2ec 1650-1655,1658-1682
+  s_97f2bd43ca07f6::t_d3d9525624d2f7 411,414-416,451
+internal/units/file/file_test.go
+  s_97f2bd43ca07f6::t_96379b8d214c82 3722-3725
+  s_97f2bd43ca07f6::t_2bec0682802812 3706-3721,3726-3740
+internal/units/tidy/tidy_confine_test.go
+  s_97f2bd43ca07f6::t_97b0a433f685d2 47-49
+  s_97f2bd43ca07f6::t_b0686483043fff 1-14,16-46,50-103
+  s_97f2bd43ca07f6::t_8f79be49d1df95 15
+docs/maintainers/apply-spine.md
+  s_97f2bd43ca07f6::t_be8c52105f02d7 218
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "2d75fcdbeff17e3c40a1921b8337d3b8cd80dd02",
+  "prompts": {},
+  "sessions": {
+    "s_97f2bd43ca07f6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c9967bb3-7e0d-43bf-9da0-78c58bffe4f1",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "LLM (riotbox) <llm@riotbox>"
+    }
+  }
+}
