@@ -1,0 +1,72 @@
+internal/units/sshkeys_core/sak_grammar.go
+  s_fd2e97a32cf55f::t_6ed88b5f3089e2 19,21-23,29,35
+  s_fd2e97a32cf55f::t_a8d025fc7bee5a 11
+internal/units/cron_core/source_scan_test.go
+  s_fd2e97a32cf55f::t_6ed88b5f3089e2 6,10,12
+internal/lib/rubyregexp/rubyregexptest/rubyregexptest_test.go
+  s_fd2e97a32cf55f::t_c99d5904275da7 1-22
+internal/lib/parsedfile/match_test.go
+  s_fd2e97a32cf55f::t_6ed88b5f3089e2 8,36
+internal/units/cron_core/cron_grammar.go
+  s_fd2e97a32cf55f::t_6ed88b5f3089e2 37,39-45,47
+  s_fd2e97a32cf55f::t_f38f50e4353086 16
+internal/lib/parsedfile/vectors_test.go
+  s_fd2e97a32cf55f::t_6ed88b5f3089e2 181,187,192,194,196,201
+  s_fd2e97a32cf55f::t_a13ade6af17d5a 15-16
+internal/units/mount_core/mount_params.go
+  s_fd2e97a32cf55f::t_6ed88b5f3089e2 21,23
+  s_fd2e97a32cf55f::t_5f2ace80946d0f 13
+internal/units/sshkeys_core/source_scan_test.go
+  s_fd2e97a32cf55f::t_6ed88b5f3089e2 6,10,12
+docs/maintainers/not-implemented.md
+  s_fd2e97a32cf55f::t_cce96905e741de 306
+internal/lib/rubyregexp/rubyregexptest/rubyregexptest.go
+  s_fd2e97a32cf55f::t_c99d5904275da7 1-75
+internal/units/host_core/host_params.go
+  s_fd2e97a32cf55f::t_6ed88b5f3089e2 19,25-27
+  s_fd2e97a32cf55f::t_b8d525c3fec446 11
+internal/lib/parsedfile/doc.go
+  s_fd2e97a32cf55f::t_6ed88b5f3089e2 17
+internal/units/sshkeys_core/sshkey_params.go
+  s_fd2e97a32cf55f::t_6ed88b5f3089e2 23,25
+  s_fd2e97a32cf55f::t_2266f7e13b6de4 11
+internal/units/mount_core/mount_grammar.go
+  s_fd2e97a32cf55f::t_6ed88b5f3089e2 18,20-23
+  s_fd2e97a32cf55f::t_6a454cc679b5fe 11
+internal/units/host_core/host_grammar.go
+  s_fd2e97a32cf55f::t_6ed88b5f3089e2 17,21-23
+  s_fd2e97a32cf55f::t_a67d123e17c469 10
+internal/lib/rubyregexp/rubyregexp_test.go
+  s_fd2e97a32cf55f::t_3933393e17951d 1-22
+internal/lib/rubyregexp/rubyregexp.go
+  s_fd2e97a32cf55f::t_89e24a6aea48aa 1-11
+internal/units/sshkeys_core/sshkey_grammar.go
+  s_fd2e97a32cf55f::t_6ed88b5f3089e2 17,20
+  s_fd2e97a32cf55f::t_e4598d88e73f37 10
+internal/lib/parsedfile/grammar.go
+  s_fd2e97a32cf55f::t_6ed88b5f3089e2 114
+  s_fd2e97a32cf55f::t_8185e642a2ed79 11
+internal/units/cron_core/cron_params.go
+  s_fd2e97a32cf55f::t_6ed88b5f3089e2 39,46
+  s_fd2e97a32cf55f::t_8e3084fc09293e 14
+internal/units/mount_core/source_scan_test.go
+  s_fd2e97a32cf55f::t_6ed88b5f3089e2 6,10,12
+internal/units/host_core/source_scan_test.go
+  s_fd2e97a32cf55f::t_6ed88b5f3089e2 6,10,12
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "ead8a14e8bc3d334e37221e4ba7387f8de67447c",
+  "prompts": {},
+  "sessions": {
+    "s_fd2e97a32cf55f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dd1bc40d-9c40-4bfd-b585-e11c9e6358c9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "LLM (riotbox) <llm@riotbox>"
+    }
+  }
+}
