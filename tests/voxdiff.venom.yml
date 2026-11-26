@@ -104,7 +104,11 @@ testcases:
           class unreadable {}
           EOF
           chmod 000 "$scratch/unreadable.pp"
-          {{.voxdiff}} scan "$scratch"
+          # Root reads a mode-000 file through these two capabilities; without
+          # them it gets permission denied like any other user.
+          drop=
+          [ "$(id -u)" -eq 0 ] && drop='setpriv --bounding-set=-dac_override,-dac_read_search --'
+          $drop {{.voxdiff}} scan "$scratch"
           code=$?
           chmod 644 "$scratch/unreadable.pp"
           rm -rf "$scratch"

@@ -746,7 +746,9 @@ func TestAgentSignalBeforeApplyAppliesNothing(t *testing.T) {
 	os.Stderr = wr
 	code := agentCommand(args)
 	os.Stderr = saved
-	wr.Close()
+	if err := wr.Close(); err != nil {
+		t.Fatal(err)
+	}
 	stderr := <-read
 	if code != 2 {
 		t.Errorf("exit = %d, want 2 (could not run, plain)\n%s", code, stderr)
