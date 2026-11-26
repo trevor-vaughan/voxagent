@@ -1,0 +1,25 @@
+cmd/voxagent/agent.go
+  s_9054d7b8cee5bb::t_1c4be7a02646a3 154-156
+  s_9054d7b8cee5bb::t_52e9e9b0ee0e98 125-128
+  s_9054d7b8cee5bb::t_fae3ccd6533f0e 113-117
+cmd/voxagent/agent_test.go
+  s_9054d7b8cee5bb::t_80c393a1f2e45e 707-711
+  s_9054d7b8cee5bb::t_97a1561610f44a 727-731,733-735,738-755,757-758,761
+  s_9054d7b8cee5bb::t_caaea025afa14f 4
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "57472f5e46c34d31fbd5bc5b50d2e1c6f100e9e3",
+  "prompts": {},
+  "sessions": {
+    "s_9054d7b8cee5bb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3c2dfda2-1e1b-47cb-905a-9bbbe62f4baa",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "LLM (riotbox) <llm@riotbox>"
+    }
+  }
+}
