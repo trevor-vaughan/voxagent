@@ -1,0 +1,19 @@
+internal/lib/rubyfnmatch/fnmatch_test.go
+  s_97f2bd43ca07f6::t_0c9ff2522fc4b9 56-59
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "cd63d3c8adce1ebd5dbceab201e8fb74a27062db",
+  "prompts": {},
+  "sessions": {
+    "s_97f2bd43ca07f6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c9967bb3-7e0d-43bf-9da0-78c58bffe4f1",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "LLM (riotbox) <llm@riotbox>"
+    }
+  }
+}
