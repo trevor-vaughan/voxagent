@@ -2,13 +2,6 @@ package parsedfile
 
 import "regexp"
 
-// Space and NotSpace are Ruby's \s and \S (ASCII whitespace including \v);
-// RE2's \s lacks \v, so patterns written for Ruby use these instead.
-const (
-	Space    = `[\t\n\v\f\r ]`
-	NotSpace = `[^\t\n\v\f\r ]`
-)
-
 // Capture is one capture group of a match. OK is false when the group did not
 // participate in the match (Ruby's nil, as opposed to the empty string).
 type Capture struct {

@@ -7,16 +7,17 @@ import (
 	"time"
 
 	"github.com/voxagent/voxagent/internal/lib/parsedfile"
+	"github.com/voxagent/voxagent/internal/lib/rubyregexp"
 )
 
 // sp:<n> is lib/puppet/provider/sshkey/parsed.rb of puppetlabs-sshkeys_core.
 
 // The known_hosts grammar's text patterns (sp:10-11). A grammar pattern sees
 // one line, which holds no "\n", so RE2's text anchors equal Ruby's line
-// anchors; \s is parsedfile.Space (spec 4.5).
+// anchors; \s is rubyregexp.Space (spec 4.5).
 var (
 	commentText = regexp.MustCompile(`^#`)                          // sp:10
-	blankText   = regexp.MustCompile(`^` + parsedfile.Space + `*$`) // sp:11
+	blankText   = regexp.MustCompile(`^` + rubyregexp.Space + `*$`) // sp:11
 )
 
 // absentNameError is sp:15's NoMethodError on a line with leading whitespace

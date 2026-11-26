@@ -7,6 +7,7 @@ import (
 	"os/user"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -57,6 +58,20 @@ type leakCase struct {
 	// version, so Concat_file and Concat_fragment are native. Not in agent
 	// mode: pluginsync purges the libdir to the fake server's empty plugins.
 	concat concat.ConcatVersion
+	// inifile, when set, runs with a libdir holding that puppetlabs-inifile
+	// release, so the Ini_* types are native. Not in agent mode, for the
+	// reason concat is not.
+	inifile string
+}
+
+// inifileModuleLib is the testdata lib of one puppetlabs-inifile release.
+func inifileModuleLib(t *testing.T, release string) string {
+	t.Helper()
+	_, here, _, ok := runtime.Caller(0)
+	if !ok {
+		t.Fatal("cannot locate the repository")
+	}
+	return filepath.Join(filepath.Dir(filepath.Dir(filepath.Dir(here))), "internal", "units", "inifile", "testdata", release, "lib")
 }
 
 func writeSeed(t *testing.T, path, content string, mode os.FileMode) {
@@ -332,6 +347,22 @@ func leakCases() []leakCase {
 		// file it validated, so the content reaches the validator's output.
 		{name: "concat-9.1.0", concat: concat.Concat910, seed: seedCatFail, resources: concatLeakResources},
 		{name: "concat-10.0.1", concat: concat.Concat1001, seed: seedCatFail, resources: concatLeakResources},
+		// A Sensitive ini_setting value on a change of an existing line (whose old
+		// value, unmarked, must not show either: plain), on a create, and on a
+		// create whose write fails (the parent directory is missing); and a
+		// Sensitive ini_subsetting value on a change and a create.
+		{name: "inifile-value", inifile: "6.6.1", seed: func(t *testing.T, dir string) {
+			writeSeed(t, filepath.Join(dir, "x.ini"), "[s]\nk = voxagent-plain-old-ini-value\no = a=voxagent-plain-old-sub\n", 0o644)
+		}, plain: []string{"voxagent-plain-old-ini-value", "voxagent-plain-old-sub"}, resources: func(dir string) []map[string]any {
+			path := filepath.Join(dir, "x.ini")
+			return []map[string]any{
+				markedResource("Ini_setting", "voxagent-leak-ini", map[string]any{"path": path, "section": "s", "setting": "k", "value": "D8SECRET-Ini_setting-value"}, "value"),
+				markedResource("Ini_setting", "voxagent-leak-ini2", map[string]any{"path": path, "section": "s", "setting": "k2", "value": "D8SECRET-Ini_setting-value-create"}, "value"),
+				markedResource("Ini_setting", "voxagent-leak-ini-fail", map[string]any{"path": filepath.Join(dir, "missing/x.ini"), "section": "s", "setting": "k", "value": "D8SECRET-Ini_setting-value-fail"}, "value"),
+				markedResource("Ini_subsetting", "voxagent-leak-sub", map[string]any{"path": path, "section": "s", "setting": "o", "subsetting": "a", "subsetting_key_val_separator": "=", "value": "D8SECRET-Ini_subsetting-value"}, "value"),
+				markedResource("Ini_subsetting", "voxagent-leak-sub2", map[string]any{"path": path, "section": "s", "setting": "o", "subsetting": "b", "subsetting_key_val_separator": "=", "value": "D8SECRET-Ini_subsetting-value-create"}, "value"),
+			}
+		}},
 		// The refusal text of an unimplemented marked value must carry no marker.
 		{name: "service-unimplemented-values", refused: true, resources: func(dir string) []map[string]any {
 			return []map[string]any{
@@ -459,8 +490,8 @@ func TestNoSensitiveMarkerLeaks(t *testing.T) {
 				if tc.agentOnly && kind != "agent" {
 					t.Skip("fetches a puppet: source, which only the agent does")
 				}
-				if tc.concat != 0 && kind == "agent" {
-					t.Skip("pluginsync purges the libdir the concat types are read from")
+				if (tc.concat != 0 || tc.inifile != "") && kind == "agent" {
+					t.Skip("pluginsync purges the libdir the concat and inifile types are read from")
 				}
 				if tc.rootOnly && os.Geteuid() != 0 {
 					t.Skip("changing ownership needs root; verified only when run as root")
@@ -516,9 +547,13 @@ func TestNoSensitiveMarkerLeaks(t *testing.T) {
 					cat := writeCatalog(t, dir, tc.resources(dir))
 					reports := filepath.Join(dir, "reports")
 					args := []string{"apply", "--catalog", cat, "--report-dir", reports}
-					if tc.concat != 0 {
+					if tc.concat != 0 || tc.inifile != "" {
+						lib := inifileModuleLib(t, tc.inifile)
+						if tc.concat != 0 {
+							lib = concatModuleLib(t, tc.concat)
+						}
 						libdir := t.TempDir()
-						if err := os.CopyFS(libdir, os.DirFS(concatModuleLib(t, tc.concat))); err != nil {
+						if err := os.CopyFS(libdir, os.DirFS(lib)); err != nil {
 							t.Fatal(err)
 						}
 						args = append(args, "--libdir", libdir, "--no-ruby")

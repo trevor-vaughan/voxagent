@@ -10,6 +10,7 @@ import (
 
 	"github.com/voxagent/voxagent/internal/catalog"
 	"github.com/voxagent/voxagent/internal/lib/parsedfile"
+	"github.com/voxagent/voxagent/internal/lib/rubyregexp"
 	"github.com/voxagent/voxagent/internal/lib/rubyvalue"
 )
 
@@ -17,9 +18,9 @@ import (
 const defaultTarget = "/etc/fstab"
 
 // The type's patterns. Ruby's ^ and $ are line anchors, so every one is (?m)
-// (spec §4); \s is parsedfile.Space because RE2's lacks \v.
+// (spec §4); \s is rubyregexp.Space because RE2's lacks \v.
 var (
-	whitespace = regexp.MustCompile(`(?m)` + parsedfile.Space) // mt:135, 162, 172, 187
+	whitespace = regexp.MustCompile(`(?m)` + rubyregexp.Space) // mt:135, 162, 172, 187
 	// trailingSlashes is the name's munge (mt:258-260), also the prefetch hook's
 	// (mp:229): the name up to its trailing slashes, per line.
 	trailingSlashes = regexp.MustCompile(`(?m)^(.+?)/*$`)

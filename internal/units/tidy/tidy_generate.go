@@ -12,7 +12,6 @@ import (
 	"unicode/utf8"
 
 	"github.com/voxagent/voxagent/internal/catalog"
-	"github.com/voxagent/voxagent/internal/lib/parsedfile"
 	"github.com/voxagent/voxagent/internal/lib/rubyfnmatch"
 	"github.com/voxagent/voxagent/internal/lib/rubyvalue"
 	"github.com/voxagent/voxagent/internal/ral"
@@ -218,7 +217,7 @@ func (t *tidyRun) stat(rel string) (os.FileInfo, error) {
 		t.log("warning", "Could not stat; permission denied")
 		return nil, nil
 	}
-	return nil, errors.New(parsedfile.RubyErrno(err, "rb_file_s_lstat", t.abs(rel)))
+	return nil, errors.New(rubyvalue.Errno(err, "rb_file_s_lstat", t.abs(rel)))
 }
 
 // fileset is Fileset.new(path, recurse: true, recurselimit:, max_files:).files
@@ -297,7 +296,7 @@ func (t *tidyRun) children(rel string, topIsDir bool) ([]string, error) {
 		// handle is listed itself: reaching "." through the root would need
 		// search permission on the path, which Ruby's opendir does not.
 		if d, err = os.OpenFile(t.p.Path, flags|syscall.O_NOFOLLOW, 0); err != nil {
-			return nil, errors.New(parsedfile.RubyErrno(err, "dir_initialize", t.p.Path))
+			return nil, errors.New(rubyvalue.Errno(err, "dir_initialize", t.p.Path))
 		}
 		root, err := os.OpenRoot(fmt.Sprintf("/proc/self/fd/%d", d.Fd()))
 		if err != nil {
@@ -311,18 +310,18 @@ func (t *tidyRun) children(rel string, topIsDir bool) ([]string, error) {
 		case errors.Is(err, syscall.ENOENT), errors.Is(err, syscall.EACCES):
 			return nil, nil
 		case err != nil:
-			return nil, errors.New(parsedfile.RubyErrno(err, "rb_file_s_lstat", t.abs(rel)))
+			return nil, errors.New(rubyvalue.Errno(err, "rb_file_s_lstat", t.abs(rel)))
 		case !fi.IsDir():
 			return nil, nil
 		}
 		if d, err = t.root.OpenFile(rel, flags, 0); err != nil {
-			return nil, errors.New(parsedfile.RubyErrno(err, "dir_initialize", t.abs(rel)))
+			return nil, errors.New(rubyvalue.Errno(err, "dir_initialize", t.abs(rel)))
 		}
 	}
 	names, err := d.Readdirnames(-1)
 	_ = d.Close()
 	if err != nil {
-		return nil, errors.New(parsedfile.RubyErrno(err, "dir_initialize", t.abs(rel)))
+		return nil, errors.New(rubyvalue.Errno(err, "dir_initialize", t.abs(rel)))
 	}
 	return names, nil
 }

@@ -12,6 +12,8 @@ import (
 	"regexp"
 	"strings"
 	"testing"
+
+	"github.com/voxagent/voxagent/internal/lib/rubyregexp"
 )
 
 const (
@@ -176,27 +178,27 @@ func rubyStr(v Value) string {
 
 func genericGrammars(t *testing.T) map[string]*Grammar {
 	t.Helper()
-	sp := regexp.MustCompile(Space + `+`)
+	sp := regexp.MustCompile(rubyregexp.Space + `+`)
 	re := func(p string) Matcher { return RE2(regexp.MustCompile(p)) }
 	text := func(name, p string) LineType { return LineType{Name: name, Text: true, Match: re(p)} }
 	defs := map[string][]LineType{
 		"split": {
 			text("comment", `^#`),
-			{Name: "r", Fields: []string{"a", "b", "c"}, Optional: []string{"b", "c"}, Separator: sp, RTS: regexp.MustCompile(Space + `+$`)},
+			{Name: "r", Fields: []string{"a", "b", "c"}, Optional: []string{"b", "c"}, Separator: sp, RTS: regexp.MustCompile(rubyregexp.Space + `+$`)},
 		},
 		"colon":   {{Name: "c", Fields: []string{"x", "y"}, Separator: regexp.MustCompile(`:`)}},
 		"tabjoin": {{Name: "t", Fields: []string{"a", "b", "c"}, Optional: []string{"b", "c"}, Separator: regexp.MustCompile(`\t`), Joiner: "\t"}},
 		"match":   {{Name: "m", Fields: []string{"x", "y", "z"}, Match: re(`^(\w+) ?(\w+)?$`)}},
-		"matchabs": {{Name: "m", Fields: []string{"x", "y"}, Match: re(`^(` + NotSpace + `*) (` + NotSpace + `*)$`),
+		"matchabs": {{Name: "m", Fields: []string{"x", "y"}, Match: re(`^(` + rubyregexp.NotSpace + `*) (` + rubyregexp.NotSpace + `*)$`),
 			Absent: "*", Optional: []string{"x", "y"}}},
-		"matchempty": {{Name: "m", Fields: []string{"x", "y"}, Match: re(`^(` + NotSpace + `*) (` + NotSpace + `*)$`),
+		"matchempty": {{Name: "m", Fields: []string{"x", "y"}, Match: re(`^(` + rubyregexp.NotSpace + `*) (` + rubyregexp.NotSpace + `*)$`),
 			Optional: []string{"x", "y"}}},
-		"lead": {{Name: "l", Fields: []string{"a", "b"}, Optional: []string{"a"}, Separator: sp, RTS: regexp.MustCompile(`^` + Space + `+`)}},
+		"lead": {{Name: "l", Fields: []string{"a", "b"}, Optional: []string{"a"}, Separator: sp, RTS: regexp.MustCompile(`^` + rubyregexp.Space + `+`)}},
 		"order": {
 			text("c1", `a`), text("c2", `a`), text("c3", `b`),
 		},
 		"pregen": {{Name: "t", Text: true, Match: re(`.`), PreGen: func(r *Record) error { r.Line = "X" + r.Line; return nil }}},
-		"hook": {{Name: "h", Fields: []string{"a", "b"}, Separator: sp, RTS: regexp.MustCompile(Space + `+$`),
+		"hook": {{Name: "h", Fields: []string{"a", "b"}, Separator: sp, RTS: regexp.MustCompile(rubyregexp.Space + `+$`),
 			PostParse: func(r *Record) error { r.Fields["seen"] = Value{Kind: Str, S: "yes"}; return nil },
 			ToLine: func(r Record) (string, error) {
 				return "<" + rubyStr(r.Fields["a"]) + "|" + rubyStr(r.Fields["b"]) + ">  ", nil

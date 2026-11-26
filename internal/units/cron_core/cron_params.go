@@ -11,6 +11,7 @@ import (
 
 	"github.com/voxagent/voxagent/internal/catalog"
 	"github.com/voxagent/voxagent/internal/lib/parsedfile"
+	"github.com/voxagent/voxagent/internal/lib/rubyregexp"
 	"github.com/voxagent/voxagent/internal/lib/rubyvalue"
 )
 
@@ -35,14 +36,14 @@ type cronParams struct {
 }
 
 // The type's patterns. Ruby's ^ and $ are line anchors, so every one is (?m)
-// (spec §4.5); \s is parsedfile.Space because RE2's lacks \v, and \d and \w
+// (spec §4.5); \s is rubyregexp.Space because RE2's lacks \v, and \d and \w
 // are ASCII in Ruby, as written here.
 var (
 	stepPattern      = regexp.MustCompile(`(?m)^\*/[0-9]+$`)                                                                                                                // type:156
 	rangePattern     = regexp.MustCompile(`(?m)^[0-9]+-[0-9]+$`)                                                                                                            // type:161
 	rangeStepPattern = regexp.MustCompile(`(?m)^[0-9]+-[0-9]+/[0-9]+$`)                                                                                                     // type:166
 	digitsPattern    = regexp.MustCompile(`(?m)^[0-9]+$`)                                                                                                                   // type:76 numfix
-	environmentLine  = regexp.MustCompile(`(?m)^` + parsedfile.Space + `*([a-zA-Z0-9_]+)` + parsedfile.Space + `*=` + parsedfile.Space + `*(.*)` + parsedfile.Space + `*$`) // type:324
+	environmentLine  = regexp.MustCompile(`(?m)^` + rubyregexp.Space + `*([a-zA-Z0-9_]+)` + rubyregexp.Space + `*=` + rubyregexp.Space + `*(.*)` + rubyregexp.Space + `*$`) // type:324
 )
 
 // timeSpec is a time property's bounds (self.boundaries) and, for weekday and

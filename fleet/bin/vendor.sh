@@ -109,6 +109,7 @@ REPOS=$(cat <<'EOF'
 https://github.com/trevor-vaughan/simp-webrick	simp-webrick	5491f424a370bd0e18639426f2ac8b14aa1738f6
 https://github.com/puppetlabs/puppetlabs-stdlib	modules/stdlib	829af9ab4685c1fc6498e0cddd6d6aa7669843b2
 https://github.com/puppetlabs/puppetlabs-concat	modules/concat	8cbb369535b3c376e7ef9f9ea732c6a600b8b0bc
+https://github.com/puppetlabs/puppetlabs-inifile	modules/inifile	6b666271848f1ab68da17d576fcf3bd20d9348ae
 https://github.com/simp/pupmod-simp-simplib	modules/simplib	a5122e9c0094e5c629f7585228f3f7c35b050970
 https://github.com/simp/pupmod-simp-compliance_markup	modules/compliance_markup	2897944b94bdaa62cbb64c2f0fa464ff5e56ea95
 https://github.com/voxpupuli/openvox-ca	openvox-ca	43c8dd407655fceffb3c187d69413e0fa8eb119c

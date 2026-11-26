@@ -7,19 +7,20 @@ import (
 	"time"
 
 	"github.com/voxagent/voxagent/internal/lib/parsedfile"
+	"github.com/voxagent/voxagent/internal/lib/rubyregexp"
 )
 
 // hp:<n> is lib/puppet/provider/host/parsed.rb of puppetlabs-host_core.
 
 // The /etc/hosts grammar's patterns (hp:22-26). A grammar pattern sees one
 // line, which holds no "\n", so RE2's text anchors equal Ruby's line anchors;
-// \s is parsedfile.Space and \S parsedfile.NotSpace (spec 4.5). hosts_pattern's
+// \s is rubyregexp.Space and \S rubyregexp.NotSpace (spec 4.5). hosts_pattern's
 // name class [^#\s+] is spelled out: Space cannot nest inside a class.
 var (
 	commentText  = regexp.MustCompile(`^#`)                                                                                                                                                                                                          // hp:21
-	blankText    = regexp.MustCompile(`^` + parsedfile.Space + `*$`)                                                                                                                                                                                 // hp:22
-	hostsPattern = regexp.MustCompile(`^([0-9a-f:]` + parsedfile.NotSpace + `+)` + parsedfile.Space + `+([^#+\t\n\v\f\r ]` + parsedfile.NotSpace + `+)` + parsedfile.Space + `*(.*?)?(?:` + parsedfile.Space + `*#` + parsedfile.Space + `*(.*))?$`) // hp:23
-	spaceRun     = regexp.MustCompile(parsedfile.Space + `+`)
+	blankText    = regexp.MustCompile(`^` + rubyregexp.Space + `*$`)                                                                                                                                                                                 // hp:22
+	hostsPattern = regexp.MustCompile(`^([0-9a-f:]` + rubyregexp.NotSpace + `+)` + rubyregexp.Space + `+([^#+\t\n\v\f\r ]` + rubyregexp.NotSpace + `+)` + rubyregexp.Space + `*(.*?)?(?:` + rubyregexp.Space + `*#` + rubyregexp.Space + `*(.*))?$`) // hp:23
+	spaceRun     = regexp.MustCompile(rubyregexp.Space + `+`)
 )
 
 // incompleteMatcher is the `incomplete` type's pattern (hp:48), (?! (<hosts_pattern>)):

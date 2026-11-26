@@ -1,0 +1,37 @@
+Unmodified copies of the puppetlabs-inifile files voxagent's inifile unit
+fingerprints (spec §2), used as test fixtures.
+Upstream: https://github.com/puppetlabs/puppetlabs-inifile
+"Puppet Module - puppetlabs-inifile", Copyright Puppet, Inc.
+Licensed under the Apache License, Version 2.0 (see /LICENSE.md and /NOTICE).
+
+6.5.0/lib   copied from the SIMP module cache (the release SIMP pins)
+6.6.0/lib   copied from the Forge tarball puppetlabs-inifile-6.6.0
+6.6.1/lib   copied from the Forge tarball puppetlabs-inifile-6.6.1
+
+6.5.0 has no ini_section type or provider; they first ship in 6.6.0. Each
+lib is laid out as the plugin tree's libdir. Only the manifest's files are
+kept; the modules' other lib files (the create_ini_settings functions) are
+not fingerprinted and are not copied.
+
+Do not edit: TestTestdataMatchesManifest requires each file's sha256 to equal
+the matching release in internal/units/inifile/manifest.go.
+
+munge-<release>.json are Ruby-generated corpora (spec §8.1): never edit them,
+regenerate with `gen/gen.sh <release> munge`, which runs gen/munge.rb in the
+oracle image (openvox 8.34.0) against <release>/lib.
+
+edits-<release>.json (6.5.0, 6.6.0, 6.6.1) and removal-<release>.json (6.6.0,
+6.6.1) are Ruby-generated the same way (`gen/gen.sh <release> edits|removal`,
+gen/edits.rb and gen/removal.rb on gen/edits_harness.rb). edits drives IniFile
+as the providers do and is byte-identical across releases; removal covers
+6.6.x's remove_section.
+Every case runs under both locales (US-ASCII, UTF-8).
+
+subsetting-<release>.json (all three releases; `gen/gen.sh <release> subsetting`,
+gen/subsetting.rb) drives Puppet::Util::SettingValue as ini_subsetting does and
+is byte-identical across releases.
+
+section-6.6.1-pr581.json (`gen/gen.sh 6.6.1 section`, gen/section.rb) applies
+ini_section through Puppet's own transaction on 6.6.1 with PR #581's lib hunk
+(tests/spine/inifile/581-lib.diff) applied to a temporary copy of the lib, never
+to 6.6.1/lib: the oracle of divergence D-105. Every case runs under both locales.

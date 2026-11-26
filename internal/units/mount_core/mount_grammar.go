@@ -8,18 +8,19 @@ import (
 	"time"
 
 	"github.com/voxagent/voxagent/internal/lib/parsedfile"
+	"github.com/voxagent/voxagent/internal/lib/rubyregexp"
 )
 
 // mp:<n> is lib/puppet/provider/mount/parsed.rb of puppetlabs-mount_core.
 
 // The /etc/fstab grammar's patterns (mp:34-44). A grammar pattern sees one
 // line, which holds no "\n", so RE2's text anchors equal Ruby's line anchors;
-// \s is parsedfile.Space and \S parsedfile.NotSpace (spec 4.5).
+// \s is rubyregexp.Space and \S rubyregexp.NotSpace (spec 4.5).
 var (
-	commentText = regexp.MustCompile(`^` + parsedfile.Space + `*#`)               // mp:34
-	blankText   = regexp.MustCompile(`^` + parsedfile.Space + `*$`)               // mp:36
-	fieldToken  = regexp.MustCompile(parsedfile.NotSpace + `+`)                   // the (?>\S+) of mp:43
-	fieldSplit  = regexp.MustCompile(parsedfile.Space + `+`)                      // mp:185
+	commentText = regexp.MustCompile(`^` + rubyregexp.Space + `*#`)               // mp:34
+	blankText   = regexp.MustCompile(`^` + rubyregexp.Space + `*$`)               // mp:36
+	fieldToken  = regexp.MustCompile(rubyregexp.NotSpace + `+`)                   // the (?>\S+) of mp:43
+	fieldSplit  = regexp.MustCompile(rubyregexp.Space + `+`)                      // mp:185
 	octalSpace  = `\040`                                                          // mp:193, 202
 	fstabFields = []string{"device", "name", "fstype", "options", "dump", "pass"} // mp:23-24
 )

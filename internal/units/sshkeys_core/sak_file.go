@@ -12,6 +12,7 @@ import (
 
 	"github.com/voxagent/voxagent/internal/lib/asuser"
 	"github.com/voxagent/voxagent/internal/lib/parsedfile"
+	"github.com/voxagent/voxagent/internal/lib/rubyvalue"
 	"github.com/voxagent/voxagent/internal/runlog"
 )
 
@@ -64,7 +65,7 @@ func (d *sakDrop) mkdir(ctx context.Context, dir string) error {
 	}
 	runlog.Debugf(ctx, "Puppet", "Creating %s as %s", dir, d.user)
 	if r.Step == asuser.StepMkdir {
-		return errors.New(parsedfile.RubyErrno(r.Errno, "dir_s_mkdir", dir))
+		return errors.New(rubyvalue.Errno(r.Errno, "dir_s_mkdir", dir))
 	}
 	return nil
 }
@@ -82,7 +83,7 @@ func (d *sakDrop) chmod(ctx context.Context, path string) error {
 		}
 	}
 	if r.Step == asuser.StepChmod {
-		return errors.New(parsedfile.RubyErrno(r.Errno, "apply2files", path))
+		return errors.New(rubyvalue.Errno(r.Errno, "apply2files", path))
 	}
 	return nil
 }

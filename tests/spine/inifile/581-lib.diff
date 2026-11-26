@@ -1,0 +1,18 @@
+diff --git a/lib/puppet/type/ini_section.rb b/lib/puppet/type/ini_section.rb
+index 83deb2a5..88aca259 100644
+--- a/lib/puppet/type/ini_section.rb
++++ b/lib/puppet/type/ini_section.rb
+@@ -10,13 +10,6 @@
+     newvalue(:absent) do
+       provider.destroy
+     end
+-    def insync?(current)
+-      if @resource[:refreshonly]
+-        true
+-      else
+-        current == should
+-      end
+-    end
+     defaultto :present
+   end
+ 

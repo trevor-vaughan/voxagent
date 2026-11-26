@@ -1,4 +1,4 @@
-package parsedfiletest
+package rubyregexptest
 
 import (
 	"reflect"

@@ -261,6 +261,46 @@ concat_fingerprints() {
   done
 }
 
+# inifile_fingerprints GATE LIBDIR VERSION
+#
+# Returns 0 when LIBDIR carries the files voxagent routes ini_setting,
+# ini_subsetting and (6.6.1 only) ini_section on, with the sha256 of
+# puppetlabs-inifile VERSION (6.5.0 or 6.6.1; internal/units/inifile/manifest.go,
+# inifile design §2). Otherwise it names the file and returns 2: a wrong or
+# patched tree would send the types to the extension host, and the gate would
+# compare Ruby with Ruby while looking green. GATE prefixes the messages.
+inifile_fingerprints() {
+  local gate="$1" libdir="$2" version="$3"
+  local -A sums
+  case "$version" in
+    6.5.0) sums=(
+      [puppet/util/external_iterator.rb]=f5fe4626636cf5f0e6ec83f9a38b0a292a888cd8e1ce82d1e05c43638698db73
+      [puppet/util/ini_file.rb]=af5c5c805adb3de7c7b8a783eed9c772bbc80f563ea826fe21ed6dea9e855068
+      [puppet/util/ini_file/section.rb]=af071d708bc10151fcfb8d9c5457e998f89c922295871dc5974084d6a5563e4b
+      [puppet/util/setting_value.rb]=265a397a95f75812da5a7271fea969eaf4a167eeeb7d57e529842616fb97cf94
+      [puppet/type/ini_setting.rb]=73811669f1f4f2fe9ab4aadf1b23c25a015413b7fa16039b07ec455d312e9185
+      [puppet/provider/ini_setting/ruby.rb]=8f2ef19ad6b5adc67504df8e6e9fedd04d793e455193652696a85c42990c880b
+      [puppet/type/ini_subsetting.rb]=38140bb3d9ff50f6c6fe3672c8b428e55cd0ae3e73039d64b9998417aea8a95c
+      [puppet/provider/ini_subsetting/ruby.rb]=071acf4804f9e50ba617c221f17dac5e5fb55de389d14bb5b18cb2378c753bc0) ;;
+    6.6.1) sums=(
+      [puppet/util/external_iterator.rb]=f5fe4626636cf5f0e6ec83f9a38b0a292a888cd8e1ce82d1e05c43638698db73
+      [puppet/util/ini_file.rb]=70e6dc6e1bb8823b2a78a82f87efb2b9c7c9b88862385eac9f7fe42066087599
+      [puppet/util/ini_file/section.rb]=af9ba52ee72c033f94139a2e3f5b5677a3773b2bb1f094d14c9b35c4b6890bed
+      [puppet/util/setting_value.rb]=265a397a95f75812da5a7271fea969eaf4a167eeeb7d57e529842616fb97cf94
+      [puppet/type/ini_setting.rb]=73811669f1f4f2fe9ab4aadf1b23c25a015413b7fa16039b07ec455d312e9185
+      [puppet/provider/ini_setting/ruby.rb]=cde0831b86c4060b061cbb42252322d372ab0a4fb1d32c382111f67987342e64
+      [puppet/type/ini_subsetting.rb]=38140bb3d9ff50f6c6fe3672c8b428e55cd0ae3e73039d64b9998417aea8a95c
+      [puppet/provider/ini_subsetting/ruby.rb]=ba1765d7b7fedb54571b41a823bdd14bbdbbeab17c0e8611c1664460deade90b
+      [puppet/type/ini_section.rb]=52f3feaf64adcab905adfc2675822e7953429f83afcca56d138c1a5215847d36
+      [puppet/provider/ini_section/ruby.rb]=b0844bc5b5dffd0cee0c1bfaba597d14b046ebcd6d1714fc21a497d92fdbfdd0) ;;
+    *)
+      echo "$gate: no inifile fingerprints for version '$version'" >&2
+      return 2
+      ;;
+  esac
+  check_sha256_pins "$gate" "$libdir" "puppetlabs-inifile $version's" sums
+}
+
 # check_sha256_pins GATE LIBDIR LABEL ARRAY
 #
 # Returns 0 when every file named by a key of the associative array ARRAY (a

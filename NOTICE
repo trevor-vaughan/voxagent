@@ -18,6 +18,15 @@ License, Version 2.0. The four type files of puppetlabs-concat 9.1.0 and 10.0.1
 test fixtures under internal/units/concat/testdata; they remain under the Apache
 License, Version 2.0, a copy of which is in LICENSE.md.
 
+voxagent's native ini_setting, ini_subsetting and ini_section
+(internal/units/inifile) likewise reproduce the behaviour and messages of
+puppetlabs-inifile 6.5.0, 6.6.0 and 6.6.1 ("Puppet Module - puppetlabs-inifile",
+Puppet, Inc.), licensed under the Apache License, Version 2.0. The ten files of
+each release whose digests voxagent checks (eight for 6.5.0, which has no
+ini_section) are redistributed unmodified as test fixtures under
+internal/units/inifile/testdata; they remain under the Apache License, Version
+2.0, a copy of which is in LICENSE.md.
+
 voxagent's native sysctl, ssh_config, sshd_config and sshd_config_subsystem
 (internal/units/augeas*/)
 likewise reproduce the behaviour and messages of Vox Pupuli's
