@@ -1,0 +1,43 @@
+internal/units/inifile/subsetting.go
+  s_324b42d9c67464::t_7b75ac13624cd4 173-180,182-183
+  s_324b42d9c67464::t_6cbb962f1cfb31 146
+tests/spine/inifile/g5.sh
+  s_324b42d9c67464::t_dc6cbd01d5f26c 158
+internal/units/inifile/inifile.go
+  s_324b42d9c67464::t_b24939ffc6bdbd 52-56,66-75,97-99,103-110
+  s_324b42d9c67464::t_743071287bed3d 111-112
+internal/units/inifile/ini_file.go
+  s_324b42d9c67464::t_407b0b1a4958ce 182-183,381-382
+  s_324b42d9c67464::t_dc6cbd01d5f26c 247
+docs/usage/resource-types.md
+  s_324b42d9c67464::t_dc6cbd01d5f26c 199-202
+internal/units/inifile/setting_value.go
+  s_324b42d9c67464::t_dc6cbd01d5f26c 20
+internal/units/inifile/params.go
+  s_324b42d9c67464::t_4b4d13c8604bc9 17
+internal/units/inifile/setting.go
+  s_324b42d9c67464::t_6cbb962f1cfb31 21-22,61,89,187-188,222,294
+  s_324b42d9c67464::t_4b4d13c8604bc9 194-196,199
+  s_324b42d9c67464::t_a3b48eebc16309 192-193,198
+  s_324b42d9c67464::t_7b75ac13624cd4 179-184
+internal/units/units_test.go
+  s_324b42d9c67464::t_9d21d0e3180b4b 186
+internal/units/inifile/route_test.go
+  s_324b42d9c67464::t_5db898ad1082fa 357-391
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "81da7dd8169a6a48864c5712f37e7a151f19e63d",
+  "prompts": {},
+  "sessions": {
+    "s_324b42d9c67464": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d1c9d111-fc57-44dc-89e3-234e7699fbc6",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "LLM (riotbox) <llm@riotbox>"
+    }
+  }
+}
