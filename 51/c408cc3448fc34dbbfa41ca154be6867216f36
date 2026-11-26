@@ -1,0 +1,28 @@
+docs/maintainers/units.md
+  s_324b42d9c67464::t_956c8256715f61 11,88,275-288
+docs/maintainers/gate-evidence.md
+  s_324b42d9c67464::t_b7244e8889cf4e 535-539,808-832
+  s_324b42d9c67464::t_63ad75ef917cd4 833
+docs/usage/resource-types.md
+  s_324b42d9c67464::t_d3b024bd679406 197-199
+  s_324b42d9c67464::t_81d46762bf799e 178-196,200-214
+docs/maintainers/not-implemented.md
+  s_324b42d9c67464::t_d5afc20e63c34a 35,182-187,189,191,951-984
+  s_324b42d9c67464::t_e70436545d8e5b 985
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "51c408cc3448fc34dbbfa41ca154be6867216f36",
+  "prompts": {},
+  "sessions": {
+    "s_324b42d9c67464": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d1c9d111-fc57-44dc-89e3-234e7699fbc6",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "LLM (riotbox) <llm@riotbox>"
+    }
+  }
+}
