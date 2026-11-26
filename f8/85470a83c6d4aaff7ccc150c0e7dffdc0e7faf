@@ -1,0 +1,22 @@
+tests/spine/tidy/cases/metaparams/site.pp
+  s_97f2bd43ca07f6::t_a33ad1e1a839e1 2
+tests/spine/tidy/g5.sh
+  s_97f2bd43ca07f6::t_58283e8b47dfe3 20,175-186,235
+  s_97f2bd43ca07f6::t_c55dccddf680aa 21-23
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "f885470a83c6d4aaff7ccc150c0e7dffdc0e7faf",
+  "prompts": {},
+  "sessions": {
+    "s_97f2bd43ca07f6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c9967bb3-7e0d-43bf-9da0-78c58bffe4f1",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "LLM (riotbox) <llm@riotbox>"
+    }
+  }
+}
