@@ -77,13 +77,17 @@
 # vendored mount_core and once with the SIMP release's; tests/spine/mount/g5.sh
 # holds it and says how.
 #
+# tidy follows because voxagent applies it natively: its cases delete files
+# under /srv. That half runs after the mount half, on this image itself;
+# tests/spine/tidy/g5.sh holds it and says how.
+#
 # The comparator and the allowlist are `gatekit compare-reports` and
 # tests/spine/allowlist.json, used unchanged. A second comparator would be a
 # second thing to keep in step with Ruby.
 #
 #   0  the reports agree outside the allowlist and the walk order agrees, for
 #      the live run, for the account cases' noop run, and for every concat,
-#      augeas, cron, host, sshkey, sak and mount case's live, rerun and noop runs
+#      augeas, cron, host, sshkey, sak, mount and tidy case's live, rerun and noop runs
 #      (or both agents refuse its catalog alike), and every compared end
 #      state agrees
 #   1  they diverge -- a result about voxagent
@@ -261,6 +265,8 @@ require_fresh report-diff-container "$ROOT" "$VOXAGENT" "$GATEKIT"
 . "$HERE/sak/g5.sh" || exit 2
 # shellcheck source=mount/g5.sh
 . "$HERE/mount/g5.sh" || exit 2
+# shellcheck source=tidy/g5.sh
+. "$HERE/tidy/g5.sh" || exit 2
 
 got_puppet="$(podman run --rm "$IMAGE" /opt/puppetlabs/bin/puppet --version 2>/dev/null)" || {
   echo "report-diff-container: cannot read the image's puppet version" >&2
@@ -298,7 +304,8 @@ trap 'rm -rf "$WORK"; podman rm -f -t 0 "$RUBY_SIDE" "$GO_SIDE" "$COMPILER" "$RU
   host-compile-$$ host-{ruby,voxagent}-{live,noop}-$$ \
   sshkey-compile-$$ sshkey-{ruby,voxagent}-{live,noop}-$$ \
   sak-compile-$$ sak-{ruby,voxagent}-{live,noop}-$$ \
-  mount-compile-$$ mount-{ruby,voxagent}-{live,noop}-$$ >/dev/null 2>&1' EXIT
+  mount-compile-$$ mount-{ruby,voxagent}-{live,noop}-$$ \
+  tidy-compile-$$ tidy-{ruby,voxagent}-{live,noop}-$$ >/dev/null 2>&1' EXIT
 
 if ! podman run --rm "$IMAGE" sh -c "
   if ! $SEED_LATEST; then
@@ -1053,4 +1060,8 @@ sak_rc=$?
 mount_gate
 mount_rc=$?
 [ "$mount_rc" -gt "$rc" ] && rc=$mount_rc
+
+tidy_gate
+tidy_rc=$?
+[ "$tidy_rc" -gt "$rc" ] && rc=$tidy_rc
 exit "$rc"

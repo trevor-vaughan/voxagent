@@ -404,6 +404,30 @@ func containmentPaths(c *catalog.Catalog, display map[string]string) map[string]
 	return paths
 }
 
+// pathSource is the log source of a resource at containment path: Ruby
+// sources every log line for it at its full path --
+// "/Stage[main]/Main/Node[default]/File[x]" -- with the property appended for
+// a property change. The leading slash and the containers are part of the
+// value consumers match on, so the bare reference is a different string
+// rather than a shorter spelling of the same one.
+func pathSource(path []string) string {
+	return "/" + strings.Join(path, "/")
+}
+
+// LogSources maps the ref of each of c's resources to the log source the walk
+// gives it, for logs written before the walk starts. reg names the resources
+// Puppet refers to by another ref (puppetNames). Build it once c is complete:
+// it is c's containment as it stands.
+func LogSources(c *catalog.Catalog, reg *ral.Registry) map[string]string {
+	display, _, _ := puppetNames(c, reg)
+	paths := containmentPaths(c, display)
+	sources := make(map[string]string, len(paths))
+	for ref, path := range paths {
+		sources[ref] = pathSource(path)
+	}
+	return sources
+}
+
 // capitaliseClassTitle upper-cases each :: segment of a class name.
 //
 // A compiled catalog already spells user classes this way -- Class[Settings],

@@ -738,6 +738,32 @@
     ]
   },
   {
+    "name": "tidy",
+    "version": "1.0.0",
+    "source": {
+      "implementation": "puppet",
+      "version": "8.10.0"
+    },
+    "oracle": {
+      "implementation": "openvox",
+      "version": "8.34.0"
+    },
+    "types": [
+      "tidy"
+    ],
+    "requires": [
+      "file"
+    ],
+    "platforms": [
+      {
+        "id": "*",
+        "like": false,
+        "min_major": 0
+      }
+    ],
+    "releases": []
+  },
+  {
     "name": "user",
     "version": "1.0.0",
     "source": {

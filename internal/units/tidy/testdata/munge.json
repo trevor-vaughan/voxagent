@@ -1,0 +1,3075 @@
+{
+  "openvox": "8.34.0",
+  "script_sha256": "e3519b206af4f28c9b03561e572bd3e6771c9856635236cf6bceae783526bf75",
+  "rows": [
+    {
+      "param": "path",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/tmp//t/../t/"
+        }
+      },
+      "munged": {
+        "kind": "String",
+        "value": "/tmp/t"
+      },
+      "inspect": "\"/tmp/t\""
+    },
+    {
+      "param": "path",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/"
+        }
+      },
+      "munged": {
+        "kind": "String",
+        "value": "/"
+      },
+      "inspect": "\"/\""
+    },
+    {
+      "param": "path",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/tmp/t/"
+        }
+      },
+      "munged": {
+        "kind": "String",
+        "value": "/tmp/t"
+      },
+      "inspect": "\"/tmp/t\""
+    },
+    {
+      "param": "path",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/tmp/t"
+        }
+      },
+      "munged": {
+        "kind": "String",
+        "value": "/tmp/t"
+      },
+      "inspect": "\"/tmp/t\""
+    },
+    {
+      "param": "path",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/a/./b"
+        }
+      },
+      "munged": {
+        "kind": "String",
+        "value": "/a/b"
+      },
+      "inspect": "\"/a/b\""
+    },
+    {
+      "param": "path",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/.."
+        }
+      },
+      "munged": {
+        "kind": "String",
+        "value": "/"
+      },
+      "inspect": "\"/\""
+    },
+    {
+      "param": "path",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/a/../.."
+        }
+      },
+      "munged": {
+        "kind": "String",
+        "value": "/"
+      },
+      "inspect": "\"/\""
+    },
+    {
+      "param": "path",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/tmp/~x"
+        }
+      },
+      "munged": {
+        "kind": "String",
+        "value": "/tmp/~x"
+      },
+      "inspect": "\"/tmp/~x\""
+    },
+    {
+      "param": "path",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/a\u0000b"
+        }
+      },
+      "error": "Parameter path failed on Tidy[/a\u0000b]: Munging failed for value \"/a\\u0000b\" in class path: path name contains null byte"
+    },
+    {
+      "param": "path",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "t/rel"
+        }
+      },
+      "munged": {
+        "kind": "String",
+        "value": "/t/rel"
+      },
+      "inspect": "\"/t/rel\""
+    },
+    {
+      "param": "path",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "~/x"
+        }
+      },
+      "munged": {
+        "kind": "String",
+        "value": "/root/x"
+      },
+      "inspect": "\"/root/x\""
+    },
+    {
+      "param": "path",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "//tmp/x"
+        }
+      },
+      "munged": {
+        "kind": "String",
+        "value": "//tmp/x"
+      },
+      "inspect": "\"//tmp/x\""
+    },
+    {
+      "param": "path",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "///x"
+        }
+      },
+      "munged": {
+        "kind": "String",
+        "value": "///x"
+      },
+      "inspect": "\"///x\""
+    },
+    {
+      "param": "recurse",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "recurse": {
+          "kind": "Boolean",
+          "value": true
+        }
+      },
+      "munged": {
+        "kind": "Boolean",
+        "value": true
+      },
+      "inspect": "true"
+    },
+    {
+      "param": "recurse",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "recurse": {
+          "kind": "String",
+          "value": "true"
+        }
+      },
+      "munged": {
+        "kind": "Boolean",
+        "value": true
+      },
+      "inspect": "true"
+    },
+    {
+      "param": "recurse",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "recurse": {
+          "kind": "Boolean",
+          "value": false
+        }
+      },
+      "munged": {
+        "kind": "Boolean",
+        "value": false
+      },
+      "inspect": "false"
+    },
+    {
+      "param": "recurse",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "recurse": {
+          "kind": "String",
+          "value": "false"
+        }
+      },
+      "munged": {
+        "kind": "Boolean",
+        "value": false
+      },
+      "inspect": "false"
+    },
+    {
+      "param": "recurse",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "recurse": {
+          "kind": "String",
+          "value": "inf"
+        }
+      },
+      "munged": {
+        "kind": "Boolean",
+        "value": true
+      },
+      "inspect": "true"
+    },
+    {
+      "param": "recurse",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "recurse": {
+          "kind": "String",
+          "value": "Inf"
+        }
+      },
+      "error": "Parameter recurse failed on Tidy[/x]: Munging failed for value \"Inf\" in class recurse: Invalid recurse value \"Inf\""
+    },
+    {
+      "param": "recurse",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "recurse": {
+          "kind": "String",
+          "value": "TRUE"
+        }
+      },
+      "error": "Parameter recurse failed on Tidy[/x]: Munging failed for value \"TRUE\" in class recurse: Invalid recurse value \"TRUE\""
+    },
+    {
+      "param": "recurse",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "recurse": {
+          "kind": "Integer",
+          "value": "2"
+        }
+      },
+      "munged": {
+        "kind": "Integer",
+        "value": "2"
+      },
+      "inspect": "2"
+    },
+    {
+      "param": "recurse",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "recurse": {
+          "kind": "String",
+          "value": "2"
+        }
+      },
+      "munged": {
+        "kind": "Integer",
+        "value": "2"
+      },
+      "inspect": "2"
+    },
+    {
+      "param": "recurse",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "recurse": {
+          "kind": "String",
+          "value": "010"
+        }
+      },
+      "munged": {
+        "kind": "Integer",
+        "value": "8"
+      },
+      "inspect": "8"
+    },
+    {
+      "param": "recurse",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "recurse": {
+          "kind": "String",
+          "value": "08"
+        }
+      },
+      "error": "Parameter recurse failed on Tidy[/x]: Munging failed for value \"08\" in class recurse: invalid value for Integer(): \"08\""
+    },
+    {
+      "param": "recurse",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "recurse": {
+          "kind": "String",
+          "value": "yes"
+        }
+      },
+      "error": "Parameter recurse failed on Tidy[/x]: Munging failed for value \"yes\" in class recurse: Invalid recurse value \"yes\""
+    },
+    {
+      "param": "recurse",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "recurse": {
+          "kind": "Integer",
+          "value": "0"
+        }
+      },
+      "munged": {
+        "kind": "Integer",
+        "value": "0"
+      },
+      "inspect": "0"
+    },
+    {
+      "param": "recurse",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "recurse": {
+          "kind": "Integer",
+          "value": "-1"
+        }
+      },
+      "munged": {
+        "kind": "Integer",
+        "value": "-1"
+      },
+      "inspect": "-1"
+    },
+    {
+      "param": "recurse",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "recurse": {
+          "kind": "String",
+          "value": "0"
+        }
+      },
+      "munged": {
+        "kind": "Integer",
+        "value": "0"
+      },
+      "inspect": "0"
+    },
+    {
+      "param": "recurse",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "recurse": {
+          "kind": "String",
+          "value": "00"
+        }
+      },
+      "munged": {
+        "kind": "Integer",
+        "value": "0"
+      },
+      "inspect": "0"
+    },
+    {
+      "param": "recurse",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "recurse": {
+          "kind": "String",
+          "value": "-1"
+        }
+      },
+      "error": "Parameter recurse failed on Tidy[/x]: Munging failed for value \"-1\" in class recurse: Invalid recurse value \"-1\""
+    },
+    {
+      "param": "recurse",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "recurse": {
+          "kind": "Integer",
+          "value": "1"
+        }
+      },
+      "munged": {
+        "kind": "Integer",
+        "value": "1"
+      },
+      "inspect": "1"
+    },
+    {
+      "param": "recurse",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "recurse": {
+          "kind": "Integer",
+          "value": "-5"
+        }
+      },
+      "munged": {
+        "kind": "Integer",
+        "value": "-5"
+      },
+      "inspect": "-5"
+    },
+    {
+      "param": "recurse",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "recurse": {
+          "kind": "String",
+          "value": ""
+        }
+      },
+      "error": "Parameter recurse failed on Tidy[/x]: Munging failed for value \"\" in class recurse: Invalid recurse value \"\""
+    },
+    {
+      "param": "recurse",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "recurse": {
+          "kind": "Float",
+          "value": 1.5
+        }
+      },
+      "error": "Parameter recurse failed on Tidy[/x]: Munging failed for value 1.5 in class recurse: Invalid recurse value 1.5"
+    },
+    {
+      "param": "recurse",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "recurse": {
+          "kind": "Array",
+          "value": [
+            {
+              "kind": "String",
+              "value": "1"
+            }
+          ]
+        }
+      },
+      "error": "Parameter recurse failed on Tidy[/x]: Munging failed for value [\"1\"] in class recurse: Invalid recurse value [\"1\"]"
+    },
+    {
+      "param": "recurse",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "recurse": {
+          "kind": "String",
+          "value": "99999999999999999999"
+        }
+      },
+      "munged": {
+        "kind": "Integer",
+        "value": "99999999999999999999"
+      },
+      "inspect": "99999999999999999999"
+    },
+    {
+      "param": "recurse",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "recurse": {
+          "kind": "String",
+          "value": "1\n"
+        }
+      },
+      "munged": {
+        "kind": "Integer",
+        "value": "1"
+      },
+      "inspect": "1"
+    },
+    {
+      "param": "recurse",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        }
+      },
+      "munged": {
+        "kind": "nil"
+      },
+      "inspect": "nil"
+    },
+    {
+      "param": "max_files",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "recurse": {
+          "kind": "Boolean",
+          "value": true
+        },
+        "max_files": {
+          "kind": "Integer",
+          "value": "5"
+        }
+      },
+      "munged": {
+        "kind": "Integer",
+        "value": "5"
+      },
+      "inspect": "5"
+    },
+    {
+      "param": "max_files",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "recurse": {
+          "kind": "Boolean",
+          "value": true
+        },
+        "max_files": {
+          "kind": "String",
+          "value": "5"
+        }
+      },
+      "munged": {
+        "kind": "String",
+        "value": "5"
+      },
+      "inspect": "\"5\""
+    },
+    {
+      "param": "max_files",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "recurse": {
+          "kind": "Boolean",
+          "value": true
+        },
+        "max_files": {
+          "kind": "String",
+          "value": "-1"
+        }
+      },
+      "error": "Parameter max_files failed on Tidy[/x]: Invalid value \"-1\". Valid values match /^[0-9]+$/."
+    },
+    {
+      "param": "max_files",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "recurse": {
+          "kind": "Boolean",
+          "value": true
+        },
+        "max_files": {
+          "kind": "String",
+          "value": "x"
+        }
+      },
+      "error": "Parameter max_files failed on Tidy[/x]: Invalid value \"x\". Valid values match /^[0-9]+$/."
+    },
+    {
+      "param": "max_files",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "recurse": {
+          "kind": "Boolean",
+          "value": true
+        },
+        "max_files": {
+          "kind": "Integer",
+          "value": "0"
+        }
+      },
+      "munged": {
+        "kind": "Integer",
+        "value": "0"
+      },
+      "inspect": "0"
+    },
+    {
+      "param": "max_files",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "recurse": {
+          "kind": "Boolean",
+          "value": true
+        },
+        "max_files": {
+          "kind": "String",
+          "value": "0"
+        }
+      },
+      "munged": {
+        "kind": "String",
+        "value": "0"
+      },
+      "inspect": "\"0\""
+    },
+    {
+      "param": "max_files",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "recurse": {
+          "kind": "Boolean",
+          "value": true
+        },
+        "max_files": {
+          "kind": "String",
+          "value": "00"
+        }
+      },
+      "munged": {
+        "kind": "String",
+        "value": "00"
+      },
+      "inspect": "\"00\""
+    },
+    {
+      "param": "max_files",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "recurse": {
+          "kind": "Boolean",
+          "value": true
+        },
+        "max_files": {
+          "kind": "Integer",
+          "value": "-1"
+        }
+      },
+      "error": "Parameter max_files failed on Tidy[/x]: Invalid value -1. Valid values match /^[0-9]+$/."
+    },
+    {
+      "param": "max_files",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "recurse": {
+          "kind": "Boolean",
+          "value": true
+        },
+        "max_files": {
+          "kind": "Float",
+          "value": 1.5
+        }
+      },
+      "error": "Parameter max_files failed on Tidy[/x]: Invalid value 1.5. Valid values match /^[0-9]+$/."
+    },
+    {
+      "param": "max_files",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "recurse": {
+          "kind": "Boolean",
+          "value": true
+        },
+        "max_files": {
+          "kind": "Boolean",
+          "value": true
+        }
+      },
+      "error": "Parameter max_files failed on Tidy[/x]: Invalid value true. Valid values match /^[0-9]+$/."
+    },
+    {
+      "param": "max_files",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "recurse": {
+          "kind": "Boolean",
+          "value": true
+        },
+        "max_files": {
+          "kind": "Array",
+          "value": [
+            {
+              "kind": "String",
+              "value": "5"
+            }
+          ]
+        }
+      },
+      "error": "Parameter max_files failed on Tidy[/x]: Invalid value [\"5\"]. Valid values match /^[0-9]+$/."
+    },
+    {
+      "param": "max_files",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "recurse": {
+          "kind": "Boolean",
+          "value": true
+        },
+        "max_files": {
+          "kind": "String",
+          "value": "5\n"
+        }
+      },
+      "munged": {
+        "kind": "String",
+        "value": "5\n"
+      },
+      "inspect": "\"5\\n\""
+    },
+    {
+      "param": "max_files",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "recurse": {
+          "kind": "Boolean",
+          "value": true
+        }
+      },
+      "munged": {
+        "kind": "Integer",
+        "value": "0"
+      },
+      "inspect": "0"
+    },
+    {
+      "param": "matches",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "recurse": {
+          "kind": "Integer",
+          "value": "0"
+        },
+        "matches": {
+          "kind": "String",
+          "value": "*.x"
+        }
+      },
+      "error": "Parameter matches failed on Tidy[/x]: Tidy can't use matches with recurse 0, false, or undef"
+    },
+    {
+      "param": "matches",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "recurse": {
+          "kind": "Boolean",
+          "value": false
+        },
+        "matches": {
+          "kind": "String",
+          "value": "*.x"
+        }
+      },
+      "error": "Parameter matches failed on Tidy[/x]: Tidy can't use matches with recurse 0, false, or undef"
+    },
+    {
+      "param": "matches",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "matches": {
+          "kind": "String",
+          "value": "*.x"
+        }
+      },
+      "error": "Parameter matches failed on Tidy[/x]: Tidy can't use matches with recurse 0, false, or undef"
+    },
+    {
+      "param": "matches",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "recurse": {
+          "kind": "String",
+          "value": "0"
+        },
+        "matches": {
+          "kind": "String",
+          "value": "*.x"
+        }
+      },
+      "error": "Parameter matches failed on Tidy[/x]: Tidy can't use matches with recurse 0, false, or undef"
+    },
+    {
+      "param": "matches",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "recurse": {
+          "kind": "String",
+          "value": "00"
+        },
+        "matches": {
+          "kind": "String",
+          "value": "*.x"
+        }
+      },
+      "error": "Parameter matches failed on Tidy[/x]: Tidy can't use matches with recurse 0, false, or undef"
+    },
+    {
+      "param": "matches",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "recurse": {
+          "kind": "Integer",
+          "value": "0"
+        },
+        "matches": {
+          "kind": "String",
+          "value": "*"
+        }
+      },
+      "error": "Parameter matches failed on Tidy[/x]: Tidy can't use matches with recurse 0, false, or undef"
+    },
+    {
+      "param": "matches",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "recurse": {
+          "kind": "Boolean",
+          "value": false
+        },
+        "matches": {
+          "kind": "String",
+          "value": "*"
+        }
+      },
+      "error": "Parameter matches failed on Tidy[/x]: Tidy can't use matches with recurse 0, false, or undef"
+    },
+    {
+      "param": "matches",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "matches": {
+          "kind": "String",
+          "value": "*"
+        }
+      },
+      "error": "Parameter matches failed on Tidy[/x]: Tidy can't use matches with recurse 0, false, or undef"
+    },
+    {
+      "param": "matches",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "recurse": {
+          "kind": "String",
+          "value": "0"
+        },
+        "matches": {
+          "kind": "String",
+          "value": "*"
+        }
+      },
+      "error": "Parameter matches failed on Tidy[/x]: Tidy can't use matches with recurse 0, false, or undef"
+    },
+    {
+      "param": "matches",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "recurse": {
+          "kind": "String",
+          "value": "00"
+        },
+        "matches": {
+          "kind": "String",
+          "value": "*"
+        }
+      },
+      "error": "Parameter matches failed on Tidy[/x]: Tidy can't use matches with recurse 0, false, or undef"
+    },
+    {
+      "param": "matches",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "recurse": {
+          "kind": "Boolean",
+          "value": true
+        },
+        "matches": {
+          "kind": "String",
+          "value": "*"
+        }
+      },
+      "munged": {
+        "kind": "Array",
+        "value": [
+          {
+            "kind": "String",
+            "value": "*"
+          }
+        ]
+      },
+      "inspect": "[\"*\"]"
+    },
+    {
+      "param": "matches",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "recurse": {
+          "kind": "Boolean",
+          "value": true
+        },
+        "matches": {
+          "kind": "Array",
+          "value": [
+            {
+              "kind": "String",
+              "value": "a"
+            },
+            {
+              "kind": "String",
+              "value": "b"
+            }
+          ]
+        }
+      },
+      "munged": {
+        "kind": "Array",
+        "value": [
+          {
+            "kind": "String",
+            "value": "a"
+          },
+          {
+            "kind": "String",
+            "value": "b"
+          }
+        ]
+      },
+      "inspect": "[\"a\", \"b\"]"
+    },
+    {
+      "param": "matches",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "recurse": {
+          "kind": "Boolean",
+          "value": true
+        },
+        "matches": {
+          "kind": "Array",
+          "value": [
+            {
+              "kind": "Array",
+              "value": [
+                {
+                  "kind": "String",
+                  "value": "a"
+                }
+              ]
+            },
+            {
+              "kind": "String",
+              "value": "b"
+            }
+          ]
+        }
+      },
+      "munged": {
+        "kind": "Array",
+        "value": [
+          {
+            "kind": "String",
+            "value": "a"
+          },
+          {
+            "kind": "String",
+            "value": "b"
+          }
+        ]
+      },
+      "inspect": "[\"a\", \"b\"]"
+    },
+    {
+      "param": "matches",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "recurse": {
+          "kind": "Boolean",
+          "value": true
+        },
+        "matches": {
+          "kind": "Array",
+          "value": [
+
+          ]
+        }
+      },
+      "munged": {
+        "kind": "Array",
+        "value": [
+
+        ]
+      },
+      "inspect": "[]"
+    },
+    {
+      "param": "matches",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "recurse": {
+          "kind": "Boolean",
+          "value": true
+        },
+        "matches": {
+          "kind": "Array",
+          "value": [
+            {
+              "kind": "Integer",
+              "value": "1"
+            }
+          ]
+        }
+      },
+      "munged": {
+        "kind": "Array",
+        "value": [
+          {
+            "kind": "Integer",
+            "value": "1"
+          }
+        ]
+      },
+      "inspect": "[1]"
+    },
+    {
+      "param": "matches",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "recurse": {
+          "kind": "Boolean",
+          "value": true
+        },
+        "matches": {
+          "kind": "String",
+          "value": "a\nb"
+        }
+      },
+      "munged": {
+        "kind": "Array",
+        "value": [
+          {
+            "kind": "String",
+            "value": "a\nb"
+          }
+        ]
+      },
+      "inspect": "[\"a\\nb\"]"
+    },
+    {
+      "param": "matches",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "recurse": {
+          "kind": "Integer",
+          "value": "-1"
+        },
+        "matches": {
+          "kind": "String",
+          "value": "*"
+        }
+      },
+      "munged": {
+        "kind": "Array",
+        "value": [
+          {
+            "kind": "String",
+            "value": "*"
+          }
+        ]
+      },
+      "inspect": "[\"*\"]"
+    },
+    {
+      "param": "matches",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "recurse": {
+          "kind": "String",
+          "value": "inf"
+        },
+        "matches": {
+          "kind": "String",
+          "value": "*"
+        }
+      },
+      "munged": {
+        "kind": "Array",
+        "value": [
+          {
+            "kind": "String",
+            "value": "*"
+          }
+        ]
+      },
+      "inspect": "[\"*\"]"
+    },
+    {
+      "param": "matches",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "recurse": {
+          "kind": "Integer",
+          "value": "2"
+        },
+        "matches": {
+          "kind": "String",
+          "value": "*"
+        }
+      },
+      "munged": {
+        "kind": "Array",
+        "value": [
+          {
+            "kind": "String",
+            "value": "*"
+          }
+        ]
+      },
+      "inspect": "[\"*\"]"
+    },
+    {
+      "param": "matches",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "recurse": {
+          "kind": "String",
+          "value": "010"
+        },
+        "matches": {
+          "kind": "String",
+          "value": "*"
+        }
+      },
+      "munged": {
+        "kind": "Array",
+        "value": [
+          {
+            "kind": "String",
+            "value": "*"
+          }
+        ]
+      },
+      "inspect": "[\"*\"]"
+    },
+    {
+      "param": "matches",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "recurse": {
+          "kind": "String",
+          "value": "true"
+        },
+        "matches": {
+          "kind": "String",
+          "value": "*"
+        }
+      },
+      "munged": {
+        "kind": "Array",
+        "value": [
+          {
+            "kind": "String",
+            "value": "*"
+          }
+        ]
+      },
+      "inspect": "[\"*\"]"
+    },
+    {
+      "param": "backup",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "recurse": {
+          "kind": "Boolean",
+          "value": true
+        },
+        "backup": {
+          "kind": "String",
+          "value": "puppet"
+        }
+      },
+      "munged": {
+        "kind": "Boolean",
+        "value": false
+      },
+      "inspect": "false"
+    },
+    {
+      "param": "backup",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "recurse": {
+          "kind": "Boolean",
+          "value": true
+        },
+        "backup": {
+          "kind": "Boolean",
+          "value": true
+        }
+      },
+      "munged": {
+        "kind": "Boolean",
+        "value": false
+      },
+      "inspect": "false"
+    },
+    {
+      "param": "backup",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "recurse": {
+          "kind": "Boolean",
+          "value": true
+        },
+        "backup": {
+          "kind": "Boolean",
+          "value": false
+        }
+      },
+      "munged": {
+        "kind": "Boolean",
+        "value": false
+      },
+      "inspect": "false"
+    },
+    {
+      "param": "backup",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "recurse": {
+          "kind": "Boolean",
+          "value": true
+        },
+        "backup": {
+          "kind": "Array",
+          "value": [
+            {
+              "kind": "String",
+              "value": "x"
+            }
+          ]
+        }
+      },
+      "munged": {
+        "kind": "Boolean",
+        "value": false
+      },
+      "inspect": "false"
+    },
+    {
+      "param": "age",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "age": {
+          "kind": "String",
+          "value": ""
+        }
+      },
+      "error": "Parameter age failed on Tidy[/x]: Invalid tidy age "
+    },
+    {
+      "param": "age",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "age": {
+          "kind": "String",
+          "value": "0"
+        }
+      },
+      "munged": {
+        "kind": "Integer",
+        "value": "0"
+      },
+      "inspect": "0"
+    },
+    {
+      "param": "age",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "age": {
+          "kind": "String",
+          "value": "1"
+        }
+      },
+      "munged": {
+        "kind": "Integer",
+        "value": "86400"
+      },
+      "inspect": "86400"
+    },
+    {
+      "param": "age",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "age": {
+          "kind": "String",
+          "value": "10"
+        }
+      },
+      "error": "Parameter age failed on Tidy[/x]: Invalid age unit '0'"
+    },
+    {
+      "param": "age",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "age": {
+          "kind": "String",
+          "value": "1w"
+        }
+      },
+      "munged": {
+        "kind": "Integer",
+        "value": "604800"
+      },
+      "inspect": "604800"
+    },
+    {
+      "param": "age",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "age": {
+          "kind": "String",
+          "value": "1W"
+        }
+      },
+      "munged": {
+        "kind": "Integer",
+        "value": "604800"
+      },
+      "inspect": "604800"
+    },
+    {
+      "param": "age",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "age": {
+          "kind": "String",
+          "value": "3hours"
+        }
+      },
+      "munged": {
+        "kind": "Integer",
+        "value": "10800"
+      },
+      "inspect": "10800"
+    },
+    {
+      "param": "age",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "age": {
+          "kind": "String",
+          "value": "99999999999999999999d"
+        }
+      },
+      "munged": {
+        "kind": "Integer",
+        "value": "8639999999999999999913600"
+      },
+      "inspect": "8639999999999999999913600"
+    },
+    {
+      "param": "age",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "age": {
+          "kind": "String",
+          "value": "007"
+        }
+      },
+      "error": "Parameter age failed on Tidy[/x]: Invalid age unit '7'"
+    },
+    {
+      "param": "age",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "age": {
+          "kind": "String",
+          "value": "1 d"
+        }
+      },
+      "error": "Parameter age failed on Tidy[/x]: Invalid tidy age 1 d"
+    },
+    {
+      "param": "age",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "age": {
+          "kind": "String",
+          "value": " 1d"
+        }
+      },
+      "error": "Parameter age failed on Tidy[/x]: Invalid tidy age  1d"
+    },
+    {
+      "param": "age",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "age": {
+          "kind": "Boolean",
+          "value": true
+        }
+      },
+      "error": "Parameter age failed on Tidy[/x]: Invalid tidy age true"
+    },
+    {
+      "param": "age",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "age": {
+          "kind": "Boolean",
+          "value": false
+        }
+      },
+      "error": "Parameter age failed on Tidy[/x]: Invalid tidy age false"
+    },
+    {
+      "param": "age",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "age": {
+          "kind": "String",
+          "value": "1x"
+        }
+      },
+      "error": "Parameter age failed on Tidy[/x]: Invalid age unit 'x'"
+    },
+    {
+      "param": "age",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "age": {
+          "kind": "String",
+          "value": "1_"
+        }
+      },
+      "error": "Parameter age failed on Tidy[/x]: Invalid age unit '_'"
+    },
+    {
+      "param": "age",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "age": {
+          "kind": "String",
+          "value": "01"
+        }
+      },
+      "error": "Parameter age failed on Tidy[/x]: Invalid age unit '1'"
+    },
+    {
+      "param": "age",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "age": {
+          "kind": "String",
+          "value": "abc"
+        }
+      },
+      "error": "Parameter age failed on Tidy[/x]: Invalid tidy age abc"
+    },
+    {
+      "param": "age",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "age": {
+          "kind": "Integer",
+          "value": "10"
+        }
+      },
+      "error": "Parameter age failed on Tidy[/x]: Invalid tidy age 10"
+    },
+    {
+      "param": "age",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "age": {
+          "kind": "Float",
+          "value": 1.5
+        }
+      },
+      "error": "Parameter age failed on Tidy[/x]: Invalid tidy age 1.5"
+    },
+    {
+      "param": "age",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "age": {
+          "kind": "String",
+          "value": "08d"
+        }
+      },
+      "error": "Parameter age failed on Tidy[/x]: Munging failed for value \"08d\" in class age: invalid value for Integer(): \"08\""
+    },
+    {
+      "param": "age",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "age": {
+          "kind": "String",
+          "value": "010d"
+        }
+      },
+      "munged": {
+        "kind": "Integer",
+        "value": "691200"
+      },
+      "inspect": "691200"
+    },
+    {
+      "param": "age",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "age": {
+          "kind": "String",
+          "value": "08k"
+        }
+      },
+      "error": "Parameter age failed on Tidy[/x]: Munging failed for value \"08k\" in class age: invalid value for Integer(): \"08\""
+    },
+    {
+      "param": "age",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "age": {
+          "kind": "String",
+          "value": "010k"
+        }
+      },
+      "error": "Parameter age failed on Tidy[/x]: Invalid age unit 'k'"
+    },
+    {
+      "param": "age",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "age": {
+          "kind": "String",
+          "value": "1.5"
+        }
+      },
+      "error": "Parameter age failed on Tidy[/x]: Invalid tidy age 1.5"
+    },
+    {
+      "param": "age",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "age": {
+          "kind": "Array",
+          "value": [
+            {
+              "kind": "String",
+              "value": "1d"
+            }
+          ]
+        }
+      },
+      "error": "Parameter age failed on Tidy[/x]: Invalid tidy age [\"1d\"]"
+    },
+    {
+      "param": "age",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "age": {
+          "kind": "String",
+          "value": "1d\r"
+        }
+      },
+      "error": "Parameter age failed on Tidy[/x]: Invalid tidy age 1d\r"
+    },
+    {
+      "param": "age",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "age": {
+          "kind": "String",
+          "value": "1é"
+        }
+      },
+      "error": "Parameter age failed on Tidy[/x]: Invalid tidy age 1é"
+    },
+    {
+      "param": "age",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "age": {
+          "kind": "String",
+          "value": "1d\n"
+        }
+      },
+      "munged": {
+        "kind": "Integer",
+        "value": "86400"
+      },
+      "inspect": "86400"
+    },
+    {
+      "param": "age",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        }
+      },
+      "munged": {
+        "kind": "nil"
+      },
+      "inspect": "nil"
+    },
+    {
+      "param": "age",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "age": {
+          "kind": "String",
+          "value": "1d"
+        }
+      },
+      "munged": {
+        "kind": "Integer",
+        "value": "86400"
+      },
+      "inspect": "86400"
+    },
+    {
+      "param": "age",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "age": {
+          "kind": "String",
+          "value": "2weeks"
+        }
+      },
+      "munged": {
+        "kind": "Integer",
+        "value": "1209600"
+      },
+      "inspect": "1209600"
+    },
+    {
+      "param": "age",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "age": {
+          "kind": "String",
+          "value": "1D"
+        }
+      },
+      "munged": {
+        "kind": "Integer",
+        "value": "86400"
+      },
+      "inspect": "86400"
+    },
+    {
+      "param": "age",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "age": {
+          "kind": "String",
+          "value": "1s"
+        }
+      },
+      "munged": {
+        "kind": "Integer",
+        "value": "1"
+      },
+      "inspect": "1"
+    },
+    {
+      "param": "age",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "age": {
+          "kind": "String",
+          "value": "1m"
+        }
+      },
+      "munged": {
+        "kind": "Integer",
+        "value": "60"
+      },
+      "inspect": "60"
+    },
+    {
+      "param": "age",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "age": {
+          "kind": "String",
+          "value": "1M"
+        }
+      },
+      "munged": {
+        "kind": "Integer",
+        "value": "60"
+      },
+      "inspect": "60"
+    },
+    {
+      "param": "age",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "age": {
+          "kind": "String",
+          "value": "1h"
+        }
+      },
+      "munged": {
+        "kind": "Integer",
+        "value": "3600"
+      },
+      "inspect": "3600"
+    },
+    {
+      "param": "age",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "age": {
+          "kind": "String",
+          "value": "2minutes"
+        }
+      },
+      "munged": {
+        "kind": "Integer",
+        "value": "120"
+      },
+      "inspect": "120"
+    },
+    {
+      "param": "age",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "age": {
+          "kind": "String",
+          "value": "99999999999999999999w"
+        }
+      },
+      "munged": {
+        "kind": "Integer",
+        "value": "60479999999999999999395200"
+      },
+      "inspect": "60479999999999999999395200"
+    },
+    {
+      "param": "size",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "size": {
+          "kind": "String",
+          "value": ""
+        }
+      },
+      "error": "Parameter size failed on Tidy[/x]: Munging failed for value \"\" in class size: undefined local variable or method `age' for #<Puppet::Type::Tidy::ParameterSize:0x0000000000000000 @resource=#<Puppet::Type::Tidy:0x0000000000000000 @parameters={:path=>#<Puppet::Type::Tidy::ParameterPath:0x0000000000000000 @resource=#<Puppet::Type::Tidy:0x0000000000000000 ...>, @value=\"/x\">, :size=>#<Puppet::Type::Tidy::ParameterSize:0x0000000000000000 ...>}, @title=\"/x\", @tags=#<Puppet::Util::TagSet: {\"tidy\"}>, @original_parameters={:size=>\"\"}, @name_var_cache=:path>>"
+    },
+    {
+      "param": "size",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "size": {
+          "kind": "String",
+          "value": "0"
+        }
+      },
+      "munged": {
+        "kind": "Integer",
+        "value": "0"
+      },
+      "inspect": "0"
+    },
+    {
+      "param": "size",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "size": {
+          "kind": "String",
+          "value": "1"
+        }
+      },
+      "munged": {
+        "kind": "Integer",
+        "value": "1024"
+      },
+      "inspect": "1024"
+    },
+    {
+      "param": "size",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "size": {
+          "kind": "String",
+          "value": "10"
+        }
+      },
+      "error": "Parameter size failed on Tidy[/x]: Invalid size unit '0'"
+    },
+    {
+      "param": "size",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "size": {
+          "kind": "String",
+          "value": "1w"
+        }
+      },
+      "error": "Parameter size failed on Tidy[/x]: Invalid size unit 'w'"
+    },
+    {
+      "param": "size",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "size": {
+          "kind": "String",
+          "value": "1W"
+        }
+      },
+      "error": "Parameter size failed on Tidy[/x]: Invalid size unit 'w'"
+    },
+    {
+      "param": "size",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "size": {
+          "kind": "String",
+          "value": "3hours"
+        }
+      },
+      "error": "Parameter size failed on Tidy[/x]: Invalid size unit 'h'"
+    },
+    {
+      "param": "size",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "size": {
+          "kind": "String",
+          "value": "99999999999999999999d"
+        }
+      },
+      "error": "Parameter size failed on Tidy[/x]: Invalid size unit 'd'"
+    },
+    {
+      "param": "size",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "size": {
+          "kind": "String",
+          "value": "007"
+        }
+      },
+      "error": "Parameter size failed on Tidy[/x]: Invalid size unit '7'"
+    },
+    {
+      "param": "size",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "size": {
+          "kind": "String",
+          "value": "1 d"
+        }
+      },
+      "error": "Parameter size failed on Tidy[/x]: Munging failed for value \"1 d\" in class size: undefined local variable or method `age' for #<Puppet::Type::Tidy::ParameterSize:0x0000000000000000 @resource=#<Puppet::Type::Tidy:0x0000000000000000 @parameters={:path=>#<Puppet::Type::Tidy::ParameterPath:0x0000000000000000 @resource=#<Puppet::Type::Tidy:0x0000000000000000 ...>, @value=\"/x\">, :size=>#<Puppet::Type::Tidy::ParameterSize:0x0000000000000000 ...>}, @title=\"/x\", @tags=#<Puppet::Util::TagSet: {\"tidy\"}>, @original_parameters={:size=>\"1 d\"}, @name_var_cache=:path>>"
+    },
+    {
+      "param": "size",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "size": {
+          "kind": "String",
+          "value": " 1d"
+        }
+      },
+      "error": "Parameter size failed on Tidy[/x]: Munging failed for value \" 1d\" in class size: undefined local variable or method `age' for #<Puppet::Type::Tidy::ParameterSize:0x0000000000000000 @resource=#<Puppet::Type::Tidy:0x0000000000000000 @parameters={:path=>#<Puppet::Type::Tidy::ParameterPath:0x0000000000000000 @resource=#<Puppet::Type::Tidy:0x0000000000000000 ...>, @value=\"/x\">, :size=>#<Puppet::Type::Tidy::ParameterSize:0x0000000000000000 ...>}, @title=\"/x\", @tags=#<Puppet::Util::TagSet: {\"tidy\"}>, @original_parameters={:size=>\" 1d\"}, @name_var_cache=:path>>"
+    },
+    {
+      "param": "size",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "size": {
+          "kind": "Boolean",
+          "value": true
+        }
+      },
+      "error": "Parameter size failed on Tidy[/x]: Munging failed for value true in class size: undefined local variable or method `age' for #<Puppet::Type::Tidy::ParameterSize:0x0000000000000000 @resource=#<Puppet::Type::Tidy:0x0000000000000000 @parameters={:path=>#<Puppet::Type::Tidy::ParameterPath:0x0000000000000000 @resource=#<Puppet::Type::Tidy:0x0000000000000000 ...>, @value=\"/x\">, :size=>#<Puppet::Type::Tidy::ParameterSize:0x0000000000000000 ...>}, @title=\"/x\", @tags=#<Puppet::Util::TagSet: {\"tidy\"}>, @original_parameters={:size=>true}, @name_var_cache=:path>>"
+    },
+    {
+      "param": "size",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "size": {
+          "kind": "Boolean",
+          "value": false
+        }
+      },
+      "error": "Parameter size failed on Tidy[/x]: Munging failed for value false in class size: undefined local variable or method `age' for #<Puppet::Type::Tidy::ParameterSize:0x0000000000000000 @resource=#<Puppet::Type::Tidy:0x0000000000000000 @parameters={:path=>#<Puppet::Type::Tidy::ParameterPath:0x0000000000000000 @resource=#<Puppet::Type::Tidy:0x0000000000000000 ...>, @value=\"/x\">, :size=>#<Puppet::Type::Tidy::ParameterSize:0x0000000000000000 ...>}, @title=\"/x\", @tags=#<Puppet::Util::TagSet: {\"tidy\"}>, @original_parameters={:size=>false}, @name_var_cache=:path>>"
+    },
+    {
+      "param": "size",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "size": {
+          "kind": "String",
+          "value": "1x"
+        }
+      },
+      "error": "Parameter size failed on Tidy[/x]: Invalid size unit 'x'"
+    },
+    {
+      "param": "size",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "size": {
+          "kind": "String",
+          "value": "1_"
+        }
+      },
+      "error": "Parameter size failed on Tidy[/x]: Invalid size unit '_'"
+    },
+    {
+      "param": "size",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "size": {
+          "kind": "String",
+          "value": "01"
+        }
+      },
+      "error": "Parameter size failed on Tidy[/x]: Invalid size unit '1'"
+    },
+    {
+      "param": "size",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "size": {
+          "kind": "String",
+          "value": "abc"
+        }
+      },
+      "error": "Parameter size failed on Tidy[/x]: Munging failed for value \"abc\" in class size: undefined local variable or method `age' for #<Puppet::Type::Tidy::ParameterSize:0x0000000000000000 @resource=#<Puppet::Type::Tidy:0x0000000000000000 @parameters={:path=>#<Puppet::Type::Tidy::ParameterPath:0x0000000000000000 @resource=#<Puppet::Type::Tidy:0x0000000000000000 ...>, @value=\"/x\">, :size=>#<Puppet::Type::Tidy::ParameterSize:0x0000000000000000 ...>}, @title=\"/x\", @tags=#<Puppet::Util::TagSet: {\"tidy\"}>, @original_parameters={:size=>\"abc\"}, @name_var_cache=:path>>"
+    },
+    {
+      "param": "size",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "size": {
+          "kind": "Integer",
+          "value": "10"
+        }
+      },
+      "error": "Parameter size failed on Tidy[/x]: Munging failed for value 10 in class size: undefined local variable or method `age' for #<Puppet::Type::Tidy::ParameterSize:0x0000000000000000 @resource=#<Puppet::Type::Tidy:0x0000000000000000 @parameters={:path=>#<Puppet::Type::Tidy::ParameterPath:0x0000000000000000 @resource=#<Puppet::Type::Tidy:0x0000000000000000 ...>, @value=\"/x\">, :size=>#<Puppet::Type::Tidy::ParameterSize:0x0000000000000000 ...>}, @title=\"/x\", @tags=#<Puppet::Util::TagSet: {\"tidy\"}>, @original_parameters={:size=>10}, @name_var_cache=:path>>"
+    },
+    {
+      "param": "size",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "size": {
+          "kind": "Float",
+          "value": 1.5
+        }
+      },
+      "error": "Parameter size failed on Tidy[/x]: Munging failed for value 1.5 in class size: undefined local variable or method `age' for #<Puppet::Type::Tidy::ParameterSize:0x0000000000000000 @resource=#<Puppet::Type::Tidy:0x0000000000000000 @parameters={:path=>#<Puppet::Type::Tidy::ParameterPath:0x0000000000000000 @resource=#<Puppet::Type::Tidy:0x0000000000000000 ...>, @value=\"/x\">, :size=>#<Puppet::Type::Tidy::ParameterSize:0x0000000000000000 ...>}, @title=\"/x\", @tags=#<Puppet::Util::TagSet: {\"tidy\"}>, @original_parameters={:size=>1.5}, @name_var_cache=:path>>"
+    },
+    {
+      "param": "size",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "size": {
+          "kind": "String",
+          "value": "08d"
+        }
+      },
+      "error": "Parameter size failed on Tidy[/x]: Munging failed for value \"08d\" in class size: invalid value for Integer(): \"08\""
+    },
+    {
+      "param": "size",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "size": {
+          "kind": "String",
+          "value": "010d"
+        }
+      },
+      "error": "Parameter size failed on Tidy[/x]: Invalid size unit 'd'"
+    },
+    {
+      "param": "size",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "size": {
+          "kind": "String",
+          "value": "08k"
+        }
+      },
+      "error": "Parameter size failed on Tidy[/x]: Munging failed for value \"08k\" in class size: invalid value for Integer(): \"08\""
+    },
+    {
+      "param": "size",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "size": {
+          "kind": "String",
+          "value": "010k"
+        }
+      },
+      "munged": {
+        "kind": "Integer",
+        "value": "8192"
+      },
+      "inspect": "8192"
+    },
+    {
+      "param": "size",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "size": {
+          "kind": "String",
+          "value": "1.5"
+        }
+      },
+      "error": "Parameter size failed on Tidy[/x]: Munging failed for value \"1.5\" in class size: undefined local variable or method `age' for #<Puppet::Type::Tidy::ParameterSize:0x0000000000000000 @resource=#<Puppet::Type::Tidy:0x0000000000000000 @parameters={:path=>#<Puppet::Type::Tidy::ParameterPath:0x0000000000000000 @resource=#<Puppet::Type::Tidy:0x0000000000000000 ...>, @value=\"/x\">, :size=>#<Puppet::Type::Tidy::ParameterSize:0x0000000000000000 ...>}, @title=\"/x\", @tags=#<Puppet::Util::TagSet: {\"tidy\"}>, @original_parameters={:size=>\"1.5\"}, @name_var_cache=:path>>"
+    },
+    {
+      "param": "size",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "size": {
+          "kind": "Array",
+          "value": [
+            {
+              "kind": "String",
+              "value": "1d"
+            }
+          ]
+        }
+      },
+      "error": "Parameter size failed on Tidy[/x]: Munging failed for value [\"1d\"] in class size: undefined local variable or method `age' for #<Puppet::Type::Tidy::ParameterSize:0x0000000000000000 @resource=#<Puppet::Type::Tidy:0x0000000000000000 @parameters={:path=>#<Puppet::Type::Tidy::ParameterPath:0x0000000000000000 @resource=#<Puppet::Type::Tidy:0x0000000000000000 ...>, @value=\"/x\">, :size=>#<Puppet::Type::Tidy::ParameterSize:0x0000000000000000 ...>}, @title=\"/x\", @tags=#<Puppet::Util::TagSet: {\"tidy\"}>, @original_parameters={:size=>[\"1d\"]}, @name_var_cache=:path>>"
+    },
+    {
+      "param": "size",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "size": {
+          "kind": "String",
+          "value": "1d\r"
+        }
+      },
+      "error": "Parameter size failed on Tidy[/x]: Munging failed for value \"1d\\r\" in class size: undefined local variable or method `age' for #<Puppet::Type::Tidy::ParameterSize:0x0000000000000000 @resource=#<Puppet::Type::Tidy:0x0000000000000000 @parameters={:path=>#<Puppet::Type::Tidy::ParameterPath:0x0000000000000000 @resource=#<Puppet::Type::Tidy:0x0000000000000000 ...>, @value=\"/x\">, :size=>#<Puppet::Type::Tidy::ParameterSize:0x0000000000000000 ...>}, @title=\"/x\", @tags=#<Puppet::Util::TagSet: {\"tidy\"}>, @original_parameters={:size=>\"1d\\r\"}, @name_var_cache=:path>>"
+    },
+    {
+      "param": "size",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "size": {
+          "kind": "String",
+          "value": "1é"
+        }
+      },
+      "error": "Parameter size failed on Tidy[/x]: Munging failed for value \"1\\u00E9\" in class size: undefined local variable or method `age' for #<Puppet::Type::Tidy::ParameterSize:0x0000000000000000 @resource=#<Puppet::Type::Tidy:0x0000000000000000 @parameters={:path=>#<Puppet::Type::Tidy::ParameterPath:0x0000000000000000 @resource=#<Puppet::Type::Tidy:0x0000000000000000 ...>, @value=\"/x\">, :size=>#<Puppet::Type::Tidy::ParameterSize:0x0000000000000000 ...>}, @title=\"/x\", @tags=#<Puppet::Util::TagSet: {\"tidy\"}>, @original_parameters={:size=>\"1\\u00E9\"}, @name_var_cache=:path>>"
+    },
+    {
+      "param": "size",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "size": {
+          "kind": "String",
+          "value": "1d\n"
+        }
+      },
+      "error": "Parameter size failed on Tidy[/x]: Invalid size unit 'd'"
+    },
+    {
+      "param": "size",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        }
+      },
+      "munged": {
+        "kind": "nil"
+      },
+      "inspect": "nil"
+    },
+    {
+      "param": "size",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "size": {
+          "kind": "String",
+          "value": "1k"
+        }
+      },
+      "munged": {
+        "kind": "Integer",
+        "value": "1024"
+      },
+      "inspect": "1024"
+    },
+    {
+      "param": "size",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "size": {
+          "kind": "String",
+          "value": "1b"
+        }
+      },
+      "munged": {
+        "kind": "Integer",
+        "value": "1"
+      },
+      "inspect": "1"
+    },
+    {
+      "param": "size",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "size": {
+          "kind": "String",
+          "value": "1B"
+        }
+      },
+      "munged": {
+        "kind": "Integer",
+        "value": "1"
+      },
+      "inspect": "1"
+    },
+    {
+      "param": "size",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "size": {
+          "kind": "String",
+          "value": "1m"
+        }
+      },
+      "munged": {
+        "kind": "Integer",
+        "value": "1048576"
+      },
+      "inspect": "1048576"
+    },
+    {
+      "param": "size",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "size": {
+          "kind": "String",
+          "value": "1g"
+        }
+      },
+      "munged": {
+        "kind": "Integer",
+        "value": "1073741824"
+      },
+      "inspect": "1073741824"
+    },
+    {
+      "param": "size",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "size": {
+          "kind": "String",
+          "value": "1t"
+        }
+      },
+      "munged": {
+        "kind": "Integer",
+        "value": "1099511627776"
+      },
+      "inspect": "1099511627776"
+    },
+    {
+      "param": "size",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "size": {
+          "kind": "String",
+          "value": "1T"
+        }
+      },
+      "munged": {
+        "kind": "Integer",
+        "value": "1099511627776"
+      },
+      "inspect": "1099511627776"
+    },
+    {
+      "param": "size",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "size": {
+          "kind": "String",
+          "value": "2kilobytes"
+        }
+      },
+      "munged": {
+        "kind": "Integer",
+        "value": "2048"
+      },
+      "inspect": "2048"
+    },
+    {
+      "param": "size",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "size": {
+          "kind": "String",
+          "value": "9999999999t"
+        }
+      },
+      "munged": {
+        "kind": "Integer",
+        "value": "10995116276660488372224"
+      },
+      "inspect": "10995116276660488372224"
+    },
+    {
+      "param": "size",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "size": {
+          "kind": "String",
+          "value": "99999999999999999t"
+        }
+      },
+      "munged": {
+        "kind": "Integer",
+        "value": "109951162777599998900488372224"
+      },
+      "inspect": "109951162777599998900488372224"
+    },
+    {
+      "param": "type",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "age": {
+          "kind": "String",
+          "value": "1s"
+        },
+        "type": {
+          "kind": "String",
+          "value": "atime"
+        }
+      },
+      "munged": {
+        "kind": "Symbol",
+        "value": "atime"
+      },
+      "inspect": ":atime"
+    },
+    {
+      "param": "type",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "age": {
+          "kind": "String",
+          "value": "1s"
+        },
+        "type": {
+          "kind": "String",
+          "value": "mtime"
+        }
+      },
+      "munged": {
+        "kind": "Symbol",
+        "value": "mtime"
+      },
+      "inspect": ":mtime"
+    },
+    {
+      "param": "type",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "age": {
+          "kind": "String",
+          "value": "1s"
+        },
+        "type": {
+          "kind": "String",
+          "value": "ctime"
+        }
+      },
+      "munged": {
+        "kind": "Symbol",
+        "value": "ctime"
+      },
+      "inspect": ":ctime"
+    },
+    {
+      "param": "type",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "age": {
+          "kind": "String",
+          "value": "1s"
+        },
+        "type": {
+          "kind": "String",
+          "value": "bogus"
+        }
+      },
+      "error": "Parameter type failed on Tidy[/x]: Invalid value \"bogus\". Valid values are atime, mtime, ctime."
+    },
+    {
+      "param": "type",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "age": {
+          "kind": "String",
+          "value": "1s"
+        },
+        "type": {
+          "kind": "String",
+          "value": "ATIME"
+        }
+      },
+      "error": "Parameter type failed on Tidy[/x]: Invalid value \"ATIME\". Valid values are atime, mtime, ctime."
+    },
+    {
+      "param": "type",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "age": {
+          "kind": "String",
+          "value": "1s"
+        },
+        "type": {
+          "kind": "Boolean",
+          "value": true
+        }
+      },
+      "error": "Parameter type failed on Tidy[/x]: Invalid value true. Valid values are atime, mtime, ctime."
+    },
+    {
+      "param": "type",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "age": {
+          "kind": "String",
+          "value": "1s"
+        },
+        "type": {
+          "kind": "Integer",
+          "value": "1"
+        }
+      },
+      "error": "Parameter type failed on Tidy[/x]: Invalid value 1. Valid values are atime, mtime, ctime."
+    },
+    {
+      "param": "type",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "age": {
+          "kind": "String",
+          "value": "1s"
+        },
+        "type": {
+          "kind": "Array",
+          "value": [
+            {
+              "kind": "String",
+              "value": "atime"
+            }
+          ]
+        }
+      },
+      "error": "Parameter type failed on Tidy[/x]: Invalid value [\"atime\"]. Valid values are atime, mtime, ctime."
+    },
+    {
+      "param": "type",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "age": {
+          "kind": "String",
+          "value": "1s"
+        },
+        "type": {
+          "kind": "String",
+          "value": ""
+        }
+      },
+      "error": "Parameter type failed on Tidy[/x]: Invalid value \"\". Valid values are atime, mtime, ctime."
+    },
+    {
+      "param": "type",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "age": {
+          "kind": "String",
+          "value": "1s"
+        }
+      },
+      "munged": {
+        "kind": "Symbol",
+        "value": "atime"
+      },
+      "inspect": ":atime"
+    },
+    {
+      "param": "rmdirs",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "rmdirs": {
+          "kind": "Boolean",
+          "value": true
+        }
+      },
+      "munged": {
+        "kind": "Boolean",
+        "value": true
+      },
+      "inspect": "true"
+    },
+    {
+      "param": "rmdirs",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "rmdirs": {
+          "kind": "Boolean",
+          "value": false
+        }
+      },
+      "munged": {
+        "kind": "Boolean",
+        "value": false
+      },
+      "inspect": "false"
+    },
+    {
+      "param": "rmdirs",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "rmdirs": {
+          "kind": "String",
+          "value": "true"
+        }
+      },
+      "munged": {
+        "kind": "Boolean",
+        "value": true
+      },
+      "inspect": "true"
+    },
+    {
+      "param": "rmdirs",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "rmdirs": {
+          "kind": "String",
+          "value": "false"
+        }
+      },
+      "munged": {
+        "kind": "Boolean",
+        "value": false
+      },
+      "inspect": "false"
+    },
+    {
+      "param": "rmdirs",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "rmdirs": {
+          "kind": "String",
+          "value": "yes"
+        }
+      },
+      "munged": {
+        "kind": "Boolean",
+        "value": true
+      },
+      "inspect": "true"
+    },
+    {
+      "param": "rmdirs",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "rmdirs": {
+          "kind": "String",
+          "value": "no"
+        }
+      },
+      "munged": {
+        "kind": "Boolean",
+        "value": false
+      },
+      "inspect": "false"
+    },
+    {
+      "param": "rmdirs",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "rmdirs": {
+          "kind": "String",
+          "value": "on"
+        }
+      },
+      "error": "Parameter rmdirs failed on Tidy[/x]: Invalid value \"on\". Valid values are true, false, yes, no."
+    },
+    {
+      "param": "rmdirs",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "rmdirs": {
+          "kind": "String",
+          "value": "1"
+        }
+      },
+      "error": "Parameter rmdirs failed on Tidy[/x]: Invalid value \"1\". Valid values are true, false, yes, no."
+    },
+    {
+      "param": "rmdirs",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "rmdirs": {
+          "kind": "String",
+          "value": "TRUE"
+        }
+      },
+      "error": "Parameter rmdirs failed on Tidy[/x]: Invalid value \"TRUE\". Valid values are true, false, yes, no."
+    },
+    {
+      "param": "rmdirs",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "rmdirs": {
+          "kind": "Integer",
+          "value": "1"
+        }
+      },
+      "error": "Parameter rmdirs failed on Tidy[/x]: Invalid value 1. Valid values are true, false, yes, no."
+    },
+    {
+      "param": "rmdirs",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "rmdirs": {
+          "kind": "Array",
+          "value": [
+            {
+              "kind": "String",
+              "value": "true"
+            }
+          ]
+        }
+      },
+      "error": "Parameter rmdirs failed on Tidy[/x]: Invalid value [\"true\"]. Valid values are true, false, yes, no."
+    },
+    {
+      "param": "rmdirs",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        },
+        "rmdirs": {
+          "kind": "String",
+          "value": ""
+        }
+      },
+      "error": "Parameter rmdirs failed on Tidy[/x]: Invalid value \"\". Valid values are true, false, yes, no."
+    },
+    {
+      "param": "rmdirs",
+      "params": {
+        "path": {
+          "kind": "String",
+          "value": "/x"
+        }
+      },
+      "munged": {
+        "kind": "nil"
+      },
+      "inspect": "nil"
+    }
+  ]
+}

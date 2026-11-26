@@ -25,7 +25,9 @@
 # catalog holds 1 Host and 5 Mounts, no Sshkey or Ssh_authorized_key; the
 # mounts are already-mounted pseudo-filesystems with `remounts => true`, and
 # the default capabilities refuse `mount -o remount`, so every remount fails
-# alike on both sides.
+# alike on both sides. Tidy is a core type, with no files to fingerprint, and
+# is native too (tidy design §1 item 5): the catalog's Tidy resources must not
+# be among the types voxagent applies via the extension host.
 # The merged libdir holds SIMP's ssh.aug and resolv.aug in augeas/lenses, so
 # the 49 Ssh_config resources take the custom-lens path. Its Sysctl coverage
 # is mostly the failure path: rootless, the real `sysctl -w` is refused for 62
@@ -397,6 +399,14 @@ fi
 if grep -E '^voxagent: [0-9]+ (sysctl|ssh_config|sshd_config|sshd_config_subsystem|augeas|cron|host|mount|sshkey|ssh_authorized_key) resource\(s\) applied via extension host' \
   "$WORK/$LABEL_B/apply.out" >&2; then
   echo "report-diff-simp: voxagent applied an augeasproviders type, augeas, cron, host, mount, sshkey or ssh_authorized_key through the extension host, not natively" >&2
+  rc=1
+fi
+
+# Native tidy: a core type, so no fingerprint guards it, and its Tidy
+# resources must not be delegated either (tidy design §1 item 5).
+if grep -E '^voxagent: [0-9]+ tidy resource\(s\) applied via extension host' \
+  "$WORK/$LABEL_B/apply.out" >&2; then
+  echo "report-diff-simp: voxagent applied tidy through the extension host, not natively" >&2
   rc=1
 fi
 

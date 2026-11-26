@@ -62,7 +62,7 @@ func TestConcatGenerateNewFile(t *testing.T) {
 		Generators: map[string]string{"File[/etc/sudoers]": "Concat_file[/etc/sudoers]"},
 		Before:     []catalog.Edge{{Source: "Concat_file[/etc/sudoers]", Target: "File[/etc/sudoers]"}},
 	}
-	if !reflect.DeepEqual(g, want) {
+	if !reflect.DeepEqual(g, ral.LoadGeneration{Generation: want}) {
 		t.Errorf("generation =\n%#v\nwant\n%#v", g, want)
 	}
 	if cat.Resources[2].Parameters["before"] != nil || len(cat.Resources) != 3 {
@@ -75,7 +75,7 @@ func TestConcatGenerateNewFile(t *testing.T) {
 	}
 
 	// The generation merges: the File follows its Concat_file, which is before it.
-	if err := catalog.MergeGeneration(cat, g, catalog.PlaceAfterGenerator); err != nil {
+	if err := catalog.MergeGeneration(cat, g.Generation, catalog.PlaceAfterGenerator); err != nil {
 		t.Fatal(err)
 	}
 	if got := cat.Resources[3].Ref(); got != "File[/etc/sudoers]" {
@@ -161,7 +161,7 @@ func TestConcatGenerateReusesDeclaredFile(t *testing.T) {
 		t.Fatal(err)
 	}
 	want := catalog.Generation{Before: []catalog.Edge{{Source: "Concat_file[/etc/c14a.conf]", Target: "File[/etc/c14a.conf]"}}}
-	if !reflect.DeepEqual(g, want) {
+	if !reflect.DeepEqual(g, ral.LoadGeneration{Generation: want}) {
 		t.Errorf("M14 a generation = %#v", g)
 	}
 
@@ -173,7 +173,7 @@ func TestConcatGenerateReusesDeclaredFile(t *testing.T) {
 		t.Fatal(err)
 	}
 	want = catalog.Generation{Before: []catalog.Edge{{Source: "Concat_file[/etc/c14a.conf]", Target: "File[x]"}}}
-	if !reflect.DeepEqual(g, want) {
+	if !reflect.DeepEqual(g, ral.LoadGeneration{Generation: want}) {
 		t.Errorf("aliased File generation = %#v", g)
 	}
 
@@ -213,7 +213,7 @@ func TestConcatGenerateAddsNoBeforeWhenAnEdgeExists(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if !reflect.DeepEqual(g, catalog.Generation{}) {
+			if !reflect.DeepEqual(g, ral.LoadGeneration{}) {
 				t.Errorf("%s %s: generation = %#v", side, param, g)
 			}
 		}
@@ -235,7 +235,7 @@ func TestConcatGenerateAddsNoBeforeWhenAnEdgeExists(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if !reflect.DeepEqual(g, catalog.Generation{}) {
+		if !reflect.DeepEqual(g, ral.LoadGeneration{}) {
 			t.Errorf("M21 %s: generation = %#v", c.name, g)
 		}
 	}

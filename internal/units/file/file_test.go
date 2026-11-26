@@ -3703,6 +3703,79 @@ func TestFileRecursionChildCannotEscapeItsParentsDirectory(t *testing.T) {
 	}
 }
 
+// A Tidy whose path is relative or starts with // is the extension host's,
+// and Ruby removes its Files by path: they are applied unconfined, so a
+// root voxagent cannot compute does not fail them and a link is followed.
+func TestFileGeneratedByAHostTidyIsUnconfined(t *testing.T) {
+	base := t.TempDir()
+	dir, outside := filepath.Join(base, "d"), filepath.Join(base, "outside")
+	for _, d := range []string{dir, outside} {
+		if err := os.Mkdir(d, 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	mustWrite(t, filepath.Join(dir, "f"), "x")
+	mustWrite(t, filepath.Join(outside, "g"), "x")
+	if err := os.Symlink(outside, filepath.Join(dir, "sub")); err != nil {
+		t.Fatal(err)
+	}
+	for _, c := range []struct {
+		tidy  catalog.Resource
+		child string
+	}{
+		{catalog.Resource{Type: "Tidy", Title: "d"}, filepath.Join(dir, "f")},
+		{catalog.Resource{Type: "Tidy", Title: "x", Parameters: map[string]any{"path": "/" + dir}},
+			filepath.Join(dir, "sub", "g")},
+	} {
+		r := raltest.FileRes(c.child, map[string]any{"ensure": "absent", "force": true, "backup": false})
+		r.GeneratedFrom = &c.tidy
+		if _, _, err := (File{}).Apply(context.Background(), r, false); err != nil {
+			t.Errorf("%s: Apply: %v", c.child, err)
+		}
+		if _, err := os.Lstat(c.child); !errors.Is(err, os.ErrNotExist) {
+			t.Errorf("%s still exists or cannot be checked: %v", c.child, err)
+		}
+	}
+}
+
+// D-104: a Tidy's directory swapped for a link to an outside directory after
+// the confining Lstat fails the child closed, live and noop: only a missing
+// or non-directory root seen by that Lstat is in sync.
+func TestFileTidyChildRootSwappedForALinkFails(t *testing.T) {
+	for _, noop := range []bool{false, true} {
+		base := t.TempDir()
+		dir, outside := filepath.Join(base, "d"), filepath.Join(base, "outside")
+		for _, d := range []string{dir, outside} {
+			if err := os.Mkdir(d, 0o755); err != nil {
+				t.Fatal(err)
+			}
+		}
+		mustWrite(t, filepath.Join(dir, "f"), "x")
+		mustWrite(t, filepath.Join(outside, "f"), "x")
+		beforeDirOpen = func(d string) {
+			if d != dir {
+				return
+			}
+			if err := os.RemoveAll(dir); err != nil {
+				t.Error(err)
+			}
+			if err := os.Symlink(outside, dir); err != nil {
+				t.Error(err)
+			}
+		}
+		r := raltest.FileRes(filepath.Join(dir, "f"), map[string]any{"ensure": "absent", "force": true, "backup": false})
+		r.GeneratedFrom = &catalog.Resource{Type: "Tidy", Title: dir}
+		_, _, err := (File{}).Apply(context.Background(), r, noop)
+		beforeDirOpen = nil
+		if !errors.Is(err, syscall.ENOTDIR) {
+			t.Errorf("noop=%t: Apply = %v; want the open's ENOTDIR", noop, err)
+		}
+		if _, err := os.Lstat(filepath.Join(outside, "f")); err != nil {
+			t.Errorf("noop=%t: outside f: %v; want it kept", noop, err)
+		}
+	}
+}
+
 // modeOf is path's mode as a manifest spells it, special bits included.
 func modeOf(t *testing.T, path string) uint32 {
 	t.Helper()

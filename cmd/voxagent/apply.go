@@ -186,8 +186,12 @@ func applyCatalog(raw []byte, o applyOptions) (report.Status, *report.Report) {
 	// Load-time generation the host did not run (spec §0): Ruby's generate ran
 	// on every vertex when the host loaded the catalog, so only without it do
 	// native generators build their resources, judged like the catalog's own.
+	var nativeGenerateLogs []report.LogEntry
+	var nativeFailedToGenerate bool
 	if !ext.hostLoaded {
-		if loadGenerate(cat, registry, sc) {
+		var refused bool
+		nativeGenerateLogs, nativeFailedToGenerate, refused = loadGenerate(cat, registry, sc)
+		if refused {
 			return done(report.Status{CouldNotRun: true}), nil
 		}
 		rescrub()
@@ -304,6 +308,8 @@ func applyCatalog(raw []byte, o applyOptions) (report.Status, *report.Report) {
 	if ext.host != nil {
 		runlog.AddLogs(ctx, rep, ral.ConvertLogs(ext.load.GenerateLogs)...)
 	}
+	runlog.AddLogs(ctx, rep, nativeGenerateLogs...)
+	rep.FailedToGenerate = nativeFailedToGenerate
 	// transaction.rb:106, at info: only a verbose run's report holds it, as
 	// Puppet's report is a log destination at the run's level.
 	if o.level != "notice" && cat.Version != nil {

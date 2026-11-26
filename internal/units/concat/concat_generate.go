@@ -6,6 +6,7 @@ import (
 	"github.com/voxagent/voxagent/internal/units/file"
 
 	"github.com/voxagent/voxagent/internal/catalog"
+	"github.com/voxagent/voxagent/internal/ral"
 )
 
 // concatRelationships are Puppet::Type.relationship_params, the metaparameters
@@ -21,10 +22,10 @@ var concatRelationships = []string{"before", "notify", "require", "subscribe"}
 // marks, `file` and the Concat_file's tags, and the Concat_file's container.
 // Either way the Concat_file is ordered before it unless a relationship
 // already links the two.
-func (c ConcatFile) LoadGenerate(cat *catalog.Catalog, r catalog.Resource) (catalog.Generation, error) {
+func (c ConcatFile) LoadGenerate(cat *catalog.Catalog, r catalog.Resource) (ral.LoadGeneration, error) {
 	p, err := parseConcatFile(r)
 	if err != nil {
-		return catalog.Generation{}, err
+		return ral.LoadGeneration{}, err
 	}
 	var g catalog.Generation
 	cfRef := r.Ref()
@@ -75,11 +76,11 @@ func (c ConcatFile) LoadGenerate(cat *catalog.Catalog, r catalog.Resource) (cata
 	for _, rel := range concatRelationships {
 		if slices.Contains(concatRefs(r.Parameters[rel]), fileRef) ||
 			slices.Contains(concatRefs(file.Parameters[rel]), cfRef) {
-			return g, nil
+			return ral.LoadGeneration{Generation: g}, nil
 		}
 	}
 	g.Before = []catalog.Edge{{Source: cfRef, Target: fileRef}}
-	return g, nil
+	return ral.LoadGeneration{Generation: g}, nil
 }
 
 // concatFileRef is catalog.resource("File[path]"): the File titled path, else

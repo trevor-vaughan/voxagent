@@ -310,13 +310,7 @@ func (w *walk) visit(ref string) (deferred bool, err error) {
 
 // subject is catalog resource r, at ref, as the walk applies it.
 func (w *walk) subject(ref string, r catalog.Resource) subject {
-	// Ruby sources every log line for a resource at its full containment
-	// path -- "/Stage[main]/Main/Node[default]/File[x]" -- with the property
-	// appended for a property change. The leading slash and the containers
-	// are part of the value consumers match on, so the bare reference is a
-	// different string rather than a shorter spelling of the same one.
-	source := "/" + strings.Join(w.paths[ref], "/")
-	s := subject{ref: ref, display: ref, title: r.Title, r: r, path: w.paths[ref], source: source}
+	s := subject{ref: ref, display: ref, title: r.Title, r: r, path: w.paths[ref], source: pathSource(w.paths[ref])}
 	if display, ok := w.display[ref]; ok {
 		s.display, s.title = display, w.titles[ref]
 	}

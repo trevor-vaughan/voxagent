@@ -32,7 +32,7 @@ can be refused. `service` is bounded to `ensure`, `enable`, `hasstatus`,
 `hasrestart`, `start`, `stop`, `status`, `restart`, `name` and `provider`.
 
 Everything else — and every resource type other than `notify`, `file`, `exec`,
-`package` and `service`, and `user`, `group`, `concat_file`, `concat_fragment`, `sysctl`, `ssh_config`, `sshd_config`, `sshd_config_subsystem`, `augeas`, `cron`, `host`, `mount`, `sshkey` and `ssh_authorized_key` where they are native (below, and D-91) —
+`package` and `service`, and `user`, `group`, `concat_file`, `concat_fragment`, `sysctl`, `ssh_config`, `sshd_config`, `sshd_config_subsystem`, `augeas`, `cron`, `host`, `mount`, `sshkey`, `ssh_authorized_key` and `tidy` where they are native (below, and D-91) —
 is refused by the pre-flight check or handed to the extension host, not silently omitted,
 and the refusal covers the **whole catalog**: a partially applied node produces
 state-diff divergences that are artifacts of coverage rather than defects.
@@ -170,10 +170,19 @@ Task 25's SIMP run re-measured the host list from the gate's
 `runlevel`, `selinux_state`, `simp_file_line`, `svckill` and `tidy` (`tidy` is a
 core type, the other nine are module types).
 
+`tidy` is native there too (a core type, so there is no fingerprint to
+check): the SIMP gate fails if `tidy` is named in `applied via extension
+host`. The tidy slice's SIMP run (2026-11-26) re-measured the host list from
+those lines: 35 resources remain, all of module types: `ini_setting` 20,
+`anchor` and `reboot_notify` 4 each, `kernel_parameter` 2, and one each of
+`init_ulimit`, `runlevel`, `selinux_state`, `simp_file_line` and `svckill`.
+The catalog's one Tidy (`/etc/sssd/conf.d`, `recurse => true`, `matches =>
+'*_puppet_*.conf'`) is applied natively.
+
 Against the first count of 246,
-that is 210 fewer: 63 `sysctl`, 49 `ssh_config`, 36 `sshd_config`, 26 concat, 18
+that is 211 fewer: 63 `sysctl`, 49 `ssh_config`, 36 `sshd_config`, 26 concat, 18
 `augeas`, 7 `user` and `group`, 4 `cron`, 6 `host` and `mount`, 1
-`sshd_config_subsystem`.
+`sshd_config_subsystem`, 1 `tidy`.
 
 ## `user` and `group`
 
@@ -855,6 +864,83 @@ cases (inputs committed under `tests/spine/concat/cases/`; live, rerun and `--no
 backup case, and the 14 refusals; the extension gate holds the host path
 (every concat there is delegated); the SIMP gate applies its 26 concat resources
 natively. D-89, D-90, D-43, D-78 and D-84 are theirs.
+
+## `tidy`
+
+`tidy.Tidy` (`internal/units/tidy/tidy.go`, `tidy_params.go`,
+`tidy_generate.go`) reproduces openvox 8.34.0's `type/tidy.rb`, which is
+byte-identical to puppet 8.10.0's, as are the `file_serving/fileset.rb` and
+`transaction/additional_resource_generator.rb` it relies on. It is a core
+type, so its manifest lists no files to fingerprint and declares
+`unit.AnyPlatform`.
+
+- **Routing.** The tidy unit's `Route` (`internal/units/tidy/manifest.go`) is
+  asked once per run via `unit.RouteAll`, as every unit is. It is native unless
+  any Tidy hits one of `delegateReason`'s conditions (`tidy_params.go`): a
+  `path` (or title) that is not a String, is relative (Ruby's
+  `File.expand_path` would resolve it against the working directory or
+  `$HOME`) or starts with `//` (kept by `File.expand_path`, collapsed by
+  `filepath.Clean`); a `size` Ruby fails with a `NameError` whose text embeds
+  object addresses; a line break in a String `recurse`, `max_files`, `age`,
+  `size` or `type`, or in a `matches` element (Ruby's `^`/`$` are line
+  anchors; unmeasured); a non-String `matches` element; a rich value; or a value shape the parser does not port. The first
+  reason found delegates every Tidy. The unit requires `file`, whose provider
+  applies and confines the children.
+- **Parameters.** `parseParams` munges in Ruby's declaration order, and is
+  checked against a corpus Ruby generated (`testdata/munge.json`, written by
+  `testdata/munge.rb` through `munge.sh`, recording the openvox version and
+  `munge.rb`'s sha256).
+  A refusal is printed with Ruby's text through `rubyvalue.ParamFailure` or
+  `MungeFailure`, and stays native. `backup` is read by nothing: TY:240-245
+  replaces every value that is not a `Puppet::FileBucket::Dipper`, which no
+  catalog can carry, with `false`.
+- **Matching.** `matches` globs a basename with `internal/lib/rubyfnmatch`, a
+  port of `File.fnmatch` with `FNM_DOTMATCH | FNM_PATHNAME` (braces literal,
+  backslash escapes on), checked against a Ruby-generated corpus. Go's
+  `path.Match` differs in negation, escapes and classes.
+- **Generation.** `Tidy.LoadGenerate` (`tidy_generate.go`) is a
+  `ral.LoadGenerator` run by `loadGenerate` (`cmd/voxagent/loadgen.go`) at
+  load time, before the walk, where concat's is, and only when the host is not
+  loaded (with the host loaded, Ruby's `generate` already ran there). It
+  `lstat`s the path, walks it breadth-first as Fileset does (never through a
+  link), selects by `matches`, `age` (against the `type` time) and `size`, and
+  returns one `File` per selected path, sorted descending, with `ensure =>
+  absent`, `force => true`, `backup => false`, the Tidy's tags and
+  relationship metaparameters, and (with `rmdirs`) each directory requiring
+  its generated entries. It returns `DepthFirst`, so `PlaceBeforeGenerator`
+  puts the `File`s before the Tidy, and an edge from each `File` to the Tidy
+  unless a relationship already links them. The `Tidying N files` notice and
+  the debug and warning lines go to the report where the host's
+  `GenerateLogs` go.
+- **Failure.** An error Ruby raises out of `generate` (`max_files` exceeded,
+  a String `max_files`, an unreadable directory, a non-UTF-8 name) is logged
+  at `err` against the Tidy as `Failed to generate additional resources using
+  'generate': <message>`, sets `Failed`, which `applyCatalog` ORs into
+  `FailedToGenerate`, and generates nothing for that Tidy; the run carries on.
+- **The Tidy's own apply.** The type has no properties, so `Apply` changes
+  nothing and emits no event; the `File`s carry every `removed` event, through
+  native `file`.
+- **Confinement (D-104).** `file`'s `recursionChild` (`internal/units/file/file.go`)
+  treats a `File` generated from a Tidy as it treats a recursion child: it is
+  removed through an `os.Root` opened on the Tidy's cleaned path, so a
+  directory swapped for a symlink makes the child fail instead of deleting
+  through it. A child at the Tidy's own path stays on `osFS`, and the
+  host-generated children of a Tidy with an absolute path are confined too.
+  `apply-spine.md`'s D-104 row states the exact cases.
+
+Behaviour kept from Ruby that looks wrong (the parity contract): a multi-digit
+unitless `age` or `size` (`'10'`) is refused; an Integer `age` is refused and
+an Integer `size` delegates; `recurse => '010'` is depth 8; `max_files =>
+'5'` passes validation and fails every run's generation; `backup` has no
+effect; `rmdirs` with `force` removes a directory with entries that were not
+tidied; a non-UTF-8 name anywhere in the walk stops the whole Tidy.
+
+G5's tidy half (`tests/spine/tidy/g5.sh`) compares 14 measured cases (inputs
+under `tests/spine/tidy/cases/`; live, rerun and `--noop`) against Ruby, and the 5
+refusals; the extension gate's `tidy` fixture keeps the host path (the host
+loads that catalog, so Ruby generates and only the Tidy's own apply is
+native); the SIMP gate applies its one Tidy natively and fails if `tidy` is
+named in `applied via extension host`. D-104 is its divergence.
 
 ## `file` source, recurse and purge
 

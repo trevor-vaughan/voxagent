@@ -8,7 +8,7 @@ unit is, how units are laid out and routed, and how to add one. Go citations are
 ## What a unit is
 
 A unit is a Go package under `internal/units/<name>` that reproduces one Ruby origin: either Puppet itself (one unit per
-core type: `exec`, `file`, `group`, `notify`, `package`, `service`, `user`) or one Ruby module (`concat`, `cron_core`, `host_core`, `sshkeys_core`, `mount_core`, `augeas_core`,
+core type: `exec`, `file`, `group`, `notify`, `package`, `service`, `tidy`, `user`) or one Ruby module (`concat`, `cron_core`, `host_core`, `sshkeys_core`, `mount_core`, `augeas_core`,
 `augeasproviders_sysctl`, `augeasproviders_ssh`). `augeasproviders_core` is a library unit: it serves no type, and holds
 the run object, mixin and fingerprinted files its two dependents share. A unit supplies two things through
 `unit.Unit` (`internal/unit/unit.go`):
@@ -265,6 +265,13 @@ Each unit's remaining checks are its own, and every failure is a `Delegated` rea
   - a `Resources` purge of `mount`
   - value shapes (`rubyvalue.UnimplementedValue`)
   - then, when the catalog holds a `File`, every valid Mount's munged name a portable regular expression (`portablePattern`: Ruby compiles it into each `File`'s autobefore pattern). A Mount that fails validation is skipped in that last check: Ruby refuses it at catalog conversion, before compiling any pattern (`mount_core/manifest.go:Route`).
+- `tidy`: no fingerprint (a core type) and no platform check (`unit.AnyPlatform`). `delegateReason`
+  (`internal/units/tidy/tidy_params.go`) checks each Tidy in catalog order for a `path` (or title) that is not a String,
+  is relative or starts with `//`, a line break in a String `recurse`, `max_files`, `age`, `size` or `type` or in a
+  `matches` element, a non-String `matches`
+  element, a `size` Ruby fails with a `NameError`, a rich value (`rubyvalue.Rich`) and value shapes the parser does not
+  port; the first reason delegates every Tidy (`tidy/manifest.go:Route`). Ruby's own refusals stay native. The unit
+  requires `file`, whose provider applies and confines the `File`s its `LoadGenerate` adds (D-104).
 - `exec`, `file`, `notify`, `package`, `service`: native on every run.
 
 D-87, D-89, D-91, D-94 and D-98 in [apply-spine.md](apply-spine.md) say what is measured and why each condition delegates.

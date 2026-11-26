@@ -355,8 +355,20 @@ func (rfs rootFS) Contains(f *os.File) error {
 // error that is not fs.ErrNotExist: Apply reads that as "the parent does not
 // exist yet" under --noop and falls back to unconfined reads.
 //
+// Its Lstat finding nothing at dir, a component of dir that is not a
+// directory, or something at dir that is neither a directory nor a symlink is
+// a *noDirError. Anything the open itself finds is not: a directory swapped
+// for a link after the Lstat fails the open with ENOTDIR too.
+//
 // beforeDirOpen, when set by a test, runs after the Lstat: the swap window.
 var beforeDirOpen func(dir string)
+
+// noDirError is openDirNoFollow's error when its Lstat finds no directory at
+// dir and no symlink either. Its text is err's.
+type noDirError struct{ err error }
+
+func (e *noDirError) Error() string { return e.err.Error() }
+func (e *noDirError) Unwrap() error { return e.err }
 
 // procFdDir is where the opened directory is reached; a test points it
 // elsewhere to simulate a missing /proc.
@@ -364,6 +376,9 @@ var procFdDir = "/proc/self/fd"
 
 func openDirNoFollow(dir string) (*os.Root, error) {
 	before, err := os.Lstat(dir)
+	if errors.Is(err, fs.ErrNotExist) || errors.Is(err, syscall.ENOTDIR) {
+		return nil, &noDirError{err: err}
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -371,7 +386,7 @@ func openDirNoFollow(dir string) (*os.Root, error) {
 		return nil, fmt.Errorf("%s is a symlink; links is not implemented", dir)
 	}
 	if !before.IsDir() {
-		return nil, fmt.Errorf("%s is not a directory", dir)
+		return nil, &noDirError{err: fmt.Errorf("%s is not a directory", dir)}
 	}
 	if beforeDirOpen != nil {
 		beforeDirOpen(dir)
