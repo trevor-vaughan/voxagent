@@ -1,0 +1,643 @@
+internal/units/inifile/testdata/6.6.0/lib/puppet/type/ini_section.rb
+  s_324b42d9c67464::t_f545b127e3da16 1-58
+internal/units/inifile/testdata/6.5.0/lib/puppet/type/ini_subsetting.rb
+  s_324b42d9c67464::t_f545b127e3da16 1-130
+internal/units/inifile/testdata/6.6.0/lib/puppet/type/ini_subsetting.rb
+  s_324b42d9c67464::t_f545b127e3da16 1-130
+tests/spine/inifile/cases/refreshonly-only-notifier/files
+  s_324b42d9c67464::t_08f842a11a5b07 1-2
+internal/units/inifile/route_test.go
+  s_324b42d9c67464::t_76a902f18214c9 87-89
+  s_324b42d9c67464::t_d0b9d6b74cf3ac 1-5,7-71,73-86,90-321
+  s_324b42d9c67464::t_d7fea5314bc26d 6,72,322-356
+  s_324b42d9c67464::t_5db898ad1082fa 357-391
+docs/maintainers/apply-spine.md
+  s_324b42d9c67464::t_6fa118b043c66f 219
+tests/spine/inifile/cases/subsetting-absent-no-delete-if-empty/site.pp
+  s_324b42d9c67464::t_08f842a11a5b07 1
+tests/spine/inifile/cases/force-new-false/seed.sh
+  s_324b42d9c67464::t_08f842a11a5b07 1
+internal/units/sshkeys_core/sak_grammar.go
+  s_fd2e97a32cf55f::t_a8d025fc7bee5a 11
+  s_fd2e97a32cf55f::t_6ed88b5f3089e2 19,21-23,29,35
+internal/units/inifile/testdata/6.6.0/lib/puppet/provider/ini_section/ruby.rb
+  s_324b42d9c67464::t_f545b127e3da16 1-90
+internal/units/inifile/testdata/6.6.0/lib/puppet/util/external_iterator.rb
+  s_324b42d9c67464::t_f545b127e3da16 1-32
+internal/units/inifile/testdata/6.6.0/lib/puppet/util/setting_value.rb
+  s_324b42d9c67464::t_f545b127e3da16 1-186
+tests/spine/inifile/cases/subsetting-insert-types/seed.sh
+  s_324b42d9c67464::t_08f842a11a5b07 1
+internal/units/inifile/testdata/removal-6.6.0.json
+  s_324b42d9c67464::t_8cd6add261b372 1910-2131
+  s_324b42d9c67464::t_8c1ed34a0b17a9 1-1909,2132-2134
+tests/spine/inifile/cases/invalid-utf8/site.pp
+  s_324b42d9c67464::t_08f842a11a5b07 1-2
+internal/units/inifile/setting_value.go
+  s_324b42d9c67464::t_7f474e6c26caa0 82-89,180-182
+  s_324b42d9c67464::t_fad6d5a1107cd0 161-162,215,244
+  s_324b42d9c67464::t_a5994c2b485dfc 1-19,21-81,90-160,163-179,183-214,216-243,245-251
+  s_324b42d9c67464::t_dc6cbd01d5f26c 20
+tests/spine/inifile/cases/subsetting-create-change-remove/files
+  s_324b42d9c67464::t_08f842a11a5b07 1
+tests/spine/inifile/cases/subsetting-create-change-remove/site.pp
+  s_324b42d9c67464::t_08f842a11a5b07 1-3
+tests/spine/inifile/cases/subsetting-delete-if-empty-false-explicit/files
+  s_324b42d9c67464::t_08f842a11a5b07 1
+internal/units/inifile/testdata/README
+  s_324b42d9c67464::t_04906f2771b0c1 29-32
+  s_324b42d9c67464::t_f9495daa7a8234 18-21
+  s_3853a9af291808::t_f991f92e26a423 27
+  s_324b42d9c67464::t_6fa118b043c66f 33-37
+  s_324b42d9c67464::t_335d4beaec451f 22-26,28
+  s_324b42d9c67464::t_d56556045f063f 1-17
+tests/spine/inifile/cases/refreshonly-notifier/site.pp
+  s_324b42d9c67464::t_08f842a11a5b07 1-3
+internal/units/inifile/params.go
+  s_324b42d9c67464::t_0fa74d9bfea768 1-16,18-69,71-89,94-118,123-454,456-459
+  s_324b42d9c67464::t_61957f3b80b017 70
+  s_324b42d9c67464::t_f2980d8512e831 455
+  s_324b42d9c67464::t_4b4d13c8604bc9 17
+  s_324b42d9c67464::t_3dd4a180fca626 90-93,119-122
+tests/spine/inifile/cases/setting-absent/site.pp
+  s_324b42d9c67464::t_08f842a11a5b07 1
+internal/units/inifile/section_type.go
+  s_324b42d9c67464::t_84d3c42b93ca5e 1-139
+tests/spine/inifile/cases/section-insync/module
+  s_324b42d9c67464::t_08f842a11a5b07 1
+tests/spine/inifile/cases/subsetting-delete-if-empty-false-explicit/site.pp
+  s_324b42d9c67464::t_08f842a11a5b07 1
+tests/spine/inifile/cases/subsetting-650-create-change-remove/site.pp
+  s_324b42d9c67464::t_08f842a11a5b07 1-3
+tests/spine/inifile/cases/section-remove-nonempty-and-custom/module
+  s_324b42d9c67464::t_08f842a11a5b07 1
+tests/spine/inifile/cases/setting-sensitive-update/seed.sh
+  s_324b42d9c67464::t_08f842a11a5b07 1
+tests/spine/inifile/cases/subsetting-650-create-change-remove/files
+  s_324b42d9c67464::t_08f842a11a5b07 1
+internal/units/host_core/host_params.go
+  s_fd2e97a32cf55f::t_b8d525c3fec446 11
+  s_fd2e97a32cf55f::t_6ed88b5f3089e2 19,25-27
+tests/spine/inifile/cases/unreadable-chmod/seed.sh
+  s_324b42d9c67464::t_08f842a11a5b07 1
+docs/usage/resource-types.md
+  s_324b42d9c67464::t_81d46762bf799e 178,181-196,203-217
+  s_324b42d9c67464::t_d3b024bd679406 197-198
+  s_324b42d9c67464::t_ecaed9aff60988 179-180
+  s_324b42d9c67464::t_dc6cbd01d5f26c 199-202
+tests/spine/inifile/cases/two-settings-one-file/site.pp
+  s_324b42d9c67464::t_08f842a11a5b07 1-2
+tests/spine/inifile/cases/setting-sensitive/site.pp
+  s_324b42d9c67464::t_08f842a11a5b07 1
+tests/spine/inifile/cases/setting-sensitive/files
+  s_324b42d9c67464::t_08f842a11a5b07 1
+tests/spine/inifile/cases/section-create/files
+  s_324b42d9c67464::t_08f842a11a5b07 1
+tests/spine/inifile/cases/two-settings-one-file/files
+  s_324b42d9c67464::t_08f842a11a5b07 1
+tests/spine/inifile/cases/d105-unpatched-insync/site.pp
+  s_324b42d9c67464::t_08f842a11a5b07 1-2
+internal/units/inifile/testdata/munge-6.5.0.json
+  s_324b42d9c67464::t_a50a49fe265a54 1-13227
+tests/spine/inifile/cases/subsetting-quote-char/seed.sh
+  s_324b42d9c67464::t_08f842a11a5b07 1
+tests/spine/inifile/cases/unwritable-ro-mount/site.pp
+  s_324b42d9c67464::t_08f842a11a5b07 1-2
+tests/spine/inifile/cases/setting-absent-insync/files
+  s_324b42d9c67464::t_08f842a11a5b07 1-2
+internal/units/inifile/testdata/subsetting-6.6.0.json
+  s_324b42d9c67464::t_9ed9f8c560aba0 911-1107
+  s_324b42d9c67464::t_378f572d074397 1-910,1108-2581,2611-3120,3150-5119
+  s_324b42d9c67464::t_474b52c35dce98 2582-2610,3121-3149
+tests/spine/inifile/cases/subsetting-quote-char/files
+  s_324b42d9c67464::t_08f842a11a5b07 1
+tests/spine/inifile/cases/subsetting-650-create-change-remove/module
+  s_324b42d9c67464::t_08f842a11a5b07 1
+internal/units/inifile/testdata/subsetting-6.5.0.json
+  s_324b42d9c67464::t_9ed9f8c560aba0 911-1107
+  s_324b42d9c67464::t_378f572d074397 1-910,1108-2581,2611-3120,3150-5119
+  s_324b42d9c67464::t_474b52c35dce98 2582-2610,3121-3149
+tests/spine/inifile/cases/unreadable-chmod/files
+  s_324b42d9c67464::t_08f842a11a5b07 1
+tests/spine/inifile/cases/setting-650-create-update/module
+  s_324b42d9c67464::t_08f842a11a5b07 1
+tests/spine/inifile/cases/section-create/module
+  s_324b42d9c67464::t_08f842a11a5b07 1
+internal/units/inifile/setting_value_test.go
+  s_324b42d9c67464::t_c659f18acd40d5 1-177,179-182,184-199
+  s_324b42d9c67464::t_fad6d5a1107cd0 178
+  s_324b42d9c67464::t_64914d89c37dad 183
+internal/units/inifile/params_test.go
+  s_324b42d9c67464::t_3dd4a180fca626 175,282-284
+  s_324b42d9c67464::t_b0f222062aab11 280-281,285-286,288-302,304-306,313,320,348-365,367,370-374,379-385,403
+  s_324b42d9c67464::t_c319ac772421b9 413-484,486-506
+  s_324b42d9c67464::t_cdc596d3c19a03 1-174,176-279,287,303,307-312,314-319,321-347,366,368-369,375-378,386-402,404-412
+  s_3853a9af291808::t_2c2335b29a98f4 485
+tests/spine/inifile/cases/refreshonly-absent-missing-section/seed.sh
+  s_324b42d9c67464::t_08f842a11a5b07 1
+internal/units/inifile/testdata/6.5.0/lib/puppet/provider/ini_subsetting/ruby.rb
+  s_324b42d9c67464::t_f545b127e3da16 1-96
+tests/spine/inifile/cases/subsetting-delete-if-empty/seed.sh
+  s_324b42d9c67464::t_08f842a11a5b07 1
+internal/units/inifile/testdata/gen/munge.rb
+  s_324b42d9c67464::t_38daf93d536dc7 153-155
+  s_324b42d9c67464::t_a50a49fe265a54 100
+  s_324b42d9c67464::t_cdc596d3c19a03 96
+  s_324b42d9c67464::t_57983986ea6988 1-81,84,86-88,90,92-95,97-99,101-104,106-120,122-131,135-147,150-152,156-160
+  s_324b42d9c67464::t_e1ca774d5fd8e9 82-83,85,89,91,105,121,132-134,148-149
+internal/units/sshkeys_core/sshkey_grammar.go
+  s_fd2e97a32cf55f::t_e4598d88e73f37 10
+  s_fd2e97a32cf55f::t_6ed88b5f3089e2 17,20
+tests/spine/inifile/cases/setting-sensitive-update/site.pp
+  s_324b42d9c67464::t_08f842a11a5b07 1-2
+tests/spine/inifile/cases/setting-custom-syntax/site.pp
+  s_324b42d9c67464::t_08f842a11a5b07 1-2
+internal/units/sshkeys_core/sak_file.go
+  s_fd2e97a32cf55f::t_2a964580212000 15,68,86
+AGENTS.md
+  s_fd2e97a32cf55f::t_a14ca6e77267c8 1-10
+  s_fd2e97a32cf55f::t_ea087b3b1698ea 11-16
+internal/lib/rubyvalue/rubyvalue.go
+  s_fd2e97a32cf55f::t_2a1675ffcca771 512
+  s_fd2e97a32cf55f::t_2a964580212000 12,496-511
+tests/spine/inifile/cases/section-insync/seed.sh
+  s_324b42d9c67464::t_08f842a11a5b07 1
+tests/spine/inifile/cases/missing-parent/site.pp
+  s_324b42d9c67464::t_08f842a11a5b07 1
+tests/spine/inifile/cases/d105-unpatched-outofsync/seed.sh
+  s_324b42d9c67464::t_08f842a11a5b07 1
+tests/spine/inifile/cases/subsetting-empty-value-exists/files
+  s_324b42d9c67464::t_08f842a11a5b07 1
+internal/lib/rubyregexp/rubyregexptest/rubyregexptest_test.go
+  s_fd2e97a32cf55f::t_c99d5904275da7 1
+tests/spine/inifile/cases/refreshonly-absent-missing-file/site.pp
+  s_324b42d9c67464::t_08f842a11a5b07 1-2
+internal/units/inifile/writepath_test.go
+  s_324b42d9c67464::t_b1d1745eadacb2 1-178
+tests/spine/inifile/cases/setting-create-new-file/site.pp
+  s_324b42d9c67464::t_08f842a11a5b07 1
+tests/spine/inifile/cases/section-remove-nonempty-and-custom/files
+  s_324b42d9c67464::t_08f842a11a5b07 1
+internal/units/inifile/testdata/6.6.0/lib/puppet/provider/ini_setting/ruby.rb
+  s_324b42d9c67464::t_f545b127e3da16 1-161
+tests/spine/inifile/cases/refreshonly-absent-missing-section/site.pp
+  s_324b42d9c67464::t_08f842a11a5b07 1-2
+tests/spine/inifile/cases/invalid-utf8/files
+  s_324b42d9c67464::t_08f842a11a5b07 1-2
+tests/spine/inifile/cases/setting-commented-insert/seed.sh
+  s_324b42d9c67464::t_08f842a11a5b07 1
+tests/spine/inifile/cases/setting-commented-insert/files
+  s_324b42d9c67464::t_08f842a11a5b07 1
+internal/units/tidy/tidy_generate.go
+  s_fd2e97a32cf55f::t_2a964580212000 220,299,313,318,324
+internal/units/inifile/testdata/removal-6.6.1.json
+  s_324b42d9c67464::t_8c1ed34a0b17a9 1-1909,2132-2134
+  s_324b42d9c67464::t_74af90e2294cf5 1910-2131
+internal/units/inifile/testdata/gen/edits_harness.rb
+  s_324b42d9c67464::t_3a00f6d4a034fc 1-117,121-136
+  s_324b42d9c67464::t_3ff5a5ee3536ee 118-120
+internal/units/inifile/testdata/section-6.6.1-pr581.json
+  s_324b42d9c67464::t_6e3e40053f5676 1-3792
+internal/lib/parsedfile/vectors_test.go
+  s_fd2e97a32cf55f::t_a13ade6af17d5a 15-16
+  s_fd2e97a32cf55f::t_6ed88b5f3089e2 181,187,192,194,196,201
+tests/spine/inifile/cases/refreshonly-absent-present/files
+  s_324b42d9c67464::t_08f842a11a5b07 1-2
+internal/units/inifile/manifest.go
+  s_324b42d9c67464::t_d56556045f063f 1-16,19-24,26-71
+  s_324b42d9c67464::t_8e17b7341eaa23 17-18,25
+internal/units/inifile/setting_test.go
+  s_324b42d9c67464::t_8bbcde597e9a14 342,497-501
+  s_324b42d9c67464::t_a2494fa7d4277f 192,197-199
+  s_324b42d9c67464::t_8c5930e9b89605 67,87,293,411
+  s_324b42d9c67464::t_db78bf6300e1ee 473,481
+  s_3853a9af291808::t_881b07f173d34b 502-526
+  s_324b42d9c67464::t_87c030ece9b37e 188-191,193-196,200-211
+  s_3853a9af291808::t_2c2335b29a98f4 412-418
+  s_324b42d9c67464::t_ac7d9801c02a4d 1-66,68-86,88-187,212-292,294-341,343-410,419-472,474-480,482-496
+tests/spine/inifile/cases/setting-sensitive-update/files
+  s_324b42d9c67464::t_08f842a11a5b07 1
+tests/spine/inifile/cases/refreshonly-notifier/seed.sh
+  s_324b42d9c67464::t_08f842a11a5b07 1
+tests/spine/inifile/cases/setting-custom-syntax/files
+  s_324b42d9c67464::t_08f842a11a5b07 1
+internal/units/inifile/testdata/6.6.1/lib/puppet/provider/ini_subsetting/ruby.rb
+  s_324b42d9c67464::t_f545b127e3da16 1-96
+tests/spine/inifile/cases/refreshonly-absent-present/site.pp
+  s_324b42d9c67464::t_08f842a11a5b07 1-2
+tests/spine/inifile/cases/refreshonly-absent-present/seed.sh
+  s_324b42d9c67464::t_08f842a11a5b07 1
+tests/spine/inifile/cases/subsetting-exact-match/files
+  s_324b42d9c67464::t_08f842a11a5b07 1
+tests/spine/inifile/cases/subsetting-empty-value-exists/seed.sh
+  s_324b42d9c67464::t_08f842a11a5b07 1
+internal/units/inifile/testdata/6.6.1/lib/puppet/provider/ini_section/ruby.rb
+  s_324b42d9c67464::t_f545b127e3da16 1-91
+tests/spine/inifile/cases/subsetting-exact-match/seed.sh
+  s_324b42d9c67464::t_08f842a11a5b07 1
+tests/spine/inifile/cases/setting-section-only/seed.sh
+  s_324b42d9c67464::t_08f842a11a5b07 1
+internal/units/inifile/subsetting.go
+  s_324b42d9c67464::t_7b75ac13624cd4 173-180,182-183
+  s_324b42d9c67464::t_8c5930e9b89605 91
+  s_324b42d9c67464::t_f62950bf500530 1-32,36-90,92-145,147-150,152-172,181,184-203
+  s_324b42d9c67464::t_f344a0273d0ef8 33-35
+  s_324b42d9c67464::t_6cbb962f1cfb31 146
+  s_3853a9af291808::t_f991f92e26a423 151
+tests/spine/simp/lib.sh
+  s_324b42d9c67464::t_679472a6346f52 264-303
+internal/units/inifile/testdata/munge-6.6.0.json
+  s_324b42d9c67464::t_cdc596d3c19a03 14212-14351
+  s_324b42d9c67464::t_a50a49fe265a54 1-14211,14352-14397
+tests/spine/inifile/cases/unwritable-dir-at-path/site.pp
+  s_324b42d9c67464::t_08f842a11a5b07 1
+internal/units/inifile/testdata/gen/section.rb
+  s_324b42d9c67464::t_42fb7164aef564 1-17,19-26,32-158
+  s_324b42d9c67464::t_6e3e40053f5676 18,27-31
+internal/units/inifile/testdata/edits-6.6.1.json
+  s_324b42d9c67464::t_6321f38a657671 11026-11187
+  s_324b42d9c67464::t_5c5d95a470d1c7 1-390,392-437,439-4216,4218-4262,4264-4398,4400-4442,4444-6266,6949-11025,11188-15625,15627-15670,15672-18572
+  s_324b42d9c67464::t_7f054695e4c4db 6267-6948
+  s_324b42d9c67464::t_3ff5a5ee3536ee 391,438,4217,4263,4399,4443,15626,15671
+tests/spine/inifile/cases/setting-absent/files
+  s_324b42d9c67464::t_08f842a11a5b07 1
+tests/spine/inifile/cases/setting-absent/seed.sh
+  s_324b42d9c67464::t_08f842a11a5b07 1
+tests/spine/inifile/cases/subsetting-absent-no-delete-if-empty/seed.sh
+  s_324b42d9c67464::t_08f842a11a5b07 1
+tests/spine/inifile/581-lib.diff
+  s_324b42d9c67464::t_c66e28129e5836 1-18
+internal/units/inifile/section_type_test.go
+  s_324b42d9c67464::t_db78bf6300e1ee 1-71,73-260,267,270-293
+  s_324b42d9c67464::t_84d3c42b93ca5e 72
+  s_3853a9af291808::t_2c2335b29a98f4 261-266,268-269
+tests/spine/inifile/cases/section-create/seed.sh
+  s_324b42d9c67464::t_08f842a11a5b07 1
+internal/units/cron_core/source_scan_test.go
+  s_fd2e97a32cf55f::t_6ed88b5f3089e2 6,10,12
+tests/spine/inifile/cases/setting-commented-insert/site.pp
+  s_324b42d9c67464::t_08f842a11a5b07 1
+tests/spine/report-diff-container.sh
+  s_324b42d9c67464::t_37677fcdbbd20d 46-50
+  s_324b42d9c67464::t_d128cbd2316e00 1051
+  s_324b42d9c67464::t_5afbcbe3de922e 253-254,309,1048-1050
+tests/spine/inifile/g5.sh
+  s_324b42d9c67464::t_dc6cbd01d5f26c 158
+  s_324b42d9c67464::t_5afbcbe3de922e 1-157,159-303,305-351
+  s_324b42d9c67464::t_37677fcdbbd20d 304
+internal/units/inifile/section.go
+  s_324b42d9c67464::t_0095e4dbcdb170 1-70,72-75,77-78,80-82,84-91,93-97,99-118,120-125,127-133,135-141,143-146,148-149,151-160
+  s_324b42d9c67464::t_f55ae43c8a50d3 71,76,79,83,92,98,119,126,134,142,150
+  s_324b42d9c67464::t_16c2d5899b57f6 147
+internal/lib/parsedfile/match_test.go
+  s_fd2e97a32cf55f::t_6ed88b5f3089e2 8,36
+internal/units/inifile/testdata/6.6.1/lib/puppet/util/external_iterator.rb
+  s_324b42d9c67464::t_f545b127e3da16 1-32
+tests/spine/inifile/cases/section-insync/files
+  s_324b42d9c67464::t_08f842a11a5b07 1
+internal/units/cron_core/cron_grammar.go
+  s_fd2e97a32cf55f::t_6ed88b5f3089e2 38,40-46,48
+  s_fd2e97a32cf55f::t_f38f50e4353086 16
+  s_fd2e97a32cf55f::t_2a964580212000 17,353,358
+internal/units/inifile/testdata/6.6.1/lib/puppet/type/ini_subsetting.rb
+  s_324b42d9c67464::t_f545b127e3da16 1-130
+internal/units/inifile/testdata/6.6.1/lib/puppet/util/ini_file/section.rb
+  s_324b42d9c67464::t_f545b127e3da16 1-105
+tests/spine/inifile/cases/section-insync/site.pp
+  s_324b42d9c67464::t_08f842a11a5b07 1-2
+tests/spine/inifile/cases/setting-650-create-update/files
+  s_324b42d9c67464::t_08f842a11a5b07 1
+internal/units/inifile/setting.go
+  s_324b42d9c67464::t_a3b48eebc16309 192-193,198
+  s_324b42d9c67464::t_6cbb962f1cfb31 21-22,61,89,187-188,222,294
+  s_3853a9af291808::t_f991f92e26a423 160
+  s_324b42d9c67464::t_f2980d8512e831 289
+  s_324b42d9c67464::t_4b4d13c8604bc9 194-196,199
+  s_324b42d9c67464::t_a2494fa7d4277f 224-229
+  s_324b42d9c67464::t_208c893994075a 1-20,25-60,62-88,90-159,161-178,185-186,189-191,197,200-221,223,230-288,290-293,295-340
+  s_324b42d9c67464::t_f35b24f3e452fe 23-24
+  s_324b42d9c67464::t_7b75ac13624cd4 179-184
+tests/spine/inifile/cases/setting-section-only/site.pp
+  s_324b42d9c67464::t_08f842a11a5b07 1-2
+internal/units/inifile/testdata/6.5.0/lib/puppet/util/setting_value.rb
+  s_324b42d9c67464::t_f545b127e3da16 1-186
+tests/spine/inifile/cases/unwritable-dir-at-path/seed.sh
+  s_324b42d9c67464::t_08f842a11a5b07 1
+internal/lib/rubyvalue/errno_test.go
+  s_fd2e97a32cf55f::t_f452685cce13b3 1-33
+tests/spine/inifile/cases/unwritable-ro-mount/rodir/m.ini
+  s_324b42d9c67464::t_08f842a11a5b07 1-2
+tests/spine/inifile/cases/subsetting-absent-no-delete-if-empty/files
+  s_324b42d9c67464::t_08f842a11a5b07 1
+tests/spine/inifile/cases/subsetting-delete-if-empty-false-explicit/seed.sh
+  s_324b42d9c67464::t_08f842a11a5b07 1
+internal/units/inifile/ini_file.go
+  s_324b42d9c67464::t_7f474e6c26caa0 166,195-202
+  s_324b42d9c67464::t_dc6cbd01d5f26c 238
+  s_324b42d9c67464::t_ee8fd12c7b6b87 521,523-526,538
+  s_324b42d9c67464::t_407b0b1a4958ce 173-174,362-363
+  s_3853a9af291808::t_f991f92e26a423 19,285-287,289,310
+  s_324b42d9c67464::t_153c2e8bada493 167-168,299-301,465-470
+  s_324b42d9c67464::t_558d86924ea339 619
+  s_324b42d9c67464::t_d270b581f40a3c 203-204
+  s_324b42d9c67464::t_6ccbf8c31dba33 1-18,20-165,169-172,175-194,205-237,239-284,288,290-298,302-309,311-361,364-464,471-520,522,527-537,539-618,620-712
+docs/maintainers/gate-evidence.md
+  s_324b42d9c67464::t_a7c490ceaf0edd 538-542
+  s_324b42d9c67464::t_b7244e8889cf4e 535-537,543,812-836
+  s_324b42d9c67464::t_63ad75ef917cd4 837
+tests/spine/inifile/cases/setting-update/site.pp
+  s_324b42d9c67464::t_08f842a11a5b07 1
+tests/spine/inifile/cases/setting-650-create-update/seed.sh
+  s_324b42d9c67464::t_08f842a11a5b07 1
+tests/spine/inifile/cases/setting-update/files
+  s_324b42d9c67464::t_08f842a11a5b07 1
+tests/spine/inifile/cases/section-remove/site.pp
+  s_324b42d9c67464::t_08f842a11a5b07 1
+tests/spine/inifile/cases/unwritable-ro-mount/files
+  s_324b42d9c67464::t_08f842a11a5b07 1-2
+tests/spine/inifile/cases/subsetting-empty-value-exists/site.pp
+  s_324b42d9c67464::t_08f842a11a5b07 1
+tests/spine/inifile/cases/refreshonly-notifier/files
+  s_324b42d9c67464::t_08f842a11a5b07 1
+internal/units/inifile/testdata/gen/gen.sh
+  s_324b42d9c67464::t_57983986ea6988 1-7,9-27,29,31-38,40-42
+  s_324b42d9c67464::t_3a00f6d4a034fc 39
+  s_324b42d9c67464::t_6e3e40053f5676 8,28,30,43
+tests/spine/inifile/cases/setting-absent-insync/site.pp
+  s_324b42d9c67464::t_08f842a11a5b07 1-2
+tests/spine/inifile/cases/subsetting-650-create-change-remove/seed.sh
+  s_324b42d9c67464::t_08f842a11a5b07 1
+tests/spine/inifile/cases/section-remove/files
+  s_324b42d9c67464::t_08f842a11a5b07 1
+cmd/voxagent/testdata/units.golden.json
+  s_324b42d9c67464::t_1af811894eda5c 516-518
+  s_324b42d9c67464::t_35d2b3292ddc85 500
+  s_324b42d9c67464::t_fea448064f83d9 501-515,519-720
+internal/units/inifile/subsetting_test.go
+  s_324b42d9c67464::t_89a7c519bef2f7 5-6,8,93-101,125-139
+  s_3853a9af291808::t_2c2335b29a98f4 109-111
+  s_324b42d9c67464::t_ac7d9801c02a4d 1-4,7,9-92,102-106,112-124,140-144
+  s_324b42d9c67464::t_8987c565d0d730 107-108
+internal/lib/rubyregexp/rubyregexp_test.go
+  s_fd2e97a32cf55f::t_3933393e17951d 1-22
+NOTICE
+  s_324b42d9c67464::t_264fb6e14f1a23 21-29
+internal/units/inifile/testdata/subsetting-6.6.1.json
+  s_324b42d9c67464::t_378f572d074397 1-910,1108-2581,2611-3120,3150-5119
+  s_324b42d9c67464::t_9ed9f8c560aba0 911-1107
+  s_324b42d9c67464::t_474b52c35dce98 2582-2610,3121-3149
+tests/spine/inifile/cases/subsetting-sensitive/site.pp
+  s_324b42d9c67464::t_08f842a11a5b07 1
+tests/spine/inifile/cases/setting-duplicate-keys/seed.sh
+  s_324b42d9c67464::t_08f842a11a5b07 1
+internal/units/mount_core/mount_params.go
+  s_fd2e97a32cf55f::t_6ed88b5f3089e2 21,23
+  s_fd2e97a32cf55f::t_5f2ace80946d0f 13
+tests/spine/inifile/cases/setting-duplicate-keys/files
+  s_324b42d9c67464::t_08f842a11a5b07 1
+internal/lib/parsedfile/filetype.go
+  s_fd2e97a32cf55f::t_2a964580212000 18,223,278,288,290,292,296
+internal/units/inifile/testdata/6.5.0/lib/puppet/type/ini_setting.rb
+  s_324b42d9c67464::t_f545b127e3da16 1-154
+internal/units/inifile/testdata/6.6.1/lib/puppet/provider/ini_setting/ruby.rb
+  s_324b42d9c67464::t_f545b127e3da16 1-162
+tests/spine/inifile/cases/section-remove-nonempty-and-custom/seed.sh
+  s_324b42d9c67464::t_08f842a11a5b07 1
+tests/spine/inifile/cases/force-new-false/files
+  s_324b42d9c67464::t_08f842a11a5b07 1
+internal/units/inifile/testdata/edits-6.6.0.json
+  s_324b42d9c67464::t_6321f38a657671 11026-11187
+  s_324b42d9c67464::t_5c5d95a470d1c7 1-390,392-437,439-4216,4218-4262,4264-4398,4400-4442,4444-6266,6949-11025,11188-15625,15627-15670,15672-18572
+  s_324b42d9c67464::t_3ff5a5ee3536ee 391,438,4217,4263,4399,4443,15626,15671
+  s_324b42d9c67464::t_50f5f9d3958853 6267-6948
+tests/spine/inifile/cases/section-remove/seed.sh
+  s_324b42d9c67464::t_08f842a11a5b07 1
+tests/spine/inifile/cases/subsetting-insert-types/files
+  s_324b42d9c67464::t_08f842a11a5b07 1
+internal/units/inifile/testdata/6.6.0/lib/puppet/type/ini_setting.rb
+  s_324b42d9c67464::t_f545b127e3da16 1-154
+tests/spine/inifile/cases/setting-650-create-update/site.pp
+  s_324b42d9c67464::t_08f842a11a5b07 1-3
+tests/spine/inifile/cases/d105-unpatched-insync/files
+  s_324b42d9c67464::t_08f842a11a5b07 1
+tests/spine/inifile/cases/setting-utf8-valid/files
+  s_324b42d9c67464::t_08f842a11a5b07 1-2
+docs/maintainers/not-implemented.md
+  s_324b42d9c67464::t_d5afc20e63c34a 35,182-183,187-188,190,192,952-985
+  s_fd2e97a32cf55f::t_cce96905e741de 313
+  s_fd2e97a32cf55f::t_b407ff04971485 636
+  s_324b42d9c67464::t_a6beab2ccf199a 184-186
+  s_324b42d9c67464::t_e70436545d8e5b 986
+internal/units/inifile/testdata/6.5.0/lib/puppet/util/ini_file.rb
+  s_324b42d9c67464::t_f545b127e3da16 1-351
+internal/units/inifile/testdata/6.5.0/lib/puppet/util/external_iterator.rb
+  s_324b42d9c67464::t_f545b127e3da16 1-32
+internal/units/inifile/manifest_test.go
+  s_324b42d9c67464::t_83ea79fec3144f 1-78,80-104
+  s_3853a9af291808::t_2c2335b29a98f4 79
+internal/units/inifile/testdata/6.6.1/lib/puppet/util/setting_value.rb
+  s_324b42d9c67464::t_f545b127e3da16 1-186
+tests/spine/inifile/cases/setting-duplicate-keys/site.pp
+  s_324b42d9c67464::t_08f842a11a5b07 1
+fleet/bin/vendor.sh
+  s_324b42d9c67464::t_4da4e36160b95f 112
+tests/spine/inifile/cases/setting-section-only/files
+  s_324b42d9c67464::t_08f842a11a5b07 1-2
+tests/spine/report-diff-simp.sh
+  s_93fd74cc4d8df9::t_e5a1a01740dbdc 30-33,232-234,419-427
+tests/spine/inifile/cases/section-remove-nonempty-and-custom/site.pp
+  s_324b42d9c67464::t_08f842a11a5b07 1-2
+internal/lib/rubyregexp/rubyregexptest/rubyregexptest.go
+  s_fd2e97a32cf55f::t_c99d5904275da7 1-3,69
+internal/units/sshkeys_core/sshkey_params.go
+  s_fd2e97a32cf55f::t_2266f7e13b6de4 11
+  s_fd2e97a32cf55f::t_6ed88b5f3089e2 23,25
+tests/spine/inifile/cases/d105-unpatched-outofsync/site.pp
+  s_324b42d9c67464::t_08f842a11a5b07 1
+internal/units/inifile/testdata/gen/edits.rb
+  s_324b42d9c67464::t_6321f38a657671 137-138
+  s_324b42d9c67464::t_53d0c55e02bc47 1-2,5-6,8-87,97-136,139-224
+  s_324b42d9c67464::t_3a00f6d4a034fc 3-4,7,225
+  s_324b42d9c67464::t_24eeaa0d04932b 88-96
+internal/lib/rubyregexp/rubyregexp.go
+  s_fd2e97a32cf55f::t_89e24a6aea48aa 1-11
+internal/units/sshkeys_core/source_scan_test.go
+  s_fd2e97a32cf55f::t_6ed88b5f3089e2 6,10,12
+internal/units/units_test.go
+  s_324b42d9c67464::t_9d21d0e3180b4b 186
+  s_324b42d9c67464::t_6e4530a645f98e 184-185,244-247
+tests/spine/inifile/cases/d105-unpatched-outofsync/files
+  s_324b42d9c67464::t_08f842a11a5b07 1
+tests/spine/inifile/cases/setting-create-new-file/files
+  s_324b42d9c67464::t_08f842a11a5b07 1
+tests/spine/inifile/cases/subsetting-sensitive/files
+  s_324b42d9c67464::t_08f842a11a5b07 1
+tests/spine/allowlist.json
+  s_324b42d9c67464::t_ce7960c8d7b475 78,85,92-106,175-177
+internal/units/inifile/testdata/munge-6.6.1.json
+  s_324b42d9c67464::t_e1ca774d5fd8e9 259-488,1016-1017,1024,1032-1033,1040,1048-1049,1074,1116-1118,1143,1147,1185,1187,1212,1254,1256,1281,1285,1323,1325-1410,1478-1479,1548,1615,1617,1646,1650,1684,1686,1719,1753,1755,1762-1831,1838-1886,1895,1902-1904,1911,1918-1939,1944-1948,1957,1964-1966,2033-2067,2100,2104,2134,2136-2152,2185,2219,2221-2237,2270,2274,2304,2306,2339,2343,2373-2375,2382,2389-2391,2398,2405-2407,2414,2421-2465,2506,2532-2534,2571,2575,2601,2603,2644,2670-2672,2685,2709,2739-2741,2748-2757,2759-2765,2771-2773,2786,2810,2840-2842,2849-2972,2993,3019-3021,3034,3062,3088,3090,3103,3131,3158-3159,3176,3233-3234,3251,3308-3309,3326,3383-3384,3401,3458-3459,3476,3533-3534,3549-3552,3608-3609,3626,3683-3684,3697-3703,3735,3757,3772-3778,3810,3832,3834,3847-3853,3889,3907,3909,3922-3928,3964,3982-3993,4006-4016,4056,4070-4074,4087-4090,4130,4144-4163,4176-4194,4234,4248-4254,4261-4262,4268-4356,4365-4375,4418,4429,4431,4476,4487,4498,4500,4545,4556,4567,4569,4618,4625,4636-4638,4687,4694,4705-4707,4760,4763,4774-4776,4829,4832,4843,4845,4898,4901,4913-4914,4970-4971,4983-4984,5040-5041,5052-5054,5110-5111,5114,5122-5124,5180-5181,5184,5192,5194,5250-5251,5254,5262-5264,5320-5321,5324,5332-5334,5390-5391,5394,5402-5404,5460-5461,5464,5472,5474,5481-5535,5542,5544,5551-5605,5612,5614,5618,5627,5670-5671,5682,5684,5688,5697,5740-5741,5752-5754,5758,5767,5810-5811,5822-6816,6818-7464,7466-7700,7704-7782,7786,7790,7793-7856,7860,7862,7864-7942,7946,7966-7969,7971,7973-7975,7977-7980,7993,7995,7997-7999,8001-8003,8005,8007-8010,8016,8018,8049,8096,8098,8127,8174,8176,8186,8205,8252-8254,8275,8282-8283,8330,8332,8365,8408,8410,8431,8443,8486,8488,8513,8525,8564,8566,8591,8642-8644,8668-8669,8720,8722-8754,8783,8795,8830,8832-8848,8877,8889,8924,8926-8942,8971,8983,9018-9020,9048-9049,9061,9096-9188,9221,9264-9266,9299,9311,9342,9344,9381,9420,9422,9467,9492-9500,9502-9508,9514,9516-9532,9577,9608,9610,9617,9624,9626,9633,9640,9642-9720,9761,9769,9796,9839,9847,9874,9876,9952-9954,9999,10007,10030,10032,10085,10102-10126,10128-10134,10140,10142-10158,10203,10211,10234,10236,10243,10250-10252,10259,10266-10305,10350,10362,10381-10383,10432,10459,10461,10510,10518,10537,10539,10615,10617-10697,10710-10711,10751,10774,10776,10789-10790,10830,10853,10855,10868-10869,10909,10932,10947-10948,10992,11011-11013,11026-11027,11090-11092,11105-11106,11150,11169-11171,11184-11185,11249-11255,11269,11333-11343,11357,11421-11424,11437,11501-11506,11519,11582-11584,11597,11645,11660-11662,11675,11738-11740,11747-11810,11818,11879,11896,11957,11974-12084,12145,12148-12149,12161,12163,12224,12227-12228,12240-12242,12303,12306-12307,12320-12321,12385-12386,12399-12400,12464-12465,12478-12484,12548-12554,13222-13337,13339-13395,13397-13403,13409-13421,13430,13459-13487,13496,13524,13526,13536,13544,13564,13566,13573,13580,13589,13598,13616,13638,13653-13654,13661-13677,13685-13705,13707,13725,13745-13747,13754,13761-13763,13770,13779,13801,13819,13826,13835,13857,13875,13882,13891,13913,13931,13938-13963,13979-13994,14032-14052
+  s_324b42d9c67464::t_57983986ea6988 1-258,489-1015,1018-1023,1025-1031,1034-1039,1041-1047,1050-1073,1075-1115,1119-1142,1144-1146,1148-1184,1186,1188-1211,1213-1253,1255,1257-1280,1282-1284,1286-1322,1324,1411-1477,1480-1547,1549-1614,1616,1618-1645,1647-1649,1651-1683,1685,1687-1718,1720-1752,1754,1756-1761,1832-1837,1887-1894,1896-1901,1905-1910,1912-1917,1940-1943,1949-1956,1958-1963,1967-2032,2068-2099,2101-2103,2105-2133,2135,2153-2184,2186-2218,2220,2238-2269,2271-2273,2275-2303,2305,2307-2338,2340-2342,2344-2372,2376-2381,2383-2388,2392-2397,2399-2404,2408-2413,2415-2420,2466-2505,2507-2531,2535-2570,2572-2574,2576-2600,2602,2604-2643,2645-2669,2673-2684,2686-2708,2710-2738,2742-2747,2758,2766-2770,2774-2785,2787-2809,2811-2839,2843-2848,2973-2992,2994-3018,3022-3033,3035-3061,3063-3087,3089,3091-3102,3104-3130,3132-3157,3160-3175,3177-3232,3235-3250,3252-3307,3310-3325,3327-3382,3385-3400,3402-3457,3460-3475,3477-3532,3535-3548,3553-3607,3610-3625,3627-3682,3685-3696,3704-3734,3736-3756,3758-3771,3779-3809,3811-3831,3833,3835-3846,3854-3888,3890-3906,3908,3910-3921,3929-3963,3965-3981,3994-4005,4017-4055,4057-4069,4075-4086,4091-4129,4131-4143,4164-4175,4195-4233,4235-4247,4255-4260,4263-4267,4357-4364,4376-4417,4419-4428,4430,4432-4475,4477-4486,4488-4497,4499,4501-4544,4546-4555,4557-4566,4568,4570-4617,4619-4624,4626-4635,4639-4686,4688-4693,4695-4704,4708-4759,4761-4762,4764-4773,4777-4828,4830-4831,4833-4842,4844,4846-4897,4899-4900,4902-4912,4915-4969,4972-4982,4985-5039,5042-5051,5055-5109,5112-5113,5115-5121,5125-5179,5182-5183,5185-5191,5193,5195-5249,5252-5253,5255-5261,5265-5319,5322-5323,5325-5331,5335-5389,5392-5393,5395-5401,5405-5459,5462-5463,5465-5471,5473,5475-5480,5536-5541,5543,5545-5550,5606-5611,5613,5615-5617,5619-5626,5628-5669,5672-5681,5683,5685-5687,5689-5696,5698-5739,5742-5751,5755-5757,5759-5766,5768-5809,5812-5821,6817,7465,7701-7703,7783-7785,7787-7789,7791-7792,7857-7859,7861,7863,7943-7945,7947-7965,7970,7972,7976,7981-7992,7994,7996,8000,8004,8006,8011-8015,8017,8019-8048,8050-8095,8097,8099-8126,8128-8173,8175,8177-8185,8187-8204,8206-8251,8255-8274,8276-8281,8284-8329,8331,8333-8364,8366-8407,8409,8411-8430,8432-8442,8444-8485,8487,8489-8512,8514-8524,8526-8563,8565,8567-8590,8592-8641,8645-8667,8670-8719,8721,8755-8782,8784-8794,8796-8829,8831,8849-8876,8878-8888,8890-8923,8925,8943-8970,8972-8982,8984-9017,9021-9047,9050-9060,9062-9095,9189-9220,9222-9263,9267-9298,9300-9310,9312-9341,9343,9345-9380,9382-9419,9421,9423-9466,9468-9491,9501,9509-9513,9515,9533-9576,9578-9607,9609,9611-9616,9618-9623,9625,9627-9632,9634-9639,9641,9721-9760,9762-9768,9770-9795,9797-9838,9840-9846,9848-9873,9875,9877-9951,9955-9998,10000-10006,10008-10029,10031,10033-10084,10086-10101,10127,10135-10139,10141,10159-10202,10204-10210,10212-10233,10235,10237-10242,10244-10249,10253-10258,10260-10265,10306-10349,10351-10361,10363-10380,10384-10431,10433-10458,10460,10462-10509,10511-10517,10519-10536,10538,10540-10614,10616,10698-10709,10712-10750,10752-10773,10775,10777-10788,10791-10829,10831-10852,10854,10856-10867,10870-10908,10910-10931,10933-10946,10949-10991,10993-11010,11014-11025,11028-11089,11093-11104,11107-11149,11151-11168,11172-11183,11186-11248,11256-11268,11270-11332,11344-11356,11358-11420,11425-11436,11438-11500,11507-11518,11520-11581,11585-11596,11598-11644,11646-11659,11663-11674,11676-11737,11741-11746,11811-11817,11819-11878,11880-11895,11897-11956,11958-11973,12085-12144,12146-12147,12150-12160,12162,12164-12223,12225-12226,12229-12239,12243-12302,12304-12305,12308-12319,12322-12384,12387-12398,12401-12463,12466-12477,12485-12547,12555-13221,13338,13396,13404-13408,13422-13429,13431-13458,13488-13495,13497-13523,13525,13527-13535,13537-13543,13545-13563,13565,13567-13572,13574-13579,13581-13588,13590-13597,13599-13615,13617-13637,13639-13652,13655-13660,13678-13684,13706,13708-13724,13726-13744,13748-13753,13755-13760,13764-13769,13771-13778,13780-13800,13802-13818,13820-13825,13827-13834,13836-13856,13858-13874,13876-13881,13883-13890,13892-13912,13914-13930,13932-13937,13964-13978,13995-14031,14053-14218,14359-14397
+  s_324b42d9c67464::t_38daf93d536dc7 14219-14358
+internal/units/inifile/testdata/6.6.0/lib/puppet/provider/ini_subsetting/ruby.rb
+  s_324b42d9c67464::t_f545b127e3da16 1-96
+tests/spine/inifile/cases/unwritable-ro-mount/podmanargs
+  s_324b42d9c67464::t_08f842a11a5b07 1
+tests/spine/inifile/cases/refreshonly-absent-missing-section/files
+  s_324b42d9c67464::t_08f842a11a5b07 1-2
+internal/units/sshkeys_core/sak_apply.go
+  s_fd2e97a32cf55f::t_2a964580212000 260,266,269
+tests/spine/inifile/cases/subsetting-quote-char/site.pp
+  s_324b42d9c67464::t_08f842a11a5b07 1-2
+internal/units/inifile/testdata/6.6.0/lib/puppet/util/ini_file/section.rb
+  s_324b42d9c67464::t_f545b127e3da16 1-105
+internal/units/inifile/testdata/edits-6.5.0.json
+  s_324b42d9c67464::t_df83a039d0ed89 6267-6948
+  s_324b42d9c67464::t_5c5d95a470d1c7 1-390,392-437,439-4216,4218-4262,4264-4398,4400-4442,4444-6266,6949-11025,11188-15625,15627-15670,15672-18572
+  s_324b42d9c67464::t_6321f38a657671 11026-11187
+  s_324b42d9c67464::t_3ff5a5ee3536ee 391,438,4217,4263,4399,4443,15626,15671
+tests/spine/inifile/cases/unwritable-dir-at-path/files
+  s_324b42d9c67464::t_08f842a11a5b07 1
+tests/spine/inifile/cases/refreshonly-only-notifier/seed.sh
+  s_324b42d9c67464::t_08f842a11a5b07 1
+tests/spine/inifile/cases/section-create/site.pp
+  s_324b42d9c67464::t_08f842a11a5b07 1
+internal/units/inifile/testdata/6.6.0/lib/puppet/util/ini_file.rb
+  s_324b42d9c67464::t_f545b127e3da16 1-373
+tests/spine/inifile/cases/subsetting-insert-types/site.pp
+  s_324b42d9c67464::t_08f842a11a5b07 1-4
+  s_324b42d9c67464::t_4e76a70184586e 5
+internal/units/inifile/ini_file_test.go
+  s_324b42d9c67464::t_c659f18acd40d5 257-261,273-304,307
+  s_324b42d9c67464::t_b1d1745eadacb2 118-119,204
+  s_324b42d9c67464::t_ba06b2b3b9dbcd 1-19,21-117,120-126,128-203,205-256,262-272,305-306,308-314
+  s_3853a9af291808::t_1deb9bf56de45b 20
+  s_3853a9af291808::t_f991f92e26a423 127
+tests/spine/inifile/cases/subsetting-delete-if-empty/files
+  s_324b42d9c67464::t_08f842a11a5b07 1
+tests/spine/inifile/cases/setting-utf8-valid/site.pp
+  s_324b42d9c67464::t_08f842a11a5b07 1-2
+internal/units/inifile/testdata/6.5.0/lib/puppet/util/ini_file/section.rb
+  s_324b42d9c67464::t_f545b127e3da16 1-101
+tests/spine/inifile/cases/d105-unpatched-insync/seed.sh
+  s_324b42d9c67464::t_08f842a11a5b07 1
+tests/spine/inifile/cases/setting-update/seed.sh
+  s_324b42d9c67464::t_08f842a11a5b07 1
+internal/units/inifile/testdata/gen/removal.rb
+  s_3853a9af291808::t_f991f92e26a423 10
+  s_324b42d9c67464::t_8c1ed34a0b17a9 1-2,6-9,11-39,45
+  s_324b42d9c67464::t_0f85f541a2df0c 40-44
+  s_3853a9af291808::t_23a70c71b98731 3-5
+internal/units/host_core/source_scan_test.go
+  s_fd2e97a32cf55f::t_6ed88b5f3089e2 6,10,12
+internal/lib/parsedfile/grammar.go
+  s_fd2e97a32cf55f::t_8185e642a2ed79 11
+  s_fd2e97a32cf55f::t_6ed88b5f3089e2 114
+internal/units/mount_core/source_scan_test.go
+  s_fd2e97a32cf55f::t_6ed88b5f3089e2 6,10,12
+internal/units/inifile/testdata/gen/subsetting.rb
+  s_324b42d9c67464::t_f00749e46e9495 162
+  s_324b42d9c67464::t_f610019f13c31d 1-109,115-161,163-178,181-215
+  s_324b42d9c67464::t_378f572d074397 179-180
+  s_324b42d9c67464::t_9ed9f8c560aba0 110-114
+tests/spine/inifile/cases/subsetting-create-change-remove/seed.sh
+  s_324b42d9c67464::t_08f842a11a5b07 1
+tests/spine/inifile/cases/setting-utf8-valid/seed.sh
+  s_324b42d9c67464::t_08f842a11a5b07 1-2
+internal/units/inifile/testdata/6.5.0/lib/puppet/provider/ini_setting/ruby.rb
+  s_324b42d9c67464::t_f545b127e3da16 1-161
+tests/spine/inifile/cases/unreadable-chmod/site.pp
+  s_324b42d9c67464::t_08f842a11a5b07 1
+internal/units/inifile/testdata/6.6.1/lib/puppet/type/ini_setting.rb
+  s_324b42d9c67464::t_f545b127e3da16 1-154
+internal/units/units.go
+  s_324b42d9c67464::t_ec5a2f8c0321af 17,30
+internal/units/inifile/testdata/6.6.1/lib/puppet/type/ini_section.rb
+  s_324b42d9c67464::t_f545b127e3da16 1-58
+cmd/voxagent/sensitive_test.go
+  s_324b42d9c67464::t_6b7f56656e7921 551
+  s_324b42d9c67464::t_c6bf09e1248451 10,61-74,350-365,493-494,550,552-554,556
+tests/spine/inifile/cases/force-new-false/site.pp
+  s_324b42d9c67464::t_08f842a11a5b07 1-2
+internal/units/cron_core/cron_params.go
+  s_fd2e97a32cf55f::t_8e3084fc09293e 14
+  s_fd2e97a32cf55f::t_6ed88b5f3089e2 39,46
+tests/spine/inifile/cases/setting-custom-syntax/seed.sh
+  s_324b42d9c67464::t_08f842a11a5b07 1
+internal/units/mount_core/mount_grammar.go
+  s_fd2e97a32cf55f::t_6a454cc679b5fe 11
+  s_fd2e97a32cf55f::t_6ed88b5f3089e2 18,20-23
+tests/spine/inifile/cases/refreshonly-only-notifier/site.pp
+  s_324b42d9c67464::t_08f842a11a5b07 1-2
+cmd/voxagent/canary_test.go
+  s_324b42d9c67464::t_90f032ae39c34a 52-57,97,174
+internal/units/inifile/inifile.go
+  s_324b42d9c67464::t_ec5a2f8c0321af 1-10,12-51,57-65,76-96,100-102,113-165,173-174,177-226
+  s_324b42d9c67464::t_743071287bed3d 111-112
+  s_324b42d9c67464::t_b24939ffc6bdbd 52-56,66-75,97-99,103-110
+  s_324b42d9c67464::t_87190fa5b85588 11,166-172,175-176
+tests/spine/inifile/cases/refreshonly-absent-missing-file/files
+  s_324b42d9c67464::t_08f842a11a5b07 1-2
+tests/spine/inifile/cases/subsetting-exact-match/site.pp
+  s_324b42d9c67464::t_08f842a11a5b07 1-3
+internal/units/host_core/host_grammar.go
+  s_fd2e97a32cf55f::t_6ed88b5f3089e2 17,21-23
+  s_fd2e97a32cf55f::t_a67d123e17c469 10
+internal/lib/parsedfile/doc.go
+  s_fd2e97a32cf55f::t_6ed88b5f3089e2 17
+tests/spine/inifile/cases/setting-absent-insync/seed.sh
+  s_324b42d9c67464::t_08f842a11a5b07 1
+tests/spine/inifile/cases/subsetting-delete-if-empty/site.pp
+  s_324b42d9c67464::t_08f842a11a5b07 1-2
+docs/maintainers/units.md
+  s_324b42d9c67464::t_956c8256715f61 11,90,277-290
+  s_3853a9af291808::t_ccf7ee1dda1e57 64
+  s_3853a9af291808::t_b512d0c6df069b 63,65
+internal/units/inifile/testdata/6.6.1/lib/puppet/util/ini_file.rb
+  s_324b42d9c67464::t_f545b127e3da16 1-374
+tests/spine/inifile/cases/invalid-utf8/seed.sh
+  s_324b42d9c67464::t_08f842a11a5b07 1-2
+tests/spine/inifile/cases/section-remove/module
+  s_324b42d9c67464::t_08f842a11a5b07 1
+tests/spine/inifile/cases/missing-parent/files
+  s_324b42d9c67464::t_08f842a11a5b07 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "c60ddf441564e43d7ffad6dc47279f56caaf0699",
+  "prompts": {},
+  "sessions": {
+    "s_324b42d9c67464": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d1c9d111-fc57-44dc-89e3-234e7699fbc6",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "LLM (riotbox) <llm@riotbox>"
+    },
+    "s_3853a9af291808": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d8972d4a-89f8-42fb-8f0c-1bc7c44a1754",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": null
+    },
+    "s_93fd74cc4d8df9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-ae4e7a434bb83977c",
+        "model": "unknown"
+      },
+      "human_author": "LLM (riotbox) <llm@riotbox>"
+    },
+    "s_fd2e97a32cf55f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "dd1bc40d-9c40-4bfd-b585-e11c9e6358c9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "LLM (riotbox) <llm@riotbox>"
+    }
+  }
+}
