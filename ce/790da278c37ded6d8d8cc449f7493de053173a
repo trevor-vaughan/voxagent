@@ -1,0 +1,19 @@
+tests/spine/report-diff-simp.sh
+  s_93fd74cc4d8df9::t_e5a1a01740dbdc 30-33,232-234,419-427
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "ce790da278c37ded6d8d8cc449f7493de053173a",
+  "prompts": {},
+  "sessions": {
+    "s_93fd74cc4d8df9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-ae4e7a434bb83977c",
+        "model": "unknown"
+      },
+      "human_author": "LLM (riotbox) <llm@riotbox>"
+    }
+  }
+}
