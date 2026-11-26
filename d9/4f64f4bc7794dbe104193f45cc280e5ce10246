@@ -1,0 +1,26 @@
+docs/usage/resource-types.md
+  s_97f2bd43ca07f6::t_5ff03eaacbae4c 153-175
+docs/maintainers/not-implemented.md
+  s_97f2bd43ca07f6::t_91a273e332162d 35,868-890,893-938,940-943
+  s_97f2bd43ca07f6::t_a1a646acf2a937 891-892,939
+  s_97f2bd43ca07f6::t_c65f43e9040cc8 173-181,183,185
+  s_97f2bd43ca07f6::t_ab9edaee0810ff 944
+docs/maintainers/units.md
+  s_97f2bd43ca07f6::t_c1ef0e3d38fb97 11,268-273
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "d94f64f4bc7794dbe104193f45cc280e5ce10246",
+  "prompts": {},
+  "sessions": {
+    "s_97f2bd43ca07f6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c9967bb3-7e0d-43bf-9da0-78c58bffe4f1",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "LLM (riotbox) <llm@riotbox>"
+    }
+  }
+}
