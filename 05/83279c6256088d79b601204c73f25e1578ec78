@@ -1,0 +1,24 @@
+internal/lib/puppetconf/resolve_test.go
+  s_cb8bd9dd855dee::t_9f191ce9c2e8d6 1-177,179-190,192-345,360-362,364-492
+  s_cb8bd9dd855dee::t_0d6e118fcd971e 353
+  s_cb8bd9dd855dee::t_ac2a46c31f26a5 178,191,346-352,354-359,363
+internal/lib/puppetconf/resolve.go
+  s_cb8bd9dd855dee::t_0d6e118fcd971e 164-168,254,257
+  s_cb8bd9dd855dee::t_ce104c43b0bfe4 1-163,169-253,255-256,258-331
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "0583279c6256088d79b601204c73f25e1578ec78",
+  "prompts": {},
+  "sessions": {
+    "s_cb8bd9dd855dee": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "98ba0b42-5a8f-45fd-a95e-b8c0ecc9935e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "LLM (riotbox) <llm@riotbox>"
+    }
+  }
+}
