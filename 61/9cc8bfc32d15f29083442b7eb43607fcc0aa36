@@ -1,0 +1,23 @@
+internal/lib/puppetconf/parse_test.go
+  s_cb8bd9dd855dee::t_21a9e21ff4d6e8 1-14,19-89,91-110,112-116,118-177
+  s_cb8bd9dd855dee::t_85af2fbfa47053 111
+  s_cb8bd9dd855dee::t_ab864b7b480d32 15-18,90,117
+internal/lib/puppetconf/parse.go
+  s_cb8bd9dd855dee::t_ab864b7b480d32 1-228
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "619cc8bfc32d15f29083442b7eb43607fcc0aa36",
+  "prompts": {},
+  "sessions": {
+    "s_cb8bd9dd855dee": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "98ba0b42-5a8f-45fd-a95e-b8c0ecc9935e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "LLM (riotbox) <llm@riotbox>"
+    }
+  }
+}
