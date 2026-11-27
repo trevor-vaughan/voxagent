@@ -1,0 +1,14 @@
+docs/maintainers/units.md
+  h_4db53f42b9be42 302-328
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "daedae0918807ae48c4eb857e24d2753f4287ed6",
+  "prompts": {},
+  "humans": {
+    "h_4db53f42b9be42": {
+      "author": "Trevor Vaughan <peiriannydd@gmail.com>"
+    }
+  }
+}
