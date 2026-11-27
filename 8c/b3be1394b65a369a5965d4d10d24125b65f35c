@@ -1,0 +1,21 @@
+internal/lib/puppetconf/testdata/measure.sh
+  s_61505c54136418::t_bf0dd2e72378e6 169,180-185,188-201
+  s_61505c54136418::t_9f45418ab7dd46 186-187
+  s_61505c54136418::t_fd6a3c78e57986 170-179
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "8cb3be1394b65a369a5965d4d10d24125b65f35c",
+  "prompts": {},
+  "sessions": {
+    "s_61505c54136418": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7e8bc047-3d7d-4dfe-804b-33ba348805dc",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "LLM (riotbox) <llm@riotbox>"
+    }
+  }
+}
