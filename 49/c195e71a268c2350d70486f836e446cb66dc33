@@ -1,0 +1,24 @@
+docs/usage/openvox-server.md
+  s_61505c54136418::t_eede47aca3898a 194
+docs/usage/puppet-conf.md
+  s_61505c54136418::t_0fa8d4983cf05f 60-65,76-132,134,154-155
+  s_61505c54136418::t_eede47aca3898a 133
+docs/maintainers/apply-spine.md
+  s_61505c54136418::t_eede47aca3898a 223-225
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "49c195e71a268c2350d70486f836e446cb66dc33",
+  "prompts": {},
+  "sessions": {
+    "s_61505c54136418": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7e8bc047-3d7d-4dfe-804b-33ba348805dc",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "LLM (riotbox) <llm@riotbox>"
+    }
+  }
+}
