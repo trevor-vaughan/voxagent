@@ -1,0 +1,19 @@
+tests/agent/run.sh
+  s_cb8bd9dd855dee::t_83637657b11006 277,279-281,286-292,298-312,315,319-320,323,325,327,329-333,335
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "865565a9ce1f7607657ec1a1245ee32dca5d1301",
+  "prompts": {},
+  "sessions": {
+    "s_cb8bd9dd855dee": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "98ba0b42-5a8f-45fd-a95e-b8c0ecc9935e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "LLM (riotbox) <llm@riotbox>"
+    }
+  }
+}
