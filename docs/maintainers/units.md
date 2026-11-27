@@ -299,6 +299,33 @@ version. The changelog is a `Changelog:` line in the unit's package doc comment 
 `1.0.0 — moved from internal/ral`). `TestManifestsWellFormed` checks `Version` is semver; nothing checks the changelog,
 so a reviewer must.
 
+## Independent delivery (decided, not built)
+
+Goal: a unit can be upgraded on a node without rebuilding and redistributing voxagent. Today every unit is compiled into
+the agent binary.
+
+What already works without a rebuild: a module upgraded on the server, or a module voxagent has no unit for, fails the
+fingerprint check (see [Routing](#routing)) and runs on the extension host. The result is still correct, but it runs in
+Ruby, not natively. The gap is shipping a fix to a *native* unit, or certifying a unit against a new module release,
+without an agent upgrade.
+
+Decided (2026-11-26):
+
+- **Mechanism, when built:** each unit runs as a native process and talks to the agent over a versioned protocol
+  modelled on the [extension host protocol](extension-host-protocol.md). Unit artifacts are signed and pinned, and
+  pluginsync delivers them. Units need full OS access: they run commands, chown files, and use the cgo
+  `lib/augeas` and `lib/nameservice`.
+- **Not WebAssembly (Extism, wazero) for providers:** WASI cannot run commands or chown, and cgo libraries cannot be
+  compiled to wasm. Every side effect would become a host function, and that host-function API would become a
+  second frozen contract.
+- **Confinement of third-party units is a later layer.** It would wrap the unit process in OS controls (for example a
+  systemd sandbox or Landlock), with no change to the artifact format.
+- **Trigger:** design starts only after `ral.Provider` has gone three consecutive unit slices without changing shape.
+  Freezing a cross-process contract any earlier means versioning it again on almost every slice.
+
+Until then the only requirement is the one this page already enforces: a unit stays self-contained behind its manifest and
+`Route`.
+
 ## Adding a unit
 
 1. Create `internal/units/<name>/` with the type code, a package clause that drops underscores, and a package doc with a
