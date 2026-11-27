@@ -1,0 +1,23 @@
+docs/usage/openvox-server.md
+  s_cb8bd9dd855dee::t_3aeaba242c8bb2 48
+docs/usage/puppet-conf.md
+  s_cb8bd9dd855dee::t_3aeaba242c8bb2 111
+docs/usage/extension-host.md
+  s_cb8bd9dd855dee::t_3aeaba242c8bb2 24
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "56a50b2e6cc329bb0692b7048a55787c238521bc",
+  "prompts": {},
+  "sessions": {
+    "s_cb8bd9dd855dee": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "98ba0b42-5a8f-45fd-a95e-b8c0ecc9935e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "LLM (riotbox) <llm@riotbox>"
+    }
+  }
+}
