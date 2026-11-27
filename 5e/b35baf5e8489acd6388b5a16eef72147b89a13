@@ -1,0 +1,21 @@
+docs/usage/puppet-conf.md
+  s_61505c54136418::t_99fff989f67460 103-104,122-123
+docs/maintainers/apply-spine.md
+  s_61505c54136418::t_99fff989f67460 225
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "5eb35baf5e8489acd6388b5a16eef72147b89a13",
+  "prompts": {},
+  "sessions": {
+    "s_61505c54136418": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7e8bc047-3d7d-4dfe-804b-33ba348805dc",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "LLM (riotbox) <llm@riotbox>"
+    }
+  }
+}
