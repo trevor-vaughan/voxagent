@@ -1,0 +1,31 @@
+README.md
+  s_cb8bd9dd855dee::t_e2a9e3bacb7b76 50
+docs/usage/puppet-conf.md
+  s_cb8bd9dd855dee::t_e2a9e3bacb7b76 1-121
+docs/usage/extension-host.md
+  s_cb8bd9dd855dee::t_e2a9e3bacb7b76 23
+docs/maintainers/apply-spine.md
+  s_cb8bd9dd855dee::t_004fb6a878fd4b 220-223
+  s_cb8bd9dd855dee::t_e2a9e3bacb7b76 183
+docs/usage/README.md
+  s_cb8bd9dd855dee::t_e2a9e3bacb7b76 12
+docs/usage/openvox-server.md
+  s_cb8bd9dd855dee::t_e2a9e3bacb7b76 66-67,193
+  s_cb8bd9dd855dee::t_004fb6a878fd4b 42-43
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.6",
+  "base_commit_sha": "62800da3657711bfa3e1f08707b75415fda8a885",
+  "prompts": {},
+  "sessions": {
+    "s_cb8bd9dd855dee": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "98ba0b42-5a8f-45fd-a95e-b8c0ecc9935e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "LLM (riotbox) <llm@riotbox>"
+    }
+  }
+}
